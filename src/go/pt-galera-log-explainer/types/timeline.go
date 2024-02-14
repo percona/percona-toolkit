@@ -40,11 +40,10 @@ func (timeline Timeline) MergeByIdentifier(lt LocalTimeline) {
 
 func (timeline Timeline) MergeByDirectory(path string, lt LocalTimeline) {
 	node := filepath.Base(filepath.Dir(path))
-MERGE:
 	for _, lt2 := range timeline {
 		if len(lt2) > 0 && node == filepath.Base(filepath.Dir(lt2[0].LogCtx.FilePath)) {
 			lt = MergeTimeline(lt2, lt)
-			break MERGE
+			break
 		}
 	}
 	timeline[node] = lt
@@ -59,7 +58,6 @@ func (timeline Timeline) MergeByPodnameElsePath(path string, lt LocalTimeline) {
 		timeline[path] = lt
 		return
 	}
-MERGE:
 	for _, lt2 := range timeline {
 		if len(lt2) == 0 {
 			continue
@@ -70,7 +68,7 @@ MERGE:
 			metadata.Namespace == metadata2.Namespace {
 
 			lt = MergeTimeline(lt2, lt)
-			break MERGE
+			break
 		}
 	}
 	timeline[metadata.PodName] = lt
