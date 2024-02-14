@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 	"github.com/rs/zerolog/log"
 )
@@ -93,11 +94,9 @@ func NoDatesRegex(skipLeadingCircumflex bool) string {
 	return "^(?![0-9]{4})"
 }
 
-const k8sprefix = `{"log":"`
-
 func SearchDateFromLog(logline string) (time.Time, string, bool) {
-	if logline[:len(k8sprefix)] == k8sprefix {
-		logline = logline[len(k8sprefix):]
+	if logline[:len(types.OperatorLogPrefix)] == types.OperatorLogPrefix {
+		logline = logline[len(types.OperatorLogPrefix):]
 	}
 	for _, layout := range DateLayouts {
 		if len(logline) < len(layout) {

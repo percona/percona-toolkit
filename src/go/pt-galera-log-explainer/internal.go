@@ -12,13 +12,14 @@ import (
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-var logger = log.With().Str("component", "extractor").Logger()
+var logger zerolog.Logger
 
-func init() {
-
+func initComponentLogger() {
+	logger = log.With().Str("component", "extractor").Logger()
 	if CLI.Since != nil {
 		logger = logger.With().Time("since", *CLI.Since).Logger()
 	}
@@ -69,8 +70,10 @@ func timelineFromPaths(paths []string, regexes types.RegexMap) (types.Timeline, 
 		// Why it should not just identify using the file path:
 		// so that we are able to merge files that belong to the same nodes
 		// we wouldn't want them to be shown as from different nodes
-		if CLI.PxcOperator {
+		if CLI.SkipMerge {
 			timeline[path] = localTimeline
+		} else if CLI.PxcOperator {
+			timeline.MergeByPodnameElsePath(path, localTimeline)
 		} else if CLI.MergeByDirectory {
 			timeline.MergeByDirectory(path, localTimeline)
 		} else {
@@ -93,7 +96,7 @@ func prepareGrepArgument(regexes types.RegexMap) string {
 		// I'm not adding pxcoperator map the same way others are used, because they do not have the same formats and same place
 		// it needs to be put on the front so that it's not 'merged' with the '{"log":"' json prefix
 		// this is to keep things as close as '^' as possible to keep doing prefix searches
-		grepRegex += "((" + strings.Join(regex.PXCOperatorMap.Compile(), "|") + ")|^{\"log\":\""
+		grepRegex += "((" + strings.Join(regex.PXCOperatorMap.Compile(), "|") + ")|^" + types.OperatorLogPrefix
 		regexes.Merge(regex.PXCOperatorMap)
 	}
 	if CLI.Since != nil {
@@ -129,7 +132,7 @@ func execGrepAndIterate(path, compiledRegex string, stdout chan<- string) error 
 		logger.Warn().Msg("On Darwin systems, use 'pt-galera-log-explainer --grep-cmd=ggrep' as it requires grep v3")
 	}
 
-	cmd := exec.Command(CLI.GrepCmd, "-P", compiledRegex, path)
+	cmd := exec.Command(CLI.GrepCmd, "-a", "-P", compiledRegex, path)
 
 	out, err := cmd.StdoutPipe()
 	if err != nil {

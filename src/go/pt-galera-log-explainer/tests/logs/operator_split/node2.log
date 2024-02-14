@@ -1,0 +1,802 @@
++ trap exit SIGTERM
++ '[' m = - ']'
++ CFG=/etc/mysql/node.cnf
++ wantHelp=
++ for arg in "$@"
++ case "$arg" in
+++ mysqld -V
+++ awk '{print $3}'
+++ awk -F. '{print $1"."$2}'
++ MYSQL_VERSION=8.0
+++ mysqld -V
+++ awk '{print $3}'
+++ awk -F. '{print $3}'
+++ awk -F- '{print $1}'
++ MYSQL_PATCH_VERSION=32
++ vault_secret=/etc/mysql/vault-keyring-secret/keyring_vault.conf
++ '[' -f /etc/mysql/vault-keyring-secret/keyring_vault.conf ']'
++ '[' -f /usr/lib64/mysql/plugin/binlog_utils_udf.so ']'
++ sed -i '/\[mysqld\]/a plugin_load="binlog_utils_udf=binlog_utils_udf.so"' /etc/mysql/node.cnf
++ sed -i '/\[mysqld\]/a gtid-mode=ON' /etc/mysql/node.cnf
++ sed -i '/\[mysqld\]/a enforce-gtid-consistency' /etc/mysql/node.cnf
++ grep -q '^progress=' /etc/mysql/node.cnf
++ sed -i 's|^progress=.*|progress=1|' /etc/mysql/node.cnf
++ grep -q '^\[sst\]' /etc/mysql/node.cnf
++ grep -q '^cpat=' /etc/mysql/node.cnf
++ sed '/^\[sst\]/a cpat=.*\\.pem$\\|.*init\\.ok$\\|.*galera\\.cache$\\|.*wsrep_recovery_verbose\\.log$\\|.*readiness-check\\.sh$\\|.*liveness-check\\.sh$\\|.*get-pxc-state$\\|.*sst_in_progress$\\|.*pmm-prerun\\.sh$\\|.*sst-xb-tmpdir$\\|.*\\.sst$\\|.*gvwstate\\.dat$\\|.*grastate\\.dat$\\|.*\\.err$\\|.*\\.log$\\|.*RPM_UPGRADE_MARKER$\\|.*RPM_UPGRADE_HISTORY$\\|.*pxc-entrypoint\\.sh$\\|.*unsafe-bootstrap\\.sh$\\|.*pxc-configure-pxc\\.sh\\|.*peer-list$\\|.*auth_plugin$' /etc/mysql/node.cnf
++ [[ 8.0 == \8\.\0 ]]
++ [[ 32 -ge 26 ]]
++ grep -q '^skip_replica_start=ON' /etc/mysql/node.cnf
++ sed -i '/\[mysqld\]/a skip_replica_start=ON' /etc/mysql/node.cnf
++ auth_plugin=caching_sha2_password
++ [[ -f /var/lib/mysql/auth_plugin ]]
++ [[ -z caching_sha2_password ]]
++ [[ 8.0 == \5\.\7 ]]
++ echo caching_sha2_password
++ sed -i /default_authentication_plugin/d /etc/mysql/node.cnf
++ [[ 8.0 == \8\.\0 ]]
++ [[ 32 -ge 27 ]]
++ sed -i '/\[mysqld\]/a authentication_policy=caching_sha2_password,,' /etc/mysql/node.cnf
++ file_env XTRABACKUP_PASSWORD xtrabackup xtrabackup
+Percona XtraDB Cluster: Finding peers
+2024/02/09 10:46:22 Peer finder enter
+2024/02/09 10:46:22 Determined Domain to be pxc.svc.cluster.local
+2024/02/09 10:46:22 Peer list updated
+was []
+now [10-42-0-5.cluster1-pxc-unready.pxc.svc.cluster.local 10-42-1-6.cluster1-pxc-unready.pxc.svc.cluster.local 10-42-2-8.cluster1-pxc-unready.pxc.svc.cluster.local]
+2024/02/09 10:46:22 execing: /var/lib/mysql/pxc-configure-pxc.sh with stdin: 10-42-0-5.cluster1-pxc-unready.pxc.svc.cluster.local
+10-42-1-6.cluster1-pxc-unready.pxc.svc.cluster.local
+10-42-2-8.cluster1-pxc-unready.pxc.svc.cluster.local
+2024/02/09 10:46:22 ++ hostname -I
+++ awk ' { print $1 } '
++ NODE_IP=10.42.1.6
+++ hostname -f
+++ cut -d. -f2
++ CLUSTER_NAME=cluster1-pxc
++ SERVER_NUM=2
++ SERVER_ID=32109362
+++ hostname -f
++ NODE_NAME=cluster1-pxc-2.cluster1-pxc.pxc.svc.cluster.local
++ NODE_PORT=3306
++ read -ra LINE
++ echo 'read line 10-42-0-5.cluster1-pxc-unready.pxc.svc.cluster.local'
+read line 10-42-0-5.cluster1-pxc-unready.pxc.svc.cluster.local
+++ getent hosts 10-42-0-5.cluster1-pxc-unready.pxc.svc.cluster.local
+++ awk '{ print $1 }'
++ LINE_IP=10.42.0.5
++ '[' 10.42.0.5 '!=' 10.42.1.6 ']'
+++ mysql_root_exec 10.42.0.5 'select @@hostname'
+++ local server=10.42.0.5
+++ local 'query=select @@hostname'
++ LINE_HOST=cluster1-pxc-0
++ '[' -n cluster1-pxc-0 ']'
++ PEERS=("${PEERS[@]}" $LINE_HOST)
++ PEERS_FULL=("${PEERS_FULL[@]}" "$LINE_HOST.$CLUSTER_NAME")
++ read -ra LINE
++ echo 'read line 10-42-1-6.cluster1-pxc-unready.pxc.svc.cluster.local'
+read line 10-42-1-6.cluster1-pxc-unready.pxc.svc.cluster.local
+++ getent hosts 10-42-1-6.cluster1-pxc-unready.pxc.svc.cluster.local
+++ awk '{ print $1 }'
++ LINE_IP=10.42.1.6
++ '[' 10.42.1.6 '!=' 10.42.1.6 ']'
++ read -ra LINE
++ echo 'read line 10-42-2-8.cluster1-pxc-unready.pxc.svc.cluster.local'
+read line 10-42-2-8.cluster1-pxc-unready.pxc.svc.cluster.local
+++ awk '{ print $1 }'
+++ getent hosts 10-42-2-8.cluster1-pxc-unready.pxc.svc.cluster.local
++ LINE_IP=10.42.2.8
++ '[' 10.42.2.8 '!=' 10.42.1.6 ']'
+++ mysql_root_exec 10.42.2.8 'select @@hostname'
+++ local server=10.42.2.8
+++ local 'query=select @@hostname'
++ LINE_HOST=cluster1-pxc-1
++ '[' -n cluster1-pxc-1 ']'
++ PEERS=("${PEERS[@]}" $LINE_HOST)
++ PEERS_FULL=("${PEERS_FULL[@]}" "$LINE_HOST.$CLUSTER_NAME")
++ read -ra LINE
++ '[' 2 '!=' 0 ']'
+++ printf '%s\n' cluster1-pxc-0 cluster1-pxc-1 cluster1-pxc-2
+++ sort --version-sort
+++ uniq
+++ grep -v -- '-0$'
+++ sed '$d'
+++ tr '\n' ,
+++ sed 's/^,$//'
++ DONOR_ADDRESS=cluster1-pxc-1,
++ '[' 2 '!=' 0 ']'
+++ printf '%s\n' cluster1-pxc-0.cluster1-pxc cluster1-pxc-1.cluster1-pxc
+++ sort --version-sort
+++ tr '\n' ,
+++ sed 's/,$//'
++ WSREP_CLUSTER_ADDRESS=cluster1-pxc-0.cluster1-pxc,cluster1-pxc-1.cluster1-pxc
++ CFG=/etc/mysql/node.cnf
+++ mysqld -V
+++ awk '{print $3}'
+++ awk -F. '{print $1"."$2}'
++ MYSQL_VERSION=8.0
++ '[' 8.0 == 8.0 ']'
++ grep -E -q '^[#]?admin-address' /etc/mysql/node.cnf
++ sed '/^\[mysqld\]/a admin-address=\n' /etc/mysql/node.cnf
++ grep -E -q '^[#]?log_error_suppression_list' /etc/mysql/node.cnf
++ sed '/^\[mysqld\]/a log_error_suppression_list="MY-010055"\n' /etc/mysql/node.cnf
++ '[' yes == yes ']'
++ grep -E -q '^[#]?log-error' /etc/mysql/node.cnf
++ sed '/^\[mysqld\]/a log-error=/var/lib/mysql/mysqld-error.log\n' /etc/mysql/node.cnf
++ grep -E -q '^[#]?wsrep_sst_donor' /etc/mysql/node.cnf
++ sed '/^\[mysqld\]/a wsrep_sst_donor=\n' /etc/mysql/node.cnf
++ grep -E -q '^[#]?wsrep_node_incoming_address' /etc/mysql/node.cnf
++ grep -E -q '^[#]?wsrep_provider_options' /etc/mysql/node.cnf
++ sed '/^\[mysqld\]/a wsrep_provider_options="pc.weight=10"\n' /etc/mysql/node.cnf
++ sed -r 's|^[#]?server_id=.*$|server_id=32109362|' /etc/mysql/node.cnf
++ sed -r 's|^[#]?coredumper$|coredumper|' /etc/mysql/node.cnf
++ sed -r 's|^[#]?wsrep_node_address=.*$|wsrep_node_address=10.42.1.6|' /etc/mysql/node.cnf
++ sed -r 's|^[#]?wsrep_cluster_name=.*$|wsrep_cluster_name=cluster1-pxc|' /etc/mysql/node.cnf
++ sed -r 's|^[#]?wsrep_sst_donor=.*$|wsrep_sst_donor=cluster1-pxc-1,|' /etc/mysql/node.cnf
++ sed -r 's|^[#]?wsrep_cluster_address=.*$|wsrep_cluster_address=gcomm://cluster1-pxc-0.cluster1-pxc,cluster1-pxc-1.cluster1-pxc|' /etc/mysql/node.cnf
++ sed -r 's|^[#]?wsrep_node_incoming_address=.*$|wsrep_node_incoming_address=cluster1-pxc-2.cluster1-pxc.pxc.svc.cluster.local:3306|' /etc/mysql/node.cnf
++ sed -r 's|^[#]?admin-address=.*$|admin-address=10.42.1.6|' /etc/mysql/node.cnf
++ sed -r 's|^[#]?extra_max_connections=.*$|extra_max_connections=100|' /etc/mysql/node.cnf
++ sed -r 's|^[#]?extra_port=.*$|extra_port=33062|' /etc/mysql/node.cnf
++ CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
++ '[' -f /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt ']'
++ SSL_DIR=/etc/mysql/ssl
++ '[' -f /etc/mysql/ssl/ca.crt ']'
++ CA=/etc/mysql/ssl/ca.crt
++ SSL_INTERNAL_DIR=/etc/mysql/ssl-internal
++ '[' -f /etc/mysql/ssl-internal/ca.crt ']'
++ CA=/etc/mysql/ssl-internal/ca.crt
++ KEY=/etc/mysql/ssl/tls.key
++ CERT=/etc/mysql/ssl/tls.crt
++ '[' -f /etc/mysql/ssl-internal/tls.key -a -f /etc/mysql/ssl-internal/tls.crt ']'
++ KEY=/etc/mysql/ssl-internal/tls.key
++ CERT=/etc/mysql/ssl-internal/tls.crt
++ '[' -f /etc/mysql/ssl-internal/ca.crt -a -f /etc/mysql/ssl-internal/tls.key -a -f /etc/mysql/ssl-internal/tls.crt ']'
++ sed '/^\[mysqld\]/a pxc-encrypt-cluster-traffic=ON\nssl-ca=/etc/mysql/ssl-internal/ca.crt\nssl-key=/etc/mysql/ssl-internal/tls.key\nssl-cert=/etc/mysql/ssl-internal/tls.crt' /etc/mysql/node.cnf
+2024/02/09 10:46:23 Peer finder exiting
+Cluster address set to: cluster1-pxc-0.cluster1-pxc,cluster1-pxc-1.cluster1-pxc
+/usr/sbin/mysqld  Ver 8.0.32-24.2 for Linux on x86_64 (Percona XtraDB Cluster (GPL), Release rel24, Revision 2119e75, WSREP version 26.1.4.3)
+[mysqld]
+pxc-encrypt-cluster-traffic=ON
+ssl-ca=/etc/mysql/ssl-internal/ca.crt
+ssl-key=/etc/mysql/ssl-internal/tls.key
+ssl-cert=/etc/mysql/ssl-internal/tls.crt
+wsrep_provider_options="pc.weight=10"
+
+wsrep_sst_donor=cluster1-pxc-1,
+
+log-error=/var/lib/mysql/mysqld-error.log
+
+log_error_suppression_list="MY-010055"
+
+admin-address=10.42.1.6
+
+authentication_policy=caching_sha2_password,,
+skip_replica_start=ON
+enforce-gtid-consistency
+gtid-mode=ON
+plugin_load="binlog_utils_udf=binlog_utils_udf.so"
+
+datadir=/var/lib/mysql
+socket=/tmp/mysql.sock
+skip-host-cache
+
+coredumper
+server_id=32109362
+binlog_format=ROW
+default_storage_engine=InnoDB
+
+innodb_flush_log_at_trx_commit  = 0
+innodb_flush_method             = O_DIRECT
+innodb_file_per_table           = 1
+innodb_autoinc_lock_mode=2
+
+bind_address = 0.0.0.0
+
+wsrep_slave_threads=2
+wsrep_cluster_address=gcomm://cluster1-pxc-0.cluster1-pxc,cluster1-pxc-1.cluster1-pxc
+wsrep_provider=/usr/lib64/galera4/libgalera_smm.so
+
+wsrep_cluster_name=cluster1-pxc
+wsrep_node_address=10.42.1.6
+wsrep_node_incoming_address=cluster1-pxc-2.cluster1-pxc.pxc.svc.cluster.local:3306
+
+wsrep_sst_method=xtrabackup-v2
+
+[client]
+socket=/tmp/mysql.sock
+
+[sst]
+cpat=.*\.pem$\|.*init\.ok$\|.*galera\.cache$\|.*wsrep_recovery_verbose\.log$\|.*readiness-check\.sh$\|.*liveness-check\.sh$\|.*get-pxc-state$\|.*sst_in_progress$\|.*pmm-prerun\.sh$\|.*sst-xb-tmpdir$\|.*\.sst$\|.*gvwstate\.dat$\|.*grastate\.dat$\|.*\.err$\|.*\.log$\|.*RPM_UPGRADE_MARKER$\|.*RPM_UPGRADE_HISTORY$\|.*pxc-entrypoint\.sh$\|.*unsafe-bootstrap\.sh$\|.*pxc-configure-pxc\.sh\|.*peer-list$\|.*auth_plugin$
+progress=1
+
++ [[ -z node:10-42-2-8.cluster1-pxc-unready.pxc.svc.cluster.local:wsrep_ready:ON:wsrep_connected:ON:wsrep_local_state_comment:Synced:wsrep_cluster_status:Primary ]]
++ [[ -z node:10-42-2-8.cluster1-pxc-unready.pxc.svc.cluster.local:wsrep_ready:ON:wsrep_connected:ON:wsrep_local_state_comment:Synced:wsrep_cluster_status:Primary ]]
++ [[ -z node:10-42-2-8.cluster1-pxc-unready.pxc.svc.cluster.local:wsrep_ready:ON:wsrep_connected:ON:wsrep_local_state_comment:Synced:wsrep_cluster_status:Primary ]]
++ test -e /opt/percona/hookscript/hook.sh
++ exec mysqld
+++ id -u
+++ id -g
++ install -o 2 -g 2 -m 0755 -D /pxc-entrypoint.sh /var/lib/mysql/pxc-entrypoint.sh
+++ id -u
+++ id -g
++ install -o 2 -g 2 -m 0755 -D /unsafe-bootstrap.sh /var/lib/mysql/unsafe-bootstrap.sh
+++ id -u
+++ id -g
++ install -o 2 -g 2 -m 0755 -D /pxc-configure-pxc.sh /var/lib/mysql/pxc-configure-pxc.sh
+++ id -u
+++ id -g
++ install -o 2 -g 2 -m 0755 -D /liveness-check.sh /var/lib/mysql/liveness-check.sh
+++ id -u
+++ id -g
++ install -o 2 -g 2 -m 0755 -D /readiness-check.sh /var/lib/mysql/readiness-check.sh
+++ id -u
+++ id -g
++ install -o 2 -g 2 -m 0755 -D /peer-list /var/lib/mysql/peer-list
+++ id -u
+++ id -g
++ install -o 2 -g 2 -m 0755 -D /get-pxc-state /var/lib/mysql/get-pxc-state
+++ id -u
+++ id -g
++ install -o 2 -g 2 -m 0755 -D /pmm-prerun.sh /var/lib/mysql/pmm-prerun.sh
++ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/fluent-bit/bin
++ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/fluent-bit/bin
++ '[' fluent-bit = logrotate ']'
++ '[' fluent-bit = fluent-bit ']'
++ fluentbit_opt+='-c /etc/fluentbit/fluentbit.conf'
++ test -e /opt/percona/hookscript/hook.sh
++ exec fluent-bit -c /etc/fluentbit/fluentbit.conf
+Fluent Bit v2.1.5
+* Copyright (C) 2015-2022 The Fluent Bit Authors
+* Fluent Bit is a CNCF sub-project under the umbrella of Fluentd
+* https://fluentbit.io
+
+{"log":"2024-02-09T10:46:35.630765Z 0 [Warning] [MY-011068] [Server] The syntax '--skip-host-cache' is deprecated and will be removed in a future release. Please use SET GLOBAL host_cache_size=0 instead.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.630799Z 0 [Warning] [MY-011068] [Server] The syntax 'wsrep_slave_threads' is deprecated and will be removed in a future release. Please use wsrep_applier_threads instead.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.632875Z 0 [Warning] [MY-010097] [Server] Insecure configuration for --secure-log-path: Current value does not restrict location of generated files. Consider setting it to a valid, non-empty path.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.633632Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.32-24.2) starting as process 1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.638017Z 0 [Warning] [MY-010068] [Server] CA certificate /etc/mysql/ssl-internal/ca.crt is self signed.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.638056Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.638066Z 0 [Note] [MY-000000] [WSREP] New joining cluster node configured to use specified SSL artifacts\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.638104Z 0 [Note] [MY-000000] [Galera] Loading provider /usr/lib64/galera4/libgalera_smm.so initial position: 00000000-0000-0000-0000-000000000000:-1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.638118Z 0 [Note] [MY-000000] [Galera] wsrep_load(): loading provider library '/usr/lib64/galera4/libgalera_smm.so'\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.638915Z 0 [Note] [MY-000000] [Galera] wsrep_load(): Galera 4.14(779b689) by Codership Oy <info@codership.com> (modified by Percona <https://percona.com/>) loaded successfully.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.638945Z 0 [Note] [MY-000000] [Galera] CRC-32C: using 64-bit x86 acceleration.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.639195Z 0 [Warning] [MY-000000] [Galera] SSL compression is not effective. The option socket.ssl_compression is deprecated and will be removed in future releases.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.639204Z 0 [Warning] [MY-000000] [Galera] Parameter 'socket.ssl_compression' is deprecated and will be removed in future versions\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.639792Z 0 [Warning] [MY-000000] [Galera] Could not open state file for reading: '/var/lib/mysql//grastate.dat'\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.639806Z 0 [Warning] [MY-000000] [Galera] No persistent state found. Bootstraping with default state\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.639870Z 0 [Note] [MY-000000] [Galera] Found saved state: 00000000-0000-0000-0000-000000000000:-1, safe_to_bootstrap: 1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.640259Z 0 [Note] [MY-000000] [Galera] Generated new GCache ID: 7ee9a7d0-c738-11ee-9f9b-cf2bf4f91491\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.640278Z 0 [Note] [MY-000000] [Galera] GCache DEBUG: opened preamble:\nVersion: 0\nUUID: 00000000-0000-0000-0000-000000000000\nSeqno: -1 - -1\nOffset: -1\nSynced: 0\nEncVersion: 0\nEncrypted: 0\nMasterKeyConst UUID: 7ee9a7d0-c738-11ee-9f9b-cf2bf4f91491\nMasterKey UUID: 00000000-0000-0000-0000-000000000000\nMasterKey ID: 0\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.640285Z 0 [Note] [MY-000000] [Galera] Skipped GCache ring buffer recovery: could not determine history UUID.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.656782Z 0 [Note] [MY-000000] [Galera] Passing config to GCS: allocator.disk_pages_encryption = no; allocator.encryption_cache_page_size = 32K; allocator.encryption_cache_size = 16777216; base_dir = /var/lib/mysql/; base_host = 10.42.1.6; base_port = 4567; cert.log_conflicts = no; cert.optimistic_pa = no; debug = no; evs.auto_evict = 0; evs.delay_margin = PT1S; evs.delayed_keep_period = PT30S; evs.inactive_check_period = PT0.5S; evs.inactive_timeout = PT15S; evs.join_retrans_period = PT1S; evs.max_install_timeouts = 3; evs.send_window = 10; evs.stats_report_period = PT1M; evs.suspect_timeout = PT5S; evs.user_send_window = 4; evs.view_forget_timeout = PT24H; gcache.dir = /var/lib/mysql/; gcache.encryption = no; gcache.encryption_cache_page_size = 32K; gcache.encryption_cache_size = 16777216; gcache.freeze_purge_at_seqno = -1; gcache.keep_pages_count = 0; gcache.keep_pages_size = 0; gcache.mem_size = 0; gcache.name = galera.cache; gcache.page_size = 128M; gcache.recover = yes; gcache.size = 128M; gcomm.thread_prio = ; gcs.fc_debug = 0; gcs.fc_factor = 1.0; gcs.fc_limit = 100; gcs.fc_master_slave = no; gcs.fc_single_primary = no; gcs.max_packet_size = 64500; gcs.max_throttle = 0.25; gcs.recv_q_hard_limit = 9223372036854775807; gcs.recv_q_soft_limit = 0.25; gcs.sync_donor = no; gmcast.segment = 0; gmcast.version = 0; pc.announce_timeout = PT3S; pc.checksum = false; pc.ignore_quorum = false; pc.ignore_sb = false; pc.npvo = false; pc.recovery = true; pc.version = 0; pc.wait_prim = true; pc.wait_prim_timeout = PT30S; pc.weight = 10; protonet.backend = asio; protonet.version = 0; repl.causal_read_timeout = PT30S; repl.commit_order = 3; repl.key_format = FLAT8; repl.max_ws_size = 2147483647; repl.proto_max = 10; socket.checksum = 2; socket.recv_buf_size = auto; socket.send_buf_size = auto; socket.ssl = YES; socket.ssl_ca = /etc/mysql/ssl-internal/ca.crt; socket.ssl_cert = /etc/mysql/ssl-internal/tls.crt; socket.ssl_cipher = ; socket.ssl_compression = YES; socket.ssl_key = /etc/mysql/ssl-internal/tls.key; socket.ssl_reload = 1; \n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.671460Z 0 [Note] [MY-000000] [WSREP] Starting replication\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.671507Z 0 [Note] [MY-000000] [Galera] Connecting with bootstrap option: 0\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.671523Z 0 [Note] [MY-000000] [Galera] Setting GCS initial position to 00000000-0000-0000-0000-000000000000:-1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.671582Z 0 [Note] [MY-000000] [Galera] protonet asio version 0\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.672239Z 0 [Note] [MY-000000] [Galera] Using CRC-32C for message checksums.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.672255Z 0 [Note] [MY-000000] [Galera] backend: asio\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.672337Z 0 [Note] [MY-000000] [Galera] gcomm thread scheduling priority set to other:0 \n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.672454Z 0 [Note] [MY-000000] [Galera] Fail to access the file (/var/lib/mysql//gvwstate.dat) error (No such file or directory). It is possible if node is booting for first time or re-booting after a graceful shutdown\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.672463Z 0 [Note] [MY-000000] [Galera] Restoring primary-component from disk failed. Either node is booting for first time or re-booting after a graceful shutdown\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.672648Z 0 [Note] [MY-000000] [Galera] GMCast version 0\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.674931Z 0 [Note] [MY-000000] [Galera] (7eee9476-83f9, 'ssl://0.0.0.0:4567') listening at ssl://0.0.0.0:4567\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.674966Z 0 [Note] [MY-000000] [Galera] (7eee9476-83f9, 'ssl://0.0.0.0:4567') multicast: , ttl: 1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.675306Z 0 [Note] [MY-000000] [Galera] EVS version 1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.675382Z 0 [Note] [MY-000000] [Galera] gcomm: connecting to group 'cluster1-pxc', peer 'cluster1-pxc-0.cluster1-pxc:,cluster1-pxc-1.cluster1-pxc:'\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.683925Z 0 [Note] [MY-000000] [Galera] (7eee9476-83f9, 'ssl://0.0.0.0:4567') connection established to 486b248f-8ac6 ssl://10.42.2.8:4567\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.684070Z 0 [Note] [MY-000000] [Galera] (7eee9476-83f9, 'ssl://0.0.0.0:4567') turning message relay requesting on, nonlive peers: \n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:35.686005Z 0 [Note] [MY-000000] [Galera] (7eee9476-83f9, 'ssl://0.0.0.0:4567') connection established to 213e9b53-8c4d ssl://10.42.0.5:4567\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:36.177961Z 0 [Note] [MY-000000] [Galera] EVS version upgrade 0 -> 1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:36.178025Z 0 [Note] [MY-000000] [Galera] declaring 213e9b53-8c4d at ssl://10.42.0.5:4567 stable\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:36.178042Z 0 [Note] [MY-000000] [Galera] declaring 486b248f-8ac6 at ssl://10.42.2.8:4567 stable\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:36.178065Z 0 [Note] [MY-000000] [Galera] PC protocol upgrade 0 -> 1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.178686Z 0 [Note] [MY-000000] [Galera] Node 213e9b53-8c4d state primary\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.179784Z 0 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node\nview (view_id(PRIM,213e9b53-8c4d,3)\nmemb {\n\t213e9b53-8c4d,0\n\t486b248f-8ac6,0\n\t7eee9476-83f9,0\n\t}\njoined {\n\t}\nleft {\n\t}\npartitioned {\n\t}\n)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.179822Z 0 [Note] [MY-000000] [Galera] Save the discovered primary-component to disk\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.676475Z 0 [Note] [MY-000000] [Galera] gcomm: connected\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.676687Z 0 [Note] [MY-000000] [Galera] Changing maximum packet size to 64500, resulting msg size: 32636\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.676991Z 0 [Note] [MY-000000] [Galera] Shifting CLOSED -> OPEN (TO: 0)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.677018Z 0 [Note] [MY-000000] [Galera] Opened channel 'cluster1-pxc'\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.677354Z 0 [Note] [MY-000000] [Galera] New COMPONENT: primary = yes, bootstrap = no, my_idx = 2, memb_num = 3\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.677446Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: Waiting for state UUID.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.677515Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: sent state msg: 7fd70a41-c738-11ee-8cb8-0a31c2c73e26\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.677578Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: 7fd70a41-c738-11ee-8cb8-0a31c2c73e26 from 0 (cluster1-pxc-0)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.677636Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: 7fd70a41-c738-11ee-8cb8-0a31c2c73e26 from 1 (cluster1-pxc-1)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.677685Z 2 [Note] [MY-000000] [WSREP] Starting rollbacker thread 2\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.677794Z 1 [Note] [MY-000000] [WSREP] Starting applier thread 1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679068Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: 7fd70a41-c738-11ee-8cb8-0a31c2c73e26 from 2 (cluster1-pxc-2)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679172Z 0 [Note] [MY-000000] [Galera] Quorum results:\n\tversion    = 6,\n\tcomponent  = PRIMARY,\n\tconf_id    = 2,\n\tmembers    = 2/3 (primary/total),\n\tact_id     = 35,\n\tlast_appl. = 22,\n\tprotocols  = 2/10/4 (gcs/repl/appl),\n\tvote policy= 0,\n\tgroup UUID = 103be6ae-c738-11ee-95d1-526d43d08e41\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679305Z 0 [Note] [MY-000000] [Galera] Flow-control interval: [173, 173]\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679340Z 0 [Note] [MY-000000] [Galera] Shifting OPEN -> PRIMARY (TO: 36)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679557Z 1 [Note] [MY-000000] [Galera] ####### processing CC 36, local, ordered\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679614Z 1 [Note] [MY-000000] [Galera] Maybe drain monitors from -1 upto current CC event 36 upto:-1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679633Z 1 [Note] [MY-000000] [Galera] Drain monitors from -1 up to -1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679660Z 1 [Note] [MY-000000] [Galera] Process first view: 103be6ae-c738-11ee-95d1-526d43d08e41 my uuid: 7eee9476-c738-11ee-83f9-e3e1dce47b60\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679726Z 1 [Note] [MY-000000] [Galera] Server cluster1-pxc-2 connected to cluster at position 103be6ae-c738-11ee-95d1-526d43d08e41:36 with ID 7eee9476-c738-11ee-83f9-e3e1dce47b60\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679744Z 1 [Note] [MY-000000] [WSREP] Server status change disconnected -> connected\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679805Z 1 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679861Z 1 [Note] [MY-000000] [Galera] ####### My UUID: 7eee9476-c738-11ee-83f9-e3e1dce47b60\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.679884Z 1 [Note] [MY-000000] [Galera] Cert index reset to 00000000-0000-0000-0000-000000000000:-1 (proto: 10), state transfer needed: yes\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.680068Z 0 [Note] [MY-000000] [Galera] Service thread queue flushed.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.680212Z 1 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 00000000-0000-0000-0000-000000000000:-1, protocol version: -1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.680244Z 1 [Note] [MY-000000] [Galera] State transfer required: \n\tGroup state: 103be6ae-c738-11ee-95d1-526d43d08e41:36\n\tLocal state: 00000000-0000-0000-0000-000000000000:-1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.680257Z 1 [Note] [MY-000000] [WSREP] Server status change connected -> joiner\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.680268Z 1 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:37.680557Z 0 [Note] [MY-000000] [WSREP] Initiating SST/IST transfer on JOINER side (wsrep_sst_xtrabackup-v2 --role 'joiner' --address '10.42.1.6' --datadir '/var/lib/mysql/' --basedir '/usr/' --plugindir '/usr/lib64/mysql/plugin/' --defaults-file '/etc/my.cnf' --defaults-group-suffix '' --parent '1' --mysqld-version '8.0.32-24.2'  --binlog 'binlog' )\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.762504Z 1 [Note] [MY-000000] [WSREP] Prepared SST request: xtrabackup-v2|10.42.1.6:4444/xtrabackup_sst//1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.762590Z 1 [Note] [MY-000000] [Galera] Check if state gap can be serviced using IST\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.762623Z 1 [Note] [MY-000000] [Galera] Local UUID: 00000000-0000-0000-0000-000000000000 != Group UUID: 103be6ae-c738-11ee-95d1-526d43d08e41\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.762636Z 1 [Note] [MY-000000] [Galera] ####### IST uuid:00000000-0000-0000-0000-000000000000 f: 0, l: 36, STRv: 3\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.762719Z 1 [Note] [MY-000000] [Galera] IST receiver addr using ssl://10.42.1.6:4568\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.762762Z 1 [Note] [MY-000000] [Galera] IST receiver using ssl\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.762965Z 1 [Note] [MY-000000] [Galera] Prepared IST receiver for 0-36, listening at: ssl://10.42.1.6:4568\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.764075Z 0 [Note] [MY-000000] [Galera] Member 2.0 (cluster1-pxc-2) requested state transfer from 'cluster1-pxc-1,'. Selected 1.0 (cluster1-pxc-1)(SYNCED) as donor.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.764092Z 0 [Note] [MY-000000] [Galera] Shifting PRIMARY -> JOINER (TO: 36)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.764134Z 1 [Note] [MY-000000] [Galera] Requesting state transfer: success, donor: 1\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.764183Z 1 [Note] [MY-000000] [Galera] Resetting GCache seqno map due to different histories.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:38.764205Z 1 [Note] [MY-000000] [Galera] GCache history reset: 00000000-0000-0000-0000-000000000000:0 -> 103be6ae-c738-11ee-95d1-526d43d08e41:36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:39.176772Z 0 [Note] [MY-000000] [Galera] (7eee9476-83f9, 'ssl://0.0.0.0:4567') turning message relay requesting off\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:39.630279Z 0 [Note] [MY-000000] [WSREP-SST]    joiner: => Rate:[ 145 B/s] Avg:[ 145 B/s] Elapsed:0:00:01  Bytes:  167 B \n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:40.617441Z 0 [Note] [MY-000000] [WSREP-SST] Proceeding with SST.........\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:40.644135Z 0 [Note] [MY-000000] [WSREP-SST] ............Waiting for SST streaming to complete!\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:53.702890Z 0 [Note] [MY-000000] [WSREP-SST]    joiner: => Rate:[0.00 B/s] Avg:[0.00 B/s] Elapsed:0:00:10  Bytes: 0.00 B \r   joiner: => Rate:[5.80MiB/s] Avg:[5.80MiB/s] Elapsed:0:00:13  Bytes: 75.9MiB \n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:53.708455Z 0 [Note] [MY-000000] [Galera] 1.0 (cluster1-pxc-1): State transfer to 2.0 (cluster1-pxc-2) complete.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:53.709300Z 0 [Note] [MY-000000] [Galera] Member 1.0 (cluster1-pxc-1) synced with group.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:53.715924Z 0 [Note] [MY-000000] [WSREP-SST] Preparing the backup at /var/lib/mysql//sst-xb-tmpdir\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:55.404692Z 0 [Note] [MY-000000] [WSREP-SST] Moving the backup to /var/lib/mysql/\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:55.538871Z 0 [Note] [MY-000000] [WSREP-SST] Running post-processing...........\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:55.551497Z 0 [Note] [MY-000000] [WSREP-SST] Skipping mysql_upgrade (sst): local version (8.0.32) == donor version (8.0.32)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:55.647840Z 0 [Note] [MY-000000] [WSREP-SST] Waiting for server instance to start.....  This may take some time\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:53.734125-00:00 0 [Note] [MY-011825] [Xtrabackup] recognized server arguments: --innodb_checksum_algorithm=crc32 --innodb_log_checksums=1 --innodb_data_file_path=ibdata1:12M:autoextend --innodb_log_file_size=50331648 --innodb_page_size=16384 --innodb_undo_directory=./ --innodb_undo_tablespaces=2 --server-id=32109361 --innodb_log_checksums=ON --innodb_redo_log_encrypt=0 --innodb_undo_log_encrypt=0 \n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.734276-00:00 0 [Note] [MY-011825] [Xtrabackup] recognized client arguments: --no-version-check=1 --prepare=1 --rollback-prepared-trx=1 --xtrabackup-plugin-dir=/usr/bin/pxc_extra/pxb-8.0/lib/plugin --target-dir=/var/lib/mysql//sst-xb-tmpdir \n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"/usr/bin/pxc_extra/pxb-8.0/bin/xtrabackup version 8.0.32-26 based on MySQL server 8.0.32 Linux (x86_64) (revision id: 34cf2908)\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.734309-00:00 0 [Note] [MY-011825] [Xtrabackup] cd to /var/lib/mysql/sst-xb-tmpdir/\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.734366-00:00 0 [Note] [MY-011825] [Xtrabackup] This target seems to be not prepared yet.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.745163-00:00 0 [Note] [MY-011825] [Xtrabackup] xtrabackup_logfile detected: size=8388608, start_lsn=(32368935)\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746135-00:00 0 [Note] [MY-011825] [Xtrabackup] using the following InnoDB configuration for recovery:\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746156-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_data_home_dir = .\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746163-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_data_file_path = ibdata1:12M:autoextend\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746205-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_log_group_home_dir = .\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746211-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_log_files_in_group = 1\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746220-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_log_file_size = 8388608\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746493-00:00 0 [Note] [MY-011825] [Xtrabackup] inititialize_service_handles suceeded\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746702-00:00 0 [Note] [MY-011825] [Xtrabackup] using the following InnoDB configuration for recovery:\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746711-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_data_home_dir = .\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746717-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_data_file_path = ibdata1:12M:autoextend\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746728-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_log_group_home_dir = .\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746734-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_log_files_in_group = 1\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746740-00:00 0 [Note] [MY-011825] [Xtrabackup] innodb_log_file_size = 8388608\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746748-00:00 0 [Note] [MY-011825] [Xtrabackup] Starting InnoDB instance for recovery.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746755-00:00 0 [Note] [MY-011825] [Xtrabackup] Using 104857600 bytes for buffer pool (set by --use-memory parameter)\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746800-00:00 0 [Note] [MY-012932] [InnoDB] PUNCH HOLE support available\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746818-00:00 0 [Note] [MY-012944] [InnoDB] Uses event mutexes\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746824-00:00 0 [Note] [MY-012945] [InnoDB] GCC builtin __atomic_thread_fence() is used for memory barrier\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.746835-00:00 0 [Note] [MY-012948] [InnoDB] Compressed tables use zlib 1.2.13\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.747059-00:00 0 [Note] [MY-012951] [InnoDB] Using hardware accelerated crc32 and polynomial multiplication.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.747395-00:00 0 [Note] [MY-012203] [InnoDB] Directories to scan './'\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.747491-00:00 0 [Note] [MY-012204] [InnoDB] Scanning './'\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.749385-00:00 0 [Note] [MY-012208] [InnoDB] Completed space ID check of 7 files.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.750329-00:00 0 [Note] [MY-012955] [InnoDB] Initializing buffer pool, total size = 128.000000M, instances = 1, chunk size =128.000000M \n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.761566-00:00 0 [Note] [MY-012957] [InnoDB] Completed initialization of buffer pool\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.765801-00:00 0 [Note] [MY-011952] [InnoDB] If the mysqld execution user is authorized, page cleaner thread priority can be changed. See the man page of setpriority().\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.888769-00:00 0 [Note] [MY-013883] [InnoDB] The latest found checkpoint is at lsn = 32368935 in redo log file ./#innodb_redo/#ib_redo0.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.888880-00:00 0 [Note] [MY-012560] [InnoDB] The log sequence number 32265428 in the system tablespace does not match the log sequence number 32368935 in the redo log files!\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.888892-00:00 0 [Note] [MY-012551] [InnoDB] Database was not shutdown normally!\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.888902-00:00 0 [Note] [MY-012552] [InnoDB] Starting crash recovery.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.889081-00:00 0 [Note] [MY-013086] [InnoDB] Starting to parse redo log at lsn = 32368663, whereas checkpoint_lsn = 32368935 and start_lsn = 32368640\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.889099-00:00 0 [Note] [MY-012550] [InnoDB] Doing recovery: scanned up to log sequence number 32368945\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.903573-00:00 0 [Note] [MY-013083] [InnoDB] Log background threads are being started...\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.904083-00:00 0 [Note] [MY-012532] [InnoDB] Applying a batch of 1 redo log records ...\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.904164-00:00 0 [Note] [MY-012533] [InnoDB] 100%\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:53.904177-00:00 0 [Note] [MY-012535] [InnoDB] Apply batch completed!\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.013050-00:00 0 [Note] [MY-013084] [InnoDB] Log background threads are being closed...\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.014525-00:00 0 [Note] [MY-013041] [InnoDB] Resizing redo log from 8M to 1024M (LSN=32368945) synchronously. If this takes too long, consider starting the server with large --innodb_redo_log_capacity, and resizing the redo log online using SET.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.021427-00:00 0 [Note] [MY-012968] [InnoDB] Starting to delete and rewrite redo log files.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.021647-00:00 0 [Note] [MY-011825] [InnoDB] Removing redo log file: ./#innodb_redo/#ib_redo0\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.147942-00:00 0 [Note] [MY-011825] [InnoDB] Creating redo log file at ./#innodb_redo/#ib_redo0_tmp with file_id 0 with size 33554432 bytes\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.160549-00:00 0 [Note] [MY-011825] [InnoDB] Renaming redo log file from ./#innodb_redo/#ib_redo0_tmp to ./#innodb_redo/#ib_redo0\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.175257-00:00 0 [Note] [MY-012893] [InnoDB] New redo log files created, LSN=32369164\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.175460-00:00 0 [Note] [MY-013083] [InnoDB] Log background threads are being started...\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.176242-00:00 0 [Note] [MY-013252] [InnoDB] Using undo tablespace './undo_001'.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.177060-00:00 0 [Note] [MY-013252] [InnoDB] Using undo tablespace './undo_002'.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.178519-00:00 0 [Note] [MY-012910] [InnoDB] Opened 2 existing undo tablespaces.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.178655-00:00 0 [Note] [MY-011980] [InnoDB] GTID recovery trx_no: 3628\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.206984-00:00 0 [Note] [MY-013776] [InnoDB] Parallel initialization of rseg complete\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.207045-00:00 0 [Note] [MY-013777] [InnoDB] Time taken to initialize rseg using 4 thread: 28403 ms.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.207131-00:00 0 [Note] [MY-012923] [InnoDB] Creating shared tablespace for temporary tables\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.207229-00:00 0 [Note] [MY-012265] [InnoDB] Setting file './ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.230265-00:00 0 [Note] [MY-012266] [InnoDB] File './ibtmp1' size is now 12 MB.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.230570-00:00 0 [Note] [MY-013627] [InnoDB] Scanning temp tablespace dir:'./#innodb_temp/'\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.303817-00:00 0 [Note] [MY-013018] [InnoDB] Created 128 and tracked 128 new rollback segment(s) in the temporary tablespace. 128 are now active.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.304331-00:00 0 [Note] [MY-012976] [InnoDB] 8.0.32 started; log sequence number 32369174\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.304688-00:00 0 [Warning] [MY-012091] [InnoDB] Allocated tablespace ID 3 for mysql/wsrep_cluster_members, old maximum was 0\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.329630-00:00 0 [Note] [MY-011825] [Xtrabackup] Recovered WSREP position: 103be6ae-c738-11ee-95d1-526d43d08e41:36\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.329702-00:00 0 [Note] [MY-011825] [Xtrabackup] starting shutdown with innodb_fast_shutdown = 1\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:54.329902-00:00 0 [Note] [MY-012330] [InnoDB] FTS optimize thread exiting.\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:55.329590-00:00 0 [Note] [MY-013072] [InnoDB] Starting shutdown...\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:55.358017-00:00 0 [Note] [MY-013084] [InnoDB] Log background threads are being closed...\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:55.378894-00:00 0 [Note] [MY-012980] [InnoDB] Shutdown completed; log sequence number 32369174\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:55.382823-00:00 0 [Note] [MY-011825] [Xtrabackup] completed OK!\n","file":"/var/lib/mysql/innobackup.prepare.log"}
+{"log":"2024-02-09T10:46:55.424979-00:00 0 [Note] [MY-011825] [Xtrabackup] recognized server arguments: --datadir=/var/lib/mysql --server-id=32109362 --innodb_flush_log_at_trx_commit=0 --innodb_flush_method=O_DIRECT --innodb_file_per_table=1 --defaults_group=mysqld --datadir=/var/lib/mysql/ \n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.425496-00:00 0 [Note] [MY-011825] [Xtrabackup] recognized client arguments: --socket=/tmp/mysql.sock --no-version-check=1 --move-back=1 --force-non-empty-directories=1 --xtrabackup-plugin-dir=/usr/bin/pxc_extra/pxb-8.0/lib/plugin --target-dir=/var/lib/mysql//sst-xb-tmpdir \n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"/usr/bin/pxc_extra/pxb-8.0/bin/xtrabackup version 8.0.32-26 based on MySQL server 8.0.32 Linux (x86_64) (revision id: 34cf2908)\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.425577-00:00 0 [Note] [MY-011825] [Xtrabackup] cd to /var/lib/mysql/sst-xb-tmpdir/\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.427079-00:00 0 [Note] [MY-011825] [Xtrabackup] Moving undo_001 to /var/lib/mysql//undo_001\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.427215-00:00 0 [Note] [MY-011825] [Xtrabackup] Done: Moving file undo_001 to /var/lib/mysql//undo_001\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.427289-00:00 0 [Note] [MY-011825] [Xtrabackup] Moving undo_002 to /var/lib/mysql//undo_002\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.427379-00:00 0 [Note] [MY-011825] [Xtrabackup] Done: Moving file undo_002 to /var/lib/mysql//undo_002\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.427772-00:00 0 [Note] [MY-011825] [Xtrabackup] Moving ibdata1 to /var/lib/mysql//ibdata1\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.427869-00:00 0 [Note] [MY-011825] [Xtrabackup] Done: Moving file ibdata1 to /var/lib/mysql//ibdata1\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.428409-00:00 0 [Note] [MY-011825] [Xtrabackup] Moving binlog.000006 to /var/lib/mysql//binlog.000006\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.428512-00:00 0 [Note] [MY-011825] [Xtrabackup] Done: Moving file binlog.000006 to /var/lib/mysql//binlog.000006\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.428719-00:00 0 [Note] [MY-011825] [Xtrabackup] Moving binlog.index to /var/lib/mysql//binlog.index\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.428811-00:00 0 [Note] [MY-011825] [Xtrabackup] Done: Moving file binlog.index to /var/lib/mysql//binlog.index\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.429736-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql/slow_log_226.sdi to /var/lib/mysql//mysql/slow_log_226.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.429916-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql/slow_log_226.sdi to /var/lib/mysql//mysql/slow_log_226.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430022-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql/wsrep_streaming_log.ibd to /var/lib/mysql//mysql/wsrep_streaming_log.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430124-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql/wsrep_streaming_log.ibd to /var/lib/mysql//mysql/wsrep_streaming_log.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430212-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql/slow_log.CSM to /var/lib/mysql//mysql/slow_log.CSM\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430307-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql/slow_log.CSM to /var/lib/mysql//mysql/slow_log.CSM\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430384-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql/general_log.CSM to /var/lib/mysql//mysql/general_log.CSM\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430478-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql/general_log.CSM to /var/lib/mysql//mysql/general_log.CSM\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430545-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql/general_log.CSV to /var/lib/mysql//mysql/general_log.CSV\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430633-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql/general_log.CSV to /var/lib/mysql//mysql/general_log.CSV\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430699-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql/slow_log.CSV to /var/lib/mysql//mysql/slow_log.CSV\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430787-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql/slow_log.CSV to /var/lib/mysql//mysql/slow_log.CSV\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430856-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql/wsrep_cluster_members.ibd to /var/lib/mysql//mysql/wsrep_cluster_members.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.430944-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql/wsrep_cluster_members.ibd to /var/lib/mysql//mysql/wsrep_cluster_members.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431015-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql/general_log_225.sdi to /var/lib/mysql//mysql/general_log_225.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431129-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql/general_log_225.sdi to /var/lib/mysql//mysql/general_log_225.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431200-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql/wsrep_cluster.ibd to /var/lib/mysql//mysql/wsrep_cluster.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431300-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql/wsrep_cluster.ibd to /var/lib/mysql//mysql/wsrep_cluster.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431322-00:00 1 [Note] [MY-011825] [Xtrabackup] Creating directory ./#innodb_redo\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431347-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: creating directory ./#innodb_redo\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431415-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./ibtmp1 to /var/lib/mysql//ibtmp1\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431511-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./ibtmp1 to /var/lib/mysql//ibtmp1\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431679-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./sys/sys_config.ibd to /var/lib/mysql//sys/sys_config.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431785-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./sys/sys_config.ibd to /var/lib/mysql//sys/sys_config.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431860-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./mysql.ibd to /var/lib/mysql//mysql.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.431951-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./mysql.ibd to /var/lib/mysql//mysql.ibd\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432028-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./xtrabackup_info to /var/lib/mysql//xtrabackup_info\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432180-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./xtrabackup_info to /var/lib/mysql//xtrabackup_info\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432286-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./innobackup.prepare.log to /var/lib/mysql//innobackup.prepare.log\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432354-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./innobackup.prepare.log to /var/lib/mysql//innobackup.prepare.log\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432383-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./innobackup.move.log to /var/lib/mysql//innobackup.move.log\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432428-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./innobackup.move.log to /var/lib/mysql//innobackup.move.log\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432454-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./xtrabackup_galera_info to /var/lib/mysql//xtrabackup_galera_info\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432497-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./xtrabackup_galera_info to /var/lib/mysql//xtrabackup_galera_info\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432580-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_asyn_182.sdi to /var/lib/mysql//performance_schema/replication_asyn_182.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432628-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_asyn_182.sdi to /var/lib/mysql//performance_schema/replication_asyn_182.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432659-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/malloc_stats_tot_200.sdi to /var/lib/mysql//performance_schema/malloc_stats_tot_200.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432701-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/malloc_stats_tot_200.sdi to /var/lib/mysql//performance_schema/malloc_stats_tot_200.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432728-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/malloc_stats_201.sdi to /var/lib/mysql//performance_schema/malloc_stats_201.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432770-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/malloc_stats_201.sdi to /var/lib/mysql//performance_schema/malloc_stats_201.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432796-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/memory_summary_b_164.sdi to /var/lib/mysql//performance_schema/memory_summary_b_164.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432838-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/memory_summary_b_164.sdi to /var/lib/mysql//performance_schema/memory_summary_b_164.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432874-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_131.sdi to /var/lib/mysql//performance_schema/events_statement_131.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432917-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_131.sdi to /var/lib/mysql//performance_schema/events_statement_131.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.432942-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/file_summary_by__104.sdi to /var/lib/mysql//performance_schema/file_summary_by__104.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433041-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/file_summary_by__104.sdi to /var/lib/mysql//performance_schema/file_summary_by__104.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433070-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/setup_instrument_113.sdi to /var/lib/mysql//performance_schema/setup_instrument_113.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433112-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/setup_instrument_113.sdi to /var/lib/mysql//performance_schema/setup_instrument_113.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433138-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/session_variable_194.sdi to /var/lib/mysql//performance_schema/session_variable_194.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433181-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/session_variable_194.sdi to /var/lib/mysql//performance_schema/session_variable_194.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433207-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_conn_171.sdi to /var/lib/mysql//performance_schema/replication_conn_171.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433249-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_conn_171.sdi to /var/lib/mysql//performance_schema/replication_conn_171.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433274-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_transacti_143.sdi to /var/lib/mysql//performance_schema/events_transacti_143.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433316-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_transacti_143.sdi to /var/lib/mysql//performance_schema/events_transacti_143.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433342-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_waits_sum_97.sdi to /var/lib/mysql//performance_schema/events_waits_sum_97.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433384-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_waits_sum_97.sdi to /var/lib/mysql//performance_schema/events_waits_sum_97.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433410-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/pxc_cluster_view_203.sdi to /var/lib/mysql//performance_schema/pxc_cluster_view_203.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433452-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/pxc_cluster_view_203.sdi to /var/lib/mysql//performance_schema/pxc_cluster_view_203.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433477-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/table_io_waits_s_117.sdi to /var/lib/mysql//performance_schema/table_io_waits_s_117.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433520-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/table_io_waits_s_117.sdi to /var/lib/mysql//performance_schema/table_io_waits_s_117.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433546-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/mutex_instances_106.sdi to /var/lib/mysql//performance_schema/mutex_instances_106.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433589-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/mutex_instances_106.sdi to /var/lib/mysql//performance_schema/mutex_instances_106.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433616-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/threads_119.sdi to /var/lib/mysql//performance_schema/threads_119.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433658-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/threads_119.sdi to /var/lib/mysql//performance_schema/threads_119.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433692-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_132.sdi to /var/lib/mysql//performance_schema/events_statement_132.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433735-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_132.sdi to /var/lib/mysql//performance_schema/events_statement_132.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433761-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/status_by_thread_188.sdi to /var/lib/mysql//performance_schema/status_by_thread_188.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433806-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/status_by_thread_188.sdi to /var/lib/mysql//performance_schema/status_by_thread_188.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433835-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_conn_173.sdi to /var/lib/mysql//performance_schema/replication_conn_173.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433877-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_conn_173.sdi to /var/lib/mysql//performance_schema/replication_conn_173.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433903-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_stages_cu_120.sdi to /var/lib/mysql//performance_schema/events_stages_cu_120.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433946-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_stages_cu_120.sdi to /var/lib/mysql//performance_schema/events_stages_cu_120.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.433972-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_130.sdi to /var/lib/mysql//performance_schema/events_statement_130.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434015-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_130.sdi to /var/lib/mysql//performance_schema/events_statement_130.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434041-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/processlist_109.sdi to /var/lib/mysql//performance_schema/processlist_109.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434083-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/processlist_109.sdi to /var/lib/mysql//performance_schema/processlist_109.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434109-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/memory_summary_b_165.sdi to /var/lib/mysql//performance_schema/memory_summary_b_165.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434152-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/memory_summary_b_165.sdi to /var/lib/mysql//performance_schema/memory_summary_b_165.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434178-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/user_defined_fun_197.sdi to /var/lib/mysql//performance_schema/user_defined_fun_197.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434220-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/user_defined_fun_197.sdi to /var/lib/mysql//performance_schema/user_defined_fun_197.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434249-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_transacti_145.sdi to /var/lib/mysql//performance_schema/events_transacti_145.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434292-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_transacti_145.sdi to /var/lib/mysql//performance_schema/events_transacti_145.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434318-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_asyn_181.sdi to /var/lib/mysql//performance_schema/replication_asyn_181.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434361-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_asyn_181.sdi to /var/lib/mysql//performance_schema/replication_asyn_181.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434387-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_errors_su_152.sdi to /var/lib/mysql//performance_schema/events_errors_su_152.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434430-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_errors_su_152.sdi to /var/lib/mysql//performance_schema/events_errors_su_152.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434459-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/session_status_191.sdi to /var/lib/mysql//performance_schema/session_status_191.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434502-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/session_status_191.sdi to /var/lib/mysql//performance_schema/session_status_191.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434528-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_133.sdi to /var/lib/mysql//performance_schema/events_statement_133.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434572-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_133.sdi to /var/lib/mysql//performance_schema/events_statement_133.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434598-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/persisted_variab_196.sdi to /var/lib/mysql//performance_schema/persisted_variab_196.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434645-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/persisted_variab_196.sdi to /var/lib/mysql//performance_schema/persisted_variab_196.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434671-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_errors_su_148.sdi to /var/lib/mysql//performance_schema/events_errors_su_148.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434715-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_errors_su_148.sdi to /var/lib/mysql//performance_schema/events_errors_su_148.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434741-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/accounts_154.sdi to /var/lib/mysql//performance_schema/accounts_154.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434786-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/accounts_154.sdi to /var/lib/mysql//performance_schema/accounts_154.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434812-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/setup_threads_115.sdi to /var/lib/mysql//performance_schema/setup_threads_115.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434855-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/setup_threads_115.sdi to /var/lib/mysql//performance_schema/setup_threads_115.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434881-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/rwlock_instances_110.sdi to /var/lib/mysql//performance_schema/rwlock_instances_110.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434927-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/rwlock_instances_110.sdi to /var/lib/mysql//performance_schema/rwlock_instances_110.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434954-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/keyring_componen_202.sdi to /var/lib/mysql//performance_schema/keyring_componen_202.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.434997-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/keyring_componen_202.sdi to /var/lib/mysql//performance_schema/keyring_componen_202.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435024-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/socket_summary_b_158.sdi to /var/lib/mysql//performance_schema/socket_summary_b_158.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435069-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/socket_summary_b_158.sdi to /var/lib/mysql//performance_schema/socket_summary_b_158.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435095-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_transacti_146.sdi to /var/lib/mysql//performance_schema/events_transacti_146.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435139-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_transacti_146.sdi to /var/lib/mysql//performance_schema/events_transacti_146.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435165-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/log_status_183.sdi to /var/lib/mysql//performance_schema/log_status_183.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435209-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/log_status_183.sdi to /var/lib/mysql//performance_schema/log_status_183.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435237-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_waits_his_94.sdi to /var/lib/mysql//performance_schema/events_waits_his_94.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435281-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_waits_his_94.sdi to /var/lib/mysql//performance_schema/events_waits_his_94.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435309-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_stages_hi_122.sdi to /var/lib/mysql//performance_schema/events_stages_hi_122.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435353-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_stages_hi_122.sdi to /var/lib/mysql//performance_schema/events_stages_hi_122.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435380-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/data_locks_169.sdi to /var/lib/mysql//performance_schema/data_locks_169.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435425-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/data_locks_169.sdi to /var/lib/mysql//performance_schema/data_locks_169.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435454-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/setup_objects_114.sdi to /var/lib/mysql//performance_schema/setup_objects_114.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435499-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/setup_objects_114.sdi to /var/lib/mysql//performance_schema/setup_objects_114.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435526-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/socket_instances_156.sdi to /var/lib/mysql//performance_schema/socket_instances_156.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435571-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/socket_instances_156.sdi to /var/lib/mysql//performance_schema/socket_instances_156.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435597-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/cond_instances_91.sdi to /var/lib/mysql//performance_schema/cond_instances_91.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435641-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/cond_instances_91.sdi to /var/lib/mysql//performance_schema/cond_instances_91.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435668-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/table_lock_waits_118.sdi to /var/lib/mysql//performance_schema/table_lock_waits_118.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435712-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/table_lock_waits_118.sdi to /var/lib/mysql//performance_schema/table_lock_waits_118.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435739-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_129.sdi to /var/lib/mysql//performance_schema/events_statement_129.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435785-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_129.sdi to /var/lib/mysql//performance_schema/events_statement_129.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435811-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_139.sdi to /var/lib/mysql//performance_schema/events_statement_139.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435856-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_139.sdi to /var/lib/mysql//performance_schema/events_statement_139.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435883-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_appl_176.sdi to /var/lib/mysql//performance_schema/replication_appl_176.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435930-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_appl_176.sdi to /var/lib/mysql//performance_schema/replication_appl_176.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.435956-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/objects_summary__107.sdi to /var/lib/mysql//performance_schema/objects_summary__107.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436001-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/objects_summary__107.sdi to /var/lib/mysql//performance_schema/objects_summary__107.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436030-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/status_by_accoun_186.sdi to /var/lib/mysql//performance_schema/status_by_accoun_186.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436075-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/status_by_accoun_186.sdi to /var/lib/mysql//performance_schema/status_by_accoun_186.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436103-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_errors_su_151.sdi to /var/lib/mysql//performance_schema/events_errors_su_151.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436148-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_errors_su_151.sdi to /var/lib/mysql//performance_schema/events_errors_su_151.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436175-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_stages_su_124.sdi to /var/lib/mysql//performance_schema/events_stages_su_124.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436221-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_stages_su_124.sdi to /var/lib/mysql//performance_schema/events_stages_su_124.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436247-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/file_summary_by__103.sdi to /var/lib/mysql//performance_schema/file_summary_by__103.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436295-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/file_summary_by__103.sdi to /var/lib/mysql//performance_schema/file_summary_by__103.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436321-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_appl_175.sdi to /var/lib/mysql//performance_schema/replication_appl_175.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436367-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_appl_175.sdi to /var/lib/mysql//performance_schema/replication_appl_175.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436394-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_128.sdi to /var/lib/mysql//performance_schema/events_statement_128.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436440-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_128.sdi to /var/lib/mysql//performance_schema/events_statement_128.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436467-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/table_io_waits_s_116.sdi to /var/lib/mysql//performance_schema/table_io_waits_s_116.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436513-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/table_io_waits_s_116.sdi to /var/lib/mysql//performance_schema/table_io_waits_s_116.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436539-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_stages_su_127.sdi to /var/lib/mysql//performance_schema/events_stages_su_127.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436584-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_stages_su_127.sdi to /var/lib/mysql//performance_schema/events_stages_su_127.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436612-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/session_account__160.sdi to /var/lib/mysql//performance_schema/session_account__160.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436658-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/session_account__160.sdi to /var/lib/mysql//performance_schema/session_account__160.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436685-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_appl_174.sdi to /var/lib/mysql//performance_schema/replication_appl_174.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436731-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_appl_174.sdi to /var/lib/mysql//performance_schema/replication_appl_174.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436758-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/setup_actors_111.sdi to /var/lib/mysql//performance_schema/setup_actors_111.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436803-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/setup_actors_111.sdi to /var/lib/mysql//performance_schema/setup_actors_111.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436833-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_errors_su_150.sdi to /var/lib/mysql//performance_schema/events_errors_su_150.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436879-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_errors_su_150.sdi to /var/lib/mysql//performance_schema/events_errors_su_150.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436907-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_waits_sum_100.sdi to /var/lib/mysql//performance_schema/events_waits_sum_100.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436965-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_waits_sum_100.sdi to /var/lib/mysql//performance_schema/events_waits_sum_100.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.436997-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/status_by_user_189.sdi to /var/lib/mysql//performance_schema/status_by_user_189.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437044-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/status_by_user_189.sdi to /var/lib/mysql//performance_schema/status_by_user_189.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437072-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_grou_178.sdi to /var/lib/mysql//performance_schema/replication_grou_178.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437118-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_grou_178.sdi to /var/lib/mysql//performance_schema/replication_grou_178.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437148-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/tls_channel_stat_199.sdi to /var/lib/mysql//performance_schema/tls_channel_stat_199.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437194-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/tls_channel_stat_199.sdi to /var/lib/mysql//performance_schema/tls_channel_stat_199.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437222-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_grou_172.sdi to /var/lib/mysql//performance_schema/replication_grou_172.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437270-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_grou_172.sdi to /var/lib/mysql//performance_schema/replication_grou_172.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437298-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/memory_summary_b_163.sdi to /var/lib/mysql//performance_schema/memory_summary_b_163.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437345-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/memory_summary_b_163.sdi to /var/lib/mysql//performance_schema/memory_summary_b_163.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437373-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/performance_time_108.sdi to /var/lib/mysql//performance_schema/performance_time_108.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437419-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/performance_time_108.sdi to /var/lib/mysql//performance_schema/performance_time_108.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437446-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/global_variables_193.sdi to /var/lib/mysql//performance_schema/global_variables_193.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437492-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/global_variables_193.sdi to /var/lib/mysql//performance_schema/global_variables_193.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437520-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_138.sdi to /var/lib/mysql//performance_schema/events_statement_138.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437567-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_138.sdi to /var/lib/mysql//performance_schema/events_statement_138.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437594-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/hosts_155.sdi to /var/lib/mysql//performance_schema/hosts_155.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437640-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/hosts_155.sdi to /var/lib/mysql//performance_schema/hosts_155.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437670-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/setup_consumers_112.sdi to /var/lib/mysql//performance_schema/setup_consumers_112.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437716-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/setup_consumers_112.sdi to /var/lib/mysql//performance_schema/setup_consumers_112.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437744-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_stages_su_125.sdi to /var/lib/mysql//performance_schema/events_stages_su_125.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437792-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_stages_su_125.sdi to /var/lib/mysql//performance_schema/events_stages_su_125.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437819-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/user_variables_b_185.sdi to /var/lib/mysql//performance_schema/user_variables_b_185.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437867-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/user_variables_b_185.sdi to /var/lib/mysql//performance_schema/user_variables_b_185.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437894-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_137.sdi to /var/lib/mysql//performance_schema/events_statement_137.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437941-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_137.sdi to /var/lib/mysql//performance_schema/events_statement_137.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.437969-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_stages_su_126.sdi to /var/lib/mysql//performance_schema/events_stages_su_126.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438018-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_stages_su_126.sdi to /var/lib/mysql//performance_schema/events_stages_su_126.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438046-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/binary_log_trans_198.sdi to /var/lib/mysql//performance_schema/binary_log_trans_198.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438092-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/binary_log_trans_198.sdi to /var/lib/mysql//performance_schema/binary_log_trans_198.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438121-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/socket_summary_b_157.sdi to /var/lib/mysql//performance_schema/socket_summary_b_157.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438168-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/socket_summary_b_157.sdi to /var/lib/mysql//performance_schema/socket_summary_b_157.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438196-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_appl_180.sdi to /var/lib/mysql//performance_schema/replication_appl_180.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438244-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_appl_180.sdi to /var/lib/mysql//performance_schema/replication_appl_180.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438271-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_waits_sum_99.sdi to /var/lib/mysql//performance_schema/events_waits_sum_99.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438320-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_waits_sum_99.sdi to /var/lib/mysql//performance_schema/events_waits_sum_99.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438348-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/keyring_keys_161.sdi to /var/lib/mysql//performance_schema/keyring_keys_161.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438395-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/keyring_keys_161.sdi to /var/lib/mysql//performance_schema/keyring_keys_161.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438423-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/session_connect__159.sdi to /var/lib/mysql//performance_schema/session_connect__159.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438471-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/session_connect__159.sdi to /var/lib/mysql//performance_schema/session_connect__159.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438502-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/global_status_190.sdi to /var/lib/mysql//performance_schema/global_status_190.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438549-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/global_status_190.sdi to /var/lib/mysql//performance_schema/global_status_190.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438578-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/metadata_locks_168.sdi to /var/lib/mysql//performance_schema/metadata_locks_168.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438625-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/metadata_locks_168.sdi to /var/lib/mysql//performance_schema/metadata_locks_168.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438653-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/status_by_host_187.sdi to /var/lib/mysql//performance_schema/status_by_host_187.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438700-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/status_by_host_187.sdi to /var/lib/mysql//performance_schema/status_by_host_187.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438728-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/table_handles_167.sdi to /var/lib/mysql//performance_schema/table_handles_167.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438775-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/table_handles_167.sdi to /var/lib/mysql//performance_schema/table_handles_167.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438803-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/error_log_92.sdi to /var/lib/mysql//performance_schema/error_log_92.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438850-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/error_log_92.sdi to /var/lib/mysql//performance_schema/error_log_92.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438881-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_appl_177.sdi to /var/lib/mysql//performance_schema/replication_appl_177.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438930-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_appl_177.sdi to /var/lib/mysql//performance_schema/replication_appl_177.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.438958-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_136.sdi to /var/lib/mysql//performance_schema/events_statement_136.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439007-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_136.sdi to /var/lib/mysql//performance_schema/events_statement_136.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439036-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_waits_sum_101.sdi to /var/lib/mysql//performance_schema/events_waits_sum_101.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439085-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_waits_sum_101.sdi to /var/lib/mysql//performance_schema/events_waits_sum_101.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439114-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_errors_su_149.sdi to /var/lib/mysql//performance_schema/events_errors_su_149.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439163-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_errors_su_149.sdi to /var/lib/mysql//performance_schema/events_errors_su_149.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439191-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/users_153.sdi to /var/lib/mysql//performance_schema/users_153.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439239-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/users_153.sdi to /var/lib/mysql//performance_schema/users_153.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439267-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_transacti_142.sdi to /var/lib/mysql//performance_schema/events_transacti_142.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439317-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_transacti_142.sdi to /var/lib/mysql//performance_schema/events_transacti_142.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439348-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_stages_su_123.sdi to /var/lib/mysql//performance_schema/events_stages_su_123.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439398-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_stages_su_123.sdi to /var/lib/mysql//performance_schema/events_stages_su_123.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439427-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_transacti_141.sdi to /var/lib/mysql//performance_schema/events_transacti_141.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439475-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_transacti_141.sdi to /var/lib/mysql//performance_schema/events_transacti_141.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439503-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/data_lock_waits_170.sdi to /var/lib/mysql//performance_schema/data_lock_waits_170.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439552-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/data_lock_waits_170.sdi to /var/lib/mysql//performance_schema/data_lock_waits_170.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439580-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_transacti_147.sdi to /var/lib/mysql//performance_schema/events_transacti_147.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439629-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_transacti_147.sdi to /var/lib/mysql//performance_schema/events_transacti_147.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439657-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_135.sdi to /var/lib/mysql//performance_schema/events_statement_135.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439706-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_135.sdi to /var/lib/mysql//performance_schema/events_statement_135.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439735-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_stages_hi_121.sdi to /var/lib/mysql//performance_schema/events_stages_hi_121.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439790-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_stages_hi_121.sdi to /var/lib/mysql//performance_schema/events_stages_hi_121.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439818-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/variables_info_195.sdi to /var/lib/mysql//performance_schema/variables_info_195.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439866-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/variables_info_195.sdi to /var/lib/mysql//performance_schema/variables_info_195.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439894-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/variables_by_thr_192.sdi to /var/lib/mysql//performance_schema/variables_by_thr_192.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439943-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/variables_by_thr_192.sdi to /var/lib/mysql//performance_schema/variables_by_thr_192.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.439973-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_waits_sum_96.sdi to /var/lib/mysql//performance_schema/events_waits_sum_96.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440022-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_waits_sum_96.sdi to /var/lib/mysql//performance_schema/events_waits_sum_96.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440050-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_waits_his_95.sdi to /var/lib/mysql//performance_schema/events_waits_his_95.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440099-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_waits_his_95.sdi to /var/lib/mysql//performance_schema/events_waits_his_95.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440127-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_waits_cur_93.sdi to /var/lib/mysql//performance_schema/events_waits_cur_93.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440175-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_waits_cur_93.sdi to /var/lib/mysql//performance_schema/events_waits_cur_93.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440207-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_transacti_140.sdi to /var/lib/mysql//performance_schema/events_transacti_140.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440258-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_transacti_140.sdi to /var/lib/mysql//performance_schema/events_transacti_140.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440287-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/memory_summary_b_166.sdi to /var/lib/mysql//performance_schema/memory_summary_b_166.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440337-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/memory_summary_b_166.sdi to /var/lib/mysql//performance_schema/memory_summary_b_166.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440366-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/file_instances_102.sdi to /var/lib/mysql//performance_schema/file_instances_102.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440417-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/file_instances_102.sdi to /var/lib/mysql//performance_schema/file_instances_102.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440447-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_waits_sum_98.sdi to /var/lib/mysql//performance_schema/events_waits_sum_98.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440497-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_waits_sum_98.sdi to /var/lib/mysql//performance_schema/events_waits_sum_98.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440527-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_transacti_144.sdi to /var/lib/mysql//performance_schema/events_transacti_144.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440580-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_transacti_144.sdi to /var/lib/mysql//performance_schema/events_transacti_144.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440610-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/replication_appl_179.sdi to /var/lib/mysql//performance_schema/replication_appl_179.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440660-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/replication_appl_179.sdi to /var/lib/mysql//performance_schema/replication_appl_179.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440691-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/host_cache_105.sdi to /var/lib/mysql//performance_schema/host_cache_105.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440740-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/host_cache_105.sdi to /var/lib/mysql//performance_schema/host_cache_105.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440769-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/events_statement_134.sdi to /var/lib/mysql//performance_schema/events_statement_134.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440820-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/events_statement_134.sdi to /var/lib/mysql//performance_schema/events_statement_134.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440848-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/prepared_stateme_184.sdi to /var/lib/mysql//performance_schema/prepared_stateme_184.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440899-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/prepared_stateme_184.sdi to /var/lib/mysql//performance_schema/prepared_stateme_184.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.440928-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./performance_schema/memory_summary_g_162.sdi to /var/lib/mysql//performance_schema/memory_summary_g_162.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.441058-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./performance_schema/memory_summary_g_162.sdi to /var/lib/mysql//performance_schema/memory_summary_g_162.sdi\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.441093-00:00 1 [Note] [MY-011825] [Xtrabackup] Moving ./ib_buffer_pool to /var/lib/mysql//ib_buffer_pool\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.441141-00:00 1 [Note] [MY-011825] [Xtrabackup] Done: Moving file ./ib_buffer_pool to /var/lib/mysql//ib_buffer_pool\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"2024-02-09T10:46:55.530940-00:00 0 [Note] [MY-011825] [Xtrabackup] completed OK!\n","file":"/var/lib/mysql/innobackup.move.log"}
+{"log":"---- Starting the MySQL server used for post-processing ----\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.944932Z 0 [Warning] [MY-011068] [Server] The syntax '--skip-host-cache' is deprecated and will be removed in a future release. Please use SET GLOBAL host_cache_size=0 instead.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.944990Z 0 [Warning] [MY-011068] [Server] The syntax 'wsrep_slave_threads' is deprecated and will be removed in a future release. Please use wsrep_applier_threads instead.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.945023Z 0 [Warning] [MY-011068] [Server] The syntax 'skip_slave_start' is deprecated and will be removed in a future release. Please use skip_replica_start instead.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.947170Z 0 [Warning] [MY-010097] [Server] Insecure configuration for --secure-log-path: Current value does not restrict location of generated files. Consider setting it to a valid, non-empty path.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.947233Z 0 [Warning] [MY-000000] [WSREP] Node is not a cluster node. Disabling pxc_strict_mode\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.948110Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.32-24.2) starting as process 1050\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.952119Z 0 [Warning] [MY-010068] [Server] CA certificate /etc/mysql/ssl-internal/ca.crt is self signed.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.952155Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.954474Z 0 [Warning] [MY-010075] [Server] No existing UUID has been found, so we assume that this is the first time that this server has been started. Generating a new UUID: 8b055a8d-c738-11ee-a519-ca8c5cddcae6.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:55.965523Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.308105Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.562206Z 1 [Note] [MY-000000] [WSREP] wsrep_init_schema_and_SR (nil)\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.587857Z 1 [System] [MY-000000] [WSREP] PXC upgrade completed successfully\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.684256Z 0 [System] [MY-010229] [Server] Starting XA crash recovery...\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.698615Z 0 [System] [MY-010232] [Server] XA crash recovery finished.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.819537Z 0 [Warning] [MY-010068] [Server] CA certificate /etc/mysql/ssl-internal/ca.crt is self signed.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.819585Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.830851Z 0 [Warning] [MY-013595] [Server] Failed to initialize TLS for channel: mysql_admin. See below for the description of exact issue.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.830907Z 0 [Warning] [MY-010069] [Server] Failed to set up SSL because of the following SSL library error: SSL context is not usable without certificate and private key\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.830923Z 0 [System] [MY-013603] [Server] No TLS configuration was given for channel mysql_admin; re-using TLS configuration of channel mysql_main.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.932071Z 0 [Warning] [MY-011810] [Server] Insecure configuration for --pid-file: Location '/tmp' in the path is accessible to all OS users. Consider choosing a different directory.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.967263Z 0 [Note] [MY-000000] [WSREP] Initialized wsrep sidno 3\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.967327Z 0 [Note] [MY-000000] [Galera] Loading provider none initial position: 00000000-0000-0000-0000-000000000000:-1\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.967340Z 0 [Note] [MY-000000] [Galera] wsrep_load(): loading provider library 'none'\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.983871Z 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.32-24.2'  socket: '/tmp/upgrd.RE5x/my.sock'  port: 0  Percona XtraDB Cluster (GPL), Release rel24, Revision 2119e75, WSREP version 26.1.4.3.\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:56.983902Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Socket: /var/lib/mysql/mysqlx.sock\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:57.719464Z 11 [System] [MY-013172] [Server] Received SHUTDOWN from user mysql.pxc.sst.user. Shutting down mysqld (Version: 8.0.32-24.2).\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:46:59.767105Z 0 [Note] [MY-000000] [WSREP-SST] ...........post-processing done\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:59.771412Z 0 [Note] [MY-000000] [WSREP-SST] Galera co-ords from recovery: 103be6ae-c738-11ee-95d1-526d43d08e41:36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:59.795621Z 3 [Note] [MY-000000] [Galera] Processing SST received\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:59.795682Z 3 [Note] [MY-000000] [WSREP] Server status change joiner -> initializing\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:59.795721Z 3 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:59.815955Z 4 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:46:59.255089Z 0 [System] [MY-010910] [Server] /usr/sbin/mysqld: Shutdown complete (mysqld 8.0.32-24.2)  Percona XtraDB Cluster (GPL), Release rel24, Revision 2119e75, WSREP version 26.1.4.3.\n---- Stopped the MySQL server used for post-processing ----\n","file":"/var/lib/mysql/mysqld.post.processing.log"}
+{"log":"2024-02-09T10:47:00.107070Z 4 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.286757Z 4 [Note] [MY-000000] [WSREP] wsrep_init_schema_and_SR (nil)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.311705Z 4 [System] [MY-000000] [WSREP] PXC upgrade completed successfully\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.552077Z 0 [Warning] [MY-010068] [Server] CA certificate /etc/mysql/ssl-internal/ca.crt is self signed.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.552134Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.563222Z 0 [Warning] [MY-013595] [Server] Failed to initialize TLS for channel: mysql_admin. See below for the description of exact issue.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.563308Z 0 [Warning] [MY-010069] [Server] Failed to set up SSL because of the following SSL library error: SSL context is not usable without certificate and private key\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.563322Z 0 [System] [MY-013603] [Server] No TLS configuration was given for channel mysql_admin; re-using TLS configuration of channel mysql_main.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.570525Z 0 [Warning] [MY-011810] [Server] Insecure configuration for --pid-file: Location '/var/lib/mysql' in the path is accessible to all OS users. Consider choosing a different directory.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.605362Z 0 [Note] [MY-000000] [WSREP] Initialized wsrep sidno 2\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.605441Z 0 [Note] [MY-000000] [Galera] Server initialized\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.605471Z 0 [Note] [MY-000000] [WSREP] Server status change initializing -> initialized\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.605522Z 0 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.605623Z 3 [Note] [MY-000000] [Galera] Recovered position from storage: 103be6ae-c738-11ee-95d1-526d43d08e41:36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.605664Z 3 [Note] [MY-000000] [WSREP] Server status change initialized -> joined\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.605674Z 3 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.606074Z 10 [Note] [MY-000000] [WSREP] Starting applier thread 10\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.607578Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /var/lib/mysql/mysqlx.sock\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.607819Z 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.32-24.2'  socket: '/tmp/mysql.sock'  port: 3306  Percona XtraDB Cluster (GPL), Release rel24, Revision 2119e75, WSREP version 26.1.4.3.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.607861Z 0 [System] [MY-013292] [Server] Admin interface ready for connections, address: '10.42.1.6'  port: 33062\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.609963Z 3 [Note] [MY-000000] [Galera] Recovered view from SST:\n  id: 103be6ae-c738-11ee-95d1-526d43d08e41:36\n  status: primary\n  protocol_version: 4\n  capabilities: MULTI-MASTER, CERTIFICATION, PARALLEL_APPLYING, REPLAY, ISOLATION, PAUSE, CAUSAL_READ, INCREMENTAL_WS, UNORDERED, PREORDERED, STREAMING, NBO\n  final: no\n  own_index: 2\n  members(3):\n\t0: 213e9b53-c738-11ee-8c4d-03cb16bd2d32, cluster1-pxc-0\n\t1: 486b248f-c738-11ee-8ac6-0a8a79d0dabd, cluster1-pxc-1\n\t2: 7eee9476-c738-11ee-83f9-e3e1dce47b60, cluster1-pxc-2\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.610027Z 3 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.610261Z 12 [Note] [MY-000000] [WSREP] Recovered cluster id 103be6ae-c738-11ee-95d1-526d43d08e41\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.613694Z 3 [Note] [MY-000000] [Galera] SST received: 103be6ae-c738-11ee-95d1-526d43d08e41:36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.613759Z 3 [System] [MY-000000] [WSREP] SST completed\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.613811Z 1 [Note] [MY-000000] [Galera]  str_proto_ver_: 3 sst_seqno_: 36 cc_seqno: 36 req->ist_len(): 64\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.613861Z 1 [Note] [MY-000000] [Galera] Installed new state from SST: 103be6ae-c738-11ee-95d1-526d43d08e41:36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.620488Z 1 [Note] [MY-000000] [Galera] Cert. index preload up to 36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.620547Z 0 [Note] [MY-000000] [Galera] ####### IST applying starts with 37\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.620689Z 0 [Note] [MY-000000] [Galera] ####### IST current seqno initialized to 24\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.620776Z 0 [Note] [MY-000000] [Galera] Receiving IST...  0.0% ( 0/13 events) complete.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.620789Z 0 [Note] [MY-000000] [Galera] IST preload starting at 24\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.620840Z 0 [Note] [MY-000000] [Galera] Service thread queue flushed.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.620903Z 0 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 00000000-0000-0000-0000-000000000000:23, protocol version: 5\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621094Z 0 [Note] [MY-000000] [Galera] ####### Passing IST CC 35, must_apply: 0, preload: true\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621131Z 0 [Note] [MY-000000] [Galera] REPL Protocols: 10 (5)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621140Z 0 [Note] [MY-000000] [Galera] ####### Adjusting cert position: 34 -> 35\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621221Z 0 [Note] [MY-000000] [Galera] Service thread queue flushed.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621320Z 0 [Note] [MY-000000] [Galera] Recording CC from preload: 35\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621360Z 0 [Note] [MY-000000] [Galera] Lowest cert index boundary for CC from preload: 24\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621371Z 0 [Note] [MY-000000] [Galera] Min available from gcache for CC from preload: 24\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621419Z 0 [Note] [MY-000000] [Galera] ####### Passing IST CC 36, must_apply: 0, preload: true\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621445Z 0 [Note] [MY-000000] [Galera] REPL Protocols: 10 (5)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621454Z 0 [Note] [MY-000000] [Galera] ####### Adjusting cert position: 35 -> 36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621535Z 0 [Note] [MY-000000] [Galera] Service thread queue flushed.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621647Z 0 [Note] [MY-000000] [Galera] Recording CC from preload: 36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621680Z 0 [Note] [MY-000000] [Galera] Lowest cert index boundary for CC from preload: 24\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621689Z 0 [Note] [MY-000000] [Galera] Min available from gcache for CC from preload: 24\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.621725Z 0 [Note] [MY-000000] [Galera] Receiving IST...100.0% (13/13 events) complete.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.622122Z 1 [Note] [MY-000000] [Galera] IST received: 103be6ae-c738-11ee-95d1-526d43d08e41:36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.622167Z 1 [Note] [MY-000000] [Galera] Recording CC from sst: 36\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.622176Z 1 [Note] [MY-000000] [Galera] Lowest cert index boundary for CC from sst: 24\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.622183Z 1 [Note] [MY-000000] [Galera] Min available from gcache for CC from sst: 24\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.622832Z 0 [Note] [MY-000000] [Galera] 2.0 (cluster1-pxc-2): State transfer from 1.0 (cluster1-pxc-1) complete.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.622887Z 0 [Note] [MY-000000] [Galera] SST leaving flow control\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.622913Z 0 [Note] [MY-000000] [Galera] Shifting JOINER -> JOINED (TO: 36)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.623002Z 0 [Note] [MY-000000] [Galera] Processing event queue:... -nan% (0/0 events) complete.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.623576Z 0 [Note] [MY-000000] [Galera] Member 2.0 (cluster1-pxc-2) synced with group.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.623615Z 0 [Note] [MY-000000] [Galera] Processing event queue:...100.0% (1/1 events) complete.\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.623634Z 0 [Note] [MY-000000] [Galera] Shifting JOINED -> SYNCED (TO: 36)\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.623684Z 1 [Note] [MY-000000] [Galera] Server cluster1-pxc-2 synced with group\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.623729Z 1 [Note] [MY-000000] [WSREP] Server status change joined -> synced\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.623747Z 1 [Note] [MY-000000] [WSREP] Synchronized with group, ready for connections\n","file":"/var/lib/mysql/mysqld-error.log"}
+{"log":"2024-02-09T10:47:00.623761Z 1 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.\n","file":"/var/lib/mysql/mysqld-error.log"}
++ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/fluent-bit/bin
++ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/fluent-bit/bin
++ '[' logrotate = logrotate ']'
++ [[ 1001 != 1001 ]]
++ exec go-cron '0 0 * * *' sh -c 'logrotate -s /opt/percona/logrotate/logrotate.status /opt/percona/logrotate/logrotate-mysql.conf;/usr/bin/find /var/lib/mysql/ -name GRA_*.log -mtime +7 -delete'
+new cron: 0 0 * * *

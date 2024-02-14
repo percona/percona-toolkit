@@ -56,6 +56,21 @@ func TestPXCOperatorRegex(t *testing.T) {
 			expectedOut: "recovering gcache",
 			key:         "RegexGcacheScan",
 		},
+
+		{
+			log: "wsrep_node_incoming_address=cluster1-0.cluster1.pxc.svc.cluster.local:3306",
+			expected: regexTestState{
+				LogCtx: types.LogCtx{
+					OperatorMetadata: &types.OperatorMetadata{
+						PodName:    "cluster1-0",
+						Deployment: "cluster1",
+						Namespace:  "pxc",
+					},
+				},
+			},
+			expectedOut: "podname: cluster1-0, dep: cluster1, namespace: pxc",
+			key:         "RegexPodName",
+		},
 	}
 
 	iterateRegexTest(t, PXCOperatorMap, tests)

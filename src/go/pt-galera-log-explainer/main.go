@@ -28,16 +28,18 @@ var (
 var buildInfo = fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s", toolname, Version, Build, GoVersion, Commit)
 
 var CLI struct {
-	NoColor          bool
-	Since            *time.Time      `help:"Only list events after this date, format: 2023-01-23T03:53:40Z (RFC3339)"`
-	Until            *time.Time      `help:"Only list events before this date"`
-	Verbosity        types.Verbosity `type:"counter" short:"v" default:"0" help:"-v: DebugMySQL (add every mysql info the tool used), -vv: Debug (internal tool debug)"`
-	PxcOperator      bool            `default:"false" help:"Analyze logs from Percona PXC operator. Off by default because it negatively impacts performance for non-k8s setups"`
-	ExcludeRegexes   []string        `help:"Remove regexes from analysis. List regexes using 'pt-galera-log-explainer regex-list'"`
-	MergeByDirectory bool            `help:"Instead of relying on identification, merge contexts and columns by base directory. Very useful when dealing with many small logs organized per directories."`
+	NoColor               bool
+	Since                 *time.Time      `help:"Only list events after this date, format: 2023-01-23T03:53:40Z (RFC3339)"`
+	Until                 *time.Time      `help:"Only list events before this date"`
+	Verbosity             types.Verbosity `type:"counter" short:"v" default:"0" help:"-v: DebugMySQL (add every mysql info the tool used), -vv: Debug (internal tool debug)"`
+	PxcOperator           bool            `default:"false" help:"Analyze logs from Percona PXC operator. Will cause slow performance on non-k8s setups"`
+	SkipOperatorDetection bool            `default:"false" help:"Skip auto detection of Percona PXC operator logs"`
+	ExcludeRegexes        []string        `help:"Remove regexes from analysis. List regexes using 'pt-galera-log-explainer regex-list'"`
+	MergeByDirectory      bool            `help:"Instead of relying on identification, merge contexts and columns by base directory. Very useful when dealing with many small logs organized per directories."`
+	SkipMerge             bool            `help:"Disable the ability to merge log files together. Can be used when every nodes have the same wsrep_node_name"`
 
 	List list `cmd:""`
-	//Whois     whois     `cmd:""`
+	//Whois whois `cmd:""`
 	//	Sed       sed       `cmd:""`
 	Ctx       ctx       `cmd:""`
 	RegexList regexList `cmd:""`
@@ -59,13 +61,25 @@ func main() {
 	)
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, NoColor: CLI.NoColor, FormatTimestamp: func(_ interface{}) string { return "" }})
+	initComponentLogger()
 	if CLI.Verbosity == types.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
 	utils.SkipColor = CLI.NoColor
+
+	for _, path := range kongcli.Path {
+		if path.Positional != nil && path.Positional.Name == "paths" {
+			paths, ok := path.Positional.Target.Interface().([]string)
+			if ok && !CLI.PxcOperator && !CLI.SkipOperatorDetection && areOperatorFiles(paths) {
+				CLI.PxcOperator = true
+				log.Info().Msg("Detected logs coming from Percona XtraDB Cluster Operator, enabling --pxc-operator")
+			}
+		}
+	}
+
 	translate.AssumeIPStable = !CLI.PxcOperator
 
 	err := kongcli.Run()
