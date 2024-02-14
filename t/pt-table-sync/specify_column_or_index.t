@@ -35,21 +35,23 @@ $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
 
 # #############################################################################
-# Issue 376: Permit specifying an index for mk-table-sync
+# Issue 376: Permit specifying an index for pt-table-sync
 # #############################################################################
 diag(`/tmp/12345/use < $trunk/t/pt-table-sync/samples/issue_375.sql`);
 sleep 1;
 $output = `$trunk/bin/pt-table-sync --sync-to-master h=127.1,P=12346,u=msandbox,p=msandbox -d issue_375 --print -v -v  --chunk-size 50 --chunk-index updated_at`;
+# We cannot rely on the exact time here, because pt-osc uses EXPLAIN to calculate rows range
+# and EXPLAIN does not guarantee accuracy of results.
 like(
    $output,
-   qr/FROM `issue_375`.`t` FORCE INDEX \(`updated_at`\) WHERE \(`updated_at` > 0 AND `updated_at` < '2009-09-05 02:38:12'/,
+   qr/FROM `issue_375`.`t` FORCE INDEX \(`updated_at`\) WHERE \(`updated_at` > 0 AND `updated_at` < '2009-09-05 02:\d\d:\d\d'/,
    '--chunk-index',
 );
 
 $output = `$trunk/bin/pt-table-sync --sync-to-master h=127.1,P=12346,u=msandbox,p=msandbox -d issue_375 --print -v -v  --chunk-size 50 --chunk-column updated_at`;
 like(
    $output,
-   qr/FROM `issue_375`.`t` FORCE INDEX \(`updated_at`\) WHERE \(`updated_at` > 0 AND `updated_at` < '2009-09-05 02:38:12'/,
+   qr/FROM `issue_375`.`t` FORCE INDEX \(`updated_at`\) WHERE \(`updated_at` > 0 AND `updated_at` < '2009-09-05 02:\d\d:\d\d'/,
    '--chunk-column',
 );
 
