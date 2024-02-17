@@ -244,11 +244,11 @@ func TestPT_2169(t *testing.T) {
 		kubeconfig string
 	}{
 		{
-			name:       "pg with busy port",
-			resource:   "pg",
+			name:       "pxc with busy port",
+			resource:   "pxc",
 			want:       "3",
 			port:       busyport,
-			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
 		},
 		{
 			name:       "pg no error",
