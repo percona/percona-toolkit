@@ -25,7 +25,7 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
-	go.mongodb.org/mongo-driver v1.13.1
+	go.mongodb.org/mongo-driver v1.14.0
 	golang.org/x/crypto v0.19.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
