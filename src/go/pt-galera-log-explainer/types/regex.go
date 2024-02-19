@@ -71,6 +71,7 @@ var (
 	StatesRegexType      RegexType = "states"
 	PXCOperatorRegexType RegexType = "pxc-operator"
 	ApplicativeRegexType RegexType = "applicative"
+	CustomRegexType      RegexType = "custom"
 )
 
 type RegexMap map[string]*LogRegex

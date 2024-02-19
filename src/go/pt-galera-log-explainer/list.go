@@ -87,5 +87,6 @@ func (l *list) regexesToUse() types.RegexMap {
 		regex.SetVerbosity(types.DebugMySQL, regex.EventsMap)
 		toCheck.Merge(regex.EventsMap)
 	}
+	toCheck.Merge(regex.CustomMap)
 	return toCheck
 }

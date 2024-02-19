@@ -1,0 +1,21 @@
+identifier                         node1                                               
+current path                       tests/logs/merge_rotated_daily/node1.20230315.log   
+last known ip                                                                          
+last known name                    node1                                               
+mysql version                                                                          
+                                                                                       
+2023-03-15T10:12:43.720576+02:00   (repeated x2)some custom static msg                 
+2023-03-15T10:36:44.899671+02:00   some custom static msg                              
+2023-03-15T20:10:57.784904+02:00   node2 joined                                        
+2023-03-15T20:10:57.785568+02:00   node3 left                                          
+2023-03-15T20:10:57.791959+02:00   node3 left                                          
+2023-03-15T20:10:57.797221+02:00   PRIMARY(n=2)                                        
+2023-03-15T20:20:12.714291+02:00   node2 joined                                        
+2023-03-15T20:20:12.714331+02:00   node3 joined                                        
+2023-03-15T20:20:13.776977+02:00   PRIMARY(n=3)                                        
+2023-03-15T20:20:14.839684+02:00   local node will resync node3                        
+2023-03-15T20:20:14.839723+02:00   SYNCED -> DONOR                                     
+2023-03-15T20:20:15.799020+02:00   IST will be used                                    
+2023-03-15T20:20:16.850525+02:00   finished sending IST to node3                       
+2023-03-15T20:20:16.850549+02:00   DESYNCED -> JOINED                                  
+2023-03-15T20:20:16.865312+02:00   JOINED -> SYNCED                                    

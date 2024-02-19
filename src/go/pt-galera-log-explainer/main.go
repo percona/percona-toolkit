@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
@@ -48,6 +49,8 @@ var CLI struct {
 	Version kong.VersionFlag
 
 	GrepCmd string `help:"'grep' command path. Could need to be set to 'ggrep' for darwin systems" default:"grep"`
+
+	CustomRegexes map[string]string `help:"Add custom regexes, printed in magenta. Format: (golang regex string)=[optional static message to display]. If the static message is left empty, the captured string will be printed instead. Custom regexes are separated using semi-colon. Example: --custom-regexes=\"Page cleaner took [0-9]*ms to flush [0-9]* pages=;doesn't recommend.*pxc_strict_mode=unsafe query used\""`
 }
 
 func main() {
@@ -70,6 +73,9 @@ func main() {
 
 	utils.SkipColor = CLI.NoColor
 
+	err := regex.AddCustomRegexes(CLI.CustomRegexes)
+	kongcli.FatalIfErrorf(err)
+
 	for _, path := range kongcli.Path {
 		if path.Positional != nil && path.Positional.Name == "paths" {
 			paths, ok := path.Positional.Target.Interface().([]string)
@@ -82,6 +88,6 @@ func main() {
 
 	translate.AssumeIPStable = !CLI.PxcOperator
 
-	err := kongcli.Run()
+	err = kongcli.Run()
 	kongcli.FatalIfErrorf(err)
 }
