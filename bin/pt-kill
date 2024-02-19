@@ -7578,6 +7578,17 @@ sub main {
                exec_cmd($o->get('execute-command'));
                msg('Executed ' . $o->get('execute-command'));
             }
+            if ( $o->get('logdb') ) {
+               if ( $log ) {
+                  log_to_table(
+                     log        => $log,
+                     query      => $query,
+                     proclist   => $pl,
+                     columns    => \@processlist_columns,
+                     eval_error => $EVAL_ERROR,
+                  );
+               }
+            }
             if ( $o->get('kill') || $o->get('kill-query') ) {
                if ( $o->get('wait-before-kill') ) {
                   msg("Sleeping " . $o->get('wait-before-kill')
@@ -7872,7 +7883,7 @@ with the command.
 
 =head1 OPTIONS
 
-Specify at least one of L<"--kill">, L<"--kill-query">, L<"--print">, L<"--execute-command"> or L<"--stop">.
+Specify at least one of L<"--kill">, L<"--kill-query">, L<"--logdb">,L<"--print">, L<"--execute-command"> or L<"--stop">.
 
 L<"--any-busy-time"> and L<"--each-busy-time"> are mutually exclusive.
 
@@ -8641,6 +8652,17 @@ Kill matching queries.
 This option makes pt-kill kill matching queries.  This requires MySQL 5.0 or
 newer.  Unlike L<"--kill"> which kills the connection for matching queries,
 this option only kills the query, not its connection.
+
+=item --logdb
+
+group: Actions
+
+Logs a KILL statement for matching queries to the database using --log-dsn;
+does not actually kill queries.
+
+If you just want to see which queries match and would be killed without
+actually killing them, specify L<"--logdb">.  To both kill and print
+matching queries, specify L<"--kill"> instead.
 
 =item --print
 
