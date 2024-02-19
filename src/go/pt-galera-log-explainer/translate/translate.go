@@ -23,7 +23,7 @@ type translationsDB struct {
 	HashToNodeNames map[string][]translationUnit
 	IPToNodeNames   map[string][]translationUnit
 
-	// incase methods changed in the middle, tls=>ssl
+	// incase methods changed in the middle, tcp=>ssl
 	IPToMethods map[string][]translationUnit
 	rwlock      sync.RWMutex
 }
@@ -202,4 +202,38 @@ func SimplestInfoFromHash(hash string, date time.Time) string {
 		return SimplestInfoFromIP(ip, date)
 	}
 	return hash
+}
+
+func IsNodeUUIDKnown(uuid string) bool {
+	db.rwlock.RLock()
+	defer db.rwlock.RUnlock()
+
+	_, ok := db.HashToIP[uuid]
+	if ok {
+		return true
+	}
+	_, ok = db.HashToNodeNames[uuid]
+	return ok
+}
+
+func IsNodeNameKnown(name string) bool {
+	db.rwlock.RLock()
+	defer db.rwlock.RUnlock()
+
+	for _, nodenames := range db.HashToNodeNames {
+		for _, nodename := range nodenames {
+			if name == nodename.Value {
+				return true
+			}
+		}
+	}
+	for _, nodenames := range db.IPToNodeNames {
+		for _, nodename := range nodenames {
+			if name == nodename.Value {
+				return true
+			}
+		}
+
+	}
+	return false
 }

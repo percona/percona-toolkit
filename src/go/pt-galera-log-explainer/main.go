@@ -39,8 +39,8 @@ var CLI struct {
 	MergeByDirectory      bool            `help:"Instead of relying on identification, merge contexts and columns by base directory. Very useful when dealing with many small logs organized per directories."`
 	SkipMerge             bool            `help:"Disable the ability to merge log files together. Can be used when every nodes have the same wsrep_node_name"`
 
-	List list `cmd:""`
-	//Whois whois `cmd:""`
+	List  list  `cmd:""`
+	Whois whois `cmd:""`
 	//	Sed       sed       `cmd:""`
 	Ctx       ctx       `cmd:""`
 	RegexList regexList `cmd:""`
