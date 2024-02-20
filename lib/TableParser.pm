@@ -310,15 +310,11 @@ sub find_possible_keys {
 #   * dbh  dbh: active dbh
 #   * db   scalar: database name to check
 #   * tbl  scalar: table name to check
-# Optional args:
-#   * all_privs  bool: check for all privs (select,insert,update,delete)
 # Returns: bool
 # Can die: no
-# check_table() checks the given table for certain criteria and returns
-# true if all criteria are found, else it returns false.  The existence
-# of the table is always checked; if no optional args are given, then this
-# is the only check.  Any error causes a false return value (e.g. if the
-# table is crashed).
+# check_table() checks the given table for the existence and returns
+# true if the table is found, else it returns false.
+# Any error causes a false return value (e.g. if the table is crashed).
 sub check_table {
    my ( $self, %args ) = @_;
    my @required_args = qw(dbh db tbl);

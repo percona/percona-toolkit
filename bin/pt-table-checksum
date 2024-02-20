@@ -12019,7 +12019,7 @@ sub check_repl_table {
    # Create the --replicate database.
    # ########################################################################
 
-   # If the repl db doesn't exit, auto-create it, maybe.
+   # If the repl db doesn't exist, auto-create it, maybe.
    my ($db, $tbl) = $q->split_unquote($repl_table);
    my $show_db_sql = "SHOW DATABASES LIKE '$db'";
    PTDEBUG && _d($show_db_sql);

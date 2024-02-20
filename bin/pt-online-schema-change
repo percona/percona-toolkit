@@ -8578,6 +8578,7 @@ sub main {
    # Get configuration information.
    # ########################################################################
    my $q = new Quoter();
+   my $tp = TableParser->new(Quoter => $q);
    my $o = new OptionParser();
    $o->get_specs();
    $o->get_opts();
@@ -8794,6 +8795,32 @@ sub main {
 
    my $cxn     = $make_cxn->(dsn => $dsn);
    my $aux_cxn = $make_cxn->(dsn => $dsn, prev_dsn => $dsn);
+
+   if ( $o->get('history') ) {
+      create_history_table(
+         dbh => $cxn->dbh(),
+         hist_table => $o->get('history-table'),
+         OptionParser => $o,
+         TableParser  => $tp,
+         Quoter       => $q,
+      );
+      # parsing args here
+      use JSON;
+      my $json = JSON->new->allow_nonref;
+      my %opts = $o->opts();
+      _d("DB: $db, tbl: $tbl");
+      my $opt_hash = {};
+      while ( my ($opt, $value) = each (%opts) ) {
+         if ( $value->{got} ) {
+            $opt_hash->{$opt} = $value->{value} ;
+         }
+      }
+      my $json_str = $json->encode($opt_hash);
+      print "$json_str\n";
+
+      #_d(Dumper($o->opts()));
+
+   }
 
    my $cluster = Percona::XtraDB::Cluster->new;
    if ( $cluster->is_cluster_node($cxn) ) {
@@ -9208,7 +9235,6 @@ sub main {
    # ########################################################################
    # Setup and check the original table.
    # ########################################################################
-   my $tp = TableParser->new(Quoter => $q);
 
    # Common table data struct (that modules like NibbleIterator expect).
    my $orig_tbl = {
@@ -10486,6 +10512,110 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub create_history_table {
+   my ( %args ) = @_;
+   my @required_args = qw(dbh hist_table OptionParser TableParser Quoter);
+
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dbh, $hist_table, $o, $tp, $q) = @args{@required_args};
+
+   PTDEBUG && _d('Creating --history table', $hist_table);
+
+   # ########################################################################
+   # Create the --history database.
+   # ########################################################################
+
+   # Create history database if it not exists.
+   my ($db, $tbl) = $q->split_unquote($hist_table);
+   my $show_db_sql = "SHOW DATABASES LIKE '$db'";
+   PTDEBUG && _d($show_db_sql);
+   my @db_exists = $dbh->selectrow_array($show_db_sql);
+
+   if ( !@db_exists ) {
+      my $create_db_sql
+         = "CREATE DATABASE IF NOT EXISTS "
+         . $q->quote($db)
+         . " /* pt-table-checksum */";
+      PTDEBUG && _d($create_db_sql);
+      eval {
+         $dbh->do($create_db_sql);
+      };
+
+      # CREATE DATABASE IF NOT EXISTS failed but the db could already
+      # exist and the error could be due, for example, to the user not
+      # having privs to create it, but they still have privs to use it.
+      if ( $EVAL_ERROR) {
+         warn $EVAL_ERROR;
+         die "--history database $db does not exist and it cannot be "
+            . "created automatically. You need to create the database.\n";
+      }
+   }
+
+   # ########################################################################
+   # Create the --history table.
+   # ########################################################################
+
+   # Prepare DDL
+   PTDEBUG && _d('Creating --history table', $hist_table);
+   my $sql = $o->read_para_after(__FILE__, qr/MAGIC_create_pt_osc_history/);
+   $sql =~ s/CREATE TABLE pt_osc_history/CREATE TABLE `$tbl`/;
+   if ( $o->get('binary-index') ) {
+      $sql =~ s/`?lower_boundary`?\s+TEXT/`lower_boundary` BLOB/is;
+      $sql =~ s/`?upper_boundary`?\s+TEXT/`upper_boundary` BLOB/is;
+   }
+   PTDEBUG && _d($dbh, $sql);
+
+   # Check if the history table exists; if not, create it, maybe.
+   my $tbl_exists = $tp->check_table(
+      dbh => $dbh,
+      db  => $db,
+      tbl => $tbl,
+   );
+   PTDEBUG && _d('--history table exists:', $tbl_exists ? 'yes' : 'no');
+
+   if ( $tbl_exists ) {
+      # check if the table has expected structure
+      my $tbl_sql = $tp->get_create_table(
+         $dbh,
+         $db,
+         $tbl,
+      );
+      # we will compare SQL code
+      my $sql_minimized = $sql;
+      my $tbl_sql_minimized = $tbl_sql;
+      $sql_minimized =~ s/;$//;
+      $sql_minimized =~ s/\s+/ /g;
+      $sql_minimized =~ s/`//g;
+      $sql_minimized =~ s/^\s+//g;
+      $sql_minimized =~ s/engine\=[\w\d_= ]+$//i;
+      $tbl_sql_minimized =~ s/\s+/ /g;
+      $tbl_sql_minimized =~ s/`//g;
+      $tbl_sql_minimized =~ s/^\s+//g;
+      $tbl_sql_minimized =~ s/engine\=[\w\d_= ]+$//i;
+
+      if ( lc($sql_minimized) ne lc($tbl_sql_minimized) ) {
+         die "--history table $tbl exists but does not have expected structure.\n"
+            . "Explected structure:\n$sql \n"
+            . "User-defined table:\n$tbl_sql\n"
+            . "Exiting to avoid damage of the user-defined table.";
+      }
+   }
+   else {
+      $sql =~ s/CREATE TABLE `$tbl`/CREATE TABLE IF NOT EXISTS `$db`.`$tbl`/;
+      PTDEBUG && _d("Executing SQL for the --history table:\n $sql");
+      eval {
+         $dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         die "Create --history table $tbl failed: $EVAL_ERROR";
+      }
+   }
+
+   return;
+}
 
 sub validate_tries {
    my ($o) = @_;
@@ -11912,6 +12042,9 @@ sub exec_nibble {
          PTDEBUG && _d($sth->{nibble}->{Statement},
             'lower boundary:', @{$boundary->{lower}},
             'upper boundary:', @{$boundary->{upper}});
+         #         _d($sth->{nibble}->{Statement},
+         #   'lower boundary:', @{$boundary->{lower}},
+         #   'upper boundary:', @{$boundary->{upper}});
          $sth->{nibble}->execute(
             # WHERE
             @{$boundary->{lower}},  # upper boundary values
@@ -12414,6 +12547,15 @@ the server very busy, this can cause an outage.
 
 Prompt for a password when connecting to MySQL.
 
+=item --binary-index
+
+This option modifies the behavior of L<"--history"> such that the
+history table's upper and lower boundary columns are created with the BLOB
+data type.
+This is useful in cases where you changing large tables with keys that
+include a binary data type or that have non-standard character sets.
+See L<"--history"> and L<"--resume">.
+
 =item --channel
 
 type: string
@@ -12615,6 +12757,17 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
+=item --history-table
+
+type: string; default: percona.pt_osc_history
+
+Create the L<"--history"> database and table if they do not exist.
+The structure of the history table is the same as the suggested table
+mentioned in L<"--history">.
+
+By default, L<"--history"> creates the database and the table, specified by this option,
+automatically if they do not exist.
+
 =item --critical-load
 
 type: Array; default: Threads_running=50
@@ -12763,6 +12916,28 @@ This option also allows to use option --where without options --no-drop-new-tabl
 =item --help
 
 Show help and exit.
+
+=item --history
+
+default: 0
+
+Write job progress to a table. Unfinished jobs may be restarted by the option L<"--resume">.
+The history table must have this structure (MAGIC_create_pt_osc_history):
+
+  CREATE TABLE pt_osc_history (
+     job_id         INT               NOT NULL AUTO_INCREMENT,
+     db             CHAR(64)          NOT NULL,
+     tbl            CHAR(64)          NOT NULL,
+     altr           TEXT              NOT NULL,
+     args           TEXT              NOT NULL,
+     lower_boundary TEXT,
+     upper_boundary TEXT,
+     done           ENUM('yes','no')  NOT NULL DEFAULT 'no',
+     ts             TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     PRIMARY KEY (job_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+Note: lower_boundary and upper_boundary data type can be BLOB. See L<"--binary-index">.
 
 =item --host
 
