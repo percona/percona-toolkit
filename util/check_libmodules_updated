@@ -3,7 +3,9 @@
 set -e
 
 echo "input: $INPUT_HEAD_REF $INPUT_BASE_REF"
+git diff --name-only $INPUT_HEAD_REF $INPUT_BASE_REF 
 perl_changes=$(git diff --name-only $INPUT_HEAD_REF $INPUT_BASE_REF | grep -P "(bin|lib)") 
+echo "perl changes ok"
 if [ -z "$perl_changes" ]; then
 	continue
 fi
@@ -12,7 +14,7 @@ if  echo "$perl_changes" | grep "lib" &>/dev/null; then
 fi
 
 for file in $perl_changes; do
-	git checkout $INPUT_HEAD_REF $file &> /dev/null
+	git checkout $INPUT_HEAD_REF $file 
 	if ! grep "#!/usr/bin/env perl" $file &>/dev/null; then
 		continue
 	fi	
