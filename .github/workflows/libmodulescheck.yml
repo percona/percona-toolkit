@@ -20,5 +20,5 @@ jobs:
     - name: run util/check_libmodules_updated 
       run: ./util/check_libmodules_updated
       env:
-        INPUT_HEAD_REF: '${{ github.event.pull_request.head.ref  }}'
-        INPUT_BASE_REF: '${{ github.event.pull_request.base.ref  }}'
+        INPUT_HEAD_REF: '${{ github.event.pull_request.head.sha  }}'
+        INPUT_BASE_REF: '${{ github.event.pull_request.base.sha  }}'
