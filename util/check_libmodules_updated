@@ -9,17 +9,8 @@ if [ -z "$perl_changes" ]; then
 	echo "no perl changes"
 	exit 0
 fi
-if  echo "$perl_changes" | grep "lib" &>/dev/null; then
-	echo "lib changes"
-	exit 0
-fi
 
 for file in $perl_changes; do
-	git checkout $INPUT_HEAD_REF $file 
-	if ! grep "#!/usr/bin/env perl" $file &>/dev/null; then
-		continue
-	fi	
-
 	pt_package_line_number=$(grep -m 1 -n "package pt_" $file | cut -d ':' -f1)
 	min_changed_line_number=$(git diff -U0 $INPUT_HEAD_REF $INPUT_BASE_REF $file | grep "^@@" | grep -oe "-[0-9]\+,\?" | grep -o "[0-9]\+" | sort -n | head -n 1 )
 	echo "$file, $min_changed_line_number, $pt_package_line_number"	
