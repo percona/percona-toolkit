@@ -1,0 +1,19 @@
+name: libmodulescheck 
+
+on:
+  pull_request:
+    branches: [ "3.x" ]
+
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: run util/check_libmodules_updated 
+      run: ./util/check_libmodules_updated
+      with:
+          ref: '${{ github.ref }}'
+          head-ref: '${{ github.head_ref }}'

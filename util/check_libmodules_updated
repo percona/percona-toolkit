@@ -1,0 +1,36 @@
+#!/bin/bash
+
+
+echo "$INPUT_REF $INPUT_HEAD_REF"
+perl_changes=$(git diff --name-only $INPUT_REF $INPUT_HEAD_REF | grep -P "(bin|lib)") 
+if [ -z "$perl_changes" ]; then
+	previous_hash=$hash
+	continue
+fi
+if  echo "$perl_changes" | grep "lib" &>/dev/null; then
+	previous_hash=$hash
+	continue
+fi
+
+for file in $perl_changes; do
+	git checkout $INPUT_REF $file &> /dev/null
+	if ! grep "#!/usr/bin/env perl" $file &>/dev/null; then
+		continue
+	fi	
+
+	pt_package_line_number=$(grep -m 1 -n "package pt_" $file | cut -d ':' -f1)
+	min_changed_line_number=$(git diff -U0 $INPUT_REF $INPUT_HEAD_REF $file | grep "^@@" | grep -oe "-[0-9]\+,\?" | grep -o "[0-9]\+" | sort -n | head -n 1 )
+	echo "$file, $min_changed_line_number, $pt_package_line_number"	
+	if [ $min_changed_line_number -lt $pt_package_line_number ]; then
+		exit 1
+		#echo "$previous_hash, $hash"	
+		#echo "$file, $min_changed_line_number, $pt_package_line_number"	
+		#echo ""
+	fi
+done
+#if echo "$perl_changes" | grep "bin" &>/dev/null && ! $( echo "$perl_changes" | grep "lib" &>/dev/null); then
+	#echo "$previous_hash"	
+	#echo "$perl_changes"	
+	#echo ""
+
+
