@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -xe
 
 echo "input: $INPUT_HEAD_REF $INPUT_BASE_REF"
 git diff --name-only $INPUT_HEAD_REF $INPUT_BASE_REF 
@@ -16,14 +16,7 @@ for file in $perl_changes; do
 	echo "$file, $min_changed_line_number, $pt_package_line_number"	
 	if [ $min_changed_line_number -lt $pt_package_line_number ]; then
 		exit 1
-		#echo "$previous_hash, $hash"	
-		#echo "$file, $min_changed_line_number, $pt_package_line_number"	
-		#echo ""
 	fi
 done
-#if echo "$perl_changes" | grep "bin" &>/dev/null && ! $( echo "$perl_changes" | grep "lib" &>/dev/null); then
-	#echo "$previous_hash"	
-	#echo "$perl_changes"	
-	#echo ""
 
 
