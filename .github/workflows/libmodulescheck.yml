@@ -13,6 +13,8 @@ jobs:
       fail-fast: true
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - name: Dump GitHub context
       env:
         GITHUB_CONTEXT: ${{ toJson(github) }}
