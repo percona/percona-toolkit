@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e
 
 echo "$INPUT_REF $INPUT_HEAD_REF"
 perl_changes=$(git diff --name-only $INPUT_REF $INPUT_HEAD_REF | grep -P "(bin|lib)") 
