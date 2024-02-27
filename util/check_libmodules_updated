@@ -5,12 +5,13 @@ set -e
 echo "input: $INPUT_HEAD_REF $INPUT_BASE_REF"
 git diff --name-only $INPUT_HEAD_REF $INPUT_BASE_REF 
 perl_changes=$(git diff --name-only $INPUT_HEAD_REF $INPUT_BASE_REF | grep -P "(bin|lib)") 
-echo "perl changes ok"
 if [ -z "$perl_changes" ]; then
-	continue
+	echo "no perl changes"
+	exit 0
 fi
 if  echo "$perl_changes" | grep "lib" &>/dev/null; then
-	continue
+	echo "lib changes"
+	exit 0
 fi
 
 for file in $perl_changes; do
