@@ -15,5 +15,5 @@ jobs:
     - name: run util/check_libmodules_updated 
       run: ./util/check_libmodules_updated
       with:
-          ref: '${{ github.ref }}'
-          head-ref: '${{ github.head_ref }}'
+        ref: '${{ github.ref }}'
+        head-ref: '${{ github.head_ref }}'
