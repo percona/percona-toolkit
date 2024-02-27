@@ -27,7 +27,6 @@ package VersionCheck;
 # in the vc file, and the file's mtime doesn't matter.
 
 use strict;
-use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
