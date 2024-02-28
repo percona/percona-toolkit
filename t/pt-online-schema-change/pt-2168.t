@@ -41,7 +41,7 @@ my $slave_dsn1 = 'h=127.0.0.1,P=12346,u=msandbox,p=msandbox';
 my $slave_dsn2 = 'h=127.0.0.1,P=12347,u=msandbox,p=msandbox';
 my $sample = "t/pt-online-schema-change/samples";
 
-# We need sync_relay_log=1 to have 
+# We need sync_relay_log=1 to keep changes after replica restart
 my $cnf = '/tmp/12347/my.sandbox.cnf';
 diag(`cp $cnf $cnf.bak`);
 diag(`echo "[mysqld]" > /tmp/12347/my.sandbox.2.cnf`);
@@ -119,7 +119,6 @@ sleep($max_lag);
 
 sub base_test {
    my ($args) = @_;
-   #diag("pid: $tmp_file_name");
 
    my ($fh, $filename) = tempfile();
    my $pid = fork();
@@ -149,7 +148,6 @@ sub base_test {
 
 sub crash_test {
    my ($args) = @_;
-   #diag("pid: $tmp_file_name");
 
    my ($fh, $filename) = tempfile();
    my $pid = fork();

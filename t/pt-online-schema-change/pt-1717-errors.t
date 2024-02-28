@@ -20,6 +20,8 @@ use SqlModes;
 use File::Temp qw/ tempdir tempfile /;
 
 our $delay = 10;
+my $output;
+my $exit;
 
 my $tmp_file = File::Temp->new();
 my $tmp_file_name = $tmp_file->filename;
@@ -33,19 +35,16 @@ if ($sb->is_cluster_mode) {
     plan skip_all => 'Not for PXC';
 }
 
-# We need third slave to redirect pt-osc in case of one or standard disconnects
-diag(`$trunk/sandbox/start-sandbox slave 12348 12345`);
-
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh1 = $sb->get_dbh_for('slave1');
 my $slave_dbh2 = $sb->get_dbh_for('slave2');
-my $slave_dbh3 = $sb->get_dbh_for('master1');
 my $master_dsn = 'h=127.0.0.1,P=12345,u=msandbox,p=msandbox';
 my $slave_dsn1 = 'h=127.0.0.1,P=12346,u=msandbox,p=msandbox';
 my $slave_dsn2 = 'h=127.0.0.1,P=12347,u=msandbox,p=msandbox';
-my $sample = "t/pt-online-schema-change/samples";
+my $sample     = "t/pt-online-schema-change/samples";
+my $plugin     = "$trunk/$sample/plugins";
 
-# We need sync_relay_log=1 to keep changes after replica restart
+# We need sync_relay_log=1 to keep changes after replica restart 
 my $cnf = '/tmp/12347/my.sandbox.cnf';
 diag(`cp $cnf $cnf.bak`);
 diag(`echo "[mysqld]" > /tmp/12347/my.sandbox.2.cnf`);
@@ -56,9 +55,6 @@ diag(`echo "!include /tmp/12347/my.sandbox.2.cnf" >> $cnf`);
 diag(`/tmp/12347/stop >/dev/null`);
 sleep 1;
 diag(`/tmp/12347/start >/dev/null`);
-
-# DSN table for further tests
-$sb->load_file('master', "$sample/create_dsns.sql");
 
 sub reset_query_cache {
     my @dbhs = @_;
@@ -72,37 +68,21 @@ sub reset_query_cache {
 # 2) Load sample data
 # 3) Set the slave delay to 30 seconds to be able to see the 'waiting' message.
 diag("Setting slave delay to 0 seconds");
-$sb->wait_for_slaves(slave => 'master1');
 $slave_dbh1->do('STOP SLAVE');
-$slave_dbh3->do('STOP SLAVE');
 $master_dbh->do("RESET MASTER");
 $slave_dbh1->do('RESET SLAVE');
 $slave_dbh1->do('START SLAVE');
-$slave_dbh3->do('RESET SLAVE');
-$slave_dbh3->do('START SLAVE');
 
 diag('Loading test data');
 $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
 
 # Should be greater than chunk-size and big enough, so pt-osc will wait for delay
 my $num_rows = 5000;
+my $chunk_size = 10;
 diag("Loading $num_rows into the table. This might take some time.");
 diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
 
 $sb->wait_for_slaves();
-$sb->wait_for_slaves(slave => 'master1');
-
-# Plan for tests
-# 1. Basic test: start tool on some huge table, stop slave, wait few seconds, start slave. Check if tool restarted with option and failed with error without. 
-# 2. Delayed slaves
-# 3. Places to test:
-#  - get_dbh
-#  - SELECT @@SERVER_ID
-# 4. Slave never returns
-#  - die after timeout
-#  - inject new slave
-#  - ignore after timeout
-
 
 diag("Setting slave delay to $delay seconds");
 
@@ -123,7 +103,7 @@ my $max_lag = $delay / 2;
 # We need to sleep, otherwise pt-osc can finish before slave is delayed
 sleep($max_lag);
 
-my $args = "$master_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nofail-on-stopped-replication";
+my $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size ${chunk_size} --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nodrop-new-table --nodrop-triggers --history";
 
    my ($fh, $filename) = tempfile();
    my $pid = fork();
@@ -138,26 +118,69 @@ my $args = "$master_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_m
    # restart slave 12347
    diag(`/tmp/12347/stop >/dev/null`);
    sleep 1;
-   $master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12348,h=127.0.0.1,u=root,p=msandbox' WHERE id=2");
 
    waitpid($pid, 0);
-   my $output = do {
+   $output = do {
       local $/ = undef;
       <$fh>;
    };
 
 like(
    $output,
-   qr/Successfully altered `test`.`pt178`/s,
-   "pt-osc completes successfully when one of replicas is stopped, option --nofail-on-stopped-replication is specified, and another replica was specified in the dsns table as a replacement",
-);
+   qr/`test`.`pt178` was not altered/s,
+   "pt-osc stopped with error as expected",
+) or diag($output);
 
 diag(`/tmp/12347/start >/dev/null`);
+
+# Creating copy of table pt178, so we can compare data later
+diag(`/tmp/12345/use -N test -e "CREATE TABLE pt178_back like pt178"`);
+diag(`/tmp/12345/use -N test -e "INSERT INTO pt178_back SELECT * FROM pt178"`);
+
+$output = `/tmp/12345/use -N -e "select job_id, upper_boundary from percona.pt_osc_history"`;
+my ($job_id, $upper_boundary) = split(/\s+/, $output);
+
+my $copied_rows = `/tmp/12345/use -N -e "select count(*) from test._pt178_new"`;
+chomp($copied_rows);
+
+ok(
+   $copied_rows eq $upper_boundary,
+   'Upper chunk boundary stored correctly'
+) or diag("Copied_rows: ${copied_rows}, upper boundary: ${upper_boundary}");;
+
+my @args = (qw(--execute --chunk-size=10 --nodrop-new-table --nodrop-triggers --history));
+
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=pt178",
+         '--max-lag', $max_lag,
+         '--resume', $job_id,
+         '--alter', 'engine=INNODB',
+         #'--progress', 'time,1',
+         '--plugin', "$plugin/pt-1717.pm",
+         ),
+      },
+);
+
+$output =~ /.*Chunk: (\d+)\n/ms;
+my $last_chunk = int($1);
+
+ok(
+   $last_chunk * $chunk_size + int($copied_rows) == $num_rows,
+   'Tool inserted only missed rows in the second run'
+) or diag("Last chunk: ${last_chunk}, copied rows: ${copied_rows}");
+
+my $new_table_checksum = diag(`/tmp/12345/use test -N -e "CHECKSUM TABLE pt178"`);
+my $old_table_checksum = diag(`/tmp/12345/use test -N -e "CHECKSUM TABLE pt178_back"`);
+
+ok(
+   $new_table_checksum eq $old_table_checksum,
+   'All rows copied correctly'
+) or diag("New table checksum: ${new_table_checksum}, original content checksum: ${old_table_checksum}");
+
 # #############################################################################
 # Done.
 # #############################################################################
 diag("Cleaning");
-diag(`$trunk/sandbox/stop-sandbox 12348`);
 $slave_dbh2 = $sb->get_dbh_for('slave2');
 diag("Setting slave delay to 0 seconds");
 $slave_dbh1->do('STOP SLAVE');
@@ -167,7 +190,6 @@ $slave_dbh1->do('RESET SLAVE');
 $slave_dbh2->do('RESET SLAVE');
 $slave_dbh1->do('START SLAVE');
 $slave_dbh2->do('START SLAVE');
-#$slave_dbh2->do("uninstall plugin simple_rewrite_plugin");
 
 diag(`mv $cnf.bak $cnf`);
 

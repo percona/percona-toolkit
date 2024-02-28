@@ -8797,6 +8797,43 @@ sub main {
    my $aux_cxn = $make_cxn->(dsn => $dsn, prev_dsn => $dsn);
 
    my $hist_table = $q->quote($q->split_unquote($o->get('history-table')));
+   my $last_chunk;
+
+   if ( $o->got('resume') ) {
+      my $old_job_id = $o->get('resume');
+      my $sth = $cxn->dbh()->prepare(
+         "SELECT db, tbl, new_table_name, altr, args, "
+         . "lower_boundary, upper_boundary, done "
+         . "FROM ${hist_table} WHERE job_id=?"
+      );
+      $sth->execute($old_job_id);
+      $last_chunk = $sth->fetchrow_hashref();
+      $sth->finish();
+      PTDEBUG && _d('Last chunk:', Dumper($last_chunk));
+
+      if ( !$last_chunk || !$last_chunk->{new_table_name} ) {
+         _die("Option --resume refers non-existing chunk: ${old_job_id}. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+
+      if ( $last_chunk->{db} ne $db
+         || $last_chunk->{tbl} ne $tbl
+         || $last_chunk->{altr} ne $o->get('alter') ){
+         _die("Essential options for the failed job are different from current:\n"
+            . "Database: failed - $last_chunk->{db}, current - ${db}\n"
+            . "Table: failed - $last_chunk->{tbl}, current - ${tbl}\n"
+            . "Alter: failed - $last_chunk->{altr}, current - ". $o->get('alter') . "\n"
+            . "Cannot resume job ${old_job_id}. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+
+      if ( $last_chunk->{done} eq 'yes' ) {
+         _die("Copying rows for job ${old_job_id} finished.\n"
+            . "Nothing to do. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+   }
+
    my $job_id;
    my $hist_sth;
    my $done_sth;
@@ -8827,8 +8864,9 @@ sub main {
             $opt_hash->{$opt} = $value->{value} ;
          }
       }
+
       my $json_str = $json->encode($opt_hash);
-      
+
       my $insert_sth = $cxn->dbh()->prepare(
          "INSERT INTO ${hist_table} (db, tbl, altr, args)"
          . "VALUES(?, ?, ?, ?)"
@@ -8836,6 +8874,7 @@ sub main {
       PTDEBUG && _d($insert_sth);
       $insert_sth->execute($db, $tbl, $o->get('alter'), $json_str);
       $job_id = $insert_sth->last_insert_id();
+      print ts("Job ${job_id} started.\n");
       $hist_sth = $cxn->dbh()->prepare(
          "UPDATE ${hist_table} SET lower_boundary = ?, upper_boundary = ? "
          . "WHERE job_id = ${job_id}"
@@ -9454,6 +9493,9 @@ sub main {
          }
          else {
             print "$orig_tbl->{name} was not altered.\n";
+            if ( $o->get('history') ) {
+               print "History saved. Job id: ${job_id}\n";
+            }
          }
       }
       return;
@@ -9532,32 +9574,54 @@ sub main {
    # Step 1: Create the new table.
    # #####################################################################
 
-   my $new_table_name   = $o->get('new-table-name');
-   my $new_table_prefix = $o->got('new-table-name') ? undef : '_';
+   my $new_table_name;
+   my $new_table_prefix;
+   my $new_tbl;
 
-   # --plugin hook
-  if ( $plugin && $plugin->can('before_create_new_table') ) {
-      $plugin->before_create_new_table(
+   if ( $last_chunk ) {
+      $new_table_name = $last_chunk->{new_table_name};
+      $new_table_prefix = undef;
+
+      $new_tbl = {
+         db   => $orig_tbl->{db},
+         tbl  => $new_table_name,
+         name => $q->quote($orig_tbl->{db}, $new_table_name),
+      };
+   }
+   else {
+      $new_table_name   = $o->get('new-table-name');
+      $new_table_prefix = $o->got('new-table-name') ? undef : '_';
+
+      # --plugin hook
+      if ( $plugin && $plugin->can('before_create_new_table') ) {
+         $plugin->before_create_new_table(
             new_table_name   => $new_table_name,
             new_table_prefix => $new_table_prefix,
-      );
+         );
+      }
+
+      eval {
+         $new_tbl = create_new_table(
+            new_table_name   => $new_table_name,
+            new_table_prefix => $new_table_prefix,
+            orig_tbl         => $orig_tbl,
+            Cxn              => $cxn,
+            Quoter           => $q,
+            OptionParser     => $o,
+            TableParser      => $tp,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         _die("Error creating new table: $EVAL_ERROR", ERROR_CREATING_NEW_TABLE);
+      }
    }
 
-   my $new_tbl;
-   eval {
-      $new_tbl = create_new_table(
-         new_table_name   => $new_table_name,
-         new_table_prefix => $new_table_prefix,
-         orig_tbl         => $orig_tbl,
-         Cxn              => $cxn,
-         Quoter           => $q,
-         OptionParser     => $o,
-         TableParser      => $tp,
+   if ( $o->get('history') ) {
+      my $sth = $cxn->dbh()->prepare(
+         "UPDATE ${hist_table} SET new_table_name = ?"
       );
-   };
-   if ( $EVAL_ERROR ) {
-      _die("Error creating new table: $EVAL_ERROR", ERROR_CREATING_NEW_TABLE);
-   }
+      $sth->execute($new_tbl->{tbl});
+   } 
 
    # If the new table still exists, drop it unless the tool was interrupted.
    push @cleanup_tasks, sub {
@@ -9840,46 +9904,47 @@ sub main {
       }
    };
 
-   # --plugin hook
-   if ( $plugin && $plugin->can('before_create_triggers') ) {
-      $plugin->before_create_triggers();
-   }
+   if ( !$o->got('resume') ) {
+      # --plugin hook
+      if ( $plugin && $plugin->can('before_create_triggers') ) {
+         $plugin->before_create_triggers();
+      }
 
-   my @trigger_names = eval {
-      create_triggers(
-         orig_tbl     => $orig_tbl,
-         new_tbl      => $new_tbl,
-         del_tbl      => $del_tbl,
-         columns      => \@common_cols,
-         Cxn          => $cxn,
-         Quoter       => $q,
-         OptionParser => $o,
-         Retry        => $retry,
-         tries        => $tries,
-         stats        => \%stats,
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      _die("Error creating triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
-   };
+      my @trigger_names = eval {
+         create_triggers(
+            orig_tbl     => $orig_tbl,
+            new_tbl      => $new_tbl,
+            del_tbl      => $del_tbl,
+            columns      => \@common_cols,
+            Cxn          => $cxn,
+            Quoter       => $q,
+            OptionParser => $o,
+            Retry        => $retry,
+            tries        => $tries,
+            stats        => \%stats,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         _die("Error creating triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
+      };
 
-   if ( $o->get('reverse-triggers') ) {
-       print "Adding reverse triggers\n";
-       eval {
-           my $old_tbl_name = '_'.$orig_tbl->{tbl}.'_old';
-           my $new_tbl_name = '_'.$orig_tbl->{tbl}.'_new';
+      if ( $o->get('reverse-triggers') ) {
+         print "Adding reverse triggers\n";
+         eval {
+            my $old_tbl_name = '_'.$orig_tbl->{tbl}.'_old';
+            my $new_tbl_name = '_'.$orig_tbl->{tbl}.'_new';
 
-           my $old_tbl = {
+            my $old_tbl = {
                db   => $orig_tbl->{db},
                name => '`'.$orig_tbl->{db}.'`.`'.$old_tbl_name.'`',
                tbl  => $old_tbl_name,
-           };
-           my $new_tbl = {
+            };
+            my $new_tbl = {
                db   => $orig_tbl->{db},
                name => '`'.$orig_tbl->{db}.'`.`'.$new_tbl_name.'`',
                tbl  => $new_tbl_name,
-           };
-           my $triggers=create_triggers(
+            };
+            my $triggers=create_triggers(
                orig_tbl         => $new_tbl,
                new_tbl          => $old_tbl,
                del_tbl          => $orig_tbl,
@@ -9891,16 +9956,17 @@ sub main {
                tries            => $tries,
                stats            => \%stats,
                reverse_triggers => 1,
-           );
-       };
-       if ( $EVAL_ERROR ) {
-          _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
-       };
-   }
+            );
+         };
+         if ( $EVAL_ERROR ) {
+            _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
+         };
+      }
 
-   # --plugin hook
-   if ( $plugin && $plugin->can('after_create_triggers') ) {
-      $plugin->after_create_triggers();
+      # --plugin hook
+      if ( $plugin && $plugin->can('after_create_triggers') ) {
+         $plugin->after_create_triggers();
+      }
    }
 
    # #####################################################################
@@ -10231,6 +10297,7 @@ sub main {
       dml                => $dml,
       select             => $select,
       callbacks          => $callbacks,
+      resume             => $last_chunk,
       lock_in_share_mode => $lock_in_share_mode,
       OptionParser       => $o,
       Quoter             => $q,
@@ -11270,21 +11337,23 @@ sub check_orig_table {
    }
 
    my ( $version ) = $dbh->selectrow_array("SELECT VERSION()");
-   # There cannot be any triggers on the original table.
-   my $sql = 'SHOW TRIGGERS FROM ' . $q->quote($orig_tbl->{db})
-           . ' LIKE ' . $q->literal_like($orig_tbl->{tbl});
-   PTDEBUG && _d($sql);
-   my $triggers = $dbh->selectall_arrayref($sql);
-   if ( $triggers && @$triggers ) {
-       if ( VersionCompare::cmp($version, '5.7.0') < 0  && VersionCompare::cmp($version, '10.0.0') <= 0) {
-           die "The table $orig_tbl->{name} has triggers.  This tool "
-             . "needs to create its own triggers, so the table cannot "
-             . "already have triggers.\n";
-       } elsif ( ( VersionCompare::cmp($version, '5.7.0') >= 0 || VersionCompare::cmp($version, '10.0.0') >0 )
-                 && !$o->get('preserve-triggers') ) {
-           die "The table $orig_tbl->{name} has triggers but --preserve-triggers was not specified.\n"
-             . "Please read the documentation for --preserve-triggers.\n";
-       }
+   if ( !$o->got('resume') ) {
+      # There cannot be any triggers on the original table.
+      my $sql = 'SHOW TRIGGERS FROM ' . $q->quote($orig_tbl->{db})
+               . ' LIKE ' . $q->literal_like($orig_tbl->{tbl});
+      PTDEBUG && _d($sql);
+      my $triggers = $dbh->selectall_arrayref($sql);
+      if ( $triggers && @$triggers ) {
+         if ( VersionCompare::cmp($version, '5.7.0') < 0  && VersionCompare::cmp($version, '10.0.0') <= 0) {
+            die "The table $orig_tbl->{name} has triggers.  This tool "
+               . "needs to create its own triggers, so the table cannot "
+               . "already have triggers.\n";
+      } elsif ( ( VersionCompare::cmp($version, '5.7.0') >= 0 || VersionCompare::cmp($version, '10.0.0') >0 )
+         && !$o->get('preserve-triggers') ) {
+         die "The table $orig_tbl->{name} has triggers but --preserve-triggers was not specified.\n"
+         . "Please read the documentation for --preserve-triggers.\n";
+         }
+      }
    }
 
    # Get the table struct.  NibbleIterator needs this, and so do we.
@@ -12072,9 +12141,6 @@ sub exec_nibble {
          PTDEBUG && _d($sth->{nibble}->{Statement},
             'lower boundary:', @{$boundary->{lower}},
             'upper boundary:', @{$boundary->{upper}});
-         #         _d($sth->{nibble}->{Statement},
-         #   'lower boundary:', @{$boundary->{lower}},
-         #   'upper boundary:', @{$boundary->{upper}});
          $sth->{nibble}->execute(
             # WHERE
             @{$boundary->{lower}},  # upper boundary values
@@ -12966,6 +13032,7 @@ The history table must have this structure (MAGIC_create_pt_osc_history):
      job_id         INT               NOT NULL AUTO_INCREMENT,
      db             CHAR(64)          NOT NULL,
      tbl            CHAR(64)          NOT NULL,
+     new_table_name CHAR(64)          DEFAULT NULL,
      altr           TEXT              NOT NULL,
      args           TEXT              NOT NULL,
      lower_boundary TEXT,
@@ -13232,6 +13299,7 @@ You can change the list of hosts while OSC is executing:
 if you change the contents of the DSN table, OSC will pick it up very soon.
 
 =item --reverse-triggers
+
 Copy the triggers added during the copy in reverse order. Commands in the new table will be
 reflected in the old table. You can use this as a safety feature, so that the old
 table continues to receive updates. This option requires C<--no-drop-old-table>.
@@ -13241,6 +13309,20 @@ After new table is renamed to its original name triggers will continue working. 
 name change metadata version in the table cache will also change you may start receiving
 "Prepared statement needs to be re-prepared" errors. The workaround for this is to re-prepare statements.
 If you do not use server-side prepared statements your application should not be affected.
+
+=item --resume
+
+type: int
+
+Resume altering table from the last completed chunk. If the tool stops before it finishes
+copying rows, this option makes copying resume from the last chunk copied.
+
+The option accepts ID of the failed job. This ID is printed when pt-online-schema-change 
+is running with option L<i"--history"> and stored in the L<"--history-table">.
+
+Warning! To use this option previous, failed, run of pt-online-schema-change should use options 
+L<"--history">, L<"--nodrop-new-table">, and L<"--nodrop-triggers">. Otherwise, 
+pt-online-schema-change would not be able to resume.
 
 =item --skip-check-slave-lag
 

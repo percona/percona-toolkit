@@ -78,8 +78,14 @@ is(
 
 unlike(
    $output,
+   qr/Job \d started/,
+   'Job id not printed in the beginning when option --history not provided'
+);
+
+unlike(
+   $output,
    qr/Job \d finished successfully/,
-   'Job id not printed when option --history not provided'
+   'Job id not printed in the end when option --history not provided'
 );
 
 ($output, $exit) = full_output(
@@ -92,6 +98,12 @@ is(
    0,
    'basic test with option --history finished OK'
 ) or diag($output);
+
+like(
+   $output,
+   qr/Job \d started/,
+   'Job id printed in the beginning of the tool output'
+);
 
 like(
    $output,
