@@ -6,6 +6,7 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -56,6 +57,14 @@ func (w *whois) Run() error {
 		} else {
 			return errors.New("could not detect the type of input. Try to provide --type. It may means the info is unknown")
 		}
+	}
+
+	if CLI.Verbosity == types.Debug {
+		out, err := translate.DBToJson()
+		if err != nil {
+			return errors.Wrap(err, "could not dump translation structs to json")
+		}
+		fmt.Println(out)
 	}
 
 	log.Debug().Str("searchType", w.SearchType).Msg("whois searchType")

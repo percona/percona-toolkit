@@ -19,6 +19,12 @@ type WhoisValue struct {
 
 type subNode map[string]*WhoisNode
 
+// When initiating recursion, instead of iterating over maps we should iterate over a fixed order of types
+// maps orders are not guaranteed, and there are multiple paths of identifying information
+// Forcing the order ultimately helps to provide repeatable output, so it helps with regression tests
+// It also helps reducing graph depth, as "nodename" will have most of its information linked to it directly
+var forcedIterationOrder = []string{"nodename", "ip", "uuid"}
+
 func Whois(search, searchtype string) *WhoisNode {
 	w := &WhoisNode{
 		nodetype: searchtype,
@@ -71,6 +77,8 @@ func (n *WhoisNode) GetValueData(search, searchType string) *WhoisValue {
 		if n.nodetype == searchType && search == value {
 			return &valueData
 		}
+		// iterating over subnodes here is fine, as the value we search for should be unique
+		// so the way to access don't have to be forced
 		for _, nextNode := range valueData.SubNodes {
 			if nextNode != nil {
 				if valueData := nextNode.GetValueData(search, searchType); valueData != nil {
@@ -93,7 +101,9 @@ func (n *WhoisNode) filter() {
 	}
 
 	for _, valueData := range n.Values {
-		for _, nextNode := range valueData.SubNodes {
+		// see comment on "forcedIterationOrder"
+		for _, nextNodeType := range forcedIterationOrder {
+			nextNode := valueData.SubNodes[nextNodeType]
 			if nextNode != nil {
 				nextNode.filter()
 			}
