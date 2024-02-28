@@ -69,10 +69,17 @@ is(
 ) or diag($output);
 
 $output = `/tmp/12345/use -N -e "select count(*) from information_schema.tables where TABLE_SCHEMA='percona' and table_name='pt_osc_history'"`;
+
 is(
    $output + 0,
    0,
    '--history table not created when option --history not provided'
+);
+
+unlike(
+   $output,
+   qr/Job \d finished successfully/,
+   'Job id not printed when option --history not provided'
 );
 
 ($output, $exit) = full_output(
@@ -85,6 +92,12 @@ is(
    0,
    'basic test with option --history finished OK'
 ) or diag($output);
+
+like(
+   $output,
+   qr/Job \d finished successfully/,
+   'Job id printed for successful copy'
+);
 
 $output = `/tmp/12345/use -N -e "select count(*) from information_schema.tables where TABLE_SCHEMA='percona' and table_name='pt_osc_history'"`;
 
@@ -100,6 +113,14 @@ is(
    $output + 0,
    1,
    'Initial row with Job ID was inserted into --history table'
+);
+
+$output = `/tmp/12345/use -N -e "select count(*) from percona.pt_osc_history where job_id=1 and lower_boundary is null and upper_boundary is null"`;
+
+is(
+   $output + 0,
+   1,
+   'Lower and upper boundaries were not updated when table altered with single chunk'
 );
 
 ($output, $exit) = full_output(
@@ -125,7 +146,15 @@ $output = `/tmp/12345/use -N -e "select count(*) from information_schema.tables 
 is(
    $output + 0,
    1,
-   '--history table was created when option --history was provided only once'
+   '--history table was created only once when option --history was provided'
+);
+
+$output = `/tmp/12345/use -N -e "select count(*) from percona.pt_osc_history where job_id=2 and lower_boundary=17 and upper_boundary=20"`;
+
+is(
+   $output + 0,
+   1,
+   'Lower and upper boundaries were updated when table altered with multiple chunks'
 );
 
 diag(`/tmp/12345/use -N -e "drop table percona.pt_osc_history"`);
@@ -163,9 +192,17 @@ is(
    'Initial row with Job ID was inserted into --history table with --binary-index'
 );
 
+$output = `/tmp/12345/use -N -e "select count(*) from percona.pt_osc_history where job_id=1 and lower_boundary is null and upper_boundary is null"`;
+
+is(
+   $output + 0,
+   1,
+   'Lower and upper boundaries were not updated when table altered with single chunk and --binary-index'
+);
+
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
-         '--alter', 'engine=innodb', '--execute', '--history', '--binary-index') }
+         '--alter', 'engine=innodb', '--execute', '--history', '--binary-index', '--chunk-size=4') }
 );
 
 is(
@@ -187,6 +224,14 @@ is(
    $output + 0,
    2,
    '--history table with --binary-index updated'
+);
+
+$output = `/tmp/12345/use -N -e "select count(*) from percona.pt_osc_history where job_id=2 and lower_boundary=17 and upper_boundary=20"`;
+
+is(
+   $output + 0,
+   1,
+   'Lower and upper boundaries were updated when table altered with multiple chunks and --binary-index'
 );
 
 ($output, $exit) = full_output(
@@ -233,6 +278,14 @@ is(
    'Custom --history table created'
 );
 
+$output = `/tmp/12345/use -N -e "select count(*) from pt_1717.pt_1717_history where job_id=1 and lower_boundary is null and upper_boundary is null"`;
+
+is(
+   $output + 0,
+   1,
+   'Lower and upper boundaries were not updated in custom history table when table altered with single chunk'
+);
+
 $output = `/tmp/12345/use -N -e "select count(*) from pt_1717.pt_1717_history where db='pt_osc' and tbl='t' and altr='engine=innodb' and json_extract(args, '\$.alter') = 'engine=innodb' and done='yes'"`;
 
 is(
@@ -244,7 +297,7 @@ is(
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
          '--alter', 'engine=innodb', '--execute', '--history',
-         '--history-table=pt_1717.pt_1717_history') }
+         '--history-table=pt_1717.pt_1717_history', '--chunk-size=4') }
 );
 
 is(
@@ -266,6 +319,14 @@ is(
    $output + 0,
    2,
    'Custom --history table updated'
+);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_1717.pt_1717_history where job_id=2 and lower_boundary=17 and upper_boundary=20"`;
+
+is(
+   $output + 0,
+   1,
+   'Lower and upper boundaries in custom history table were updated when table altered with multiple chunks'
 );
 
 # #############################################################################

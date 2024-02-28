@@ -10201,6 +10201,7 @@ sub main {
          if ( $o->get('execute') ) {
             if ( $o->get('history') ) {
                $done_sth->execute();
+               print ts("Job ${job_id} finished successfully.\n");
             }
             print ts("Copied rows OK.\n");
          }
