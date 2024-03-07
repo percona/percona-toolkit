@@ -17,7 +17,7 @@ type translationUnit struct {
 type translationsDB struct {
 	// 1 hash: only 1 IP. wsrep_node_address is not dynamic
 	// if there's a restart, the hash will change as well anyway
-	HashToIP map[string]translationUnit
+	HashToIP map[string]*translationUnit
 
 	// wsrep_node_name is dynamic
 	HashToNodeNames map[string][]translationUnit
@@ -38,7 +38,7 @@ func init() {
 
 func initTranslationsDB() {
 	db = translationsDB{
-		HashToIP:        map[string]translationUnit{},
+		HashToIP:        map[string]*translationUnit{},
 		HashToNodeNames: map[string][]translationUnit{},
 		IPToMethods:     map[string][]translationUnit{},
 		IPToNodeNames:   map[string][]translationUnit{},
@@ -59,55 +59,78 @@ func GetDB() translationsDB {
 	return db
 }
 
+func (tu *translationUnit) UpdateTimestamp(ts time.Time) {
+	// we want to avoid gap of information, so the earliest proof should be kept
+	if tu.Timestamp.After(ts) {
+		tu.Timestamp = ts
+	}
+}
+
 func AddHashToIP(hash, ip string, ts time.Time) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
-	db.HashToIP[hash] = translationUnit{Value: ip, Timestamp: ts}
+	latestValue, ok := db.HashToIP[hash]
+	if !ok {
+		db.HashToIP[hash] = &translationUnit{Value: ip, Timestamp: ts}
+	} else {
+		latestValue.UpdateTimestamp(ts)
+	}
 }
 
-func sameAsLatestValue(m map[string][]translationUnit, key string, newvalue string) bool {
-	return len(m[key]) > 0 && m[key][len(m[key])-1].Value == newvalue
+func getLatestValue(m map[string][]translationUnit, key string) *translationUnit {
+	if len(m[key]) == 0 {
+		return nil
+	}
+	return &m[key][len(m[key])-1]
+}
+
+func upsertToMap(m map[string][]translationUnit, key string, tu translationUnit) {
+
+	latestValue := getLatestValue(m, key)
+	if latestValue == nil || latestValue.Value != tu.Value {
+		m[key] = append(m[key], tu)
+		return
+	}
+	// we want to avoid gap of information, so the earliest proof should be kept
+	if latestValue.Timestamp.After(tu.Timestamp) {
+		latestValue.Timestamp = tu.Timestamp
+	}
 }
 
 func AddHashToNodeName(hash, name string, ts time.Time) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
 	name = utils.ShortNodeName(name)
-	if sameAsLatestValue(db.HashToNodeNames, hash, name) {
-		return
-	}
-	db.HashToNodeNames[hash] = append(db.HashToNodeNames[hash], translationUnit{Value: name, Timestamp: ts})
+	upsertToMap(db.HashToNodeNames, hash, translationUnit{Value: name, Timestamp: ts})
 }
 
 func AddIPToNodeName(ip, name string, ts time.Time) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
 	name = utils.ShortNodeName(name)
-	if sameAsLatestValue(db.IPToNodeNames, ip, name) {
-		return
-	}
-	db.IPToNodeNames[ip] = append(db.IPToNodeNames[ip], translationUnit{Value: name, Timestamp: ts})
+	upsertToMap(db.IPToNodeNames, ip, translationUnit{Value: name, Timestamp: ts})
 }
 
 func AddIPToMethod(ip, method string, ts time.Time) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
-	if sameAsLatestValue(db.IPToMethods, ip, method) {
-		return
-	}
-	db.IPToMethods[ip] = append(db.IPToMethods[ip], translationUnit{Value: method, Timestamp: ts})
+	upsertToMap(db.IPToMethods, ip, translationUnit{Value: method, Timestamp: ts})
 }
 
 func GetIPFromHash(hash string) string {
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
-	return db.HashToIP[hash].Value
+	ip, ok := db.HashToIP[hash]
+	if ok {
+		return ip.Value
+	}
+	return ""
 }
 
-func mostAppropriateValueFromTS(units []translationUnit, ts time.Time) string {
+func mostAppropriateValueFromTS(units []translationUnit, ts time.Time) translationUnit {
 
 	if len(units) == 0 {
-		return ""
+		return translationUnit{}
 	}
 
 	// We start from the first unit, this ensures we can retroactively use information that were
@@ -119,28 +142,28 @@ func mostAppropriateValueFromTS(units []translationUnit, ts time.Time) string {
 			cur = unit
 		}
 	}
-	return cur.Value
+	return cur
 }
 
 func GetNodeNameFromHash(hash string, ts time.Time) string {
 	db.rwlock.RLock()
 	names := db.HashToNodeNames[hash]
 	db.rwlock.RUnlock()
-	return mostAppropriateValueFromTS(names, ts)
+	return mostAppropriateValueFromTS(names, ts).Value
 }
 
 func GetNodeNameFromIP(ip string, ts time.Time) string {
 	db.rwlock.RLock()
 	names := db.IPToNodeNames[ip]
 	db.rwlock.RUnlock()
-	return mostAppropriateValueFromTS(names, ts)
+	return mostAppropriateValueFromTS(names, ts).Value
 }
 
 func GetMethodFromIP(ip string, ts time.Time) string {
 	db.rwlock.RLock()
 	methods := db.IPToMethods[ip]
 	db.rwlock.RUnlock()
-	return mostAppropriateValueFromTS(methods, ts)
+	return mostAppropriateValueFromTS(methods, ts).Value
 }
 
 func (db *translationsDB) getHashSliceFromIP(ip string) []translationUnit {
@@ -162,7 +185,7 @@ func (db *translationsDB) getHashSliceFromIP(ip string) []translationUnit {
 
 func (db *translationsDB) getHashFromIP(ip string, ts time.Time) string {
 	units := db.getHashSliceFromIP(ip)
-	return mostAppropriateValueFromTS(units, ts)
+	return mostAppropriateValueFromTS(units, ts).Value
 }
 
 // SimplestInfoFromIP is useful to get the most easily to read string for a given IP

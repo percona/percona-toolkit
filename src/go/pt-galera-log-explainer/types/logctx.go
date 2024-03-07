@@ -107,11 +107,11 @@ func (logCtx *LogCtx) AddOwnName(name string, date time.Time) {
 		return
 	}
 	logCtx.OwnNames = append(logCtx.OwnNames, name)
-	for _, hash := range logCtx.OwnHashes {
-		translate.AddHashToNodeName(hash, name, date)
-	}
-	for _, ip := range logCtx.OwnIPs {
-		translate.AddIPToNodeName(ip, name, date)
+
+	// because we frequently lack ip=>nodename clear associations, propagating is important
+	// we only infer the last verified ip will be associated to the verified name as it's enough
+	if lenIPs := len(logCtx.OwnIPs); lenIPs > 0 {
+		translate.AddIPToNodeName(logCtx.OwnIPs[lenIPs-1], name, date)
 	}
 }
 
@@ -122,11 +122,15 @@ func (logCtx *LogCtx) AddOwnHash(hash string, date time.Time) {
 	}
 	logCtx.OwnHashes = append(logCtx.OwnHashes, hash)
 
-	for _, ip := range logCtx.OwnIPs {
-		translate.AddHashToIP(hash, ip, date)
+	// optimistically assume this new hash will have the same ip/name
+	// it may be wrong in some situations (all operator related, it will be overriden eventually in those)
+	// but it will also bridge the gap in sparse on-premise logs
+	// why only the last one: the earliest information may be obsolete
+	if lenIPs := len(logCtx.OwnIPs); lenIPs > 0 {
+		translate.AddHashToIP(hash, logCtx.OwnIPs[lenIPs-1], date)
 	}
-	for _, name := range logCtx.OwnNames {
-		translate.AddHashToNodeName(hash, name, date)
+	if lenNodeNames := len(logCtx.OwnNames); lenNodeNames > 0 {
+		translate.AddHashToNodeName(hash, logCtx.OwnNames[lenNodeNames-1], date)
 	}
 }
 
@@ -137,8 +141,10 @@ func (logCtx *LogCtx) AddOwnIP(ip string, date time.Time) {
 		return
 	}
 	logCtx.OwnIPs = append(logCtx.OwnIPs, ip)
-	for _, name := range logCtx.OwnNames {
-		translate.AddIPToNodeName(ip, name, date)
+
+	// see note in AddOwnName
+	if lenNodeNames := len(logCtx.OwnNames); lenNodeNames > 0 {
+		translate.AddIPToNodeName(ip, logCtx.OwnNames[lenNodeNames-1], date)
 	}
 }
 

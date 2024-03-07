@@ -61,7 +61,7 @@ var PXCOperatorMap = types.RegexMap{
 	// so this regex is about capturing subgroups to re-handle each them to the appropriate existing IdentsMap regex
 	"RegexOperatorMemberAssociations": &types.LogRegex{
 		Regex:         regexp.MustCompile("================================================.*View:"),
-		InternalRegex: regexp.MustCompile("own_index: " + regexIdx + ".*(?P<memberlog>" + IdentsMap["RegexMemberCount"].Regex.String() + ")(?P<compiledAssociations>(....-?[0-9]{1,2}(\\.-?[0-9])?: [a-z0-9]+-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]+, [a-zA-Z0-9-_\\.]+)+)"),
+		InternalRegex: regexp.MustCompile("own_index: " + regexIdx + ".*" + IdentsMap["RegexMemberCount"].Regex.String() + "(?P<compiledAssociations>(....-?[0-9]{1,2}(\\.-?[0-9])?: [a-z0-9]+-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]+, [a-zA-Z0-9-_\\.]+)+)"),
 		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			logCtx.MyIdx = submatches[groupIdx]
@@ -71,12 +71,10 @@ var PXCOperatorMap = types.RegexMap{
 				msg       string
 			)
 
-			logCtx, displayer = IdentsMap["RegexMemberCount"].Handle(logCtx, submatches["memberlog"], date)
-			msg += displayer(logCtx) + "; "
-
 			subAssociations := strings.Split(submatches["compiledAssociations"], "\\n\\t")
+			// if it only has a single element, the regular non-operator logRegex will trigger normally already
 			if len(subAssociations) < 2 {
-				return logCtx, types.SimpleDisplayer(msg)
+				return logCtx, types.SimpleDisplayer("")
 			}
 			for _, subAssociation := range subAssociations[1:] {
 				// better to reuse the idents regex

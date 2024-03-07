@@ -148,6 +148,11 @@ func (n *WhoisNode) FilterDBUsingUUID() {
 
 func (n *WhoisNode) FilterDBUsingNodeName() {
 	for nodename, valueData := range n.Values {
+		// unspecified will sometimes appears in some failures
+		// using it will lead to non-sense data as it can bridge the rest of the whole graph
+		if nodename == "unspecified" {
+			continue
+		}
 		for uuid, nodenames2 := range db.HashToNodeNames {
 			for _, nodename2 := range nodenames2 {
 				if nodename == nodename2.Value {
