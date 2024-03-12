@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Percona Toolkit'
-copyright = u'2023, Percona LLC and/or its affiliates'
+copyright = u'2024, Percona LLC and/or its affiliates'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -141,7 +141,9 @@ html_short_title = 'Percona Toolkit'
 # Path to custom css files. These will override the default css attribute if they exist
 html_css_files = [
     '_static/css/material.css',
+    '_static/css/osano.css',
 ]
+
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

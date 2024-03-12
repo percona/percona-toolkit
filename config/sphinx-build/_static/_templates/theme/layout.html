@@ -22,10 +22,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <meta property="og:title" content="Percona Toolkit Documentation" />
     <meta property="og:description" content="Command-line tools for common MySQL database administration tasks." />
     <meta property="og:url" content="https://docs.percona.com/percona-toolkit/" />
+    <script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
 {% endblock %}
 
 {%- block relbar2 %}
 {% include "relbar2.html" %}
 {%- endblock %}
+
+{%- block extrafooter %}
+<a href="#" onclick="Osano.cm.showDrawer('osano-cm-dom-info-dialog-open')">Cookie Preferences</a>
+{{ super() }}
+{%- endblock %}
+
+
+{# Adds Osano cookie module #}
+{% set script_files = script_files + ["_static/osano.js"] %}
 
 
