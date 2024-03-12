@@ -3,6 +3,10 @@ package translate
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
+	"github.com/xlab/treeprint"
+	"golang.org/x/exp/slices"
 )
 
 type WhoisNode struct {
@@ -58,6 +62,57 @@ func (v WhoisValue) AddChildKey(parentNode *WhoisNode, nodetype, value string, t
 
 func (n *WhoisNode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(n.Values)
+}
+
+func (n *WhoisNode) String() string {
+	return n.tree().String()
+}
+
+func (n *WhoisNode) tree() treeprint.Tree {
+	root := treeprint.NewWithRoot(utils.Paint(utils.GreenText, n.nodetype) + ":")
+	for _, value := range n.valuesSortedByTimestamps() {
+		valueData := n.Values[value]
+		str := value
+		if valueData.Timestamp != nil {
+			str += utils.Paint(utils.BlueText, " ("+valueData.Timestamp.String()+")")
+		}
+		if len(valueData.SubNodes) == 0 {
+			root.AddNode(str)
+			continue
+		}
+		subtree := root.AddBranch(str)
+
+		// forcing map iteration for repeatable outputs
+		for _, subNodeType := range forcedIterationOrder {
+			subnode, ok := valueData.SubNodes[subNodeType]
+			if ok {
+				subtree.AddNode(subnode.tree())
+			}
+		}
+	}
+	return root
+}
+
+func (n *WhoisNode) valuesSortedByTimestamps() []string {
+	values := []string{}
+	for value := range n.Values {
+		values = append(values, value)
+	}
+
+	// keep nil timestamps at the top
+	slices.SortFunc(values, func(a, b string) bool {
+		if n.Values[a].Timestamp == nil && n.Values[b].Timestamp == nil {
+			return a < b
+		}
+		if n.Values[a].Timestamp == nil { // implied b!=nil
+			return true // meaning, nil < nonnil, a < b
+		}
+		if n.Values[b].Timestamp == nil { // implied a!=nil
+			return false // meaning a is greater than b
+		}
+		return n.Values[a].Timestamp.Before(*n.Values[b].Timestamp)
+	})
+	return values
 }
 
 func (n *WhoisNode) addKey(value string, timestamp time.Time) bool {

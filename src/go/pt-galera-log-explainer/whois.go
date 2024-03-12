@@ -16,6 +16,7 @@ type whois struct {
 	Search     string   `arg:"" name:"search" help:"the identifier (node name, ip, uuid) to search"`
 	SearchType string   `name:"type" help:"what kind of information is the input (node name, ip, uuid). Auto-detected when possible." enum:"nodename,ip,uuid,auto" default:"auto"`
 	Paths      []string `arg:"" name:"paths" help:"paths of the log to use"`
+	Json       bool
 }
 
 func (w *whois) Help() string {
@@ -68,12 +69,17 @@ func (w *whois) Run() error {
 	}
 
 	log.Debug().Str("searchType", w.SearchType).Msg("whois searchType")
+
 	out := translate.Whois(w.Search, w.SearchType)
 
-	json, err := json.MarshalIndent(out, "", "\t")
-	if err != nil {
-		return err
+	if w.Json {
+		json, err := json.MarshalIndent(out, "", "\t")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(json))
+	} else {
+		fmt.Println(out)
 	}
-	fmt.Println(string(json))
 	return nil
 }

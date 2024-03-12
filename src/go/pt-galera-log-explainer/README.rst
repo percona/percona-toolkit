@@ -48,36 +48,20 @@ You can filter by type of events
 
     pt-galera-log-explainer list --sst --views *.log
 
-..
-  whois
-  ~~~~~
-  Find out information about nodes, using any type of info
-  
-  .. code-block:: bash
-  
-      pt-galera-log-explainer whois '218469b2' mysql.log 
-      {
-      	"input": "218469b2",
-      	"IPs": [
-      		"172.17.0.3"
-      	],
-      	"nodeNames": [
-      		"galera-node2"
-      	],
-      	"hostname": "",
-      	"nodeUUIDs:": [
-      		"218469b2",
-      		"259b78a0",
-      		"fa81213d",
-      	]
-      }
-  
-  Using any type of information
-  
-  .. code-block:: bash
-  
-      pt-galera-log-explainer whois '172.17.0.3' mysql.log 
-      pt-galera-log-explainer whois 'galera-node2' mysql.log 
+whois
+~~~~~
+Find out information about nodes, using any type of information
+
+.. code-block:: bash
+
+    pt-galera-log-explainer [flags] whois [--json] [--type { nodename | ip | uuid | auto }] <information to search> <paths ...>
+
+
+.. code-block:: bash
+
+    pt-galera-log-explainer whois '218469b2' mysql.log
+    pt-galera-log-explainer whois '172.17.0.3' mysql.log
+    pt-galera-log-explainer whois 'galera-node2' mysql.log
 
 
 conflicts
@@ -218,6 +202,24 @@ Example outputs
     2023-03-12T19:44:59.848409Z   |                                          |                                       PRIMARY(n=2)                            
     2023-03-12T19:44:59.855443Z   |                                          node1 left                              |                                       
     2023-03-12T19:44:59.855491Z   |                                          PRIMARY(n=2)                            |                        
+
+    $ pt-galera-log-explainer whois 172.17.0.2 --no-color  tests/logs/upgrade/*
+    ip:
+    └── 172.17.0.2
+        ├── nodename:
+        │   └── node1 (2023-03-12 19:35:07.644683 +0000 UTC)
+        │
+        └── uuid:
+            ├── 1d3ea8f5 (2023-03-12 07:24:13.789261 +0000 UTC)
+            ├── 54ab931e (2023-03-12 07:43:08.563339 +0000 UTC)
+            ├── fecde235 (2023-03-12 08:46:48.963504 +0000 UTC)
+            ├── a07872e1 (2023-03-12 08:49:41.206124 +0000 UTC)
+            ├── 60da0bf9-aa9c (2023-03-12 12:29:48.873397 +0000 UTC)
+            ├── 35b62086-902c (2023-03-12 13:04:23.979636 +0000 UTC)
+            ├── ca2c2a5f-a82a (2023-03-12 19:35:05.878879 +0000 UTC)
+            └── eefb9c8a-b69a (2023-03-12 19:43:17.133756 +0000 UTC)
+
+
 
 Requirements
 ============
