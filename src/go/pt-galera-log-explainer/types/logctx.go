@@ -123,7 +123,7 @@ func (logCtx *LogCtx) AddOwnHash(hash string, date time.Time) {
 	logCtx.OwnHashes = append(logCtx.OwnHashes, hash)
 
 	// optimistically assume this new hash will have the same ip/name
-	// it may be wrong in some situations (all operator related, it will be overriden eventually in those)
+	// it may be wrong in some situations (all operator related, it will be overridden eventually in those)
 	// but it will also bridge the gap in sparse on-premise logs
 	// why only the last one: the earliest information may be obsolete
 	if lenIPs := len(logCtx.OwnIPs); lenIPs > 0 {
