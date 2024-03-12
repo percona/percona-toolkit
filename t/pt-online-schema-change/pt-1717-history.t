@@ -38,25 +38,6 @@ my $sample = "t/pt-online-schema-change/samples";
 
 $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 
-# First test option --history
-# * - Test done for the development step
-# ** - Test done for two development steps
-# 1.** If table percona.pt_osc not created when option not specified
-# 2. If table percona.pt_osc created when option present
-# 2.1.** Default name
-# 2.2.** Custom name
-# 2.3.** Second run should not fail or modify this table (except inserting a row for new job)
-# 2.4.** Case for binary index
-# 2.5.** Second run for the binary index
-# 2.6.** Case for invalid existing table
-# 2.7.** Case for invalid existing table and binary index
-# 3.** Inserting db, tbl, alter, args
-# 4. Updating lower and upper boundaries
-# 4.1. In situation when pt-osc finishes correctly
-# 4.1.1.* `done` set to 'yes'
-# 4.2. In failures
-# 4.2.1. `done` set to 'no'
-
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
          '--alter', 'engine=innodb', '--execute') }
@@ -319,6 +300,7 @@ is(
 ) or diag($output);
 
 $output = `/tmp/12345/use -N -e "select count(*) from information_schema.tables where TABLE_SCHEMA='pt_1717' and table_name='pt_1717_history'"`;
+
 is(
    $output + 0,
    1,

@@ -8812,13 +8812,15 @@ sub main {
       PTDEBUG && _d('Last chunk:', Dumper($last_chunk));
 
       if ( !$last_chunk || !$last_chunk->{new_table_name} ) {
-         _die("Option --resume refers non-existing chunk: ${old_job_id}. Exiting."
+         $oktorun = undef;
+         _die("Option --resume refers non-existing job ID: ${old_job_id}. Exiting."
             , UNSUPPORTED_OPERATION);
       }
 
       if ( $last_chunk->{db} ne $db
          || $last_chunk->{tbl} ne $tbl
          || $last_chunk->{altr} ne $o->get('alter') ){
+         $oktorun = undef;
          _die("Essential options for the failed job are different from current:\n"
             . "Database: failed - $last_chunk->{db}, current - ${db}\n"
             . "Table: failed - $last_chunk->{tbl}, current - ${tbl}\n"
@@ -8828,8 +8830,27 @@ sub main {
       }
 
       if ( $last_chunk->{done} eq 'yes' ) {
+         $oktorun = undef;
          _die("Copying rows for job ${old_job_id} finished.\n"
             . "Nothing to do. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+
+      my $json = JSON->new->allow_nonref;
+      my $opt_hash = $json->decode($last_chunk->{args});
+      if ( ( ($opt_hash->{'chunk-index'} // '') ne ($o->get('chunk-index') // '') )
+         || ( ($opt_hash->{'chunk-index-columns'} // '')
+            ne ($o->get('chunk-index-columns') // '') )
+      ) {
+         $oktorun = undef;
+         _die("User-specified chunk index does not match stored one\n"
+            . "Stored chunk index: " . ($opt_hash->{'chunk-index'}//'') . "\n"
+            . "User-specified chunk index: " . ($o->get('chunk-index')//'') . "\n"
+            . "Stored value of --chunk-index-columns: "
+            . ($opt_hash->{'chunk-index-columns'}//'') . "\n"
+            . "User-specified value of --chunk-index-columns: "
+            . ($o->get('chunk-index-columns')//'') . "\n"
+            . "Cannot resume job ${old_job_id}. Exiting."
             , UNSUPPORTED_OPERATION);
       }
    }
@@ -9042,7 +9063,7 @@ sub main {
                my $is_skip = 0;
                for my $slave_to_skip (@$slaves_to_skip) {
                   if ( $slave->{dsn}->{h} eq $slave_to_skip->{h} ) {
-                     my $skip_slave_port = defined($slave_to_skip->{P}) 
+                     my $skip_slave_port = defined($slave_to_skip->{P})
                         ? $slave_to_skip->{P} : '3306';
                      if ( ($slave->{dsn}->{P} eq $skip_slave_port) ) {
                         print "Skipping slave " . $slave->description() . "\n";
@@ -9587,6 +9608,19 @@ sub main {
          tbl  => $new_table_name,
          name => $q->quote($orig_tbl->{db}, $new_table_name),
       };
+
+      my $sql = "SELECT COUNT(*) AS c FROM information_schema.tables "
+                  . "WHERE TABLE_SCHEMA = ? and TABLE_NAME = ?";
+      PTDEBUG && _d($sql);
+      my $sth = $cxn->dbh()->prepare($sql);
+      $sth->execute($new_tbl->{db}, $new_tbl->{tbl});
+      my $cnt = $sth->fetchrow_hashref();
+      $sth->finish();
+      PTDEBUG && _d("Found table: $cnt->{c}");
+      if ( !$cnt->{c} || int($cnt->{c}) != 1 ) {
+         _die("New table $new_tbl->{name} not found, restart operation from scratch"
+            , UNSUPPORTED_OPERATION);
+      }
    }
    else {
       $new_table_name   = $o->get('new-table-name');
@@ -9621,7 +9655,7 @@ sub main {
          "UPDATE ${hist_table} SET new_table_name = ?"
       );
       $sth->execute($new_tbl->{tbl});
-   } 
+   }
 
    # If the new table still exists, drop it unless the tool was interrupted.
    push @cleanup_tasks, sub {
@@ -9637,8 +9671,7 @@ sub main {
       my $sql = "DROP TABLE IF EXISTS $new_tbl->{name};";
       if ( !$oktorun ) {
          # The tool was interrupted, so do not drop the new table
-         # in case the user wants to resume (once resume capability
-         # is implemented).
+         # in case the user wants to resume.
          print "Not dropping the new table $new_tbl->{name} because "
              . "the tool was interrupted.  To drop the new table, "
              . "execute:\n$sql\n";
@@ -9904,69 +9937,117 @@ sub main {
       }
    };
 
-   if ( !$o->got('resume') ) {
-      # --plugin hook
-      if ( $plugin && $plugin->can('before_create_triggers') ) {
-         $plugin->before_create_triggers();
-      }
+   # --plugin hook
+   if ( $plugin && $plugin->can('before_create_triggers') ) {
+      $plugin->before_create_triggers();
+   }
 
-      my @trigger_names = eval {
+   my @trigger_names = eval {
+      create_triggers(
+         orig_tbl     => $orig_tbl,
+         new_tbl      => $new_tbl,
+         del_tbl      => $del_tbl,
+         columns      => \@common_cols,
+         Cxn          => $cxn,
+         Quoter       => $q,
+         OptionParser => $o,
+         Retry        => $retry,
+         tries        => $tries,
+         stats        => \%stats,
+         dont         => $o->got('resume'),
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      $oktorun = undef;
+      _die("Error creating triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
+   };
+
+   # We do not create triggers if option --resume is provided
+   # but we need to check if triggers exist
+   if ( $o->got('resume') ) {
+      my $sql = "SELECT COUNT(*) AS c FROM "
+               . "INFORMATION_SCHEMA.TRIGGERS "
+               . "WHERE TRIGGER_SCHEMA = ? AND TRIGGER_NAME = ?";
+      my $sth = $cxn->dbh()->prepare($sql);
+      foreach my $trigger_name ( @trigger_names ) {
+         PTDEBUG && _d("Checking trigger: $orig_tbl->{db}.$trigger_name");
+         $sth->execute($orig_tbl->{db}, $trigger_name);
+         my $cnt = $sth->fetchrow_hashref();
+         PTDEBUG && _d("Found table: $cnt->{c}");
+         if ( !$cnt->{c} || int($cnt->{c}) != 1 ) {
+            $oktorun = undef;
+            _die("Trigger $orig_tbl->{db}.$trigger_name not found, "
+               . "restart operation from scratch to avoid data loss"
+               , UNSUPPORTED_OPERATION);
+         }
+      }
+      $sth->finish();
+   }
+
+   if ( $o->get('reverse-triggers') ) {
+      print "Adding reverse triggers\n";
+      my $old_tbl_name = '_'.$orig_tbl->{tbl}.'_old';
+      my $new_tbl_name = '_'.$orig_tbl->{tbl}.'_new';
+
+      my $old_tbl = {
+         db   => $orig_tbl->{db},
+         name => '`'.$orig_tbl->{db}.'`.`'.$old_tbl_name.'`',
+         tbl  => $old_tbl_name,
+      };
+      my $new_tbl = {
+         db   => $orig_tbl->{db},
+         name => '`'.$orig_tbl->{db}.'`.`'.$new_tbl_name.'`',
+         tbl  => $new_tbl_name,
+      };
+
+      my @reverse_trigger_names=eval {
          create_triggers(
-            orig_tbl     => $orig_tbl,
-            new_tbl      => $new_tbl,
-            del_tbl      => $del_tbl,
-            columns      => \@common_cols,
-            Cxn          => $cxn,
-            Quoter       => $q,
-            OptionParser => $o,
-            Retry        => $retry,
-            tries        => $tries,
-            stats        => \%stats,
+            orig_tbl         => $new_tbl,
+            new_tbl          => $old_tbl,
+            del_tbl          => $orig_tbl,
+            columns          => \@common_cols,
+            Cxn              => $cxn,
+            Quoter           => $q,
+            OptionParser     => $o,
+            Retry            => $retry,
+            tries            => $tries,
+            stats            => \%stats,
+            reverse_triggers => 1,
+            dont             => $o->got('resume'),
          );
       };
       if ( $EVAL_ERROR ) {
-         _die("Error creating triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
+         $oktorun = undef;
+         _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
       };
 
-      if ( $o->get('reverse-triggers') ) {
-         print "Adding reverse triggers\n";
-         eval {
-            my $old_tbl_name = '_'.$orig_tbl->{tbl}.'_old';
-            my $new_tbl_name = '_'.$orig_tbl->{tbl}.'_new';
-
-            my $old_tbl = {
-               db   => $orig_tbl->{db},
-               name => '`'.$orig_tbl->{db}.'`.`'.$old_tbl_name.'`',
-               tbl  => $old_tbl_name,
-            };
-            my $new_tbl = {
-               db   => $orig_tbl->{db},
-               name => '`'.$orig_tbl->{db}.'`.`'.$new_tbl_name.'`',
-               tbl  => $new_tbl_name,
-            };
-            my $triggers=create_triggers(
-               orig_tbl         => $new_tbl,
-               new_tbl          => $old_tbl,
-               del_tbl          => $orig_tbl,
-               columns          => \@common_cols,
-               Cxn              => $cxn,
-               Quoter           => $q,
-               OptionParser     => $o,
-               Retry            => $retry,
-               tries            => $tries,
-               stats            => \%stats,
-               reverse_triggers => 1,
-            );
-         };
-         if ( $EVAL_ERROR ) {
-            _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
-         };
+      # We do not create reverse triggers if option --resume is provided
+      # but we need to check if triggers exist
+      if ( $o->got('resume') ) {
+         my $sql = "SELECT COUNT(*) AS c FROM "
+                  . "INFORMATION_SCHEMA.TRIGGERS "
+                  . "WHERE TRIGGER_SCHEMA = ? AND TRIGGER_NAME = ?";
+         my $sth = $cxn->dbh()->prepare($sql);
+         foreach my $trigger_name ( @reverse_trigger_names ) {
+            PTDEBUG && _d("Checking reverse trigger: $orig_tbl->{db}.$trigger_name");
+            $sth->execute($orig_tbl->{db}, $trigger_name);
+            my $cnt = $sth->fetchrow_hashref();
+            PTDEBUG && _d("Found table: $cnt->{c}");
+            if ( !$cnt->{c} || int($cnt->{c}) != 1 ) {
+               $oktorun = undef;
+               _die("Reverse trigger $orig_tbl->{db}.$trigger_name not found, "
+                  . "restart operation from scratch to avoid data loss"
+                  , UNSUPPORTED_OPERATION);
+            }
+         }
+         $sth->finish();
       }
 
-      # --plugin hook
-      if ( $plugin && $plugin->can('after_create_triggers') ) {
-         $plugin->after_create_triggers();
-      }
+   }
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('after_create_triggers') ) {
+      $plugin->after_create_triggers();
    }
 
    # #####################################################################
@@ -11810,7 +11891,7 @@ sub create_triggers {
    # If --preserve-triggers was specified, try to create the original triggers into the new table.
    # We are doing this to ensure the original triggers will work in the new modified table
    # and we want to know this BEFORE copying all rows from the old table to the new one.
-   if ($o->get('preserve-triggers')) {
+   if ($o->get('preserve-triggers') && !$args{dont}) {
        foreach my $trigger_info (@$triggers_info) {
            foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
                my $definer = $orig_trigger->{definer} || '';
@@ -12656,8 +12737,8 @@ Prompt for a password when connecting to MySQL.
 This option modifies the behavior of L<"--history"> such that the
 history table's upper and lower boundary columns are created with the BLOB
 data type.
-This is useful in cases where you changing large tables with keys that
-include a binary data type or that have non-standard character sets.
+This is useful when you change large tables with keys that include a binary
+data type or that have non-standard character sets.
 See L<"--history"> and L<"--resume">.
 
 =item --channel
@@ -13023,8 +13104,6 @@ Show help and exit.
 
 =item --history
 
-default: 0
-
 Write job progress to a table. Unfinished jobs may be restarted by the option L<"--resume">.
 The history table must have this structure (MAGIC_create_pt_osc_history):
 
@@ -13317,11 +13396,11 @@ type: int
 Resume altering table from the last completed chunk. If the tool stops before it finishes
 copying rows, this option makes copying resume from the last chunk copied.
 
-The option accepts ID of the failed job. This ID is printed when pt-online-schema-change 
+The option accepts ID of the failed job. This ID is printed when pt-online-schema-change
 is running with option L<i"--history"> and stored in the L<"--history-table">.
 
-Warning! To use this option previous, failed, run of pt-online-schema-change should use options 
-L<"--history">, L<"--nodrop-new-table">, and L<"--nodrop-triggers">. Otherwise, 
+Warning! To use this option previous, failed, run of pt-online-schema-change should use options
+L<"--history">, L<"--nodrop-new-table">, and L<"--nodrop-triggers">. Otherwise,
 pt-online-schema-change would not be able to resume.
 
 =item --skip-check-slave-lag
@@ -13521,8 +13600,8 @@ keyword.  You might need to quote the value.  Here is an example:
 
   pt-online-schema-change --where "id > 12345678"
 
-IMPORTANT. If used without options --no-drop-new-table and --no-swap-tables
-may lead to data loss, therefore this operation only allowed if option --force
+Warning! If used without options L<"--no-drop-new-table"> and L<"--no-swap-tables">
+may lead to data loss, therefore this operation only allowed if option L<"--force">
 also specified.
 
 =item --[no]fail-on-stopped-replication
