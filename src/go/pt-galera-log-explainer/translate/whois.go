@@ -21,8 +21,6 @@ type WhoisValue struct {
 	SubNodes  map[string]*WhoisNode `json:",omitempty"` // associating the next node to a type of value (uuid, ip, node name)
 }
 
-type subNode map[string]*WhoisNode
-
 // When initiating recursion, instead of iterating over maps we should iterate over a fixed order of types
 // maps orders are not guaranteed, and there are multiple paths of identifying information
 // Forcing the order ultimately helps to provide repeatable output, so it helps with regression tests
