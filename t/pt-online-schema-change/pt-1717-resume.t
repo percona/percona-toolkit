@@ -137,7 +137,7 @@ set_delay();
 # We need to sleep, otherwise pt-osc can finish before slave is delayed
 sleep($max_lag);
 
-my $args = "$master_dsn,D=test,t=pt1717 --execute --chunk-size ${chunk_size} --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nodrop-new-table --nodrop-triggers --history";
+my $args = "$master_dsn,D=test,t=pt1717 --execute --chunk-size ${chunk_size} --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --no-drop-new-table --no-drop-triggers --history";
 
 $output = run_broken_job($args);
 
