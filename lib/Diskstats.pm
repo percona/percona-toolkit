@@ -571,9 +571,13 @@ sub design_print_formats {
 sub parse_diskstats_line {
    my ( $self, $line, $block_size ) = @_;
 
-   # Since we assume that device names can't have spaces.
+   # linux kernel source => Documentation/iostats.txt
+   # 2.6+ => 14 fields
+   # 4.18+ => 18 fields
+   # 5.x+ => 20 fields (PT-1887)
+   my @num_fields = (14, 18, 20);
    my @dev_stats = split ' ', $line;
-   return unless @dev_stats == 14;
+   return unless grep {$_ == scalar(@dev_stats)} @num_fields;
 
    my $read_bytes    = $dev_stats[READ_SECTORS]    * $block_size;
    my $written_bytes = $dev_stats[WRITTEN_SECTORS] * $block_size;
