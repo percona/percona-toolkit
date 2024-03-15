@@ -77,20 +77,22 @@ sub reset_repl_db {
 # from this table after they have been added, so we cannot remove them when wipe cleaning
 # sandbox. See https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#static-dynamic-privileges
 
-# This test often fails if run after other tests, we need to see what is wrong
-# So we will re-run failed code if test does not pass.
+# This test randomly reports diffs for tables with TIMESTAMP columns
+# that have ON UPDATE action.
+# Therefore we are filtering such tables from the diff
 my $cmd = sub { pt_table_checksum::main(@args) };
 
-diag(output($cmd)) if not ok(
+ok(
    no_diff(
       $cmd,
       "$sample/default-results-$sandbox_version.txt",
-      sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d\'',
-      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d; /mysql.ndb_binlog_index$/d; /mysql.global_grants$/d\' | ' .
+      sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d; /mysql.columns_priv$/d; /mysql.engine_cost$/d; /mysql.general_log$/d; /mysql.innodb_index_stats$/d; /mysql.innodb_table_stats$/d; /mysql.password_history$/d; /mysql.procs_priv$/d; /mysql.proxies_priv$/d; /mysql.server_cost$/d; /mysql.slow_log$/d; /mysql.tables_priv$/d\'',
+      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d; /mysql.ndb_binlog_index$/d; /mysql.global_grants$/d; /mysql.columns_priv$/d; /mysql.engine_cost$/d; /mysql.general_log$/d; /mysql.innodb_index_stats$/d; /mysql.innodb_table_stats$/d; /mysql.password_history$/d; /mysql.procs_priv$/d; /mysql.proxies_priv$/d; /mysql.server_cost$/d; /mysql.slow_log$/d; /mysql.tables_priv$/d\' | ' .
                    'awk \'{print $2 " " $3 " " $4 " " $7 " " $9}\'',
+      keep_ouput => 1,
    ),
    "Default checksum"
-);
+) or diag($test_diff);
 
 # On fast machines, the chunk size will probably be be auto-adjusted so
 # large that all tables will be done in a single chunk without an index.

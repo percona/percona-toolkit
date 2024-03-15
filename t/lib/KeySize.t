@@ -17,6 +17,7 @@ use Quoter;
 use DSNParser;
 use Sandbox;
 use PerconaTest;
+require VersionParser;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -64,13 +65,18 @@ is(
 
 # Populate the table to make the WHERE possible.
 $dbh->do('INSERT INTO test.dupe_key VALUE (1,2,3),(4,5,6),(7,8,9),(0,0,0)');
-is_deeply(
-   [$ks->get_key_size(%key)],
-   [20, 'a'],
-   'Single column int key'
-);
+
+SKIP: {
+   skip "MySQL error https://bugs.mysql.com/bug.php?id=113892", 1 if ($sandbox_version ge '8.0' and VersionParser->new($dbh) ge '8.0.35');
+   is_deeply(
+      [$ks->get_key_size(%key)],
+      [20, 'a'],
+      'Single column int key'
+   );
+}
 
 $key{name} = 'a_2';
+$key{cols} = $key{tbl_struct}->{keys}->{'a_2'}->{cols};
 is_deeply(
    [$ks->get_key_size(%key)],
    [40, 'a_2'],

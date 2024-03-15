@@ -507,7 +507,7 @@ is(
    $output,
    0,
    "Retention test 3: tests, matched auto-generated patern, are removed"
-);
+) or diag(`ls -l $dest`);
 
 # ###########################################################################
 # Test if retention by size works as expected
@@ -993,8 +993,8 @@ SKIP: {
 # Done.
 # #############################################################################
 
-
 cleanup();
 diag(`rm -rf $dest 2>/dev/null`);
+$sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

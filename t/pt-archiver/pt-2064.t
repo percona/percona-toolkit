@@ -37,6 +37,9 @@ $sb->create_dbs($master_dbh, ['test']);
 $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
 $sb->wait_for_slaves();
 
+my $old_innodb_lock_wait_timeout = `/tmp/12345/use -ss -e 'select \@\@global.innodb_lock_wait_timeout'`;
+chomp $old_innodb_lock_wait_timeout;
+
 $master_dbh->do('set global innodb_lock_wait_timeout=1');
 
 $master_dbh->do('begin');
@@ -59,7 +62,7 @@ unlike(
 # #############################################################################
 # Done.
 # #############################################################################
-$master_dbh->do('set global innodb_lock_wait_timeout=DEFAULT');
+$master_dbh->do("set global innodb_lock_wait_timeout=$old_innodb_lock_wait_timeout");
 
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");

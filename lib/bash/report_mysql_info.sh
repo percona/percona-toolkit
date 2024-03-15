@@ -1547,7 +1547,7 @@ report_mysql_summary () {
       fi
    fi
 
-   local has_rocksdb=$(cat $dir/mysql-plugins | grep -i 'rocksdb.*active.*storage engine')
+   local has_rocksdb="$(cat $dir/mysql-plugins | grep -i 'rocksdb.*active.*storage engine')"
    if [ ! -z "$has_rocksdb" ]; then
        section "RocksDB"
        section_rocksdb "$dir/mysql-variables" "$dir/mysql-status"
