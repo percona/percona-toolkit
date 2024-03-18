@@ -7,6 +7,7 @@ TOOL="pt-stalk"
 PT_TMPDIR="$TEST_PT_TMPDIR"
 
 source "$LIB_DIR/log_warn_die.sh"
+source "$LIB_DIR/alt_cmds.sh"
 source "$LIB_DIR/parse_options.sh"
 
 # ############################################################################

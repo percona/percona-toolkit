@@ -26,6 +26,10 @@
 # GLOBAL $PT_TMPDIR AND $TOOL MUST BE SET BEFORE USING THIS LIB!
 # XXX
 
+# XXX
+# THIS LIB REQUIRES alt_cmds!
+# XXX
+
 # Parsing command line options with Bash is easy until we have to dealt
 # with values that have spaces, e.g. --option="hello world".  This is
 # further complicated by command line vs. config file.  From the command
@@ -84,6 +88,11 @@ usage_or_errors() {
    if [ "$OPT_VERSION" ]; then
       version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
+      return 1
+   fi
+
+   if [ -z $(_which perl) ]; then
+      echo "Perl binary required to run this tool"
       return 1
    fi
 
