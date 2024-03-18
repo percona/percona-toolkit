@@ -121,6 +121,22 @@ func TestMain(t *testing.T) {
 			cmd:  []string{"list", "--all", "--no-color"},
 			path: "tests/logs/conflict/*",
 		},
+
+		{
+			name: "merge_rotated_daily_list_all_custom_regex_dynamic_output_no_color",
+			cmd:  []string{"list", "--all", "--custom-regexes=Page cleaner took [0-9]*ms to flush 2000=", "--no-color"},
+			path: "tests/logs/merge_rotated_daily/node1.20230315.log",
+		},
+		{
+			name: "merge_rotated_daily_list_all_custom_regex_static_output_no_color",
+			cmd:  []string{"list", "--all", "--custom-regexes=Page cleaner took=some custom static msg", "--no-color"},
+			path: "tests/logs/merge_rotated_daily/node1.20230315.log",
+		},
+		{
+			name: "merge_rotated_daily_list_all_multiple_custom_regex_dynamic_output_no_color",
+			cmd:  []string{"list", "--all", "--custom-regexes=Page cleaner took [0-9]*ms to flush 2000=;use of .*pxc_strict_mode=", "--no-color"},
+			path: "tests/logs/merge_rotated_daily/node1.20230315.log",
+		},
 	}
 
 TESTS:

@@ -150,7 +150,7 @@ Available flags
     Detection is done using a prefix regex.
 
 ``--exclude-regexes``
-    Remove regexes from analysis. Use 'pt-galera-log-explainer regex-list | jq .' to have the list
+    Remove regexes from analysis. Use ``pt-galera-log-explainer regex-list | jq .`` to have the list
     
 ``--grep-cmd``
     grep v3 binary command path. For Darwin systems, it could need to be set to ``ggrep``
@@ -158,6 +158,11 @@ Available flags
 
 ``--version``
     Show version and exit.
+
+``--custom-regexes``
+    Add custom regexes, printed in magenta. Format: (golang regex string)=[optional static message to display].
+    If the static message is left empty, the captured string will be printed instead. Custom regexes are separated using semi-colon.
+    Example: ``--custom-regexes="Page cleaner took [0-9]*ms to flush [0-9]* pages=;doesn't recommend.*pxc_strict_mode=unsafe query used"``
 
 
 Example outputs
