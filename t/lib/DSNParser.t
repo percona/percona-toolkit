@@ -271,7 +271,7 @@ SKIP: {
    is($d->{S}, '/tmp/12345/mysql_sandbox12345.sock', 'Filled in socket');
    is($d->{h}, '127.0.0.1', 'Left hostname alone');
 
-   my $want = $sandbox_version lt '8.0' ? [ qw(utf8 utf8 utf8) ]: [ qw(utf8mb4 utf8mb4 utf8mb4) ];
+   my $want = $sandbox_version lt '8.0' ? [ qw(utf8 utf8 utf8) ]: [ qw(utf8mb3 utf8mb3 utf8mb3) ];
    
    is_deeply(
       $dbh->selectrow_arrayref('select @@character_set_client, @@character_set_connection, @@character_set_results'),
