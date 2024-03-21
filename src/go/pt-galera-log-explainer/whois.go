@@ -33,14 +33,15 @@ Regarding UUIDs (wsrep_gcomm_uuid), different format can be found in logs depend
 func (w *whois) Run() error {
 
 	if w.SearchType == "auto" {
-		if regex.IsNodeUUID(w.Search) {
+		switch {
+		case regex.IsNodeUUID(w.Search):
 			w.Search = utils.UUIDToShortUUID(w.Search)
 			w.SearchType = "uuid"
-		} else if regex.IsNodeIP(w.Search) {
+		case regex.IsNodeIP(w.Search):
 			w.SearchType = "ip"
-		} else if len(w.Search) != 8 { // at this point it's only a doubt between names and legacy node uuid, where only the first part of the uuid was shown in log
+		case len(w.Search) != 8:
 			w.SearchType = "nodename"
-		} else {
+		default:
 			log.Info().Msg("input information's type is ambiguous, scanning files to discover the type. You can also provide --type to avoid auto-detection")
 		}
 	}
