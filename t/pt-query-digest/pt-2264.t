@@ -53,13 +53,13 @@ like(
    $output,
    qr/😜/,
    'Smiley character successfully printed in the output'
-);
+) or diag($output);
 
 unlike(
    $output,
    qr/Wide character in print at/,
    'Smiley character did not cause error'
-);
+) or diag($output);
 
 # #############################################################################
 # Done.
