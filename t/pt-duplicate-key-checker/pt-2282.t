@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 3;
+   plan tests => 5;
 }
 
 my $output;
@@ -42,6 +42,18 @@ unlike(
    $output,
    qr/Wide character in print at/,
    'No "Wide character in print at" error'
+);
+
+like(
+   $output,
+   qr/Total Duplicate Indexes  2/,
+   'Number of duplicate indexes reported is correct'
+);
+
+like(
+   $output,
+   qr/Total Indexes            7/,
+   'Number of indexes reported is correct'
 );
 
 like(
