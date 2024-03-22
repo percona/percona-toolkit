@@ -40,6 +40,8 @@ func (w *whois) Run() error {
 		case regex.IsNodeIP(w.Search):
 			w.SearchType = "ip"
 		case len(w.Search) != 8:
+			// at this point it's only a doubt between names and legacy node uuid, where only the first part of the uuid was shown in log
+			// legacy UUIDs were 8 characters long, so anything else has to be nodename
 			w.SearchType = "nodename"
 		default:
 			log.Info().Msg("input information's type is ambiguous, scanning files to discover the type. You can also provide --type to avoid auto-detection")

@@ -70,10 +70,10 @@ func AddHashToIP(hash, ip string, ts time.Time) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
 	latestValue, ok := db.HashToIP[hash]
-	if !ok || latestValue == nil {
-		db.HashToIP[hash] = &translationUnit{Value: ip, Timestamp: ts}
-	} else {
+	if ok && latestValue != nil {
 		latestValue.UpdateTimestamp(ts)
+	} else {
+		db.HashToIP[hash] = &translationUnit{Value: ip, Timestamp: ts}
 	}
 }
 
