@@ -96,7 +96,7 @@ func testMostAppropriateValueFromTS(t *testing.T) {
 
 	for i, test := range tests {
 		out := mostAppropriateValueFromTS(test.inputunits, test.inputts)
-		if out != test.expected {
+		if out.Value != test.expected {
 			t.Errorf("test %d, expected: %s, got: %s", i, test.expected, out)
 		}
 	}

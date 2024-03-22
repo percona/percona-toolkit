@@ -21,15 +21,14 @@ func TestPXCOperatorRegex(t *testing.T) {
 			},
 			expected: regexTestState{
 				LogCtx: types.LogCtx{
-					MyIdx:       "0",
-					MemberCount: 3,
-					OwnHashes:   []string{"45406e8d-95fc"},
-					OwnNames:    []string{"cluster1-0"},
+					MyIdx:     "0",
+					OwnHashes: []string{"45406e8d-95fc"},
+					OwnNames:  []string{"cluster1-0"},
 				},
 				HashToNodeNames: map[string]string{"45406e8d-95fc": "cluster1-0", "5bf18376-8333": "cluster1-2", "66e2b7bf-8000": "cluster1-1"},
 				State:           "PRIMARY",
 			},
-			expectedOut: "view member count: 3; 45406e8d-95fc is cluster1-0; 5bf18376-8333 is cluster1-2; 66e2b7bf-8000 is cluster1-1; ",
+			expectedOut: "45406e8d-95fc is cluster1-0; 5bf18376-8333 is cluster1-2; 66e2b7bf-8000 is cluster1-1; ",
 			key:         "RegexOperatorMemberAssociations",
 		},
 

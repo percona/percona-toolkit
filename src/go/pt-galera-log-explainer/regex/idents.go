@@ -72,7 +72,7 @@ var IdentsMap = types.RegexMap{
 
 	"RegexMemberCount": &types.LogRegex{
 		Regex:         regexp.MustCompile("members.[0-9]+.:"),
-		InternalRegex: regexp.MustCompile(regexMembers),
+		InternalRegex: regexp.MustCompile("members." + regexMembers + ".:"),
 		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			members := submatches[groupMembers]

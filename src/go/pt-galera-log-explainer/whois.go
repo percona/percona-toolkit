@@ -1,94 +1,88 @@
 package main
 
-/*
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+)
+
 type whois struct {
-	Search string   `arg:"" name:"search" help:"the identifier (node name, ip, uuid, hash) to search"`
-	Paths  []string `arg:"" name:"paths" help:"paths of the log to use"`
+	Search     string   `arg:"" name:"search" help:"the identifier (node name, ip, uuid) to search"`
+	SearchType string   `name:"type" help:"what kind of information is the input (node name, ip, uuid). Auto-detected when possible." enum:"nodename,ip,uuid,auto" default:"auto"`
+	Paths      []string `arg:"" name:"paths" help:"paths of the log to use"`
+	Json       bool
 }
 
 func (w *whois) Help() string {
 	return `Take any type of info pasted from error logs and find out about it.
-It will list known node name(s), IP(s), hostname(s), and other known node's UUIDs.
+It will list known node name(s), IP(s), and other known node's UUIDs.
+
+Regarding UUIDs (wsrep_gcomm_uuid), different format can be found in logs depending on versions : 
+- UUID, example: ac0f3910-9790-486c-afd4-845d0ae95692 
+- short UUID, with only 1st and 4st part: ac0f3910-afd4
+- shortest UUID, with only the 1st part: ac0f3910
 `
 }
 
 func (w *whois) Run() error {
 
-	toCheck := regex.AllRegexes()
-	timeline, err := timelineFromPaths(CLI.Whois.Paths, toCheck)
+	if w.SearchType == "auto" {
+		switch {
+		case regex.IsNodeUUID(w.Search):
+			w.Search = utils.UUIDToShortUUID(w.Search)
+			w.SearchType = "uuid"
+		case regex.IsNodeIP(w.Search):
+			w.SearchType = "ip"
+		case len(w.Search) != 8:
+			// at this point it's only a doubt between names and legacy node uuid, where only the first part of the uuid was shown in log
+			// legacy UUIDs were 8 characters long, so anything else has to be nodename
+			w.SearchType = "nodename"
+		default:
+			log.Info().Msg("input information's type is ambiguous, scanning files to discover the type. You can also provide --type to avoid auto-detection")
+		}
+	}
+
+	_, err := timelineFromPaths(CLI.Whois.Paths, regex.AllRegexes())
 	if err != nil {
 		return errors.Wrap(err, "found nothing to translate")
 	}
-	ctxs := timeline.GetLatestContextsByNodes()
 
-	ni := whoIs(ctxs, CLI.Whois.Search)
-
-	json, err := json.MarshalIndent(ni, "", "\t")
-	if err != nil {
-		return err
+	if w.SearchType == "auto" {
+		if translate.IsNodeUUIDKnown(w.Search) {
+			w.SearchType = "uuid"
+		} else if translate.IsNodeNameKnown(w.Search) {
+			w.SearchType = "nodename"
+		} else {
+			return errors.New("could not detect the type of input. Try to provide --type. It may means the info is unknown")
+		}
 	}
-	fmt.Println(string(json))
+
+	if CLI.Verbosity == types.Debug {
+		out, err := translate.DBToJson()
+		if err != nil {
+			return errors.Wrap(err, "could not dump translation structs to json")
+		}
+		fmt.Println(out)
+	}
+
+	log.Debug().Str("searchType", w.SearchType).Msg("whois searchType")
+
+	out := translate.Whois(w.Search, w.SearchType)
+
+	if w.Json {
+		json, err := json.MarshalIndent(out, "", "\t")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(json))
+	} else {
+		fmt.Println(out)
+	}
 	return nil
 }
-
-func whoIs(ctxs map[string]types.LogCtx, search string) types.NodeInfo {
-		ni := types.NodeInfo{Input: search}
-		if regex.IsNodeUUID(search) {
-			search = utils.UUIDToShortUUID(search)
-		}
-		var (
-			ips       []string
-			hashes    []string
-			nodenames []string
-		)
-			for _, ctx := range ctxs {
-				if utils.SliceContains(ctx.OwnNames, search) || utils.SliceContains(ctx.OwnHashes, search) || utils.SliceContains(ctx.OwnIPs, search) {
-					ni.NodeNames = ctx.OwnNames
-					ni.NodeUUIDs = ctx.OwnHashes
-					ni.IPs = ctx.OwnIPs
-					ni.Hostname = ctx.OwnHostname()
-				}
-
-				if nodename, ok := ctx.HashToNodeName[search]; ok {
-					nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
-					hashes = utils.SliceMergeDeduplicate(hashes, []string{search})
-				}
-
-				if ip, ok := ctx.HashToIP[search]; ok {
-					ips = utils.SliceMergeDeduplicate(ips, []string{ip})
-					hashes = utils.SliceMergeDeduplicate(hashes, []string{search})
-
-				} else if nodename, ok := ctx.IPToNodeName[search]; ok {
-					nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
-					ips = utils.SliceMergeDeduplicate(ips, []string{search})
-
-				} else if utils.SliceContains(ctx.AllNodeNames(), search) {
-					nodenames = utils.SliceMergeDeduplicate(nodenames, []string{search})
-				}
-
-				for _, nodename := range nodenames {
-					hashes = utils.SliceMergeDeduplicate(hashes, ctx.HashesFromNodeName(nodename))
-					ips = utils.SliceMergeDeduplicate(ips, ctx.IPsFromNodeName(nodename))
-				}
-
-				for _, ip := range ips {
-					hashes = utils.SliceMergeDeduplicate(hashes, ctx.HashesFromIP(ip))
-					nodename, ok := ctx.IPToNodeName[ip]
-					if ok {
-						nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
-					}
-				}
-				for _, hash := range hashes {
-					nodename, ok := ctx.HashToNodeName[hash]
-					if ok {
-						nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
-					}
-				}
-			}
-			ni.NodeNames = nodenames
-			ni.NodeUUIDs = hashes
-			ni.IPs = ips
-			return ni
-	return types.NodeInfo{}
-}
-*/

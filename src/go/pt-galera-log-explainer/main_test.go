@@ -137,6 +137,33 @@ func TestMain(t *testing.T) {
 			cmd:  []string{"list", "--all", "--custom-regexes=Page cleaner took [0-9]*ms to flush 2000=;use of .*pxc_strict_mode=", "--no-color"},
 			path: "tests/logs/merge_rotated_daily/node1.20230315.log",
 		},
+		{
+			name: "operator_ambiguous_ips_whois_cluster1-1",
+			cmd:  []string{"whois", "cluster1-1", "--pxc-operator", "--json"},
+			path: "tests/logs/operator_ambiguous_ips/*",
+		},
+
+		{
+			name: "operator_ambiguous_ips_whois_e2239bca-93a3",
+			cmd:  []string{"whois", "e2239bca-93a3", "--pxc-operator", "--json"},
+			path: "tests/logs/operator_ambiguous_ips/*",
+		},
+		{ // symlink to the output of the test above, should be identical
+			name: "operator_ambiguous_ips_whois_e2239bca-256c-11ee-93a3-e23704b1e880",
+			cmd:  []string{"whois", "e2239bca-256c-11ee-93a3-e23704b1e880", "--pxc-operator", "--json"},
+			path: "tests/logs/operator_ambiguous_ips/*",
+		},
+		{
+			name: "operator_ambiguous_ips_whois_tree_no_color_e2239bca-93a3",
+			cmd:  []string{"whois", "e2239bca-93a3", "--pxc-operator", "--no-color"},
+			path: "tests/logs/operator_ambiguous_ips/*",
+		},
+
+		{
+			name: "operator_ambiguous_ips_whois_10.16.27.98",
+			cmd:  []string{"whois", "10.16.27.98", "--pxc-operator", "--json"},
+			path: "tests/logs/operator_ambiguous_ips/*",
+		},
 	}
 
 TESTS:

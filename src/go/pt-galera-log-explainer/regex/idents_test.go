@@ -194,6 +194,14 @@ func TestIdentsRegex(t *testing.T) {
 			},
 			key: "RegexMemberCount",
 		},
+		{
+			log:         "{\"log\":\"2001-01-01T01:01:01.000000Z 10 [Note] [MY-000000] [Galera] ================================================\\nView:\\n  id: 9f191762-2542-11ee-89be-13bdb1218f0e:9339113\\n  status: primary\\n  protocol_version: 4\\n  capabilities: MULTI-MASTER, CERTIFICATION, PARALLEL_APPLYING, REPLAY, ISOLATION, PAUSE, CAUSAL_READ, INCREMENTAL_WS, UNORDERED, PREORDERED, STREAMING, NBO\\n  final: no\\n  own_index: 1\\n  members(2):\\n\\t0: 45406e8d-2de0-11ee-95fc-f29a5fdf1ee0, cluster1-0\\n\\t1: 5bf18376-2de0-11ee-8333-6e755a3456ca, cluster1-2\\n=================================================\\n\",\"file\":\"/var/lib/mysql/mysqld-error.log\"}",
+			expectedOut: "view member count: 2",
+			expected: regexTestState{
+				LogCtx: types.LogCtx{MemberCount: 2},
+			},
+			key: "RegexMemberCount",
+		},
 
 		{
 			log: "2001-01-01T01:01:01.000000Z 1 [Note] [MY-000000] [Galera] ####### My UUID: 60205de0-5cf6-11ec-8884-3a01908be11a",
