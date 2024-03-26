@@ -8586,6 +8586,7 @@ sub main {
    # Get configuration information.
    # ########################################################################
    my $q = new Quoter();
+   my $tp = TableParser->new(Quoter => $q);
    my $o = new OptionParser();
    $o->get_specs();
    $o->get_opts();
@@ -8803,6 +8804,116 @@ sub main {
    my $cxn     = $make_cxn->(dsn => $dsn);
    my $aux_cxn = $make_cxn->(dsn => $dsn, prev_dsn => $dsn);
 
+   my $hist_table = $q->quote($q->split_unquote($o->get('history-table')));
+   my $last_chunk;
+
+   if ( $o->got('resume') ) {
+      my $old_job_id = $o->get('resume');
+      my $sth = $cxn->dbh()->prepare(
+         "SELECT db, tbl, new_table_name, altr, args, "
+         . "lower_boundary, upper_boundary, done "
+         . "FROM ${hist_table} WHERE job_id=?"
+      );
+      $sth->execute($old_job_id);
+      $last_chunk = $sth->fetchrow_hashref();
+      $sth->finish();
+      PTDEBUG && _d('Last chunk:', Dumper($last_chunk));
+
+      if ( !$last_chunk || !$last_chunk->{new_table_name} ) {
+         $oktorun = undef;
+         _die("Option --resume refers non-existing job ID: ${old_job_id}. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+
+      if ( $last_chunk->{db} ne $db
+         || $last_chunk->{tbl} ne $tbl
+         || $last_chunk->{altr} ne $o->get('alter') ){
+         $oktorun = undef;
+         _die("Essential options for the failed job are different from current:\n"
+            . "Database: failed - $last_chunk->{db}, current - ${db}\n"
+            . "Table: failed - $last_chunk->{tbl}, current - ${tbl}\n"
+            . "Alter: failed - $last_chunk->{altr}, current - ". $o->get('alter') . "\n"
+            . "Cannot resume job ${old_job_id}. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+
+      if ( $last_chunk->{done} eq 'yes' ) {
+         $oktorun = undef;
+         _die("Copying rows for job ${old_job_id} finished.\n"
+            . "Nothing to do. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+
+      my $json = JSON->new->allow_nonref;
+      my $opt_hash = $json->decode($last_chunk->{args});
+      if ( ( ($opt_hash->{'chunk-index'} // '') ne ($o->get('chunk-index') // '') )
+         || ( ($opt_hash->{'chunk-index-columns'} // '')
+            ne ($o->get('chunk-index-columns') // '') )
+      ) {
+         $oktorun = undef;
+         _die("User-specified chunk index does not match stored one\n"
+            . "Stored chunk index: " . ($opt_hash->{'chunk-index'}//'') . "\n"
+            . "User-specified chunk index: " . ($o->get('chunk-index')//'') . "\n"
+            . "Stored value of --chunk-index-columns: "
+            . ($opt_hash->{'chunk-index-columns'}//'') . "\n"
+            . "User-specified value of --chunk-index-columns: "
+            . ($o->get('chunk-index-columns')//'') . "\n"
+            . "Cannot resume job ${old_job_id}. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+   }
+
+   my $job_id;
+   my $hist_sth;
+   my $done_sth;
+
+   if ( $o->get('history') ) {
+      my $got_json = eval { require JSON };
+      if ( $EVAL_ERROR ) {
+         die("Option --history requires Perl JSON module.\n"
+            . "Install via cpanm:\n\tcpanm JSON\n"
+            . "Install via CPAN shell::\n\tperl -MCPAN -e shell\n\tinstall JSON\n"
+            . "Install on Debian/Ubuntu:\n\tapt install -y libjson-perl\n"
+            . "Install on RedHat/OEL/CentOS:\n\tyum -y install perl-JSON\n"
+         );
+      }
+      create_history_table(
+         dbh          => $cxn->dbh(),
+         hist_table   => $hist_table,
+         OptionParser => $o,
+         TableParser  => $tp,
+         Quoter       => $q,
+      );
+      # parsing args here
+      my $json = JSON->new->allow_nonref;
+      my %opts = $o->opts();
+      my $opt_hash = {};
+      while ( my ($opt, $value) = each (%opts) ) {
+         if ( $value->{got} ) {
+            $opt_hash->{$opt} = $value->{value} ;
+         }
+      }
+
+      my $json_str = $json->encode($opt_hash);
+
+      my $insert_sth = $cxn->dbh()->prepare(
+         "INSERT INTO ${hist_table} (db, tbl, altr, args)"
+         . "VALUES(?, ?, ?, ?)"
+      );
+      PTDEBUG && _d($insert_sth);
+      $insert_sth->execute($db, $tbl, $o->get('alter'), $json_str);
+      $job_id = $insert_sth->last_insert_id();
+      print ts("Job ${job_id} started.\n");
+      $hist_sth = $cxn->dbh()->prepare(
+         "UPDATE ${hist_table} SET lower_boundary = ?, upper_boundary = ? "
+         . "WHERE job_id = ${job_id}"
+      );
+      $done_sth = $cxn->dbh()->prepare(
+         "UPDATE ${hist_table} SET done = 'yes' "
+         . "WHERE job_id = ${job_id}"
+      );
+   }
+
    my $cluster = Percona::XtraDB::Cluster->new;
    if ( $cluster->is_cluster_node($cxn) ) {
       # Because of https://bugs.launchpad.net/codership-mysql/+bug/1040108
@@ -8960,7 +9071,7 @@ sub main {
                my $is_skip = 0;
                for my $slave_to_skip (@$slaves_to_skip) {
                   if ( $slave->{dsn}->{h} eq $slave_to_skip->{h} ) {
-                     my $skip_slave_port = defined($slave_to_skip->{P}) 
+                     my $skip_slave_port = defined($slave_to_skip->{P})
                         ? $slave_to_skip->{P} : '3306';
                      if ( ($slave->{dsn}->{P} eq $skip_slave_port) ) {
                         print "Skipping slave " . $slave->description() . "\n";
@@ -9216,7 +9327,6 @@ sub main {
    # ########################################################################
    # Setup and check the original table.
    # ########################################################################
-   my $tp = TableParser->new(Quoter => $q);
 
    # Common table data struct (that modules like NibbleIterator expect).
    my $orig_tbl = {
@@ -9420,6 +9530,9 @@ sub main {
          }
          else {
             print "$orig_tbl->{name} was not altered.\n";
+            if ( $o->get('history') ) {
+               print "History saved. Job id: ${job_id}\n";
+            }
          }
       }
       return;
@@ -9498,31 +9611,66 @@ sub main {
    # Step 1: Create the new table.
    # #####################################################################
 
-   my $new_table_name   = $o->get('new-table-name');
-   my $new_table_prefix = $o->got('new-table-name') ? undef : '_';
+   my $new_table_name;
+   my $new_table_prefix;
+   my $new_tbl;
 
-   # --plugin hook
-  if ( $plugin && $plugin->can('before_create_new_table') ) {
-      $plugin->before_create_new_table(
+   if ( $last_chunk ) {
+      $new_table_name = $last_chunk->{new_table_name};
+      $new_table_prefix = undef;
+
+      $new_tbl = {
+         db   => $orig_tbl->{db},
+         tbl  => $new_table_name,
+         name => $q->quote($orig_tbl->{db}, $new_table_name),
+      };
+
+      my $sql = "SELECT COUNT(*) AS c FROM information_schema.tables "
+                  . "WHERE TABLE_SCHEMA = ? and TABLE_NAME = ?";
+      PTDEBUG && _d($sql);
+      my $sth = $cxn->dbh()->prepare($sql);
+      $sth->execute($new_tbl->{db}, $new_tbl->{tbl});
+      my $cnt = $sth->fetchrow_hashref();
+      $sth->finish();
+      PTDEBUG && _d("Found table: $cnt->{c}");
+      if ( !$cnt->{c} || int($cnt->{c}) != 1 ) {
+         _die("New table $new_tbl->{name} not found, restart operation from scratch"
+            , UNSUPPORTED_OPERATION);
+      }
+   }
+   else {
+      $new_table_name   = $o->get('new-table-name');
+      $new_table_prefix = $o->got('new-table-name') ? undef : '_';
+
+      # --plugin hook
+      if ( $plugin && $plugin->can('before_create_new_table') ) {
+         $plugin->before_create_new_table(
             new_table_name   => $new_table_name,
             new_table_prefix => $new_table_prefix,
-      );
+         );
+      }
+
+      eval {
+         $new_tbl = create_new_table(
+            new_table_name   => $new_table_name,
+            new_table_prefix => $new_table_prefix,
+            orig_tbl         => $orig_tbl,
+            Cxn              => $cxn,
+            Quoter           => $q,
+            OptionParser     => $o,
+            TableParser      => $tp,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         _die("Error creating new table: $EVAL_ERROR", ERROR_CREATING_NEW_TABLE);
+      }
    }
 
-   my $new_tbl;
-   eval {
-      $new_tbl = create_new_table(
-         new_table_name   => $new_table_name,
-         new_table_prefix => $new_table_prefix,
-         orig_tbl         => $orig_tbl,
-         Cxn              => $cxn,
-         Quoter           => $q,
-         OptionParser     => $o,
-         TableParser      => $tp,
+   if ( $o->get('history') ) {
+      my $sth = $cxn->dbh()->prepare(
+         "UPDATE ${hist_table} SET new_table_name = ?"
       );
-   };
-   if ( $EVAL_ERROR ) {
-      _die("Error creating new table: $EVAL_ERROR", ERROR_CREATING_NEW_TABLE);
+      $sth->execute($new_tbl->{tbl});
    }
 
    # If the new table still exists, drop it unless the tool was interrupted.
@@ -9539,8 +9687,7 @@ sub main {
       my $sql = "DROP TABLE IF EXISTS $new_tbl->{name};";
       if ( !$oktorun ) {
          # The tool was interrupted, so do not drop the new table
-         # in case the user wants to resume (once resume capability
-         # is implemented).
+         # in case the user wants to resume.
          print "Not dropping the new table $new_tbl->{name} because "
              . "the tool was interrupted.  To drop the new table, "
              . "execute:\n$sql\n";
@@ -9823,45 +9970,95 @@ sub main {
          Retry        => $retry,
          tries        => $tries,
          stats        => \%stats,
+         dont         => $o->got('resume'),
       );
    };
    if ( $EVAL_ERROR ) {
+      $oktorun = undef;
       _die("Error creating triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
    };
 
-   if ( $o->get('reverse-triggers') ) {
-       print "Adding reverse triggers\n";
-       eval {
-           my $old_tbl_name = '_'.$orig_tbl->{tbl}.'_old';
-           my $new_tbl_name = '_'.$orig_tbl->{tbl}.'_new';
+   # We do not create triggers if option --resume is provided
+   # but we need to check if triggers exist
+   if ( $o->got('resume') ) {
+      my $sql = "SELECT COUNT(*) AS c FROM "
+               . "INFORMATION_SCHEMA.TRIGGERS "
+               . "WHERE TRIGGER_SCHEMA = ? AND TRIGGER_NAME = ?";
+      my $sth = $cxn->dbh()->prepare($sql);
+      foreach my $trigger_name ( @trigger_names ) {
+         PTDEBUG && _d("Checking trigger: $orig_tbl->{db}.$trigger_name");
+         $sth->execute($orig_tbl->{db}, $trigger_name);
+         my $cnt = $sth->fetchrow_hashref();
+         PTDEBUG && _d("Found table: $cnt->{c}");
+         if ( !$cnt->{c} || int($cnt->{c}) != 1 ) {
+            $oktorun = undef;
+            _die("Trigger $orig_tbl->{db}.$trigger_name not found, "
+               . "restart operation from scratch to avoid data loss"
+               , UNSUPPORTED_OPERATION);
+         }
+      }
+      $sth->finish();
+   }
 
-           my $old_tbl = {
-               db   => $orig_tbl->{db},
-               name => '`'.$orig_tbl->{db}.'`.`'.$old_tbl_name.'`',
-               tbl  => $old_tbl_name,
-           };
-           my $new_tbl = {
-               db   => $orig_tbl->{db},
-               name => '`'.$orig_tbl->{db}.'`.`'.$new_tbl_name.'`',
-               tbl  => $new_tbl_name,
-           };
-           my $triggers=create_triggers(
-               orig_tbl         => $new_tbl,
-               new_tbl          => $old_tbl,
-               del_tbl          => $orig_tbl,
-               columns          => \@common_cols,
-               Cxn              => $cxn,
-               Quoter           => $q,
-               OptionParser     => $o,
-               Retry            => $retry,
-               tries            => $tries,
-               stats            => \%stats,
-               reverse_triggers => 1,
-           );
-       };
-       if ( $EVAL_ERROR ) {
-          _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
-       };
+   if ( $o->get('reverse-triggers') ) {
+      print "Adding reverse triggers\n";
+      my $old_tbl_name = '_'.$orig_tbl->{tbl}.'_old';
+      my $new_tbl_name = '_'.$orig_tbl->{tbl}.'_new';
+
+      my $old_tbl = {
+         db   => $orig_tbl->{db},
+         name => '`'.$orig_tbl->{db}.'`.`'.$old_tbl_name.'`',
+         tbl  => $old_tbl_name,
+      };
+      my $new_tbl = {
+         db   => $orig_tbl->{db},
+         name => '`'.$orig_tbl->{db}.'`.`'.$new_tbl_name.'`',
+         tbl  => $new_tbl_name,
+      };
+
+      my @reverse_trigger_names=eval {
+         create_triggers(
+            orig_tbl         => $new_tbl,
+            new_tbl          => $old_tbl,
+            del_tbl          => $orig_tbl,
+            columns          => \@common_cols,
+            Cxn              => $cxn,
+            Quoter           => $q,
+            OptionParser     => $o,
+            Retry            => $retry,
+            tries            => $tries,
+            stats            => \%stats,
+            reverse_triggers => 1,
+            dont             => $o->got('resume'),
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         $oktorun = undef;
+         _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
+      };
+
+      # We do not create reverse triggers if option --resume is provided
+      # but we need to check if triggers exist
+      if ( $o->got('resume') ) {
+         my $sql = "SELECT COUNT(*) AS c FROM "
+                  . "INFORMATION_SCHEMA.TRIGGERS "
+                  . "WHERE TRIGGER_SCHEMA = ? AND TRIGGER_NAME = ?";
+         my $sth = $cxn->dbh()->prepare($sql);
+         foreach my $trigger_name ( @reverse_trigger_names ) {
+            PTDEBUG && _d("Checking reverse trigger: $orig_tbl->{db}.$trigger_name");
+            $sth->execute($orig_tbl->{db}, $trigger_name);
+            my $cnt = $sth->fetchrow_hashref();
+            PTDEBUG && _d("Found table: $cnt->{c}");
+            if ( !$cnt->{c} || int($cnt->{c}) != 1 ) {
+               $oktorun = undef;
+               _die("Reverse trigger $orig_tbl->{db}.$trigger_name not found, "
+                  . "restart operation from scratch to avoid data loss"
+                  , UNSUPPORTED_OPERATION);
+            }
+         }
+         $sth->finish();
+      }
+
    }
 
    # --plugin hook
@@ -10056,10 +10253,11 @@ sub main {
          # Exec and time the chunk checksum query.
          $tbl->{nibble_time} = exec_nibble(
             %args,
-            tries   => $tries,
-            Retry   => $retry,
-            Quoter  => $q,
-            stats   => \%stats,
+            tries    => $tries,
+            Retry    => $retry,
+            Quoter   => $q,
+            stats    => \%stats,
+            hist_sth => $hist_sth,
          );
          PTDEBUG && _d('Nibble time:', $tbl->{nibble_time});
 
@@ -10164,6 +10362,10 @@ sub main {
       },
       done => sub {
          if ( $o->get('execute') ) {
+            if ( $o->get('history') ) {
+               $done_sth->execute();
+               print ts("Job ${job_id} finished successfully.\n");
+            }
             print ts("Copied rows OK.\n");
          }
       },
@@ -10192,6 +10394,7 @@ sub main {
       dml                => $dml,
       select             => $select,
       callbacks          => $callbacks,
+      resume             => $last_chunk,
       lock_in_share_mode => $lock_in_share_mode,
       OptionParser       => $o,
       Quoter             => $q,
@@ -10502,6 +10705,110 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub create_history_table {
+   my ( %args ) = @_;
+   my @required_args = qw(dbh hist_table OptionParser TableParser Quoter);
+
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dbh, $hist_table, $o, $tp, $q) = @args{@required_args};
+
+   PTDEBUG && _d('Creating --history table', $hist_table);
+
+   # ########################################################################
+   # Create the --history database.
+   # ########################################################################
+
+   # Create history database if it not exists.
+   my ($db, $tbl) = $q->split_unquote($hist_table);
+   my $show_db_sql = "SHOW DATABASES LIKE '$db'";
+   PTDEBUG && _d($show_db_sql);
+   my @db_exists = $dbh->selectrow_array($show_db_sql);
+
+   if ( !@db_exists ) {
+      my $create_db_sql
+         = "CREATE DATABASE IF NOT EXISTS "
+         . $q->quote($db)
+         . " /* pt-table-checksum */";
+      PTDEBUG && _d($create_db_sql);
+      eval {
+         $dbh->do($create_db_sql);
+      };
+
+      # CREATE DATABASE IF NOT EXISTS failed but the db could already
+      # exist and the error could be due, for example, to the user not
+      # having privs to create it, but they still have privs to use it.
+      if ( $EVAL_ERROR) {
+         warn $EVAL_ERROR;
+         die "--history database $db does not exist and it cannot be "
+            . "created automatically. You need to create the database.\n";
+      }
+   }
+
+   # ########################################################################
+   # Create the --history table.
+   # ########################################################################
+
+   # Prepare DDL
+   PTDEBUG && _d('Creating --history table', $hist_table);
+   my $sql = $o->read_para_after(__FILE__, qr/MAGIC_create_pt_osc_history/);
+   $sql =~ s/CREATE TABLE pt_osc_history/CREATE TABLE `$tbl`/;
+   if ( $o->get('binary-index') ) {
+      $sql =~ s/`?lower_boundary`?\s+TEXT/`lower_boundary` BLOB/is;
+      $sql =~ s/`?upper_boundary`?\s+TEXT/`upper_boundary` BLOB/is;
+   }
+   PTDEBUG && _d($dbh, $sql);
+
+   # Check if the history table exists; if not, create it, maybe.
+   my $tbl_exists = $tp->check_table(
+      dbh => $dbh,
+      db  => $db,
+      tbl => $tbl,
+   );
+   PTDEBUG && _d('--history table exists:', $tbl_exists ? 'yes' : 'no');
+
+   if ( $tbl_exists ) {
+      # check if the table has expected structure
+      my $tbl_sql = $tp->get_create_table(
+         $dbh,
+         $db,
+         $tbl,
+      );
+      # we will compare SQL code
+      my $sql_minimized = $sql;
+      my $tbl_sql_minimized = $tbl_sql;
+      $sql_minimized =~ s/;$//;
+      $sql_minimized =~ s/\s+/ /g;
+      $sql_minimized =~ s/`//g;
+      $sql_minimized =~ s/^\s+//g;
+      $sql_minimized =~ s/engine\=[\w\d_= ]+$//i;
+      $tbl_sql_minimized =~ s/\s+/ /g;
+      $tbl_sql_minimized =~ s/`//g;
+      $tbl_sql_minimized =~ s/^\s+//g;
+      $tbl_sql_minimized =~ s/engine\=[\w\d_= ]+$//i;
+
+      if ( lc($sql_minimized) ne lc($tbl_sql_minimized) ) {
+         die "--history table $tbl exists but does not have expected structure.\n"
+            . "Explected structure:\n$sql \n"
+            . "User-defined table:\n$tbl_sql\n"
+            . "Exiting to avoid damage of the user-defined table.";
+      }
+   }
+   else {
+      $sql =~ s/CREATE TABLE `$tbl`/CREATE TABLE IF NOT EXISTS `$db`.`$tbl`/;
+      PTDEBUG && _d("Executing SQL for the --history table:\n $sql");
+      eval {
+         $dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         die "Create --history table $tbl failed: $EVAL_ERROR";
+      }
+   }
+
+   return;
+}
 
 sub validate_tries {
    my ($o) = @_;
@@ -11127,21 +11434,23 @@ sub check_orig_table {
    }
 
    my ( $version ) = $dbh->selectrow_array("SELECT VERSION()");
-   # There cannot be any triggers on the original table.
-   my $sql = 'SHOW TRIGGERS FROM ' . $q->quote($orig_tbl->{db})
-           . ' LIKE ' . $q->literal_like($orig_tbl->{tbl});
-   PTDEBUG && _d($sql);
-   my $triggers = $dbh->selectall_arrayref($sql);
-   if ( $triggers && @$triggers ) {
-       if ( VersionCompare::cmp($version, '5.7.0') < 0  && VersionCompare::cmp($version, '10.0.0') <= 0) {
-           die "The table $orig_tbl->{name} has triggers.  This tool "
-             . "needs to create its own triggers, so the table cannot "
-             . "already have triggers.\n";
-       } elsif ( ( VersionCompare::cmp($version, '5.7.0') >= 0 || VersionCompare::cmp($version, '10.0.0') >0 )
-                 && !$o->get('preserve-triggers') ) {
-           die "The table $orig_tbl->{name} has triggers but --preserve-triggers was not specified.\n"
-             . "Please read the documentation for --preserve-triggers.\n";
-       }
+   if ( !$o->got('resume') ) {
+      # There cannot be any triggers on the original table.
+      my $sql = 'SHOW TRIGGERS FROM ' . $q->quote($orig_tbl->{db})
+               . ' LIKE ' . $q->literal_like($orig_tbl->{tbl});
+      PTDEBUG && _d($sql);
+      my $triggers = $dbh->selectall_arrayref($sql);
+      if ( $triggers && @$triggers ) {
+         if ( VersionCompare::cmp($version, '5.7.0') < 0  && VersionCompare::cmp($version, '10.0.0') <= 0) {
+            die "The table $orig_tbl->{name} has triggers.  This tool "
+               . "needs to create its own triggers, so the table cannot "
+               . "already have triggers.\n";
+      } elsif ( ( VersionCompare::cmp($version, '5.7.0') >= 0 || VersionCompare::cmp($version, '10.0.0') >0 )
+         && !$o->get('preserve-triggers') ) {
+         die "The table $orig_tbl->{name} has triggers but --preserve-triggers was not specified.\n"
+         . "Please read the documentation for --preserve-triggers.\n";
+         }
+      }
    }
 
    # Get the table struct.  NibbleIterator needs this, and so do we.
@@ -11598,7 +11907,7 @@ sub create_triggers {
    # If --preserve-triggers was specified, try to create the original triggers into the new table.
    # We are doing this to ensure the original triggers will work in the new modified table
    # and we want to know this BEFORE copying all rows from the old table to the new one.
-   if ($o->get('preserve-triggers')) {
+   if ($o->get('preserve-triggers') && !$args{dont}) {
        foreach my $trigger_info (@$triggers_info) {
            foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
                my $definer = $orig_trigger->{definer} || '';
@@ -11900,6 +12209,7 @@ sub exec_nibble {
    my $ub_quoted   = $q->serialize_list(@{$boundary->{upper}});
    my $chunk       = $nibble_iter->nibble_number();
    my $chunk_index = $nibble_iter->nibble_index();
+   my $hist_sth    = $args{hist_sth};
 
 
    # Warn once per-table for these error codes if the error message
@@ -11983,7 +12293,15 @@ sub exec_nibble {
             }
          }
 
-         # Success: no warnings, no errors.  Return nibble time.
+         # Success: no warnings, no errors.  Record and return nibble time.
+         if ( $hist_sth ) {
+            $hist_sth->execute(
+               # WHERE
+               @{$boundary->{lower}},  # upper boundary values
+               @{$boundary->{upper}},  # lower boundary values
+            );
+         }
+
          return $t_end - $t_start;
       },
    );
@@ -12430,6 +12748,15 @@ the server very busy, this can cause an outage.
 
 Prompt for a password when connecting to MySQL.
 
+=item --binary-index
+
+This option modifies the behavior of L<"--history"> such that the
+history table's upper and lower boundary columns are created with the BLOB
+data type.
+This is useful when you change large tables with keys that include a binary
+data type or that have non-standard character sets.
+See L<"--history"> and L<"--resume">.
+
 =item --channel
 
 type: string
@@ -12631,6 +12958,17 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
+=item --history-table
+
+type: string; default: percona.pt_osc_history
+
+Create the L<"--history"> database and table if they do not exist.
+The structure of the history table is the same as the suggested table
+mentioned in L<"--history">.
+
+By default, L<"--history"> creates the database and the table, specified by this option,
+automatically if they do not exist.
+
 =item --critical-load
 
 type: Array; default: Threads_running=50
@@ -12779,6 +13117,27 @@ This option also allows to use option --where without options --no-drop-new-tabl
 =item --help
 
 Show help and exit.
+
+=item --history
+
+Write job progress to a table. Unfinished jobs may be restarted by the option L<"--resume">.
+The history table must have this structure (MAGIC_create_pt_osc_history):
+
+  CREATE TABLE pt_osc_history (
+     job_id         INT               NOT NULL AUTO_INCREMENT,
+     db             CHAR(64)          NOT NULL,
+     tbl            CHAR(64)          NOT NULL,
+     new_table_name CHAR(64)          DEFAULT NULL,
+     altr           TEXT              NOT NULL,
+     args           TEXT              NOT NULL,
+     lower_boundary TEXT,
+     upper_boundary TEXT,
+     done           ENUM('yes','no')  NOT NULL DEFAULT 'no',
+     ts             TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     PRIMARY KEY (job_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+Note: lower_boundary and upper_boundary data type can be BLOB. See L<"--binary-index">.
 
 =item --host
 
@@ -13035,6 +13394,7 @@ You can change the list of hosts while OSC is executing:
 if you change the contents of the DSN table, OSC will pick it up very soon.
 
 =item --reverse-triggers
+
 Copy the triggers added during the copy in reverse order. Commands in the new table will be
 reflected in the old table. You can use this as a safety feature, so that the old
 table continues to receive updates. This option requires C<--no-drop-old-table>.
@@ -13044,6 +13404,20 @@ After new table is renamed to its original name triggers will continue working. 
 name change metadata version in the table cache will also change you may start receiving
 "Prepared statement needs to be re-prepared" errors. The workaround for this is to re-prepare statements.
 If you do not use server-side prepared statements your application should not be affected.
+
+=item --resume
+
+type: int
+
+Resume altering table from the last completed chunk. If the tool stops before it finishes
+copying rows, this option makes copying resume from the last chunk copied.
+
+The option accepts ID of the failed job. This ID is printed when pt-online-schema-change
+is running with option L<i"--history"> and stored in the L<"--history-table">.
+
+Warning! To use this option previous, failed, run of pt-online-schema-change should use options
+L<"--history">, L<"--nodrop-new-table">, and L<"--nodrop-triggers">. Otherwise,
+pt-online-schema-change would not be able to resume.
 
 =item --skip-check-slave-lag
 
@@ -13242,8 +13616,8 @@ keyword.  You might need to quote the value.  Here is an example:
 
   pt-online-schema-change --where "id > 12345678"
 
-IMPORTANT. If used without options --no-drop-new-table and --no-swap-tables
-may lead to data loss, therefore this operation only allowed if option --force
+Warning! If used without options L<"--no-drop-new-table"> and L<"--no-swap-tables">
+may lead to data loss, therefore this operation only allowed if option L<"--force">
 also specified.
 
 =item --[no]fail-on-stopped-replication

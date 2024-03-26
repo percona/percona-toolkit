@@ -45,7 +45,7 @@ my $slave_dsn1 = 'h=127.0.0.1,P=12346,u=msandbox,p=msandbox';
 my $slave_dsn2 = 'h=127.0.0.1,P=12347,u=msandbox,p=msandbox';
 my $sample = "t/pt-online-schema-change/samples";
 
-# We need sync_relay_log=1 to have 
+# We need sync_relay_log=1 to keep changes after replica restart
 my $cnf = '/tmp/12347/my.sandbox.cnf';
 diag(`cp $cnf $cnf.bak`);
 diag(`echo "[mysqld]" > /tmp/12347/my.sandbox.2.cnf`);
@@ -59,11 +59,6 @@ diag(`/tmp/12347/start >/dev/null`);
 
 # DSN table for further tests
 $sb->load_file('master', "$sample/create_dsns.sql");
-
-#diag(`mysql -h127.0.0.1 -P12345 -umsandbox -pmsandbox -e "show databases"`);
-#diag(`mysql -h127.0.0.1 -P12347 -umsandbox -pmsandbox -e "show databases"`);
-#diag(`mysql -h127.0.0.1 -P12348 -umsandbox -pmsandbox -e "show databases"`);
-#diag(`mysql -h127.0.0.1 -P12348 -umsandbox -pmsandbox -E -e "show slave status"`);
 
 sub reset_query_cache {
     my @dbhs = @_;
