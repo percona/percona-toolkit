@@ -37,6 +37,7 @@ sub new {
       force_log_file => $args{force_log_file},
       parent_exit    => $args{parent_exit},
       pid_file_owner => 0,
+      utf8           => $args{utf8} // 0,
    };
    return bless $self, $class;
 }
@@ -50,6 +51,7 @@ sub run {
    my $log_file       = $self->{log_file};
    my $force_log_file = $self->{force_log_file};
    my $parent_exit    = $self->{parent_exit};
+   my $utf8           = $self->{utf8};
 
    PTDEBUG && _d('Starting daemon');
 
@@ -116,6 +118,11 @@ sub run {
          close STDOUT;
          open  STDOUT, '>>', $log_file
             or die "Cannot open log file $log_file: $OS_ERROR";
+         if ( $utf8 ) {
+            binmode(STDOUT, ':utf8')
+               or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+         }
+
 
          # If we don't close STDERR explicitly, then prove Daemon.t fails
          # because STDERR gets written before STDOUT even though we print
@@ -124,6 +131,10 @@ sub run {
          close STDERR;
          open  STDERR, ">&STDOUT"
             or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
+         if ( $utf8 ) {
+            binmode(STDERR, ':utf8')
+               or die "Can't binmode(STDERR, ':utf8'): $OS_ERROR";
+         }
       }
       else {
          if ( -t STDOUT ) {
