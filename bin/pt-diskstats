@@ -2240,8 +2240,9 @@ sub design_print_formats {
 sub parse_diskstats_line {
    my ( $self, $line, $block_size ) = @_;
 
+   my @num_fields = (14, 18, 20);
    my @dev_stats = split ' ', $line;
-   return unless @dev_stats == 14;
+   return unless grep {$_ == scalar(@dev_stats)} @num_fields;
 
    my $read_bytes    = $dev_stats[READ_SECTORS]    * $block_size;
    my $written_bytes = $dev_stats[WRITTEN_SECTORS] * $block_size;
