@@ -13498,7 +13498,7 @@ If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item * P
 
-dsn: port; copy: no
+dsn: port; copy: yes
 
 Port number to use for connection.
 
