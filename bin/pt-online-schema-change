@@ -12420,7 +12420,7 @@ C<innodb_stats_persistent> is enabled. Specify the option explicitly to enable
 or disable it regardless of MySQL version and C<innodb_stats_persistent>.
 
 This circumvents a potentially serious issue related to InnoDB optimizer
-statistics. If the table being alerted is busy and the tool completes quickly,
+statistics. If the table being altered is busy and the tool completes quickly,
 the new table will not have optimizer statistics after being swapped. This can
 cause fast, index-using queries to do full table scans until optimizer
 statistics are updated (usually after 10 seconds). If the table is large and
