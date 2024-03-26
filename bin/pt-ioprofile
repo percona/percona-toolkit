@@ -65,6 +65,7 @@ _d () {
 
 
 
+
 set -u
 
 ARGV=""           # Non-option args (probably input files)
@@ -93,6 +94,11 @@ usage_or_errors() {
    if [ "$OPT_VERSION" ]; then
       version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
+      return 1
+   fi
+
+   if [ -z $(_which perl) ]; then
+      echo "Perl binary required to run this tool"
       return 1
    fi
 
