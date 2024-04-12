@@ -73,15 +73,15 @@ func checkUpdates(url string, timeout time.Duration, toolName, version string) (
 	if err != nil {
 		return "", err
 	}
-	advices := []Advice{}
-	err = json.Unmarshal(body, &advices)
+	var advice []Advice
+	err = json.Unmarshal(body, &advice)
 	if err != nil {
 		return "", err
 	}
 
-	for _, advice := range advices {
-		if advice.ToolName == PERCONA_TOOLKIT {
-			return advice.Advice, nil
+	for _, a := range advice {
+		if a.ToolName == PERCONA_TOOLKIT {
+			return a.Advice, nil
 		}
 	}
 

@@ -16,7 +16,7 @@ func TestCheckUpdates(t *testing.T) {
 		body, _ := ioutil.ReadAll(r.Body)
 		m := strings.Split(string(body), ";")
 
-		advices := []Advice{
+		advice := []Advice{
 			{
 				Hash:     m[0],
 				ToolName: m[1],
@@ -24,7 +24,7 @@ func TestCheckUpdates(t *testing.T) {
 			},
 		}
 
-		buf, _ := json.Marshal(advices)
+		buf, _ := json.Marshal(advice)
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, string(buf))
 	}))
