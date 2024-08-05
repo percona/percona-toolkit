@@ -36,7 +36,7 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4.3.4
+      uses: actions/upload-artifact@v4.3.5
       with:
         name: binaries
         path: bin/*
