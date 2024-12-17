@@ -22,7 +22,7 @@ func encryptorCmd(opts *cliOptions) (err error) {
 			*opts.DecryptOutFile = strings.TrimSuffix(filepath.Base(*opts.DecryptInFile), ".aes")
 		}
 		log.Infof("Decrypting file %q into %q", *opts.DecryptInFile, *opts.DecryptOutFile)
-		err = decrypt(*opts.DecryptInFile, *opts.DecryptOutFile, password)
+		err = decrypt(*opts.DecryptInFile, *opts.DecryptOutFile, password
 	case "encrypt":
 		if *opts.EncryptOutFile == "" {
 			*opts.EncryptOutFile = filepath.Base(*opts.EncryptInFile) + ".aes"
