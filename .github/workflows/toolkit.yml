@@ -15,14 +15,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.22'
+
     - name: Build
-      run: cd src/go; make linux-amd64; cd ../../
+      working-directory: src/go
+      run: make linux-amd64
 
     - name: Build the Docker image
       run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "RUN microdnf -y update" >> Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
