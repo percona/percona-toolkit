@@ -398,7 +398,7 @@ build_rpm(){
     ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
     echo "RHEL=${RHEL}" >> percona-toolkit.properties
     echo "ARCH=${ARCH}" >> percona-toolkit.properties
-    rpmbuild --target=x86_64 --define "version $VERSION" --define "VERSION $VERSION" --define "dist .el${RHEL}" --define "release $RPM_RELEASE.el${RHEL}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM}
+    rpmbuild --target=${ARCH} --define "version $VERSION" --define "VERSION $VERSION" --define "dist .el${RHEL}" --define "release $RPM_RELEASE.el${RHEL}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM}
 
     return_code=$?
     if [ $return_code != 0 ]; then
