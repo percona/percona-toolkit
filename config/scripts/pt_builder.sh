@@ -165,7 +165,7 @@ install_go() {
     #rm -rf /usr/local/go /usr/local/go1.8 /usr/local/go1.9
     #mv go1.9 /usr/local/
     #ln -s /usr/local/go1.9 /usr/local/go
-    GO_VERSION=1.22.4
+    GO_VERSION=1.23.4
     if [ x"$ARCH" = "xx86_64" ]; then
       GO_ARCH="amd64"
     elif [ x"$ARCH" = "xaarch64" ]; then
