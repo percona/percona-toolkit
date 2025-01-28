@@ -137,7 +137,7 @@ set_delay();
 # We need to sleep, otherwise pt-osc can finish before replica is delayed
 sleep($max_lag);
 
-my $args = "$source_dsn,D=test,t=pt1717 --execute --chunk-size ${chunk_size} --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --no-drop-new-table --no-drop-triggers --history";
+my $args = "$source_dsn,D=test,t=pt1717 --execute --chunk-size ${chunk_size} --max-lag $max_lag --alter 'ADD COLUMN foo varchar(32)' --pid $tmp_file_name --progress time,5 --no-drop-new-table --no-drop-triggers --history";
 
 $output = run_broken_job($args);
 
@@ -165,7 +165,7 @@ my @args = (qw(--execute --chunk-size=10 --history));
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=pt1717",
-         '--alter', 'engine=INNODB', '--execute', "--resume=${job_id}",
+         '--alter', 'ADD COLUMN foo varchar(32)', '--execute', "--resume=${job_id}",
          '--chunk-index=f2'
          ) }
 );
@@ -186,7 +186,7 @@ like(
    sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=pt1717",
          '--max-lag', $max_lag,
          '--resume', $job_id,
-         '--alter', 'engine=INNODB',
+         '--alter', 'ADD COLUMN foo varchar(32)',
          '--plugin', "$plugin/pt-1717.pm",
          ),
       },
@@ -209,7 +209,7 @@ ok(
 ) or diag("New table checksum: '${new_table_checksum}', original content checksum: '${old_table_checksum}'");
 
 # Tests for chunk-index and chunk-index-columns options
-$args = "$source_dsn,D=test,t=pt1717 --alter engine=innodb --execute --history --chunk-size=10 --no-drop-new-table --no-drop-triggers --reverse-triggers --chunk-index=f2";
+$args = "$source_dsn,D=test,t=pt1717 --alter 'ADD COLUMN foo varchar(32)' --execute --history --chunk-size=10 --no-drop-new-table --no-drop-triggers --reverse-triggers --chunk-index=f2";
 
 set_delay();
 $output = run_broken_job($args);
@@ -220,7 +220,7 @@ $job_id = $1;
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=pt1717",
-         '--alter', 'engine=innodb', '--execute', "--resume=${job_id}",
+         '--alter', 'ADD COLUMN foo varchar(32)', '--execute', "--resume=${job_id}",
          ) }
 );
 
@@ -238,7 +238,7 @@ like(
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=pt1717",
-         '--alter', 'engine=innodb', '--execute', "--resume=${job_id}",
+         '--alter', 'ADD COLUMN foo varchar(32)', '--execute', "--resume=${job_id}",
          '--chunk-index=f1'
          ) }
 );
@@ -257,7 +257,7 @@ like(
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=pt1717",
-         '--alter', 'engine=innodb', '--execute', "--resume=${job_id}",
+         '--alter', 'ADD COLUMN foo varchar(32)', '--execute', "--resume=${job_id}",
          '--chunk-index=f2', '--chunk-index-columns=1'
          ) }
 );
@@ -300,7 +300,7 @@ is(
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=pt1717",
-         '--alter', 'engine=innodb', '--execute', "--resume=${job_id}",
+         '--alter', 'ADD COLUMN foo varchar(32)', '--execute', "--resume=${job_id}",
          '--chunk-size=4',
          '--chunk-index=f2'
       ) }
@@ -348,7 +348,7 @@ ok(
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=pt1717",
-         '--alter', 'engine=innodb', '--execute', "--resume=${job_id}",
+         '--alter', 'ADD COLUMN foo varchar(32)', '--execute', "--resume=${job_id}",
          '--chunk-size=4',
          '--chunk-index=f2'
       ) }
@@ -372,7 +372,7 @@ $output =~ /New table `test`.`([_]+pt1717_new)` not found, restart operation fro
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=pt1717",
-         '--alter', 'engine=innodb', '--execute', "--resume=${job_id}",
+         '--alter', 'ADD COLUMN foo varchar(32)', '--execute', "--resume=${job_id}",
          '--chunk-size=4',
          '--chunk-index=f2'
       ) }
