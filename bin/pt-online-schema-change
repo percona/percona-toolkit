@@ -9797,9 +9797,9 @@ sub main {
 
    if ( $o->get('history') ) {
       my $sth = $cxn->dbh()->prepare(
-         "UPDATE ${hist_table} SET new_table_name = ?"
+         "UPDATE ${hist_table} SET new_table_name = ? WHERE job_id = ?"
       );
-      $sth->execute($new_tbl->{tbl});
+      $sth->execute($new_tbl->{tbl}, $job_id);
    }
 
    # If the new table still exists, drop it unless the tool was interrupted.
