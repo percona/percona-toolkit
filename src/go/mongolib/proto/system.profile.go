@@ -78,6 +78,7 @@ type SystemProfile struct {
 	Ns                 string    `bson:"ns"`
 	NumYield           int       `bson:"numYield"`
 	Op                 string    `bson:"op"`
+	PlanSummary        string    `bson:"planSummary"`
 	Protocol           string    `bson:"protocol"`
 	Query              bson.D    `bson:"query"`
 	UpdateObj          bson.D    `bson:"updateobj"`

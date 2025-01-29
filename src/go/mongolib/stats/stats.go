@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,6 +12,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+)
+
+const (
+	planSummaryCollScan = "COLLSCAN"
+	planSummaryIXScan   = "IXSCAN"
 )
 
 type StatsError struct {
@@ -86,6 +92,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 			Namespace:   fp.Namespace,
 			TableScan:   false,
 			Query:       string(queryBson),
+			PlanSummary: doc.PlanSummary,
 		}
 		s.setQueryInfoAndCounters(key, qiac)
 	}
@@ -93,6 +100,14 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	// docsExamined is renamed from nscannedObjects in 3.2.0.
 	// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
 	s.Lock()
+	qiac.PlanSummary = doc.PlanSummary
+	if qiac.PlanSummary == planSummaryCollScan {
+		qiac.CollScanCount++
+		qiac.CollScanSum += int64(doc.Millis)
+	}
+	if strings.HasPrefix(qiac.PlanSummary, planSummaryIXScan) {
+		qiac.PlanSummary = planSummaryIXScan
+	}
 	if doc.NscannedObjects > 0 {
 		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
 	} else {
@@ -188,6 +203,10 @@ type QueryInfoAndCounters struct {
 	NScanned       []float64
 	QueryTime      []float64 // in milliseconds
 	ResponseLength []float64
+
+	PlanSummary   string
+	CollScanCount int
+	CollScanSum   int64 // in milliseconds
 }
 
 // times is an array of time.Time that implements the Sorter interface
@@ -238,6 +257,10 @@ type QueryStats struct {
 	ResponseLength Statistics
 	Returned       Statistics
 	Scanned        Statistics
+
+	PlanSummary   string
+	CollScanCount int
+	CollScanSum   int64 // in milliseconds
 }
 
 type Statistics struct {
@@ -267,6 +290,9 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		LastSeen:       query.LastSeen,
 		Namespace:      query.Namespace,
 		QPS:            float64(query.Count) / float64(uptime),
+		PlanSummary:    query.PlanSummary,
+		CollScanCount:  query.CollScanCount,
+		CollScanSum:    query.CollScanSum,
 	}
 	if tc.Scanned > 0 {
 		queryStats.Scanned.Pct = queryStats.Scanned.Total * 100 / tc.Scanned
