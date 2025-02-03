@@ -10,11 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/percona/percona-toolkit/src/go/lib/tutil"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+
+	"github.com/percona/percona-toolkit/src/go/lib/tutil"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
 const (
@@ -33,7 +34,8 @@ func TestMain(m *testing.M) {
 		log.Printf("cannot get root path: %s", err.Error())
 		os.Exit(1)
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestSingleFingerprint(t *testing.T) {
