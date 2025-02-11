@@ -48,28 +48,37 @@ type SystemProfile struct {
 		SaveState    int    `bson:"saveState"`
 		Stage        string `bson:"stage"`
 		Works        int    `bson:"works"`
+		DocsExamined int    `bson:"docsExamined"`
 	} `bson:"execStats"`
 	KeyUpdates   int `bson:"keyUpdates"`
 	KeysExamined int `bson:"keysExamined"`
 	Locks        struct {
 		Collection struct {
 			AcquireCount struct {
-				R int `bson:"R"`
+				R       int `bson:"R"`
+				RShared int `bson:"r"`
 			} `bson:"acquireCount"`
 		} `bson:"Collection"`
 		Database struct {
 			AcquireCount struct {
-				R int `bson:"r"`
+				RShared int `bson:"r"`
 			} `bson:"acquireCount"`
+			AcquireWaitCount struct {
+				RShared int `bson:"r"`
+			} `bson:"acquireWaitCount"`
+			TimeAcquiringMicros struct {
+				RShared int `bson:"r"`
+			} `bson:"timeAcquiringMicros"`
 		} `bson:"Database"`
 		Global struct {
 			AcquireCount struct {
-				R int `bson:"r"`
+				RShared int `bson:"r"`
+				WShared int `bson:"w"`
 			} `bson:"acquireCount"`
 		} `bson:"Global"`
 		MMAPV1Journal struct {
 			AcquireCount struct {
-				R int `bson:"r"`
+				RShared int `bson:"r"`
 			} `bson:"acquireCount"`
 		} `bson:"MMAPV1Journal"`
 	} `bson:"locks"`
@@ -81,6 +90,7 @@ type SystemProfile struct {
 	PlanSummary        string    `bson:"planSummary"`
 	Protocol           string    `bson:"protocol"`
 	Query              bson.D    `bson:"query"`
+	QueryHash          string    `bson:"queryHash"`
 	UpdateObj          bson.D    `bson:"updateobj"`
 	Command            bson.D    `bson:"command"`
 	OriginatingCommand bson.D    `bson:"originatingCommand"`
@@ -88,6 +98,13 @@ type SystemProfile struct {
 	Ts                 time.Time `bson:"ts"`
 	User               string    `bson:"user"`
 	WriteConflicts     int       `bson:"writeConflicts"`
+	Storage            struct {
+		Data struct {
+			BytesRead         int `bson:"bytesRead"`
+			TimeReadingMicros int `bson:"timeReadingMicros"`
+		} `bson:"data"`
+	} `bson:"storage"`
+	AppName string `bson:"appName"`
 }
 
 func NewExampleQuery(doc SystemProfile) ExampleQuery {
