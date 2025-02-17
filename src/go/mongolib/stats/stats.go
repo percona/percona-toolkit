@@ -93,14 +93,18 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 			TableScan:   false,
 			Query:       string(queryBson),
 			PlanSummary: doc.PlanSummary,
+			QueryHash:   doc.QueryHash,
+			AppName:     doc.AppName,
+			Client:      doc.Client,
+			User:        doc.User,
+			Database:    strings.Split(doc.Ns, ".")[0],
+			Comments:    doc.Comments,
+			TimeStamp:   doc.Ts,
 		}
 		s.setQueryInfoAndCounters(key, qiac)
 	}
 	qiac.Count++
-	// docsExamined is renamed from nscannedObjects in 3.2.0.
-	// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
 	s.Lock()
-	qiac.PlanSummary = doc.PlanSummary
 	if qiac.PlanSummary == planSummaryCollScan {
 		qiac.CollScanCount++
 		qiac.CollScanSum += int64(doc.Millis)
@@ -108,11 +112,8 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	if strings.HasPrefix(qiac.PlanSummary, planSummaryIXScan) {
 		qiac.PlanSummary = planSummaryIXScan
 	}
-	if doc.NscannedObjects > 0 {
-		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
-	} else {
-		qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
-	}
+
+	qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
 	qiac.ResponseLength = append(qiac.ResponseLength, float64(doc.ResponseLength))
@@ -122,6 +123,19 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	if qiac.LastSeen.IsZero() || qiac.LastSeen.Before(doc.Ts) {
 		qiac.LastSeen = doc.Ts
 	}
+
+	qiac.StorageBytesRead += doc.Storage.Data.BytesRead
+	qiac.StorageTimeReadingMicros += doc.Storage.Data.TimeReadingMicros
+
+	qiac.LGlobalAcquireCountRShared += doc.Locks.Global.AcquireCount.RShared
+	qiac.LGlobalAcquireCountWShared += doc.Locks.Global.AcquireCount.WShared
+	qiac.LDatabaseAcquireCountRShared += doc.Locks.Database.AcquireCount.RShared
+	qiac.LDatabaseAcquireWaitCountRShared += doc.Locks.Database.AcquireWaitCount.RShared
+	qiac.LDatabaseTimeAcquiringMicrosRShared += doc.Locks.Database.TimeAcquiringMicros.RShared
+	qiac.LCollectionAcquireCountRShared += doc.Locks.Collection.AcquireCount.RShared
+
+	qiac.DocsExamined = append(qiac.DocsExamined, float64(doc.DocsExamined))
+	qiac.KeysExamined = append(qiac.KeysExamined, float64(doc.KeysExamined))
 	s.Unlock()
 
 	return nil
@@ -207,6 +221,26 @@ type QueryInfoAndCounters struct {
 	PlanSummary   string
 	CollScanCount int
 	CollScanSum   int64 // in milliseconds
+
+	DocsExamined []float64
+	KeysExamined []float64
+	TimeStamp    time.Time
+	QueryHash    string
+	AppName      string
+	Client       string
+	User         string
+	Database     string
+	Comments     string
+
+	LGlobalAcquireCountRShared          int
+	LGlobalAcquireCountWShared          int
+	LDatabaseAcquireCountRShared        int
+	LDatabaseAcquireWaitCountRShared    int
+	LDatabaseTimeAcquiringMicrosRShared int64 // in microseconds
+	LCollectionAcquireCountRShared      int
+
+	StorageBytesRead         int
+	StorageTimeReadingMicros int64 // in microseconds
 }
 
 // times is an array of time.Time that implements the Sorter interface
@@ -233,11 +267,12 @@ func (g GroupKey) String() string {
 }
 
 type totalCounters struct {
-	Count     int
-	Scanned   float64
-	Returned  float64
-	QueryTime float64
-	Bytes     float64
+	Count        int
+	Scanned      float64
+	Returned     float64
+	QueryTime    float64
+	Bytes        float64
+	DocsExamined float64
 }
 
 type QueryStats struct {
@@ -258,9 +293,7 @@ type QueryStats struct {
 	Returned       Statistics
 	Scanned        Statistics
 
-	PlanSummary   string
-	CollScanCount int
-	CollScanSum   int64 // in milliseconds
+	DocsExamined Statistics
 }
 
 type Statistics struct {
@@ -283,6 +316,7 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		Query:          query.Query,
 		Fingerprint:    query.Fingerprint,
 		Scanned:        calcStats(query.NScanned),
+		DocsExamined:   calcStats(query.DocsExamined),
 		Returned:       calcStats(query.NReturned),
 		QueryTime:      calcStats(query.QueryTime),
 		ResponseLength: calcStats(query.ResponseLength),
@@ -290,9 +324,6 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		LastSeen:       query.LastSeen,
 		Namespace:      query.Namespace,
 		QPS:            float64(query.Count) / float64(uptime),
-		PlanSummary:    query.PlanSummary,
-		CollScanCount:  query.CollScanCount,
-		CollScanSum:    query.CollScanSum,
 	}
 	if tc.Scanned > 0 {
 		queryStats.Scanned.Pct = queryStats.Scanned.Total * 100 / tc.Scanned
@@ -309,6 +340,9 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 	if queryStats.Returned.Total > 0 {
 		queryStats.Ratio = queryStats.Scanned.Total / queryStats.Returned.Total
 	}
+	if queryStats.DocsExamined.Total > 0 {
+		queryStats.DocsExamined.Pct = queryStats.DocsExamined.Total / queryStats.DocsExamined.Total
+	}
 
 	return queryStats
 }
@@ -321,6 +355,7 @@ func aggregateCounters(queries []QueryInfoAndCounters) QueryInfoAndCounters {
 		qt.NReturned = append(qt.NReturned, query.NReturned...)
 		qt.QueryTime = append(qt.QueryTime, query.QueryTime...)
 		qt.ResponseLength = append(qt.ResponseLength, query.ResponseLength...)
+		qt.DocsExamined = append(qt.DocsExamined, query.DocsExamined...)
 	}
 	return qt
 }
@@ -342,6 +377,9 @@ func calcTotalCounters(queries []QueryInfoAndCounters) totalCounters {
 
 		bytes, _ := stats.Sum(query.ResponseLength)
 		tc.Bytes += bytes
+
+		docsExamined, _ := stats.Sum(query.DocsExamined)
+		tc.DocsExamined += docsExamined
 	}
 	return tc
 }

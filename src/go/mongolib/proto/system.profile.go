@@ -13,7 +13,6 @@ type SystemProfile struct {
 	AllUsers        []interface{} `bson:"allUsers"`
 	Client          string        `bson:"client"`
 	CursorExhausted bool          `bson:"cursorExhausted"`
-	DocsExamined    int           `bson:"docsExamined"`
 	NscannedObjects int           `bson:"nscannedObjects"`
 	ExecStats       struct {
 		Advanced                    int `bson:"advanced"`
@@ -67,7 +66,7 @@ type SystemProfile struct {
 				RShared int `bson:"r"`
 			} `bson:"acquireWaitCount"`
 			TimeAcquiringMicros struct {
-				RShared int `bson:"r"`
+				RShared int64 `bson:"r"`
 			} `bson:"timeAcquiringMicros"`
 		} `bson:"Database"`
 		Global struct {
@@ -90,7 +89,6 @@ type SystemProfile struct {
 	PlanSummary        string    `bson:"planSummary"`
 	Protocol           string    `bson:"protocol"`
 	Query              bson.D    `bson:"query"`
-	QueryHash          string    `bson:"queryHash"`
 	UpdateObj          bson.D    `bson:"updateobj"`
 	Command            bson.D    `bson:"command"`
 	OriginatingCommand bson.D    `bson:"originatingCommand"`
@@ -98,13 +96,16 @@ type SystemProfile struct {
 	Ts                 time.Time `bson:"ts"`
 	User               string    `bson:"user"`
 	WriteConflicts     int       `bson:"writeConflicts"`
+	DocsExamined       int       `bson:"docsExamined"`
+	QueryHash          string    `bson:"queryHash"`
 	Storage            struct {
 		Data struct {
-			BytesRead         int `bson:"bytesRead"`
-			TimeReadingMicros int `bson:"timeReadingMicros"`
+			BytesRead         int   `bson:"bytesRead"`
+			TimeReadingMicros int64 `bson:"timeReadingMicros"`
 		} `bson:"data"`
 	} `bson:"storage"`
-	AppName string `bson:"appName"`
+	AppName  string `bson:"appName"`
+	Comments string `bson:"comments"`
 }
 
 func NewExampleQuery(doc SystemProfile) ExampleQuery {
