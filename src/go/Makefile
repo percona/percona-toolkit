@@ -173,7 +173,7 @@ test:						## Run tests
 
 format:                     ## Format source code.
 	gofumpt -w -s $(FILES)
-	gofumports -local github.com/percona/pmm-managed -l -w $(FILES)
+	gofumports -local github.com/percona/percona-toolkit -l -w $(FILES)
 
 vet:						## Run vet on Go code
 	@echo ">> vetting code"
