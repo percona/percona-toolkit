@@ -239,7 +239,7 @@ type QueryInfoAndCounters struct {
 	LDatabaseTimeAcquiringMicrosRShared int64 // in microseconds
 	LCollectionAcquireCountRShared      int
 
-	StorageBytesRead         int
+	StorageBytesRead         int64
 	StorageTimeReadingMicros int64 // in microseconds
 }
 
@@ -293,7 +293,29 @@ type QueryStats struct {
 	Returned       Statistics
 	Scanned        Statistics
 
+	PlanSummary   string
+	CollScanCount int
+	CollScanSum   int64 // in milliseconds
+
 	DocsExamined Statistics
+	KeysExamined Statistics
+	TimeStamp    time.Time
+	QueryHash    string
+	AppName      string
+	Client       string
+	User         string
+	Database     string
+	Comments     string
+
+	LGlobalAcquireCountRShared          int
+	LGlobalAcquireCountWShared          int
+	LDatabaseAcquireCountRShared        int
+	LDatabaseAcquireWaitCountRShared    int
+	LDatabaseTimeAcquiringMicrosRShared int64 // in microseconds
+	LCollectionAcquireCountRShared      int
+
+	StorageBytesRead         int64
+	StorageTimeReadingMicros int64 // in microseconds
 }
 
 type Statistics struct {
