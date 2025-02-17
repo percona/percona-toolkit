@@ -97,7 +97,6 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 			AppName:     doc.AppName,
 			Client:      doc.Client,
 			User:        doc.User,
-			Database:    strings.Split(doc.Ns, ".")[0],
 			Comments:    doc.Comments,
 			TimeStamp:   doc.Ts,
 		}
@@ -229,7 +228,6 @@ type QueryInfoAndCounters struct {
 	AppName      string
 	Client       string
 	User         string
-	Database     string
 	Comments     string
 
 	LGlobalAcquireCountRShared          int
@@ -273,6 +271,7 @@ type totalCounters struct {
 	QueryTime    float64
 	Bytes        float64
 	DocsExamined float64
+	KeysExamined float64
 }
 
 type QueryStats struct {
@@ -304,7 +303,6 @@ type QueryStats struct {
 	AppName      string
 	Client       string
 	User         string
-	Database     string
 	Comments     string
 
 	LGlobalAcquireCountRShared          int
@@ -332,20 +330,38 @@ type Statistics struct {
 
 func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters) QueryStats {
 	queryStats := QueryStats{
-		Count:          query.Count,
-		ID:             query.ID,
-		Operation:      query.Operation,
-		Query:          query.Query,
-		Fingerprint:    query.Fingerprint,
-		Scanned:        calcStats(query.NScanned),
-		DocsExamined:   calcStats(query.DocsExamined),
-		Returned:       calcStats(query.NReturned),
-		QueryTime:      calcStats(query.QueryTime),
-		ResponseLength: calcStats(query.ResponseLength),
-		FirstSeen:      query.FirstSeen,
-		LastSeen:       query.LastSeen,
-		Namespace:      query.Namespace,
-		QPS:            float64(query.Count) / float64(uptime),
+		Count:                               query.Count,
+		ID:                                  query.ID,
+		Operation:                           query.Operation,
+		Query:                               query.Query,
+		Fingerprint:                         query.Fingerprint,
+		Scanned:                             calcStats(query.NScanned),
+		Returned:                            calcStats(query.NReturned),
+		QueryTime:                           calcStats(query.QueryTime),
+		ResponseLength:                      calcStats(query.ResponseLength),
+		FirstSeen:                           query.FirstSeen,
+		LastSeen:                            query.LastSeen,
+		Namespace:                           query.Namespace,
+		QPS:                                 float64(query.Count) / float64(uptime),
+		PlanSummary:                         query.PlanSummary,
+		CollScanCount:                       query.CollScanCount,
+		CollScanSum:                         query.CollScanSum,
+		DocsExamined:                        calcStats(query.DocsExamined),
+		KeysExamined:                        calcStats(query.KeysExamined),
+		TimeStamp:                           query.TimeStamp,
+		QueryHash:                           query.QueryHash,
+		AppName:                             query.AppName,
+		Client:                              query.Client,
+		User:                                query.User,
+		Comments:                            query.Comments,
+		LGlobalAcquireCountRShared:          query.LGlobalAcquireCountRShared,
+		LGlobalAcquireCountWShared:          query.LGlobalAcquireCountWShared,
+		LDatabaseAcquireCountRShared:        query.LDatabaseAcquireCountRShared,
+		LDatabaseAcquireWaitCountRShared:    query.LDatabaseAcquireWaitCountRShared,
+		LDatabaseTimeAcquiringMicrosRShared: query.LDatabaseTimeAcquiringMicrosRShared,
+		LCollectionAcquireCountRShared:      query.LCollectionAcquireCountRShared,
+		StorageBytesRead:                    query.StorageBytesRead,
+		StorageTimeReadingMicros:            query.StorageTimeReadingMicros,
 	}
 	if tc.Scanned > 0 {
 		queryStats.Scanned.Pct = queryStats.Scanned.Total * 100 / tc.Scanned
@@ -363,7 +379,10 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		queryStats.Ratio = queryStats.Scanned.Total / queryStats.Returned.Total
 	}
 	if queryStats.DocsExamined.Total > 0 {
-		queryStats.DocsExamined.Pct = queryStats.DocsExamined.Total / queryStats.DocsExamined.Total
+		queryStats.DocsExamined.Pct = queryStats.DocsExamined.Total / tc.DocsExamined
+	}
+	if queryStats.KeysExamined.Total > 0 {
+		queryStats.KeysExamined.Pct = queryStats.KeysExamined.Total / tc.KeysExamined
 	}
 
 	return queryStats
@@ -378,6 +397,7 @@ func aggregateCounters(queries []QueryInfoAndCounters) QueryInfoAndCounters {
 		qt.QueryTime = append(qt.QueryTime, query.QueryTime...)
 		qt.ResponseLength = append(qt.ResponseLength, query.ResponseLength...)
 		qt.DocsExamined = append(qt.DocsExamined, query.DocsExamined...)
+		qt.KeysExamined = append(qt.KeysExamined, query.KeysExamined...)
 	}
 	return qt
 }
@@ -402,6 +422,9 @@ func calcTotalCounters(queries []QueryInfoAndCounters) totalCounters {
 
 		docsExamined, _ := stats.Sum(query.DocsExamined)
 		tc.DocsExamined += docsExamined
+
+		keysExamined, _ := stats.Sum(query.KeysExamined)
+		tc.KeysExamined += keysExamined
 	}
 	return tc
 }
