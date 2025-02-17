@@ -100,7 +100,7 @@ type SystemProfile struct {
 	QueryHash          string    `bson:"queryHash"`
 	Storage            struct {
 		Data struct {
-			BytesRead         int   `bson:"bytesRead"`
+			BytesRead         int64 `bson:"bytesRead"`
 			TimeReadingMicros int64 `bson:"timeReadingMicros"`
 		} `bson:"data"`
 	} `bson:"storage"`
