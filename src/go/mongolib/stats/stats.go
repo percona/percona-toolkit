@@ -96,7 +96,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 			QueryHash:   doc.QueryHash,
 			AppName:     doc.AppName,
 			Client:      doc.Client,
-			User:        doc.User,
+			User:        strings.Split(doc.User, "@")[0],
 			Comments:    doc.Comments,
 		}
 		s.setQueryInfoAndCounters(key, qiac)
