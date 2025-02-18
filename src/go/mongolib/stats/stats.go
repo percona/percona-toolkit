@@ -287,14 +287,15 @@ type QueryStats struct {
 	FirstSeen   time.Time
 	LastSeen    time.Time
 
-	Count          int
-	QPS            float64
-	Rank           int
-	Ratio          float64
-	QueryTime      Statistics
-	ResponseLength Statistics
-	Returned       Statistics
-	Scanned        Statistics
+	Count               int
+	QPS                 float64
+	Rank                int
+	Ratio               float64
+	QueryTime           Statistics
+	ResponseLengthCount int
+	ResponseLength      Statistics
+	Returned            Statistics
+	Scanned             Statistics
 
 	PlanSummary       string
 	CollScanCount     int
@@ -343,13 +344,14 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		Fingerprint:                             query.Fingerprint,
 		Returned:                                calcStats(query.NReturned),
 		QueryTime:                               calcStats(query.QueryTime),
-		ResponseLength:                          calcStats(query.ResponseLength),
 		FirstSeen:                               query.FirstSeen,
 		LastSeen:                                query.LastSeen,
 		Namespace:                               query.Namespace,
 		QPS:                                     float64(query.Count) / float64(uptime),
 		PlanSummary:                             query.PlanSummary,
 		CollScanCount:                           query.CollScanCount,
+		ResponseLengthCount:                     len(query.ResponseLength),
+		ResponseLength:                          calcStats(query.ResponseLength),
 		DocsExaminedCount:                       len(query.DocsExamined),
 		DocsExamined:                            calcStats(query.DocsExamined),
 		KeysExaminedCount:                       len(query.KeysExamined),
