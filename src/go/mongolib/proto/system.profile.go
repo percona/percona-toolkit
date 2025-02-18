@@ -13,7 +13,6 @@ type SystemProfile struct {
 	AllUsers        []interface{} `bson:"allUsers"`
 	Client          string        `bson:"client"`
 	CursorExhausted bool          `bson:"cursorExhausted"`
-	NscannedObjects int           `bson:"nscannedObjects"`
 	ExecStats       struct {
 		Advanced                    int `bson:"advanced"`
 		ExecutionTimeMillisEstimate int `bson:"executionTimeMillisEstimate"`
@@ -54,30 +53,30 @@ type SystemProfile struct {
 	Locks        struct {
 		Collection struct {
 			AcquireCount struct {
-				R       int `bson:"R"`
-				RShared int `bson:"r"`
+				Read       int `bson:"R"`
+				ReadShared int `bson:"r"`
 			} `bson:"acquireCount"`
 		} `bson:"Collection"`
 		Database struct {
 			AcquireCount struct {
-				RShared int `bson:"r"`
+				ReadShared int `bson:"r"`
 			} `bson:"acquireCount"`
 			AcquireWaitCount struct {
-				RShared int `bson:"r"`
+				ReadShared int `bson:"r"`
 			} `bson:"acquireWaitCount"`
 			TimeAcquiringMicros struct {
-				RShared int64 `bson:"r"`
+				ReadShared int64 `bson:"r"`
 			} `bson:"timeAcquiringMicros"`
 		} `bson:"Database"`
 		Global struct {
 			AcquireCount struct {
-				RShared int `bson:"r"`
-				WShared int `bson:"w"`
+				ReadShared  int `bson:"r"`
+				WriteShared int `bson:"w"`
 			} `bson:"acquireCount"`
 		} `bson:"Global"`
 		MMAPV1Journal struct {
 			AcquireCount struct {
-				RShared int `bson:"r"`
+				ReadShared int `bson:"r"`
 			} `bson:"acquireCount"`
 		} `bson:"MMAPV1Journal"`
 	} `bson:"locks"`

@@ -159,9 +159,9 @@ func TestStats(t *testing.T) {
 		BlockedTime:    nil,
 		LockTime:       nil,
 		NReturned:      []float64{0},
-		NScanned:       []float64{10000},
 		QueryTime:      []float64{7},
 		ResponseLength: []float64{215},
+		DocsExamined:   []float64{10000},
 	}
 
 	want := Queries{
