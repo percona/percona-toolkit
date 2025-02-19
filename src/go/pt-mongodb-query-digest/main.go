@@ -497,23 +497,23 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 			}
 
 		//
-		case "docs-scanned":
+		case "docs-examined":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Scanned.Max < c2.Scanned.Max
+				return c1.DocsExamined.Max < c2.DocsExamined.Max
 			}
-		case "-docs-scanned":
+		case "-docs-examined":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Scanned.Max > c2.Scanned.Max
+				return c1.DocsExamined.Max > c2.DocsExamined.Max
 			}
 
 		//
 		case "docs-returned":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Returned.Max < c2.Scanned.Max
+				return c1.Returned.Max < c2.DocsExamined.Max
 			}
 		case "-docs-returned":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Returned.Max > c2.Scanned.Max
+				return c1.Returned.Max > c2.DocsExamined.Max
 			}
 		}
 		// count,query-time,docs-scanned, docs-returned. - in front of the field name denotes reverse order.")

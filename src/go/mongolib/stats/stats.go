@@ -270,7 +270,6 @@ func (g GroupKey) String() string {
 
 type totalCounters struct {
 	Count                                      int
-	Scanned                                    float64
 	Returned                                   float64
 	QueryTime                                  float64
 	Bytes                                      float64
@@ -298,7 +297,6 @@ type QueryStats struct {
 	ResponseLengthCount int
 	ResponseLength      Statistics
 	Returned            Statistics
-	Scanned             Statistics
 
 	PlanSummary       string
 	CollScanCount     int
@@ -376,9 +374,6 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		StorageTimeReadingMicrosCount:                   len(query.StorageTimeReadingMicros),
 		StorageTimeReadingMicros:                        calcStats(query.StorageTimeReadingMicros),
 	}
-	if tc.Scanned > 0 {
-		queryStats.Scanned.Pct = queryStats.Scanned.Total * 100 / tc.Scanned
-	}
 	if tc.Returned > 0 {
 		queryStats.Returned.Pct = queryStats.Returned.Total * 100 / tc.Returned
 	}
@@ -387,9 +382,6 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 	}
 	if tc.Bytes > 0 {
 		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total * 100 / tc.Bytes
-	}
-	if queryStats.Returned.Total > 0 {
-		queryStats.Ratio = queryStats.Scanned.Total / queryStats.Returned.Total
 	}
 	if tc.DocsExamined > 0 {
 		queryStats.DocsExamined.Pct = queryStats.DocsExamined.Total * 100 / tc.DocsExamined
@@ -460,6 +452,10 @@ func calcTotalCounters(queries []QueryInfoAndCounters) totalCounters {
 }
 
 func calcStats(samples []float64) Statistics {
+	if len(samples) == 0 {
+		return Statistics{}
+	}
+
 	var s Statistics
 	s.Total, _ = stats.Sum(samples)
 	s.Min, _ = stats.Min(samples)
