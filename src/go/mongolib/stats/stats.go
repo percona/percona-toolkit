@@ -269,13 +269,16 @@ func (g GroupKey) String() string {
 }
 
 type totalCounters struct {
-	Count        int
-	Scanned      float64
-	Returned     float64
-	QueryTime    float64
-	Bytes        float64
-	DocsExamined float64
-	KeysExamined float64
+	Count                                      int
+	Scanned                                    float64
+	Returned                                   float64
+	QueryTime                                  float64
+	Bytes                                      float64
+	DocsExamined                               float64
+	KeysExamined                               float64
+	LocksDatabaseTimeAcquiringMicrosReadShared float64
+	StorageBytesRead                           float64
+	StorageTimeReadingMicros                   float64
 }
 
 type QueryStats struct {
@@ -389,10 +392,19 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		queryStats.Ratio = queryStats.Scanned.Total / queryStats.Returned.Total
 	}
 	if tc.DocsExamined > 0 {
-		queryStats.DocsExamined.Pct = queryStats.DocsExamined.Total / tc.DocsExamined
+		queryStats.DocsExamined.Pct = queryStats.DocsExamined.Total * 100 / tc.DocsExamined
 	}
 	if tc.KeysExamined > 0 {
-		queryStats.KeysExamined.Pct = queryStats.KeysExamined.Total / tc.KeysExamined
+		queryStats.KeysExamined.Pct = queryStats.KeysExamined.Total * 100 / tc.KeysExamined
+	}
+	if tc.LocksDatabaseTimeAcquiringMicrosReadShared > 0 {
+		queryStats.LocksDatabaseTimeAcquiringMicrosReadShared.Pct = queryStats.LocksDatabaseTimeAcquiringMicrosReadShared.Total * 100 / tc.LocksDatabaseTimeAcquiringMicrosReadShared
+	}
+	if tc.StorageBytesRead > 0 {
+		queryStats.StorageBytesRead.Pct = queryStats.StorageBytesRead.Total * 100 / tc.StorageBytesRead
+	}
+	if tc.StorageTimeReadingMicros > 0 {
+		queryStats.StorageTimeReadingMicros.Pct = queryStats.StorageTimeReadingMicros.Total * 100 / tc.StorageTimeReadingMicros
 	}
 
 	return queryStats
@@ -407,6 +419,9 @@ func aggregateCounters(queries []QueryInfoAndCounters) QueryInfoAndCounters {
 		qt.ResponseLength = append(qt.ResponseLength, query.ResponseLength...)
 		qt.DocsExamined = append(qt.DocsExamined, query.DocsExamined...)
 		qt.KeysExamined = append(qt.KeysExamined, query.KeysExamined...)
+		qt.LocksDatabaseTimeAcquiringMicrosReadShared = append(qt.LocksDatabaseTimeAcquiringMicrosReadShared, query.LocksDatabaseTimeAcquiringMicrosReadShared...)
+		qt.StorageBytesRead = append(qt.StorageBytesRead, query.StorageBytesRead...)
+		qt.StorageTimeReadingMicros = append(qt.StorageTimeReadingMicros, query.StorageTimeReadingMicros...)
 	}
 	return qt
 }
@@ -431,6 +446,15 @@ func calcTotalCounters(queries []QueryInfoAndCounters) totalCounters {
 
 		keysExamined, _ := stats.Sum(query.KeysExamined)
 		tc.KeysExamined += keysExamined
+
+		locksDatabaseTimeAcquiringMicrosReadShared, _ := stats.Sum(query.LocksDatabaseTimeAcquiringMicrosReadShared)
+		tc.LocksDatabaseTimeAcquiringMicrosReadShared += locksDatabaseTimeAcquiringMicrosReadShared
+
+		storageBytesRead, _ := stats.Sum(query.StorageBytesRead)
+		tc.StorageBytesRead += storageBytesRead
+
+		storageTimeReadingMicros, _ := stats.Sum(query.StorageTimeReadingMicros)
+		tc.StorageTimeReadingMicros += storageTimeReadingMicros
 	}
 	return tc
 }
