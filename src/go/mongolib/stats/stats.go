@@ -120,27 +120,40 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		qiac.LastSeen = doc.Ts
 	}
 
-	if doc.Storage.Data.BytesRead > 0 {
-		qiac.StorageBytesRead = append(qiac.StorageBytesRead, float64(doc.Storage.Data.BytesRead))
-	}
-	if doc.Storage.Data.TimeReadingMicros > 0 {
-		qiac.StorageTimeReadingMicros = append(qiac.StorageTimeReadingMicros, float64(doc.Storage.Data.TimeReadingMicros))
-	}
-
-	qiac.LocksGlobalAcquireCountReadShared += doc.Locks.Global.AcquireCount.ReadShared
-	qiac.LocksGlobalAcquireCountWriteShared += doc.Locks.Global.AcquireCount.WriteShared
-	qiac.LocksDatabaseAcquireCountReadShared += doc.Locks.Database.AcquireCount.ReadShared
-	qiac.LocksDatabaseAcquireWaitCountReadShared += doc.Locks.Database.AcquireWaitCount.ReadShared
-	if doc.Locks.Database.TimeAcquiringMicros.ReadShared > 0 {
-		qiac.LocksDatabaseTimeAcquiringMicrosReadShared = append(qiac.LocksDatabaseTimeAcquiringMicrosReadShared, float64(doc.Locks.Database.TimeAcquiringMicros.ReadShared))
-	}
-	qiac.LocksCollectionAcquireCountReadShared += doc.Locks.Collection.AcquireCount.ReadShared
-
 	if doc.DocsExamined > 0 {
 		qiac.DocsExamined = append(qiac.DocsExamined, float64(doc.DocsExamined))
 	}
 	if doc.KeysExamined > 0 {
 		qiac.KeysExamined = append(qiac.KeysExamined, float64(doc.KeysExamined))
+	}
+	if doc.Locks.Global.AcquireCount.ReadShared > 0 {
+		qiac.LocksGlobalAcquireCountReadSharedCount++
+		qiac.LocksGlobalAcquireCountReadShared += doc.Locks.Global.AcquireCount.ReadShared
+	}
+	if doc.Locks.Global.AcquireCount.WriteShared > 0 {
+		qiac.LocksGlobalAcquireCountWriteSharedCount++
+		qiac.LocksGlobalAcquireCountWriteShared += doc.Locks.Global.AcquireCount.WriteShared
+	}
+	if doc.Locks.Database.AcquireCount.ReadShared > 0 {
+		qiac.LocksDatabaseAcquireCountReadSharedCount++
+		qiac.LocksDatabaseAcquireCountReadShared += doc.Locks.Database.AcquireCount.ReadShared
+	}
+	if doc.Locks.Database.AcquireWaitCount.ReadShared > 0 {
+		qiac.LocksDatabaseAcquireWaitCountReadSharedCount++
+		qiac.LocksDatabaseAcquireWaitCountReadShared += doc.Locks.Database.AcquireWaitCount.ReadShared
+	}
+	if doc.Locks.Database.TimeAcquiringMicros.ReadShared > 0 {
+		qiac.LocksDatabaseTimeAcquiringMicrosReadShared = append(qiac.LocksDatabaseTimeAcquiringMicrosReadShared, float64(doc.Locks.Database.TimeAcquiringMicros.ReadShared))
+	}
+	if doc.Locks.Collection.AcquireCount.ReadShared > 0 {
+		qiac.LocksCollectionAcquireCountReadSharedCount++
+		qiac.LocksCollectionAcquireCountReadShared += doc.Locks.Collection.AcquireCount.ReadShared
+	}
+	if doc.Storage.Data.BytesRead > 0 {
+		qiac.StorageBytesRead = append(qiac.StorageBytesRead, float64(doc.Storage.Data.BytesRead))
+	}
+	if doc.Storage.Data.TimeReadingMicros > 0 {
+		qiac.StorageTimeReadingMicros = append(qiac.StorageTimeReadingMicros, float64(doc.Storage.Data.TimeReadingMicros))
 	}
 	s.Unlock()
 
@@ -234,12 +247,17 @@ type QueryInfoAndCounters struct {
 	User         string
 	Comments     string
 
-	LocksGlobalAcquireCountReadShared          int
-	LocksGlobalAcquireCountWriteShared         int
-	LocksDatabaseAcquireCountReadShared        int
-	LocksDatabaseAcquireWaitCountReadShared    int
-	LocksDatabaseTimeAcquiringMicrosReadShared []float64 // in microseconds
-	LocksCollectionAcquireCountReadShared      int
+	LocksGlobalAcquireCountReadSharedCount       int
+	LocksGlobalAcquireCountReadShared            int
+	LocksGlobalAcquireCountWriteSharedCount      int
+	LocksGlobalAcquireCountWriteShared           int
+	LocksDatabaseAcquireCountReadSharedCount     int
+	LocksDatabaseAcquireCountReadShared          int
+	LocksDatabaseAcquireWaitCountReadSharedCount int
+	LocksDatabaseAcquireWaitCountReadShared      int
+	LocksDatabaseTimeAcquiringMicrosReadShared   []float64 // in microseconds
+	LocksCollectionAcquireCountReadSharedCount   int
+	LocksCollectionAcquireCountReadShared        int
 
 	StorageBytesRead         []float64
 	StorageTimeReadingMicros []float64 // in microseconds
@@ -310,12 +328,17 @@ type QueryStats struct {
 	User              string
 	Comments          string
 
+	LocksGlobalAcquireCountReadSharedCount          int
 	LocksGlobalAcquireCountReadShared               int
+	LocksGlobalAcquireCountWriteSharedCount         int
 	LocksGlobalAcquireCountWriteShared              int
+	LocksDatabaseAcquireCountReadSharedCount        int
 	LocksDatabaseAcquireCountReadShared             int
+	LocksDatabaseAcquireWaitCountReadSharedCount    int
 	LocksDatabaseAcquireWaitCountReadShared         int
 	LocksDatabaseTimeAcquiringMicrosReadSharedCount int
 	LocksDatabaseTimeAcquiringMicrosReadShared      Statistics // in microseconds
+	LocksCollectionAcquireCountReadSharedCount      int
 	LocksCollectionAcquireCountReadShared           int
 
 	StorageBytesReadCount         int
@@ -338,36 +361,41 @@ type Statistics struct {
 
 func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters) QueryStats {
 	queryStats := QueryStats{
-		Count:                                   query.Count,
-		ID:                                      query.ID,
-		Operation:                               query.Operation,
-		Query:                                   query.Query,
-		Fingerprint:                             query.Fingerprint,
-		Returned:                                calcStats(query.NReturned),
-		QueryTime:                               calcStats(query.QueryTime),
-		FirstSeen:                               query.FirstSeen,
-		LastSeen:                                query.LastSeen,
-		Namespace:                               query.Namespace,
-		QPS:                                     float64(query.Count) / float64(uptime),
-		PlanSummary:                             query.PlanSummary,
-		CollScanCount:                           query.CollScanCount,
-		ResponseLengthCount:                     len(query.ResponseLength),
-		ResponseLength:                          calcStats(query.ResponseLength),
-		DocsExaminedCount:                       len(query.DocsExamined),
-		DocsExamined:                            calcStats(query.DocsExamined),
-		KeysExaminedCount:                       len(query.KeysExamined),
-		KeysExamined:                            calcStats(query.KeysExamined),
-		QueryHash:                               query.QueryHash,
-		AppName:                                 query.AppName,
-		Client:                                  query.Client,
-		User:                                    query.User,
-		Comments:                                query.Comments,
-		LocksGlobalAcquireCountReadShared:       query.LocksGlobalAcquireCountReadShared,
-		LocksGlobalAcquireCountWriteShared:      query.LocksGlobalAcquireCountWriteShared,
-		LocksDatabaseAcquireCountReadShared:     query.LocksDatabaseAcquireCountReadShared,
-		LocksDatabaseAcquireWaitCountReadShared: query.LocksDatabaseAcquireWaitCountReadShared,
+		Count:                                    query.Count,
+		ID:                                       query.ID,
+		Operation:                                query.Operation,
+		Query:                                    query.Query,
+		Fingerprint:                              query.Fingerprint,
+		Returned:                                 calcStats(query.NReturned),
+		QueryTime:                                calcStats(query.QueryTime),
+		FirstSeen:                                query.FirstSeen,
+		LastSeen:                                 query.LastSeen,
+		Namespace:                                query.Namespace,
+		QPS:                                      float64(query.Count) / float64(uptime),
+		PlanSummary:                              query.PlanSummary,
+		CollScanCount:                            query.CollScanCount,
+		ResponseLengthCount:                      len(query.ResponseLength),
+		ResponseLength:                           calcStats(query.ResponseLength),
+		DocsExaminedCount:                        len(query.DocsExamined),
+		DocsExamined:                             calcStats(query.DocsExamined),
+		KeysExaminedCount:                        len(query.KeysExamined),
+		KeysExamined:                             calcStats(query.KeysExamined),
+		QueryHash:                                query.QueryHash,
+		AppName:                                  query.AppName,
+		Client:                                   query.Client,
+		User:                                     query.User,
+		Comments:                                 query.Comments,
+		LocksGlobalAcquireCountReadSharedCount:   query.LocksGlobalAcquireCountReadSharedCount,
+		LocksGlobalAcquireCountReadShared:        query.LocksGlobalAcquireCountReadShared,
+		LocksGlobalAcquireCountWriteSharedCount:  query.LocksGlobalAcquireCountWriteSharedCount,
+		LocksGlobalAcquireCountWriteShared:       query.LocksGlobalAcquireCountWriteShared,
+		LocksDatabaseAcquireCountReadSharedCount: query.LocksDatabaseAcquireCountReadSharedCount,
+		LocksDatabaseAcquireCountReadShared:      query.LocksDatabaseAcquireCountReadShared,
+		LocksDatabaseAcquireWaitCountReadSharedCount:    query.LocksDatabaseAcquireWaitCountReadSharedCount,
+		LocksDatabaseAcquireWaitCountReadShared:         query.LocksDatabaseAcquireWaitCountReadShared,
 		LocksDatabaseTimeAcquiringMicrosReadSharedCount: len(query.LocksDatabaseTimeAcquiringMicrosReadShared),
 		LocksDatabaseTimeAcquiringMicrosReadShared:      calcStats(query.LocksDatabaseTimeAcquiringMicrosReadShared),
+		LocksCollectionAcquireCountReadSharedCount:      query.LocksCollectionAcquireCountReadSharedCount,
 		LocksCollectionAcquireCountReadShared:           query.LocksCollectionAcquireCountReadShared,
 		StorageBytesReadCount:                           len(query.StorageBytesRead),
 		StorageBytesRead:                                calcStats(query.StorageBytesRead),
@@ -382,6 +410,9 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 	}
 	if tc.Bytes > 0 {
 		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total * 100 / tc.Bytes
+	}
+	if queryStats.Returned.Total > 0 {
+		queryStats.Ratio = queryStats.DocsExamined.Total / queryStats.Returned.Total
 	}
 	if tc.DocsExamined > 0 {
 		queryStats.DocsExamined.Pct = queryStats.DocsExamined.Total * 100 / tc.DocsExamined
