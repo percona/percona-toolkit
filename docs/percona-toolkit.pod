@@ -529,7 +529,7 @@ list of supported platforms and versions.
 
 In order to support IPv6 addresses to connect to MySQL, Perl DBD::MySQL driver v4.033_01 is
 required. Also, as stated in RFC 3986 L<https://www.ietf.org/rfc/rfc3986.txt> section 3.2.2
-brackes must be used to distinguish host and port.
+brackets must be used to distinguish host and port.
 Examples: L<https://metacpan.org/pod/DBD::mysql#port>
 
 =head1 BUGS

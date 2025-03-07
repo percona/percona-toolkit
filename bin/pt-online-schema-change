@@ -2866,7 +2866,10 @@ sub quote_val {
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
 
-   return $val if $args{is_float};
+   if ( $args{is_float} ) {
+      return sprintf("%.17g", $val) if $val - "$val" != 0;
+      return $val;
+   }
 
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
@@ -5866,8 +5869,6 @@ sub _nibble_params {
          asc_only     => 1,
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
-
-      my $force_concat_enums;
 
 
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
@@ -9401,12 +9402,12 @@ sub main {
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         _die("Error checking --max-load or --critial-load: $EVAL_ERROR.  "
+         _die("Error checking --max-load or --critical-load: $EVAL_ERROR.  "
             . "Check that the variables specified for --max-load and "
             . "--critical-load are spelled correctly and exist in "
             . "SHOW GLOBAL STATUS.  Current values for these options are:\n"
             . "  --max-load " . (join(',', @{$o->get('max-load')})) . "\n"
-            . "  --critial-load "  . (join(',', @{$o->get('critical-load')}))
+            . "  --critical-load "  . (join(',', @{$o->get('critical-load')}))
             , INVALID_PARAMETERS);
       }
 

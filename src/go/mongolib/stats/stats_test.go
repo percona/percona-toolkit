@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
@@ -40,8 +41,8 @@ func TestMain(m *testing.M) {
 		log.Printf("cannot get root path: %s", err.Error())
 		os.Exit(1)
 	}
-	// TODO: Review with the new sandbox
-	// os.Exit(m.Run())
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestTimesLen(t *testing.T) {
@@ -158,9 +159,9 @@ func TestStats(t *testing.T) {
 		BlockedTime:    nil,
 		LockTime:       nil,
 		NReturned:      []float64{0},
-		NScanned:       []float64{10000},
 		QueryTime:      []float64{7},
 		ResponseLength: []float64{215},
+		DocsExamined:   []float64{10000},
 	}
 
 	want := Queries{

@@ -63,6 +63,23 @@ is(
    '--float-precision so no more diff (issue 410)'
 );
 
+# Although the SQL statement contains serialized values with more than necessary decimal digits
+# we produce the expected value on execution
+$output = `$trunk/bin/pt-table-sync --sync-to-source h=127.1,P=12346,u=msandbox,p=msandbox,D=test,t=fl --execute 2>&1`;
+is(
+   $output,
+   '',
+   'REPLACE statement can be successfully applied'
+);
+
+$sb->wait_for_replicas();
+my @rows = $replica_dbh->selectrow_array('SELECT `d` FROM `test`.`fl` WHERE `d` = 2.0000012');
+is_deeply(
+   \@rows,
+   [2.0000012],
+   'Floating point values are set correctly in round trip'
+);
+
 # #############################################################################
 # pt-table-sync quotes floats, prevents syncing
 # https://bugs.launchpad.net/percona-toolkit/+bug/1229861
@@ -86,7 +103,6 @@ is_deeply(
    [],
    "Sync rows with float values (bug 1229861)"
 ) or diag(Dumper($rows), $output);
-
 # #############################################################################
 # Done.
 # #############################################################################

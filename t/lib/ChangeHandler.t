@@ -7,6 +7,7 @@ BEGIN {
 };
 
 use strict;
+use utf8;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
@@ -612,6 +613,52 @@ SKIP: {
       [
          "UPDATE `bug_1038276`.`rt` SET `b`='0x89504E470D0A1A0A0000000D4948445200000079000000750802000000E55AD965000000097048597300000EC300000EC301C76FA8640000200049444154789C4CBB7794246779FFBBF78F7B7EBE466177677772CE3D9D667AA67BA62776CE39545557CE3974EE9EB049AB9556392210414258083' WHERE `id`='1' LIMIT 1",
          "INSERT INTO `bug_1038276`.`rt`(`id`, `b`) VALUES ('1', '0x89504E470D0A1A0A0000000D4948445200000079000000750802000000E55AD965000000097048597300000EC300000EC301C76FA8640000200049444154789C4CBB7794246779FFBBF78F7B7EBE466177677772CE3D9D667AA67BA62776CE39545557CE3974EE9EB049AB9556392210414258083')",
+      ],
+      "UPDATE and INSERT quote data regardless of how it looks if tbl_struct->quote_val is true"
+   );
+}
+
+# #############################################################################
+# PT-2377: pt-table-sync must handle utf8 in JSON columns correctly
+# #############################################################################
+SKIP: {
+   skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
+   $master_dbh->do('DROP TABLE IF EXISTS `test`.`pt-2377`');
+   $master_dbh->do('CREATE TABLE `test`.`pt-2377` (id INT, data JSON)');
+   $master_dbh->do(q/INSERT INTO `test`.`pt-2377` VALUES (1, '{"name": "Müller"}')/);
+   $master_dbh->do(q/INSERT INTO `test`.`pt-2377` VALUES (2, NULL)/);
+
+   @rows = ();
+   $tbl_struct = {
+      cols      => [qw(id data)],
+      col_posn  => {id=>0, data=>1},
+      type_for  => {id=>'int', data=>'json'},
+   };
+   $ch = new ChangeHandler(
+      Quoter     => $q,
+      left_db    => 'test',
+      left_tbl   => 'pt-2377',
+      right_db   => 'test',
+      right_tbl  => 'pt-2377',
+      actions    => [ sub { push @rows, $_[0]; } ],
+      replace    => 0,
+      queue      => 0,
+      tbl_struct => $tbl_struct,
+   );
+   $ch->fetch_back($master_dbh);
+
+   $ch->change('UPDATE', {id=>1}, [qw(id)] );
+   $ch->change('INSERT', {id=>1}, [qw(id)] );
+   $ch->change('UPDATE', {id=>2}, [qw(id)] );
+   $ch->change('INSERT', {id=>2}, [qw(id)] );
+
+   is_deeply(
+      \@rows,
+      [
+         q/UPDATE `test`.`pt-2377` SET `data`='{"name": "Müller"}' WHERE `id`='1' LIMIT 1/,
+         q/INSERT INTO `test`.`pt-2377`(`id`, `data`) VALUES ('1', '{"name": "Müller"}')/,
+         q/UPDATE `test`.`pt-2377` SET `data`=NULL WHERE `id`='2' LIMIT 1/,
+         q/INSERT INTO `test`.`pt-2377`(`id`, `data`) VALUES ('2', NULL)/
       ],
       "UPDATE and INSERT quote data regardless of how it looks if tbl_struct->quote_val is true"
    );

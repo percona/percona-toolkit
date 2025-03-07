@@ -78,7 +78,10 @@ sub quote_val {
                   && !$args{is_char};          # unless is_char is true
 
    # https://bugs.launchpad.net/percona-toolkit/+bug/1229861
-   return $val if $args{is_float};
+   if ( $args{is_float} ) {
+      return sprintf("%.17g", $val) if $val - "$val" != 0;
+      return $val;
+   }
 
    # Quote and return non-numeric vals.
    $val =~ s/(['\\])/\\$1/g;

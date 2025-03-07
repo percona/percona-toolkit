@@ -1140,7 +1140,7 @@ sub timestampdiff {
 # Some column types can store invalid values, like most of the temporal
 # types.  When evaluated, invalid values return NULL.  If the value is
 # NULL to begin with, then it is not invalid because NULL is valid.
-# For example, TO_DAYS('2009-00-00') evalues to NULL because that date
+# For example, TO_DAYS('2009-00-00') evaluates to NULL because that date
 # is invalid, even though it's storable.
 sub get_valid_end_points {
    my ( $self, %args ) = @_;

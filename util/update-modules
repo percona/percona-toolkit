@@ -137,6 +137,10 @@ if [ ! -f $tool_file ]; then
    die "$tool_file does not exist"
 fi
 
+if [ -h $tool_file ]; then
+   die "$tool_file is a symbolic link"
+fi
+
 if [ -n "$(head -n 1 $tool_file | grep perl)" ]; then
    tool_lang="perl"
 else
