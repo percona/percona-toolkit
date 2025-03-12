@@ -9912,7 +9912,7 @@ sub main {
       );
    }
 
-   if ( my $alter = $o->get('alter') ) {
+   if ( (my $alter = $o->get('alter')) && !$o->get('resume') ) {
       print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
       print $sql, "\n" if $o->get('print');
