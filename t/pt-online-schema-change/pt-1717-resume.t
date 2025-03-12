@@ -208,6 +208,8 @@ ok(
    'All rows copied correctly'
 ) or diag("New table checksum: '${new_table_checksum}', original content checksum: '${old_table_checksum}'");
 
+diag(`/tmp/12345/use test -N -e "ALTER TABLE pt1717 DROP COLUMN foo"`);
+
 # Tests for chunk-index and chunk-index-columns options
 $args = "$source_dsn,D=test,t=pt1717 --alter 'ADD COLUMN foo varchar(32)' --execute --history --chunk-size=10 --no-drop-new-table --no-drop-triggers --reverse-triggers --chunk-index=f2";
 
@@ -288,7 +290,7 @@ is(
    $output + 0,
    3,
    'Triggers were not dropped'
-);
+) or diag($output);
 
 $output = `/tmp/12345/use -N -e "select count(*) from information_schema.triggers where TRIGGER_SCHEMA='test' AND EVENT_OBJECT_TABLE like '%pt1717%_new' AND trigger_name LIKE 'rt_%'"`;
 
