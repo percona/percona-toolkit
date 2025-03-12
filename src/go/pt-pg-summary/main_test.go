@@ -32,7 +32,8 @@ var logger = logrus.New()
 
 func TestMain(m *testing.M) {
 	logger.SetLevel(logrus.WarnLevel)
-	os.Exit(m.Run())
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestConnection(t *testing.T) {
