@@ -8943,9 +8943,17 @@ sub main {
       $sth->finish();
       PTDEBUG && _d('Last chunk:', Dumper($last_chunk));
 
-      if ( !$last_chunk || !$last_chunk->{new_table_name} ) {
+      if ( !$last_chunk ) {
          $oktorun = undef;
          _die("Option --resume refers non-existing job ID: ${old_job_id}. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+
+      if ( !$last_chunk->{new_table_name}
+         || !$last_chunk->{lower_boundary}
+         || !$last_chunk->{upper_boundary} ) {
+         $oktorun = undef;
+         _die("Option --resume refers job ${old_job_id} with empty boundaries. Exiting."
             , UNSUPPORTED_OPERATION);
       }
 
