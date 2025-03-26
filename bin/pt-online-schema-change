@@ -9608,13 +9608,13 @@ sub main {
          #   doesn't match '(?-xism:Failed to find a unique new table name)'
 
          my $original_error = $EVAL_ERROR;
-my $original_error_code;
-if ( $? ) {
-   $original_error_code = $?;
-} 
-else {
-   $original_error_code = $!;
-}
+         my $original_error_code;
+         if ( $? ) {
+            $original_error_code = $?;
+         } 
+         else {
+            $original_error_code = $!;
+         }
 
          $SIG{__DIE__} = 'DEFAULT';
 
