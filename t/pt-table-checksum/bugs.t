@@ -378,6 +378,29 @@ is(
 diag(`/tmp/12346/stop >/dev/null`); 
 diag(`/tmp/12346/start >/dev/null`); 
 
+# #############################################################################
+# typo in pt-table-checksum error message
+# https://perconadev.atlassian.net/browse/PT-2424
+# #############################################################################
+
+$output = output(sub {
+   pt_table_checksum::main($source_dsn,
+      qw(--no-empty-replicate-table --truncate-replicate-table)
+   )},
+   stderr => 1,
+);
+
+unlike(
+   $output,
+   qr/--resume and --no-empty-replicate-table are mutually exclusive/,
+   "PT-2424: no typo in the error message"
+);
+
+like(
+   $output,
+   qr/--truncate-replicate-table and --no-empty-replicate-table are mutually exclusive/,
+   "PT-2424: correct error message"
+);
 
 #
 # #############################################################################
