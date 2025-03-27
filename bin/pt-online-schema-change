@@ -9607,11 +9607,16 @@ sub main {
          #                   ''
          #   doesn't match '(?-xism:Failed to find a unique new table name)'
 
-         # (*) Frank:  commented them out because it caused infinite loop
-         # and the mentioned test error doesn't arise
-
          my $original_error = $EVAL_ERROR;
-         my $original_error_code = $?;
+         my $original_error_code;
+         if ( $? ) {
+            $original_error_code = $?;
+         } 
+         else {
+            $original_error_code = $!;
+         }
+
+         $SIG{__DIE__} = 'DEFAULT';
 
          foreach my $task ( reverse @cleanup_tasks ) {
             eval {
@@ -9921,10 +9926,12 @@ sub main {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
-        if ( $plugin && $plugin->can('before_die') ) {
-          $plugin->before_die(exit_status => $EVAL_ERROR);
-        }
+         if ( $plugin && $plugin->can('before_die') ) {
+            $plugin->before_die(exit_status => $EVAL_ERROR);
+         }
          # this is trapped by a signal handler. Don't replace it with _die
+         # we need to override $SIG{__DIE__} to return correct error code
+         $SIG{__DIE__} = sub { print(STDERR "$_[0]"); exit ERROR_ALTERING_TABLE;  };
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n";
       }
       print "Altered $new_tbl->{name} OK.\n";
