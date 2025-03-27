@@ -15,7 +15,7 @@ Usage
 
 ::
 
-  pt-secure-data [<flags>] <command> [<args> ...]
+  pt-secure-collect [<flags>] <command> [<args> ...]
 
 By default, :program:`pt-secure-collect` will collect the output of:
 
