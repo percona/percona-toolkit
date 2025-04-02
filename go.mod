@@ -1,6 +1,7 @@
 module github.com/percona/percona-toolkit
 
 go 1.23.4
+
 toolchain go1.24.1
 
 require (
@@ -22,7 +23,7 @@ require (
 	github.com/pborman/getopt v1.1.0
 	github.com/percona/go-mysql v0.0.0-20210427141028-73d29c6da78c
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
