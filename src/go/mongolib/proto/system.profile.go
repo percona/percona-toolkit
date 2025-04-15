@@ -92,7 +92,7 @@ type SystemProfile struct {
 	UpdateObj          bson.D    `bson:"updateobj" json:"updateobj"`
 	Command            bson.D    `bson:"command" json:"command"`
 	OriginatingCommand bson.D    `bson:"originatingCommand" json:"originatingCommand"`
-	ResponseLength     int       `bson:"responseLength" json:"responseLength"`
+	ResponseLength     int       `bson:"responseLength" json:"reslen"`
 	Ts                 time.Time `bson:"ts" json:"ts"`
 	User               string    `bson:"user" json:"user"`
 	WriteConflicts     int       `bson:"writeConflicts" json:"writeConflicts"`
