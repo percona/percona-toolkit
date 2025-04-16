@@ -123,11 +123,11 @@ $output = output(
 );
 $output = `cat archive.test.table_2`;
 is($output, <<EOF
-1, 2, 3, 4
-2, "\\N", 3, 4
-3, 2, 3, "\\\t"
-4, 2, 3, "\\\n"
-5, 2, 3, "Zapp \\"Brannigan"
+1,2,3,4
+2,\\N,3,4
+3,2,3,"\\\t"
+4,2,3,"\\\n"
+5,2,3,"Zapp \\"Brannigan"
 EOF
 , '--output-format=csv');
 `rm -f archive.test.table_2`;

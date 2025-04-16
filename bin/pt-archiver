@@ -6969,7 +6969,7 @@ sub main {
           warn "Invalid output format:". $o->get('format');
           warn "Using default 'dump' format";
       } elsif ($o->get('output-format') || '' eq 'csv') {
-              $fields_separated_by = ", ";
+              $fields_separated_by = ",";
               $optionally_enclosed_by = '"';
       }
       my $need_hdr = $o->get('header') && !-f $archive_file;
@@ -7511,7 +7511,7 @@ sub escape {
       s/([\t\n\\])/\\$1/g if defined $_;  # Escape tabs etc
       my $s = defined $_ ? $_ : '\N';             # NULL = \N
       # var & ~var will return 0 only for numbers
-      if ($s !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"') {
+      if ($s !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"' && $s ne '\N') {
           $s =~ s/([^\\])"/$1\\"/g;
           $s = $optionally_enclosed_by."$s".$optionally_enclosed_by;
       }
