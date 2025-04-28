@@ -16,7 +16,6 @@ import (
 
 const (
 	planSummaryCollScan = "COLLSCAN"
-	planSummaryIXScan   = "IXSCAN"
 )
 
 type StatsError struct {
@@ -106,9 +105,8 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	if qiac.PlanSummary == planSummaryCollScan {
 		qiac.CollScanCount++
 	}
-	if strings.HasPrefix(qiac.PlanSummary, planSummaryIXScan) {
-		qiac.PlanSummary = planSummaryIXScan
-	}
+
+	qiac.PlanSummary = strings.Split(qiac.PlanSummary, " ")[0]
 
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
