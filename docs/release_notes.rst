@@ -1,6 +1,16 @@
 Release Notes
 ***************
 
+v3.7.0-1 released 2025-05-14
+==============================
+
+This release fixies several CVEs reported in Percona Toolkit version 3.7.0 related to `libxml2` (CVE-2024-56171, CVE-2025-24928), `openssl` (CVE-2024-12797) and `krb5` (CVE-2022-37967) components.
+
+Bug Fixed
+------------
+
+* :jirabug:`PT-2442`: percona-toolkit:latest Vulnerability [CVE-2024-56171 CVE-2024-12797 CVE-2022-37967 CVE-2025-24928]
+
 v3.7.0 released 2024-12-23
 ==============================
 
