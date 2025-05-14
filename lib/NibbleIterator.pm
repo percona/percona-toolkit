@@ -208,10 +208,6 @@ sub _nibble_params {
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
-      # Check if enum fields items are sorted or not.
-      # If they are sorted we can skip adding CONCAT to improve the queries eficiency.
-      my $force_concat_enums;
-
       # Make SQL statements, prepared on first call to next().  FROM and
       # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
       # are needed to ensure deterministic nibbling.

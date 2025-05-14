@@ -2866,7 +2866,10 @@ sub quote_val {
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
 
-   return $val if $args{is_float};
+   if ( $args{is_float} ) {
+      return sprintf("%.17g", $val) if $val - "$val" != 0;
+      return $val;
+   }
 
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
@@ -5861,8 +5864,6 @@ sub _nibble_params {
          asc_only     => 1,
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
-
-      my $force_concat_enums;
 
 
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
@@ -8942,9 +8943,17 @@ sub main {
       $sth->finish();
       PTDEBUG && _d('Last chunk:', Dumper($last_chunk));
 
-      if ( !$last_chunk || !$last_chunk->{new_table_name} ) {
+      if ( !$last_chunk ) {
          $oktorun = undef;
          _die("Option --resume refers non-existing job ID: ${old_job_id}. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+
+      if ( !$last_chunk->{new_table_name}
+         || !$last_chunk->{lower_boundary}
+         || !$last_chunk->{upper_boundary} ) {
+         $oktorun = undef;
+         _die("Option --resume refers job ${old_job_id} with empty boundaries. Exiting."
             , UNSUPPORTED_OPERATION);
       }
 
@@ -9396,12 +9405,12 @@ sub main {
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         _die("Error checking --max-load or --critial-load: $EVAL_ERROR.  "
+         _die("Error checking --max-load or --critical-load: $EVAL_ERROR.  "
             . "Check that the variables specified for --max-load and "
             . "--critical-load are spelled correctly and exist in "
             . "SHOW GLOBAL STATUS.  Current values for these options are:\n"
             . "  --max-load " . (join(',', @{$o->get('max-load')})) . "\n"
-            . "  --critial-load "  . (join(',', @{$o->get('critical-load')}))
+            . "  --critical-load "  . (join(',', @{$o->get('critical-load')}))
             , INVALID_PARAMETERS);
       }
 
@@ -9606,11 +9615,16 @@ sub main {
          #                   ''
          #   doesn't match '(?-xism:Failed to find a unique new table name)'
 
-         # (*) Frank:  commented them out because it caused infinite loop
-         # and the mentioned test error doesn't arise
-
          my $original_error = $EVAL_ERROR;
-         my $original_error_code = $?;
+         my $original_error_code;
+         if ( $? ) {
+            $original_error_code = $?;
+         } 
+         else {
+            $original_error_code = $!;
+         }
+
+         $SIG{__DIE__} = 'DEFAULT';
 
          foreach my $task ( reverse @cleanup_tasks ) {
             eval {
@@ -9796,9 +9810,9 @@ sub main {
 
    if ( $o->get('history') ) {
       my $sth = $cxn->dbh()->prepare(
-         "UPDATE ${hist_table} SET new_table_name = ?"
+         "UPDATE ${hist_table} SET new_table_name = ? WHERE job_id = ?"
       );
-      $sth->execute($new_tbl->{tbl});
+      $sth->execute($new_tbl->{tbl}, $job_id);
    }
 
    # If the new table still exists, drop it unless the tool was interrupted.
@@ -9911,7 +9925,7 @@ sub main {
       );
    }
 
-   if ( my $alter = $o->get('alter') ) {
+   if ( (my $alter = $o->get('alter')) && !$o->get('resume') ) {
       print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
       print $sql, "\n" if $o->get('print');
@@ -9920,10 +9934,12 @@ sub main {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
-        if ( $plugin && $plugin->can('before_die') ) {
-          $plugin->before_die(exit_status => $EVAL_ERROR);
-        }
+         if ( $plugin && $plugin->can('before_die') ) {
+            $plugin->before_die(exit_status => $EVAL_ERROR);
+         }
          # this is trapped by a signal handler. Don't replace it with _die
+         # we need to override $SIG{__DIE__} to return correct error code
+         $SIG{__DIE__} = sub { print(STDERR "$_[0]"); exit ERROR_ALTERING_TABLE;  };
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n";
       }
       print "Altered $new_tbl->{name} OK.\n";

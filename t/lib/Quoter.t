@@ -71,6 +71,8 @@ is( $q->quote_val('0x89504E470', is_char => 0), '0x89504E470', 'hex string, with
 is( $q->quote_val('0x89504E470', is_char => 1), "'0x89504E470'", 'hex string, with is_char => 1');
 is( $q->quote_val('0x89504I470'), "'0x89504I470'", 'looks like hex string');
 is( $q->quote_val('eastside0x3'), "'eastside0x3'", 'looks like hex str (issue 1110');
+is( $q->quote_val(969.1 / 360, is_float => 1), "2.6919444444444447", 'float has full precision');
+is( $q->quote_val(0.1, is_float => 1), "0.1", 'full precision for float only used when required');
 
 # Splitting DB and tbl apart
 is_deeply(

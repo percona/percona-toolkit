@@ -13,8 +13,6 @@ type SystemProfile struct {
 	AllUsers        []interface{} `bson:"allUsers"`
 	Client          string        `bson:"client"`
 	CursorExhausted bool          `bson:"cursorExhausted"`
-	DocsExamined    int           `bson:"docsExamined"`
-	NscannedObjects int           `bson:"nscannedObjects"`
 	ExecStats       struct {
 		Advanced                    int `bson:"advanced"`
 		ExecutionTimeMillisEstimate int `bson:"executionTimeMillisEstimate"`
@@ -48,28 +46,37 @@ type SystemProfile struct {
 		SaveState    int    `bson:"saveState"`
 		Stage        string `bson:"stage"`
 		Works        int    `bson:"works"`
+		DocsExamined int    `bson:"docsExamined"`
 	} `bson:"execStats"`
 	KeyUpdates   int `bson:"keyUpdates"`
 	KeysExamined int `bson:"keysExamined"`
 	Locks        struct {
 		Collection struct {
 			AcquireCount struct {
-				R int `bson:"R"`
+				Read       int `bson:"R"`
+				ReadShared int `bson:"r"`
 			} `bson:"acquireCount"`
 		} `bson:"Collection"`
 		Database struct {
 			AcquireCount struct {
-				R int `bson:"r"`
+				ReadShared int `bson:"r"`
 			} `bson:"acquireCount"`
+			AcquireWaitCount struct {
+				ReadShared int `bson:"r"`
+			} `bson:"acquireWaitCount"`
+			TimeAcquiringMicros struct {
+				ReadShared int64 `bson:"r"`
+			} `bson:"timeAcquiringMicros"`
 		} `bson:"Database"`
 		Global struct {
 			AcquireCount struct {
-				R int `bson:"r"`
+				ReadShared  int `bson:"r"`
+				WriteShared int `bson:"w"`
 			} `bson:"acquireCount"`
 		} `bson:"Global"`
 		MMAPV1Journal struct {
 			AcquireCount struct {
-				R int `bson:"r"`
+				ReadShared int `bson:"r"`
 			} `bson:"acquireCount"`
 		} `bson:"MMAPV1Journal"`
 	} `bson:"locks"`
@@ -78,6 +85,7 @@ type SystemProfile struct {
 	Ns                 string    `bson:"ns"`
 	NumYield           int       `bson:"numYield"`
 	Op                 string    `bson:"op"`
+	PlanSummary        string    `bson:"planSummary"`
 	Protocol           string    `bson:"protocol"`
 	Query              bson.D    `bson:"query"`
 	UpdateObj          bson.D    `bson:"updateobj"`
@@ -87,6 +95,16 @@ type SystemProfile struct {
 	Ts                 time.Time `bson:"ts"`
 	User               string    `bson:"user"`
 	WriteConflicts     int       `bson:"writeConflicts"`
+	DocsExamined       int       `bson:"docsExamined"`
+	QueryHash          string    `bson:"queryHash"`
+	Storage            struct {
+		Data struct {
+			BytesRead         int64 `bson:"bytesRead"`
+			TimeReadingMicros int64 `bson:"timeReadingMicros"`
+		} `bson:"data"`
+	} `bson:"storage"`
+	AppName  string `bson:"appName"`
+	Comments string `bson:"comments"`
 }
 
 func NewExampleQuery(doc SystemProfile) ExampleQuery {

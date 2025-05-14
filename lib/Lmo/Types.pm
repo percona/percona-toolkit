@@ -56,7 +56,7 @@ sub check_type_constraints {
       . (defined $val ? Lmo::Dumper($val) : 'undef') )
 }
 
-# Nested (or parametized) constraints look like this: ArrayRef[CONSTRAINT] or
+# Nested (or parameritized) constraints look like this: ArrayRef[CONSTRAINT] or
 # Maybe[CONSTRAINT]. This function returns a coderef that implements one of
 # these.
 sub _nested_constraints {
@@ -64,7 +64,7 @@ sub _nested_constraints {
 
    my $inner_types;
    if ( $type =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
-      # If the inner constraint -- the part within brackets -- is also a parametized
+      # If the inner constraint -- the part within brackets -- is also a parametirized
       # constraint, then call this function recursively.
       $inner_types = _nested_constraints($1, $2);
    }

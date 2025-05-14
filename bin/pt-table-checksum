@@ -4134,7 +4134,10 @@ sub quote_val {
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
 
-   return $val if $args{is_float};
+   if ( $args{is_float} ) {
+      return sprintf("%.17g", $val) if $val - "$val" != 0;
+      return $val;
+   }
 
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
@@ -6682,8 +6685,6 @@ sub _nibble_params {
          asc_only     => 1,
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
-
-      my $force_concat_enums;
 
 
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
@@ -11074,7 +11075,7 @@ sub main {
                     . "(db, tbl, chunk, chunk_index,"
                     . " lower_boundary, upper_boundary, this_cnt, this_crc) "
                     . "SELECT"
-                    . ($cluster->is_cluster_node($source_cxn) ? ' /*!99997*/' : '')
+                    . ($cluster->is_cluster_node($source_cxn) ? ' /*!99997 */' : '')
                     . " ?, ?, ?, ?, ?, ?,";
    my $past_cols    = " COUNT(*), '0'";
 

@@ -2993,7 +2993,10 @@ sub quote_val {
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
 
-   return $val if $args{is_float};
+   if ( $args{is_float} ) {
+      return sprintf("%.17g", $val) if $val - "$val" != 0;
+      return $val;
+   }
 
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
@@ -6966,7 +6969,7 @@ sub main {
           warn "Invalid output format:". $o->get('format');
           warn "Using default 'dump' format";
       } elsif ($o->get('output-format') || '' eq 'csv') {
-              $fields_separated_by = ", ";
+              $fields_separated_by = ",";
               $optionally_enclosed_by = '"';
       }
       my $need_hdr = $o->get('header') && !-f $archive_file;
@@ -7508,7 +7511,7 @@ sub escape {
       s/([\t\n\\])/\\$1/g if defined $_;  # Escape tabs etc
       my $s = defined $_ ? $_ : '\N';             # NULL = \N
       # var & ~var will return 0 only for numbers
-      if ($s !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"') {
+      if ($s !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"' && $s ne '\N') {
           $s =~ s/([^\\])"/$1\\"/g;
           $s = $optionally_enclosed_by."$s".$optionally_enclosed_by;
       }

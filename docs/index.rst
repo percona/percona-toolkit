@@ -29,6 +29,7 @@ Getting Percona Toolkit
    :glob:
 
    installation
+   get-help
 
 Tools
 =====

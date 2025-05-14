@@ -507,7 +507,7 @@ sub find {
          }
          my $reason = 'Exceeds busy time';
          PTDEBUG && _d($reason);
-         # Saving the reasons for each query in the objct is a bit nasty,
+         # Saving the reasons for each query in the object is a bit nasty,
          # but the alternatives are worse:
          # - Saving internal data in the query
          # - Instead of using the stringified hashref as a key, using
