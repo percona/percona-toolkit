@@ -362,7 +362,7 @@ sub check_table {
       $self->{check_table_error} = $e;
       return 0;
    }
-   if ( !$row->[0] || $row->[0] ne $tbl ) {
+   if ( !$row->[0] ) {
       PTDEBUG && _d('Table does not exist');
       return 0;
    }
