@@ -11,7 +11,7 @@ MAKE_GOTOOLS
 
 WriteMakefile(
     NAME      => 'Percona::Toolkit',
-    VERSION   => '3.7.0-1',
+    VERSION   => '3.7.0-2',
     EXE_FILES => [
       map {
          (my $name = $_) =~ s/^bin.//;
