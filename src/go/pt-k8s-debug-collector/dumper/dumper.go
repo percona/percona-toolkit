@@ -306,6 +306,7 @@ func (d *Dumper) DumpCluster() error {
 		}
 
 		for _, pod := range pods.Items {
+			// ---- logs.txt ----
 			location := filepath.Join(d.location, ns.Name, pod.Name, "logs.txt")
 			args := []string{"logs", pod.Name, "--namespace", ns.Name, "--all-containers"}
 			output, err = d.runCmd(args...)
@@ -322,6 +323,22 @@ func (d *Dumper) DumpCluster() error {
 				d.logError(err.Error(), "create archive for pod "+pod.Name)
 				log.Printf("Error: create archive for pod %s: %v", pod.Name, err)
 			}
+
+			// ---- describe.txt ----
+			describePath := filepath.Join(d.location, ns.Name, pod.Name, "describe.txt")
+			args = []string{"describe", "pod", pod.Name, "--namespace", ns.Name}
+			describeOutput, err := d.runCmd(args...)
+			if err != nil {
+				d.logError(err.Error(), args...)
+				describeOutput = []byte("Error: " + err.Error())
+			}
+			err = addToArchive(describePath, d.mode, describeOutput, tw)
+			if err != nil {
+				d.logError(err.Error(), "create describe archive for pod "+pod.Name)
+				log.Printf("Error: create describe archive for pod %s: %v", pod.Name, err)
+			}
+
+			// ---- labels and summary.txt ----
 			if len(pod.Labels) == 0 {
 				continue
 			}
@@ -351,7 +368,6 @@ func (d *Dumper) DumpCluster() error {
 				} else {
 					crName = pod.Labels["app.kubernetes.io/instance"]
 				}
-				// Get summary
 				output, err = d.getPodSummary(resourceType(d.crType), pod.Name, crName, ns.Name)
 				if err != nil {
 					d.logError(err.Error(), d.crType, pod.Name)
@@ -401,6 +417,7 @@ func (d *Dumper) DumpCluster() error {
 
 	return nil
 }
+
 
 // runCmd run command (Dumper.cmd) with given args, return it output
 func (d *Dumper) runCmd(args ...string) ([]byte, error) {
