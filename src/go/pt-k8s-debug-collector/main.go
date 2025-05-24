@@ -27,11 +27,13 @@ func main() {
 	clusterName := ""
 	kubeconfig := ""
 	forwardport := ""
+	client := ""
 	version := false
 
 	flag.StringVar(&namespace, "namespace", "", "Namespace for collecting data. If empty data will be collected from all namespaces")
 	flag.StringVar(&resource, "resource", "auto", "Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, ps, none, auto")
 	flag.StringVar(&clusterName, "cluster", "", "Cluster name")
+	flag.StringVar(&client, "client", "kubectl", "Path to kubernetes client like kubectl,oc")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to kubeconfig")
 	flag.StringVar(&forwardport, "forwardport", "", "Port to use for  port forwarding")
 	flag.BoolVar(&version, "version", false, "Print version")
@@ -50,7 +52,7 @@ func main() {
 		resource += "/" + clusterName
 	}
 
-	d := dumper.New("", namespace, resource, kubeconfig, forwardport)
+	d := dumper.New("", namespace, resource, kubeconfig, client, forwardport)
 	log.Println("Start collecting cluster data")
 
 	err := d.DumpCluster()

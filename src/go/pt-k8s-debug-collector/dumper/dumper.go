@@ -45,9 +45,9 @@ type Dumper struct {
 var resourcesRe = regexp.MustCompile(`(\w+\.(\w+).percona\.com)`)
 
 // New return new Dumper object
-func New(location, namespace, resource string, kubeconfig string, forwardport string) Dumper {
+func New(location, namespace, resource string, kubeconfig string, client string, forwardport string) Dumper {
 	d := Dumper{
-		cmd:         "kubectl",
+		cmd:         client,
 		kubeconfig:  kubeconfig,
 		location:    "cluster-dump",
 		mode:        int64(0o777),

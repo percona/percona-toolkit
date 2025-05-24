@@ -157,6 +157,10 @@ Targeted cluster. By default data from all available clusters to be collected
 
 Path to kubeconfig. Default configuration be used if none specified
 
+``--client``
+
+Path to kubernetes client. Default 'kubectl' is used if --client is not set
+
 ``--forwardport``
 
 Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
@@ -168,11 +172,11 @@ Print version info
 Requirements
 ============
 
-- Installed, configured, and available in PATH ``kubectl``
 - Installed, configured, and available in PATH ``pt-mysql-summary`` for PXC and MySQL
 - Installed, configured, and available in PATH ``mysql`` for PXC and MySQL
 - Installed, configured, and available in PATH ``pt-mongodb-summary`` for MongoDB
 - Installed, configured, and available in PATH ``psql`` for PostgreSQL
+- Installed, configured, and available in PATH  kubernetes client like ``kubectl``. Can be overridden by --client flag
 
 Known Issues
 ============
