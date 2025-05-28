@@ -4553,7 +4553,7 @@ sub main {
 
    # Check version, refuse working with 8.4
    my $version = VersionParser->new($slave_dbh);
-   if ( $version ge '8.1' && $version->flavor() !~ m/maria/ ) {
+   if ( $version ge '8.1' && $version->flavor() !~ m/maria/i ) {
       die "This tool does not work with MySQL 8.1 and newer.\n";
    }
 
