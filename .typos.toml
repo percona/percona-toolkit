@@ -41,6 +41,7 @@ extend-ignore-re = [
 "FH_ND_FILE" = "FH_ND_FILE"
 "GTI" = "GTI"
 "GTID" = "GTID"
+"GTIDs" = "GTIDs"
 "INSERTs" = "INSERTs"
 "IST" = "IST"
 "istError" = "istError"
