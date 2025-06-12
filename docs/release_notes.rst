@@ -10,6 +10,16 @@ Bug Fixed
 ------------
 
 * :jirabug:`PT-2442`: percona-toolkit:latest Vulnerability [CVE-2024-56171 CVE-2024-12797 CVE-2022-37967 CVE-2025-24928]
+* :jirabug:`PT-2375`: pt-table-sync does not work with generated columns (Thanks to Henning Pöttker for the contribution)
+* :jirabug:`PT-2400`: pt-table-checksum reports the error for warning code 4164
+* :jirabug:`PT-2377`: pt-table-sync does not handle utf8 strings in JSON columns correctly (Thanks to Henning Pöttker for the contribution)
+* :jirabug:`PT-2378`: pt-table-sync does print floating point numbers in SQL statements with insufficient precision (Thanks to Henning Pöttker for the contribution)
+* :jirabug:`PT-2389`: pt-online-schema-change resume functionality doesn't work with ADD/DROP column (Thanks to Perry Harrington for the contribution)
+* :jirabug:`PT-2410`: pt-archiver brokes when using output-format=csv and has null values (Thanks to Roberto de Bem for the contribution)
+* :jirabug:`PT-2422`: pt-online-schema-change race overwrites new_table_name (Thanks to Perry Harrington for the contribution)
+* :jirabug:`PT-2407`: pt-online-schema-change exit status(return code) is 0 even if it does NOT succeed
+* :jirabug:`PT-2355`: pt-online-schema-change should not resume a job with empty boundaries
+* :jirabug:`PT-1577`: pt-secure-collect, replace pt-secure-data in Usage section
 
 v3.7.0 released 2024-12-23
 ==============================
