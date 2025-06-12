@@ -1,5 +1,21 @@
 Changelog for Percona Toolkit
 
+v3.7.0-2 released 2025-05-14
+
+This release addresses multiple security vulnerabilities reported in Percona Toolkit version 3.7.0, including issues related to the `libxml2` component (CVE-2024-56171, CVE-2025-24928), `openssl` (CVE-2024-12797), and `krb5` (CVE-2022-37967).
+
+* Fixed bug PT-2442: percona-toolkit:latest Vulnerability [CVE-2024-56171 CVE-2024-12797 CVE-2022-37967 CVE-2025-24928]
+* Fixed bug PT-2375: pt-table-sync does not work with generated columns (Thanks to Henning Pöttker for the contribution)
+* Fixed bug PT-2400: pt-table-checksum reports the error for warning code 4164
+* Fixed bug PT-2377: pt-table-sync does not handle utf8 strings in JSON columns correctly (Thanks to Henning Pöttker for the contribution)
+* Fixed bug PT-2378: pt-table-sync does print floating point numbers in SQL statements with insufficient precision (Thanks to Henning Pöttker for the contribution)
+* Fixed bug PT-2389: pt-online-schema-change resume functionality doesn't work with ADD/DROP column (Thanks to Perry Harrington for the contribution)
+* Fixed bug PT-2410: pt-archiver brokes when using output-format=csv and has null values (Thanks to Roberto de Bem for the contribution)
+* Fixed bug PT-2422: pt-online-schema-change race overwrites new_table_name (Thanks to Perry Harrington for the contribution)
+* Fixed bug PT-2407: pt-online-schema-change exit status(return code) is 0 even if it does NOT succeed
+* Fixed bug PT-2355: pt-online-schema-change should not resume a job with empty boundaries
+* Fixed bug PT-1577: pt-secure-collect, replace pt-secure-data in Usage section
+
 v3.7.0 released 2024-12-25
 
 * Feature PT-2340: Support MySQL 8.4
@@ -18,8 +34,7 @@ v3.6.0 released 2024-06-12
 * Improvement PR-160:  added support for operf if present, and if CMD_OPCONTROL is not set (Thanks to Fernando Ipar for the contribution)
 * Improvement PR-140:  Add CPU cache configuration info to pt-summary (Thanks to Alexey Kopytov for the contribution)
 * Improvement PR-765:  pt-galera-log-explainer: improvements from feedbacks (Thanks Yoann La Cancellera for the contribution)
-* Improvement PT-2233: pt-k8s-debug-collector needs psql in the host node
-(Thanks to Jobin Augustine for the contribution)
+* Improvement PT-2233: pt-k8s-debug-collector needs psql in the host node (Thanks to Jobin Augustine for the contribution)
 * Improvement PR-772:  pt-galera-log-explainer: add custom regexes parameter (Thanks Yoann La Cancellera for the contribution)
 * Improvement PT-2301: pt-galera-log-explainer: whois redesign (Thanks Yoann La Cancellera for the contribution)
 * Improvement PT-2190: pt-show-grants should use print_identified_with_as_hex
