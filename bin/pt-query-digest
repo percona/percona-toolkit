@@ -16258,12 +16258,12 @@ type: string; default: report
 How to format and print the query analysis results.  Accepted values are:
 
    VALUE          FORMAT
-   =======        ===============================
+   =======        ======================================
    report         Standard query analysis report
    slowlog        MySQL slow log
    json           JSON, one array per query class
    json-anon      JSON without example queries
-   secure-slowlog JSON without example queries
+   secure-slowlog MySQL slow log with anonymized queries 
 
 The entire C<report> output can be disabled by specifying C<--no-report>
 (see L<"--[no]report">), and its sections can be disabled or rearranged

@@ -10272,11 +10272,11 @@ sub main {
 
 
    if ( $o->get('truncate-replicate-table') && $o->get('resume') ) {
-       die "--resume and truncate-replicate-table are mutually exclusive";
+      die "--resume and truncate-replicate-table are mutually exclusive";
    }
 
    if ( $o->get('truncate-replicate-table') && !$o->get('empty-replicate-table') ) {
-       die "--resume and --no-empty-replicate-table are mutually exclusive";
+      die "--truncate-replicate-table and --no-empty-replicate-table are mutually exclusive";
    }
 
    # ########################################################################
