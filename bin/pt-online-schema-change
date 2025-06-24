@@ -458,7 +458,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -11400,6 +11402,10 @@ sub create_new_table {
          $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//;
          PTDEBUG && _d("removing data dir");
       }
+      if ( $o->got('remove-tablespace') ) {
+         $sql =~ s/TABLESPACE\s+`[^`]+`\s*//;
+         PTDEBUG && _d("removing tablespace");
+      }
       PTDEBUG && _d($sql);
       eval {
          $cxn->dbh()->do($sql);
@@ -12459,7 +12465,7 @@ sub exec_nibble {
 #
 # Required Arguments:
 #   * tbl  - Standard tbl hashref
-#   * sth  - Sth with EXLAIN <statement>
+#   * sth  - Sth with EXPLAIN <statement>
 #   * vals - Values for sth, if any
 #
 # Returns:
@@ -13170,7 +13176,14 @@ than remove-data-dir.
 default: no
 
 If the original table was created using the DATA DIRECTORY feature, remove it and create
-the new table in MySQL default directory without creating a new isl file.
+the new table in MySQL directory without creating a new isl file.
+
+=item --remove-tablespace
+
+default: no
+
+If the original table was created using the TABLESPACE feature, remove it and create
+the new table without the TABLESPACE specification.
 
 =item --defaults-file
 
