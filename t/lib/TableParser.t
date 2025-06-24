@@ -1344,6 +1344,111 @@ is_deeply(
     },
     'Column having the word "generated" as part of the comment is OK',
 ) or diag Data::Dumper::Dumper($tbl);
+
+# #############################################################################
+# Test tablespace removal functionality
+# #############################################################################
+
+# Test the regex pattern used in pt-online-schema-change for removing tablespace
+my $ddl_with_tablespace = "CREATE TABLE `test_table` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 TABLESPACE `test_tablespace`";
+
+my $ddl_without_tablespace = "CREATE TABLE `test_table` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
+# Test the exact regex pattern used in pt-online-schema-change
+my $test_ddl = $ddl_with_tablespace;
+$test_ddl =~ s/TABLESPACE\s+`[^`]+`\s*//;
+
+is(
+   $test_ddl,
+   $ddl_without_tablespace,
+   'Tablespace clause removed correctly'
+);
+
+# Test with different tablespace names
+my $ddl_with_different_tablespace = "CREATE TABLE `test_table` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB TABLESPACE `different_tablespace_name`";
+
+my $ddl_without_different_tablespace = "CREATE TABLE `test_table` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB";
+
+$test_ddl = $ddl_with_different_tablespace;
+$test_ddl =~ s/TABLESPACE\s+`[^`]+`\s*//;
+
+is(
+   $test_ddl,
+   $ddl_without_different_tablespace,
+   'Different tablespace name removed correctly'
+);
+
+# Test with tablespace that has underscores and numbers
+my $ddl_with_complex_tablespace = "CREATE TABLE `test_table` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB TABLESPACE `my_tablespace_123`";
+
+my $ddl_without_complex_tablespace = "CREATE TABLE `test_table` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB";
+
+$test_ddl = $ddl_with_complex_tablespace;
+$test_ddl =~ s/TABLESPACE\s+`[^`]+`\s*//;
+
+is(
+   $test_ddl,
+   $ddl_without_complex_tablespace,
+   'Complex tablespace name with underscores and numbers removed correctly'
+);
+
+# Test that tablespace removal doesn't affect other parts of the DDL
+my $ddl_with_other_options = "CREATE TABLE `test_table` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci TABLESPACE `test_tablespace` ROW_FORMAT=DYNAMIC";
+
+my $ddl_without_tablespace_other_options = "CREATE TABLE `test_table` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC";
+
+$test_ddl = $ddl_with_other_options;
+$test_ddl =~ s/TABLESPACE\s+`[^`]+`\s*//;
+
+is(
+   $test_ddl,
+   $ddl_without_tablespace_other_options,
+   'Tablespace removal preserves other table options'
+);
+
+# Test that DDL without tablespace is not affected
+my $ddl_without_tablespace_original = "CREATE TABLE `test_table` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
+$test_ddl = $ddl_without_tablespace_original;
+$test_ddl =~ s/TABLESPACE\s+`[^`]+`\s*//;
+
+is(
+   $test_ddl,
+   $ddl_without_tablespace_original,
+   'DDL without tablespace is not affected by removal regex'
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
