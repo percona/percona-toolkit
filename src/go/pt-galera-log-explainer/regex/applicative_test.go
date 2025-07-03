@@ -159,6 +159,18 @@ func TestApplicativeRegex(t *testing.T) {
 			expectedOut: "vote (success) inconsistent, leaving cluster",
 			key:         "RegexInconsistencyVoteInconsistentWithGroup",
 		},
+
+		{
+			log: "2001-01-01T01:01:01.000000Z 16 [ERROR] [MY-000000] [Galera] Recomputed vote based on error codes: 3638. New vote c4915064add984b1 will be used for further steps. Old Vote: b3be677140613e7",
+			input: regexTestState{
+				LogCtx: types.LogCtx{OwnNames: []string{"node2"}, Conflicts: types.Conflicts{&types.Conflict{InitiatedBy: []string{"node1"}, Seqno: "20", VotePerNode: map[string]types.ConflictVote{"node1": types.ConflictVote{MD5: "b3be677140613e7", Error: "some error"}, "node2": types.ConflictVote{MD5: "b3be677140613e7", Error: "some error"}}}}},
+			},
+			expected: regexTestState{
+				LogCtx: types.LogCtx{OwnNames: []string{"node2"}, Conflicts: types.Conflicts{&types.Conflict{InitiatedBy: []string{"node1"}, Seqno: "20", VotePerNode: map[string]types.ConflictVote{"node1": types.ConflictVote{MD5: "c4915064add984b1", Error: "some error"}, "node2": types.ConflictVote{MD5: "c4915064add984b1", Error: "some error"}}}}},
+			},
+			expectedOut: "vote md5 recomputed from b3be677140613e7 to c4915064add984b1",
+			key:         "RegexInconsistencyVoteRecomputed",
+		},
 	}
 
 	iterateRegexTest(t, ApplicativeMap, tests)
