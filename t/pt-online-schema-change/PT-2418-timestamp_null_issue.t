@@ -64,6 +64,26 @@ is(
    "All timestamp values are non-NULL before rename operation"
 ) or diag("Found $null_timestamps NULL timestamps out of " . scalar(@$orig_data) . " rows");
 
+# Test if --check-alter works correctly
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$source_dsn,D=test,t=joinit",
+      "--alter", "RENAME COLUMN t1 TO t2",
+      qw(--execute --check-alter)) },
+);
+
+is(
+   $exit_status,
+   17,
+   "Column rename operation rejected correctly"
+) or diag($output);
+
+like(
+   $output,
+   qr/`test`.`joinit` was not altered./,
+   "Table was not altered"
+);
+
 # Perform the column rename operation
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
@@ -155,4 +175,6 @@ for (my $i = 0; $i < scalar(@$orig_data); $i++) {
              ", Final=" . (defined($final_data->[$i]->[2]) ? $final_data->[$i]->[2] : "NULL"));
 }
 
+$sb->wipe_clean($source_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing; 

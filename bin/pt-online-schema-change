@@ -11239,7 +11239,7 @@ sub find_renamed_cols {
       next if lc($orig_tbl) eq lc($new_tbl);
       $renames{lc($orig_tbl)} = $new_tbl;
    }
-   
+
    # Also handle RENAME COLUMN syntax (MySQL 8.0+)
    while ( $alter =~ /$alter_rename_col_re/g ) {
       my ($orig, $new) = map { $tp->ansi_to_legacy($_) } $1, $2;
