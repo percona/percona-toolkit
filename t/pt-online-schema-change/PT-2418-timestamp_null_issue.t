@@ -21,7 +21,9 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $source_dbh = $sb->get_dbh_for('source');
 
-if ( !$source_dbh ) {
+if ($sandbox_version lt '8.0') {
+    plan skip_all => 'This test needs MySQL 8.0+';
+} elsif ( !$source_dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
 }
 
