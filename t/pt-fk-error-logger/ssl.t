@@ -95,6 +95,44 @@ like(
    "Prints fk error by default"
 );
 
+($output, $exit_code) = full_output(
+   sub {
+      pt_fk_error_logger::main(@args, 'F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1'),
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for SSL options in the configuration file"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with correct SSL options in the configuration file'
+) or diag($output);
+
+($output, $exit_code) = full_output(
+   sub {
+      pt_fk_error_logger::main(@args, 'F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1'),
+   },
+   stderr => 1,
+);
+
+isnt(
+   $exit_code,
+   0,
+   "Error for invalid SSL options in the configuration file"
+) or diag($output);
+
+like(
+   $output,
+   qr/SSL connection error: Unable to get private key at/,
+   'SSL connection error with incorrect SSL options in the configuration file'
+) or diag($output);
+
 # #############################################################################
 # Done.
 # #############################################################################

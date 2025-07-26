@@ -93,6 +93,34 @@ if ($sandbox_version ge '8.0') {
    );
 }
 
+$output = `$cmd -d mysql -t columns_priv -v F=t/pt-archiver/samples/pt-191.cnf,P=12345,u=sha256_user,p=sha256_user%password,s=1 2>&1`;
+
+is(
+   $?,
+   0,
+   "No error for SSL options in the configuration file"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with correct SSL options in the configuration file'
+) or diag($output);
+
+$output = `$cmd -d mysql -t columns_priv -v F=t/pt-archiver/samples/pt-191-error.cnf,P=12345,u=sha256_user,p=sha256_user%password,s=1 2>&1`;
+
+isnt(
+   $?,
+   0,
+   "Error for invalid SSL options in the configuration file"
+) or diag($output);
+
+like(
+   $output,
+   qr/SSL connection error: Unable to get private key at/,
+   'SSL connection error with incorrect SSL options in the configuration file'
+) or diag($output);
+
 # #############################################################################
 # Done.
 # #############################################################################

@@ -80,6 +80,51 @@ unlike(
    'No secure connection error'
 ) or diag($output);
 
+($output, $exit_code) = full_output(
+   sub {
+      pt_visual_explain::main(
+         '--connect',
+         't/pt-visual-explain/samples/query.sql',
+         qw(-F t/pt-archiver/samples/pt-191.cnf --host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1)
+      )
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for SSL options in the configuration file"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with correct SSL options in the configuration file'
+) or diag($output);
+
+($output, $exit_code) = full_output(
+   sub {
+      pt_visual_explain::main(
+         '--connect',
+         't/pt-visual-explain/samples/query.sql',
+         qw(-F t/pt-archiver/samples/pt-191-error.cnf --host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1)
+      )
+   },
+   stderr => 1,
+);
+
+isnt(
+   $exit_code,
+   0,
+   "Error for invalid SSL options in the configuration file"
+) or diag($output);
+
+like(
+   $output,
+   qr/SSL connection error: Unable to get private key at/,
+   'SSL connection error with incorrect SSL options in the configuration file'
+) or diag($output);
 
 # #############################################################################
 # Done.
