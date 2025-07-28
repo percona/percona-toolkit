@@ -12,13 +12,14 @@ use English qw(-no_match_vars);
 use Test::More;
 
 use PerconaTest;
-require "$trunk/bin/pt-index-usage";
+use Sandbox;
+
+require "$trunk/bin/pt-query-digest";
 require VersionParser;
 
-use Sandbox;
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('source');
+my $dp   = new DSNParser(opts=>$dsn_opts);
+my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dbh  = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
@@ -26,14 +27,10 @@ if ( !$dbh ) {
 elsif ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
 }
-elsif ( !@{ $dbh->selectall_arrayref("show databases like 'sakila'") } ) {
-   plan skip_all => "Sakila database is not loaded";
-}
 
-my $cnf     = '/tmp/12345/my.sandbox.cnf';
-my @args    = ('-F', $cnf);
-my $samples = "t/pt-index-usage/samples/";
 my ($output, $exit_code);
+my $cnf      = "/tmp/12345/my.sandbox.cnf";
+my $samples  = "$trunk/t/pt-query-digest/samples";
 
 $sb->do_as_root(
    'source',
@@ -41,16 +38,10 @@ $sb->do_as_root(
    q/GRANT ALL ON sakila.* TO sha256_user@'%'/,
 );
 
-# This query doesn't use indexes so there's an unused PK and
-# an unused secondary index.  Only the secondary index should
-# be printed since dropping PKs is not suggested by default.
-
 ($output, $exit_code) = full_output(
    sub {
-      pt_index_usage::main(
-         @args,
-         qw(--host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=0),
-         "$trunk/$samples/slow001.txt")
+      pt_query_digest::main("--explain=F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=0",
+         "$samples/slow028.txt")
    },
    stderr => 1,
 );
@@ -69,10 +60,8 @@ like(
 
 ($output, $exit_code) = full_output(
    sub {
-      pt_index_usage::main(
-         @args,
-         qw(--host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1),
-         "$trunk/$samples/slow001.txt")
+      pt_query_digest::main("--explain='F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1'",
+         "$samples/slow028.txt")
    },
    stderr => 1,
 );
@@ -91,17 +80,14 @@ unlike(
 
 like(
    $output,
-   qr/ALTER TABLE `sakila`.`film_text` DROP KEY `idx_title_description`; -- type:non-unique/,
-   'A simple query that does not use any indexes',
+   qr/Query size            24      24      24      24      24       0      24/,
+   'Analysis printed'
 ) or diag($output);
 
-@args = ('-F', "$trunk/t/pt-archiver/samples/pt-191.cnf");
 ($output, $exit_code) = full_output(
    sub {
-      pt_index_usage::main(
-         @args,
-         qw(--host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1),
-         "$trunk/$samples/slow001.txt")
+      pt_query_digest::main("--explain=F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
+         "$samples/slow028.txt")
    },
    stderr => 1,
 );
@@ -118,13 +104,10 @@ unlike(
    'No secure connection error with correct SSL options in the configuration file'
 ) or diag($output);
 
-@args = ('-F', "$trunk/t/pt-archiver/samples/pt-191-error.cnf");
 ($output, $exit_code) = full_output(
    sub {
-      pt_index_usage::main(
-         @args,
-         qw(--host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1),
-         "$trunk/$samples/slow001.txt")
+      pt_query_digest::main("--explain=F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
+         "$samples/slow028.txt")
    },
    stderr => 1,
 );
@@ -149,4 +132,3 @@ $sb->do_as_root('source', q/DROP USER 'sha256_user'@'%'/);
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;
