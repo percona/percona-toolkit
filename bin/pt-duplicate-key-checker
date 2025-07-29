@@ -5561,6 +5561,12 @@ type: string; default: fk
 
 Check for duplicate f=foreign keys, k=keys or fk=both.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --password
 
 short form: -p; type: string

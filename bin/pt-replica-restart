@@ -6036,6 +6036,12 @@ See L<"SLEEP">.
 Whether to monitor the replica (default).  Unless you specify --monitor
 explicitly, L<"--stop"> will disable it.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --password
 
 short form: -p; type: string
