@@ -81,6 +81,33 @@ is(
 ) or diag($output);
 
 ($output, $exit_code) = full_output(
+   sub { pt_config_diff::main(
+      qw(--host 127.1 --port 12345 --user sha256_user),
+      qw(--password sha256_user%password --mysql_ssl 1),
+      'h=127.1')
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password and option --mysql_ssl"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl'
+) or diag($output);
+
+is(
+   $output,
+   "",
+   "No output when no diff and option --mysql_ssl"
+) or diag($output);
+
+($output, $exit_code) = full_output(
    sub {
       pt_config_diff::main("F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1", 'h=127.1')
    },

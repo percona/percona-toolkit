@@ -26,7 +26,7 @@ elsif ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
 }
 else {
-   plan tests => 10;
+   plan tests => 13;
 }
 
 my ($output, $exit_code);
@@ -81,6 +81,32 @@ is(
    $output,
    "",
    "No error if table doesn't exist"
+);
+
+($output, $exit_code) = full_output(
+   sub { pt_table_usage::main('--explain-extended', 
+         qw(127.1 --port 12345 --database sakila --user sha256_user),
+         qw(--password sha256_user%password --mysql_ssl 1), 
+      '--query', 'select * from foo, bar where id=1') },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl'
+) or diag($output);
+
+is(
+   $output,
+   "",
+   "No error if table doesn't exist with option --mysql_ssl"
 );
 
 ($output, $exit_code) = full_output(

@@ -108,6 +108,36 @@ $sb->load_file('source', "$sample/del-trg-bug-1103672.sql");
 
 ($output, $exit_code) = full_output(
    sub { pt_online_schema_change::main(@args,
+      "$source_dsn,D=test,t=t1",
+      qw(--user sha256_user --password sha256_user%password --mysql_ssl 1),
+      "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
+      qw(--execute --no-check-alter)),
+   },
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl'
+) or diag($output);
+
+like(
+   $output,
+   qr/Successfully altered `test`.`t1`/,
+   "DROP PRIMARY KEY with option --mysql_ssl"
+);
+
+# Restoring environment for the new test
+$sb->load_file('source', "$sample/del-trg-bug-1103672.sql");
+
+($output, $exit_code) = full_output(
+   sub { pt_online_schema_change::main(@args,
       "$source_dsn,F=t/pt-archiver/samples/pt-191.cnf,D=test,t=t1,u=sha256_user,p=sha256_user%password,s=1",
       "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
       qw(--execute --no-check-alter),

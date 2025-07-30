@@ -30,7 +30,7 @@ elsif ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
 }
 else {
-   plan tests => 10;
+   plan tests => 13;
 }
 
 my ($output, $exit_code);
@@ -86,6 +86,31 @@ like(
    $output,
    qr/WHERE \(`film_id` = 0\)/,
    "Zero chunk"
+);
+
+($output, $exit_code) = full_output(
+   sub { pt_table_sync::main('D=sakila,t=film',
+         qw(--host 127.1 --port 12346 --user sha256_user),
+         qw(--password sha256_user%password --mysql_ssl 1), @args) },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl'
+) or diag($output);
+
+like(
+   $output,
+   qr/WHERE \(`film_id` = 0\)/,
+   "Zero chunk with option --mysql_ssl"
 );
 
 # Prepare checksums table

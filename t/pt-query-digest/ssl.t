@@ -86,6 +86,33 @@ like(
 
 ($output, $exit_code) = full_output(
    sub {
+      pt_query_digest::main("--explain=h=127.1,P=12345,u=sha256_user,p=sha256_user%password",
+         qw(--mysql_ssl 1),
+         "$samples/slow028.txt")
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl'
+) or diag($output);
+
+like(
+   $output,
+   qr/Query size            24      24      24      24      24       0      24/,
+   'Analysis printed with option --mysql_ssl'
+) or diag($output);
+
+($output, $exit_code) = full_output(
+   sub {
       pt_query_digest::main("--explain=F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
          "$samples/slow028.txt")
    },

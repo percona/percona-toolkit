@@ -90,6 +90,33 @@ is(
 );
 
 ($output, $exit_code) = full_output(
+   sub { pt_heartbeat::main(
+         qw(--host 127.1 --port 12345 --user sha256_user),
+         qw(--password sha256_user%password --mysql_ssl=1),
+      qw(-D test --check)) },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl'
+) or diag($output);
+
+$row = $dbh->selectall_hashref('select * from test.heartbeat', 'id');
+is(
+   $row->{1}->{id},
+   1,
+   "Automatically inserts heartbeat row (issue 1292) with option --mysql_ssl"
+);
+
+($output, $exit_code) = full_output(
    sub { pt_heartbeat::main("F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
       qw(-D test --check)) },
    stderr => 1,

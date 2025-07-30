@@ -100,6 +100,35 @@ is(
 
 ($output, $exit_code) = full_output(
    sub {
+      pt_upgrade::main("${host1_dsn}",
+         qw(--user sha256_user --password sha256_user%password --mysql_ssl 1),
+         '--save-results', $tmpdir,
+         qw(--type rawlog),
+         "$samples/select_into.log",
+   )},
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl'
+) or diag($output);
+
+is(
+   $exit_code,
+   0,
+   "Does not fail on SELECT...INTO statements with option --mysql_ssl"
+);
+
+($output, $exit_code) = full_output(
+   sub {
       pt_upgrade::main("F=t/pt-archiver/samples/pt-191.cnf,${host1_dsn},u=sha256_user,p=sha256_user%password,s=1", '--save-results', $tmpdir,
          qw(--type rawlog),
          "$samples/select_into.log")
