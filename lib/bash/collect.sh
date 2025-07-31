@@ -286,8 +286,15 @@ collect_system_data() {
 }
 
 collect_mysql_data_loop() {
-   (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+
+   # SHOW FULL PROCESSLIST duplicates information in performance_schema.threads we collecting now
+   # Keeping it for backward compatibility and may remove in the future
+
+      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
       >> "$d/$p-processlist" &
+      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM performance_schema.threads\G") \
+      >> "$d/$p-threads" &
+
    if [ "$have_lock_waits_table" ]; then
       (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
       (echo $ts; transactions) >>"$d/$p-transactions" &
