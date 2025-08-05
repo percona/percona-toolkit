@@ -668,6 +668,10 @@ sub get_opts {
       }
    }
 
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
+   }
+
    if ( @ARGV && $self->{strict} ) {
       $self->save_error("Unrecognized command-line options @ARGV");
    }
