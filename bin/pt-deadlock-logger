@@ -5549,6 +5549,12 @@ type: string
 
 Print all output to this file when daemonized.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --numeric-ip
 
 Express IP addresses as integers.

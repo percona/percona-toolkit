@@ -11198,6 +11198,12 @@ Max number of examples to list for each L<"QUERY DIFFERENCES">.  A query
 class is reported as soon as this many examples for any type of query
 difference are found.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --password
 
 short form: -p; type: string

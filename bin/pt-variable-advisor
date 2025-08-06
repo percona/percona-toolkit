@@ -6154,6 +6154,12 @@ Ignore these rule IDs.
 Specify a comma-separated list of rule IDs (e.g. LIT.001,RES.002,etc.)
 to ignore.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --password
 
 short form: -p; type: string

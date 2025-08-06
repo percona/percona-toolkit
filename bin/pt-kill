@@ -8743,6 +8743,12 @@ This option makes pt-kill kill matching queries.  This requires MySQL 5.0 or
 newer.  Unlike L<"--kill"> which kills the connection for matching queries,
 this option only kills the query, not its connection.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --print
 
 group: Actions

@@ -7322,6 +7322,12 @@ type: int
 If specified, pt-heartbeat will fail after given number of successive DBI errors
 (failure to connect to server or issue a query).
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --password
 
 short form: -p; type: string

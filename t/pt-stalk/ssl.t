@@ -112,6 +112,46 @@ or diag(
    'collector', `cat $dest/*-output 2>/dev/null`,
 );
 
+cleanup();
+
+$exit_code = system("$trunk/bin/pt-stalk --host=127.1 --port=12345 --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file --iterations 1 --user=sha256_user --password=sha256_user%password -- --defaults-file=t/pt-archiver/samples/pt-191.cnf --ssl-mode=required >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `cat $log_file 2>/dev/null`;
+
+is(
+   $exit_code,
+   0,
+   "No error for SSL options in the configuration file"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with correct SSL options in the configuration file'
+) or diag($output);
+
+cleanup();
+
+$exit_code = system("$trunk/bin/pt-stalk --host=127.1 --port=12345 --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file --iterations 1 --user=sha256_user --password=sha256_user%password -- --defaults-file=t/pt-archiver/samples/pt-191-error.cnf --ssl-mode=required >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `cat $log_file 2>/dev/null`;
+
+isnt(
+   $exit_code,
+   0,
+   "Error for invalid SSL options in the configuration file"
+) or diag($output);
+
+like(
+   $output,
+   qr/SSL error: Unable to get private key from/,
+   'SSL connection error with incorrect SSL options in the configuration file'
+) or diag($output);
+
 # #############################################################################
 # Done.
 # #############################################################################

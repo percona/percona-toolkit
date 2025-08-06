@@ -16194,6 +16194,12 @@ type: int; default: 74
 
 Trim lines to this length. 0=Do not trim lines.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --order-by
 
 type: Array; default: Query_time:sum

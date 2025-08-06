@@ -12909,6 +12909,12 @@ dump and reload or even something like L<pt-archiver>).  It requires exactly two
 DSNs and assumes they are on the same server, so it does no waiting for
 replication or the like.  Tables are locked with LOCK TABLES.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --password
 
 short form: -p; type: string

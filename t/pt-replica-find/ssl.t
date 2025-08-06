@@ -10,50 +10,53 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
-use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
-require "$trunk/bin/pt-heartbeat";
+require "$trunk/bin/pt-replica-find";
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('source');
-
-if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox source';
-}
-elsif ( $sandbox_version lt '8.0' ) {
+if ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
 }
 
-$sb->create_dbs($dbh, ['test']);
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica1_dbh = $sb->get_dbh_for('replica1');
+my $replica2_dbh = $sb->get_dbh_for('replica2');
+my $output;
 
-my ($output, $exit_code);
-my $cnf       = '/tmp/12345/my.sandbox.cnf';
-my $cmd       = "$trunk/bin/pt-heartbeat -F $cnf ";
+# This test is sensitive to ghost/old replicas created/destroyed by other
+# tests.  So we stop the replicas, restart the source, and start everything
+# again.  Hopefully this will return the env to its original state.
+$replica2_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("STOP ${replica_name}");
+diag(`/tmp/12345/stop >/dev/null`);
+diag(`/tmp/12345/start >/dev/null`);
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("START ${replica_name}");
 
-$dbh->do('drop table if exists test.heartbeat');
-$dbh->do(q{CREATE TABLE test.heartbeat (
-             id int NOT NULL PRIMARY KEY,
-             ts datetime NOT NULL
-          ) ENGINE=MEMORY});
-$sb->wait_for_replicas;
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
+}
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
+}
+elsif ( !$replica2_dbh ) {
+   plan skip_all => 'Cannot connect to second sandbox replica';
+}
 
 $sb->do_as_root(
    'source',
    q/CREATE USER IF NOT EXISTS sha256_user@'%' IDENTIFIED WITH caching_sha2_password BY 'sha256_user%password' REQUIRE SSL/,
-   q/GRANT ALL ON test.* TO sha256_user@'%'/,
+   q/GRANT REPLICATION SLAVE, PROCESS ON *.* TO sha256_user@'%'/,
 );
 
-($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main("F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=0",
-      qw(-D test --check)) },
-   stderr => 1,
-);
+# Start an instance
+$output = `$trunk/bin/pt-replica-find h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=0 --report-format hostname 2>&1`;
 
 isnt(
-   $exit_code,
+   $?,
    0,
    "Error raised when SSL connection is not used"
 ) or diag($output);
@@ -64,14 +67,10 @@ like(
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
-($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main("F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
-      qw(-D test --check)) },
-   stderr => 1,
-);
+$output = `$trunk/bin/pt-replica-find h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1 --report-format hostname 2>&1`;
 
 is(
-   $exit_code,
+   $?,
    0,
    "No error for user, identified with caching_sha2_password"
 ) or diag($output);
@@ -82,23 +81,18 @@ unlike(
    'No secure connection error'
 ) or diag($output);
 
-my $row = $dbh->selectall_hashref('select * from test.heartbeat', 'id');
-is(
-   $row->{1}->{id},
-   1,
-   "Automatically inserts heartbeat row (issue 1292)"
-);
+my $expected = <<EOF;
+127.1:12345
++- 127.0.0.1:12346
+   +- 127.0.0.1:12347
+EOF
 
-($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main(
-         qw(--host 127.1 --port 12345 --user sha256_user),
-         qw(--password sha256_user%password --mysql_ssl=1),
-      qw(-D test --check)) },
-   stderr => 1,
-);
+is($output, $expected, 'Source with replica and replica of replica');
+
+$output = `$trunk/bin/pt-replica-find --host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1 --report-format hostname 2>&1`;
 
 is(
-   $exit_code,
+   $?,
    0,
    "No error for user, identified with caching_sha2_password with option --mysql_ssl"
 ) or diag($output);
@@ -109,21 +103,22 @@ unlike(
    'No secure connection error with option --mysql_ssl'
 ) or diag($output);
 
-$row = $dbh->selectall_hashref('select * from test.heartbeat', 'id');
-is(
-   $row->{1}->{id},
-   1,
-   "Automatically inserts heartbeat row (issue 1292) with option --mysql_ssl"
-);
-
-($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main("F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
-      qw(-D test --check)) },
-   stderr => 1,
-);
+$expected = <<EOF;
+127.1:12345
++- 127.0.0.1:12346
+   +- 127.0.0.1:12347
+EOF
 
 is(
-   $exit_code,
+   $output,
+   $expected,
+   'Source with replica and replica of replica with option --mysql_ssl'
+);
+
+$output = `$trunk/bin/pt-replica-find F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1 --report-format hostname  --recurse 0 2>&1`;
+
+is(
+   $?,
    0,
    "No error for SSL options in the configuration file"
 ) or diag($output);
@@ -134,14 +129,10 @@ unlike(
    'No secure connection error with correct SSL options in the configuration file'
 ) or diag($output);
 
-($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main("F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
-      qw(-D test --check)) },
-   stderr => 1,
-);
+$output = `$trunk/bin/pt-replica-find F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1 --report-format hostname  --recurse 0 2>&1`;
 
 isnt(
-   $exit_code,
+   $?,
    0,
    "Error for invalid SSL options in the configuration file"
 ) or diag($output);
@@ -157,8 +148,5 @@ like(
 # #############################################################################
 $sb->do_as_root('source', q/DROP USER 'sha256_user'@'%'/);
 
-$sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-
 done_testing;
-exit;

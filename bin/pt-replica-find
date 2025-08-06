@@ -4444,6 +4444,12 @@ short form: -h; type: string
 
 Connect to host.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --password
 
 short form: -p; type: string

@@ -13336,6 +13336,16 @@ This is useful in cases where you have trouble checksumming tables with keys tha
 include a binary data type or that have non-standard character sets.
 See L<"--replicate">.
 
+=item --charset
+
+short form: -A; type: string
+
+Default character set.  If the value is utf8, sets Perl's binmode on
+STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and
+runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
+binmode on STDOUT without the utf8 layer, and runs SET NAMES after
+connecting to MySQL.
+
 =item --check-interval
 
 type: time; default: 1; group: Throttle
@@ -13760,6 +13770,12 @@ you specify a threshold for this variable, then you can instruct the tool to
 wait until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
+
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
 
 =item --password
 
