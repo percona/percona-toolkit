@@ -1879,6 +1879,10 @@ sub get_opts {
       }
    }
 
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
+   }
+
    if ( @ARGV && $self->{strict} ) {
       $self->save_error("Unrecognized command-line options @ARGV");
    }
@@ -11090,6 +11094,13 @@ L<"SYNOPSIS"> and usage information for details.
 =item --ask-pass
 
 Prompt for a password when connecting to MySQL.
+
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
 
 =item --charset
 
