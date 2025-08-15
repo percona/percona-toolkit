@@ -181,7 +181,7 @@ sub version_check {
    }
 
    # Always update the vc file, even if the version check fails.
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          # Update the check time for things we checked.  I.e. if we
          # didn't check it, do _not_ update its time.

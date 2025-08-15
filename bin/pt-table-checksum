@@ -899,7 +899,7 @@ sub version_check {
       PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
 
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          update_check_times(
             instances => $instances_to_check,
@@ -2155,7 +2155,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -2360,6 +2362,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -9078,11 +9084,24 @@ sub _parse_config {
    }
    elsif ( my $dbh = $args{dbh} ) {
       $config_data{format} = $args{format} || 'show_variables';
+      my $mysql_version = _get_version($dbh);
       my $sql = "SHOW /*!40103 GLOBAL*/ VARIABLES";
       PTDEBUG && _d($dbh, $sql);
       my $rows = $dbh->selectall_arrayref($sql);
-      $config_data{vars} = { map { @$_ } @$rows };
-      $config_data{mysql_version} = _get_version($dbh);
+      $config_data{vars} = {
+         map {
+            my ($variable, $value) = @$_;
+            if ( length($value) == 1024 && $mysql_version ge '5.7.0' ) {
+               my $var_sql = "SELECT \@\@global.$variable";
+               PTDEBUG && _d($dbh, $var_sql);
+               my $var_sth = $dbh->prepare($var_sql);
+               $var_sth->execute();
+               ($value) = $var_sth->fetchrow_array();
+            }
+            $variable => $value
+         } @$rows
+      };
+      $config_data{mysql_version} = $mysql_version;
    }
    else {
       die "Unknown config source";
@@ -10268,11 +10287,11 @@ sub main {
 
 
    if ( $o->get('truncate-replicate-table') && $o->get('resume') ) {
-       die "--resume and truncate-replicate-table are mutually exclusive";
+      die "--resume and truncate-replicate-table are mutually exclusive";
    }
 
    if ( $o->get('truncate-replicate-table') && !$o->get('empty-replicate-table') ) {
-       die "--resume and --no-empty-replicate-table are mutually exclusive";
+      die "--truncate-replicate-table and --no-empty-replicate-table are mutually exclusive";
    }
 
    # ########################################################################
@@ -13287,6 +13306,13 @@ group: Connection
 
 Prompt for a password when connecting to MySQL.
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --channel
 
 type: string
@@ -13316,6 +13342,16 @@ data type.
 This is useful in cases where you have trouble checksumming tables with keys that
 include a binary data type or that have non-standard character sets.
 See L<"--replicate">.
+
+=item --charset
+
+short form: -A; type: string
+
+Default character set.  If the value is utf8, sets Perl's binmode on
+STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and
+runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
+binmode on STDOUT without the utf8 layer, and runs SET NAMES after
+connecting to MySQL.
 
 =item --check-interval
 
@@ -13741,6 +13777,12 @@ you specify a threshold for this variable, then you can instruct the tool to
 wait until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
+
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
 
 =item --password
 

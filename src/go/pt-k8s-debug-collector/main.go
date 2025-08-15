@@ -28,6 +28,7 @@ func main() {
 	kubeconfig := ""
 	forwardport := ""
 	version := false
+	skipPodSummary := false
 
 	flag.StringVar(&namespace, "namespace", "", "Namespace for collecting data. If empty data will be collected from all namespaces")
 	flag.StringVar(&resource, "resource", "auto", "Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, ps, none, auto")
@@ -35,6 +36,7 @@ func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to kubeconfig")
 	flag.StringVar(&forwardport, "forwardport", "", "Port to use for  port forwarding")
 	flag.BoolVar(&version, "version", false, "Print version")
+	flag.BoolVar(&skipPodSummary, "skip-pod-summary", false, "Skip pod summary collection")
 	flag.Parse()
 
 	if version {
@@ -50,7 +52,7 @@ func main() {
 		resource += "/" + clusterName
 	}
 
-	d := dumper.New("", namespace, resource, kubeconfig, forwardport)
+	d := dumper.New("", namespace, resource, kubeconfig, forwardport, skipPodSummary)
 	log.Println("Start collecting cluster data")
 
 	err := d.DumpCluster()

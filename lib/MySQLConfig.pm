@@ -111,11 +111,30 @@ sub _parse_config {
    }
    elsif ( my $dbh = $args{dbh} ) {
       $config_data{format} = $args{format} || 'show_variables';
+      my $mysql_version = _get_version($dbh);
       my $sql = "SHOW /*!40103 GLOBAL*/ VARIABLES";
       PTDEBUG && _d($dbh, $sql);
       my $rows = $dbh->selectall_arrayref($sql);
-      $config_data{vars} = { map { @$_ } @$rows };
-      $config_data{mysql_version} = _get_version($dbh);
+      $config_data{vars} = {
+         map {
+            my ($variable, $value) = @$_;
+            # Starting from MySQL 5.7.6, SHOW VARIABLES retrieves records from
+            # the performance_schema table named GLOBAL_VARIABLES. This table
+            # stores variable values in a VARCHAR(1024) column, meaning longer
+            # values may be truncated. However, the full value can still be
+            # retrieved by accessing the variable with SELECT @@GLOBAL.
+            # https://dev.mysql.com/doc/refman/5.7/en/information-schema-variables-table.html
+            if ( length($value) == 1024 && $mysql_version ge '5.7.0' ) {
+               my $var_sql = "SELECT \@\@global.$variable";
+               PTDEBUG && _d($dbh, $var_sql);
+               my $var_sth = $dbh->prepare($var_sql);
+               $var_sth->execute();
+               ($value) = $var_sth->fetchrow_array();
+            }
+            $variable => $value
+         } @$rows
+      };
+      $config_data{mysql_version} = $mysql_version;
    }
    else {
       die "Unknown config source";

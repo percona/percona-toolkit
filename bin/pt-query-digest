@@ -1673,7 +1673,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -1878,6 +1880,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -12788,7 +12794,7 @@ sub version_check {
       PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
 
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          update_check_times(
             instances => $instances_to_check,
@@ -15693,6 +15699,13 @@ values for attributes.  If the attribute's value is bigger than this, the
 last-seen value for that class of query is used instead.
 Disabled by default.
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --charset
 
 short form: -A; type: string
@@ -16188,6 +16201,12 @@ type: int; default: 74
 
 Trim lines to this length. 0=Do not trim lines.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --order-by
 
 type: Array; default: Query_time:sum
@@ -16254,12 +16273,12 @@ type: string; default: report
 How to format and print the query analysis results.  Accepted values are:
 
    VALUE          FORMAT
-   =======        ===============================
+   =======        ======================================
    report         Standard query analysis report
    slowlog        MySQL slow log
    json           JSON, one array per query class
    json-anon      JSON without example queries
-   secure-slowlog JSON without example queries
+   secure-slowlog MySQL slow log with anonymized queries 
 
 The entire C<report> output can be disabled by specifying C<--no-report>
 (see L<"--[no]report">), and its sections can be disabled or rearranged
