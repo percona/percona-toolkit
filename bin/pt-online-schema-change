@@ -458,7 +458,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -663,6 +665,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -11226,6 +11232,8 @@ sub find_renamed_cols {
 
    my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)?
                                 ($table_ident) \s+ ($table_ident)/ix;
+   my $alter_rename_col_re = qr/\bRENAME \s+ COLUMN \s+
+                                ($table_ident) \s+ TO \s+ ($table_ident)/ix;
 
    my %renames;
    while ( $alter =~ /$alter_change_col_re/g ) {
@@ -11234,6 +11242,17 @@ sub find_renamed_cols {
       my (undef, $orig_tbl) = Quoter->split_unquote($orig);
       my (undef, $new_tbl)  = Quoter->split_unquote($new);
       # Silly but plausible: CHANGE COLUMN same_name same_name ...
+      next if lc($orig_tbl) eq lc($new_tbl);
+      $renames{lc($orig_tbl)} = $new_tbl;
+   }
+
+   # Also handle RENAME COLUMN syntax (MySQL 8.0+)
+   while ( $alter =~ /$alter_rename_col_re/g ) {
+      my ($orig, $new) = map { $tp->ansi_to_legacy($_) } $1, $2;
+      next unless $orig && $new;
+      my (undef, $orig_tbl) = Quoter->split_unquote($orig);
+      my (undef, $new_tbl)  = Quoter->split_unquote($new);
+      # Silly but plausible: RENAME COLUMN same_name TO same_name ...
       next if lc($orig_tbl) eq lc($new_tbl);
       $renames{lc($orig_tbl)} = $new_tbl;
    }
@@ -11399,6 +11418,10 @@ sub create_new_table {
       if ( $o->got('remove-data-dir') ) {
          $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//;
          PTDEBUG && _d("removing data dir");
+      }
+      if ( $o->got('remove-tablespace') ) {
+         $sql =~ s/TABLESPACE\s+`[^`]+`\s*//;
+         PTDEBUG && _d("removing tablespace");
       }
       PTDEBUG && _d($sql);
       eval {
@@ -12459,7 +12482,7 @@ sub exec_nibble {
 #
 # Required Arguments:
 #   * tbl  - Standard tbl hashref
-#   * sth  - Sth with EXLAIN <statement>
+#   * sth  - Sth with EXPLAIN <statement>
 #   * vals - Values for sth, if any
 #
 # Returns:
@@ -12904,6 +12927,13 @@ This is useful when you change large tables with keys that include a binary
 data type or that have non-standard character sets.
 See L<"--history"> and L<"--resume">.
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --channel
 
 type: string
@@ -13170,7 +13200,14 @@ than remove-data-dir.
 default: no
 
 If the original table was created using the DATA DIRECTORY feature, remove it and create
-the new table in MySQL default directory without creating a new isl file.
+the new table in MySQL directory without creating a new isl file.
+
+=item --remove-tablespace
+
+default: no
+
+If the original table was created using the TABLESPACE feature, remove it and create
+the new table without the TABLESPACE specification.
 
 =item --defaults-file
 
@@ -13356,6 +13393,12 @@ specify a threshold for this variable, then you can instruct the tool to wait
 until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
+
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
 
 =item --preserve-triggers
 

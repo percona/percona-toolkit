@@ -362,7 +362,7 @@ v3.0.5 released 2017-11-20
  * Fixed bug     PT-200: Index with keyword 'unique' as prefix/suffix considered as unique
  * Fixed bug     PT-199: pt-table-checksum does not make the session statement based when using row based replication
  * Fixed bug     PT-196: pt-onine-schema-change is pausing because {some_status_variable}=0
- * Fixed bug     PT-193: pt-table-checksum reports misleading error if comment has apostroph
+ * Fixed bug     PT-193: pt-table-checksum reports misleading error if comment has apostrophe
  * Fixed bug     PT-187: pt-table-checksum not able to get differences for columns
  * Fixed bug     PT-186: pt-online-schema-change --alter fails if fields are using mixed case
  * Fixed bug     PT-183: pt-mongodb-query-digest cannot connect to a db using authentication

@@ -1,0 +1,5 @@
+[client]
+user=msandbox
+ssl-ca=/tmp/12345/data/ca.pem
+ssl-cert=/tmp/12345/data/server-cert.pem
+ssl-key=/tmp/12345/data/client-key.pem

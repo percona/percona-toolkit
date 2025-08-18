@@ -1048,7 +1048,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -1253,6 +1255,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -7767,6 +7773,13 @@ The danger is that a crash might cause lost data.
 The performance increase I have seen from using L<"--buffer"> is around 5 to 15
 percent.  Your mileage may vary.
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --bulk-delete
 
 Delete each chunk with a single statement (implies L<"--commit-each">).
@@ -8105,6 +8118,12 @@ for L<"--check-interval"> seconds and then looks at the lag again.  It repeats
 until the replica is caught up, then proceeds to fetch and archive the row.
 
 This option may eliminate the need for L<"--sleep"> or L<"--sleep-coef">.
+
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
 
 =item --no-ascend
 
