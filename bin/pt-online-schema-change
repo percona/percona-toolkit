@@ -12466,9 +12466,8 @@ sub exec_nibble {
          # Success: no warnings, no errors.  Record and return nibble time.
          if ( $hist_sth ) {
             $hist_sth->execute(
-               # WHERE
-               @{$boundary->{lower}},  # upper boundary values
-               @{$boundary->{upper}},  # lower boundary values
+               $lb_quoted,  # upper boundary values
+               $ub_quoted,  # lower boundary values
             );
          }
 
