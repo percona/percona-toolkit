@@ -82,6 +82,15 @@ ok(
 
 ok(
    no_diff(
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test --invisible)) },
+      "$sample/basic_invisible.txt",
+      transform_sample => $transform_int
+    ),
+    '--invisible'
+);
+
+ok(
+   no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d test --nosummary)) },
       "$sample/nosummary_output.txt",
       transform_sample => $transform_int
