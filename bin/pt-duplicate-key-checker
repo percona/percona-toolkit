@@ -5583,7 +5583,7 @@ optimizer, execute ALTER INDEX .. VISIBLE
 
 While dropping an index is a fast, background operation, adding indexes is
 a slow, CPU, and disk IO intensive operation. If you discover that an index
-was incorrectly dropped, it becomes a NOOP to make the index visable again,
+was incorrectly dropped, it becomes a NOOP to make the index visible again,
 compared to completely re-adding the index.
 
 =item --key-types
