@@ -104,12 +104,12 @@ if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
                [
                  2,
                  [ 'mysql.infoschema' ],
-                 [ 'mysql.sys' ]
+                 [ 'percona.telemetry' ]
                ],
                [
-                 4,
-                 [ 'mysql.sys' ],
-                 [ 'mysql.infoschema' ]
+                 3,
+                 [ 'mysql.session' ],
+                 [ 'mysql.sys' ]
                ]
              ]; 
 }
@@ -146,7 +146,7 @@ if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
 } elsif ($sandbox_version ge '8.0') {
     $expect =[
               [
-                4,
+                5,
                 undef,
                 [
                   [ 'mysql.infoschema' ],
@@ -189,7 +189,7 @@ if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
 } elsif ($sandbox_version ge '8.0') {
     $expect =[
                [
-                 4,
+                 5,
                  [
                    [
                      'mysql.infoschema'

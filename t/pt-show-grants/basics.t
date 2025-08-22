@@ -84,7 +84,7 @@ unlike(
 );
 
 $output = output(
-   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user,mysql.session@localhost,mysql.sys@localhost,sys,mysql.infoschema@localhost'); }
+   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user,mysql.session@localhost,mysql.sys@localhost,sys,mysql.infoschema@localhost,percona.telemetry@localhost'); }
 );
 unlike(
    $output,
