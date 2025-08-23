@@ -5438,7 +5438,7 @@ sub watch_server {
    my $source_name   = 'source';
    my $source_change = 'replication source';
    my $replica_name  = 'replica';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_name   = 'master';
       $source_change = 'master';
       $replica_name  = 'slave';

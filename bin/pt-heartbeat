@@ -6454,7 +6454,7 @@ sub main {
       my $vp = VersionParser->new($dbh);
 
       my $source_name = 'source';
-      if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/  ) {
+      if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i  ) {
          $source_name = 'master';
       }
 
@@ -6497,7 +6497,7 @@ sub main {
 
          my $sql;
          if ( @master_status_cols ) {
-            if ( $vp ge '8.1' && $vp->flavor() !~ m/maria/ ) {
+            if ( $vp ge '8.1' && $vp->flavor() !~ m/maria/i ) {
                $sql = 'SHOW BINARY LOG STATUS';
             }
             else {
@@ -6515,7 +6515,7 @@ sub main {
          }
 
          if ( @slave_status_cols ) {
-            if ( $vp ge '8.1' && $vp->flavor() !~ m/maria/ ) {
+            if ( $vp ge '8.1' && $vp->flavor() !~ m/maria/i ) {
                $sql = 'SHOW REPLICA STATUS';
             }
             else {

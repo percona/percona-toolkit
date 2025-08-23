@@ -10,23 +10,26 @@ use strict;
 use warnings FATAL => 'all';
 use Test::More;
 use PerconaTest;
-use DBI;
 use File::Temp qw(tempfile);
 
-my $dsn = "DBI:mysql:database=test_db;host=$ENV{DB_TEST_HOST};port=3306";
-my $user = "$ENV{DB_TEST_USER}";       # MariaDB user
-my $pass = "$ENV{DB_TEST_PASSWORD}";           # MariaDB password
+use Data::Dumper;
+use PerconaTest;
+use Sandbox;
 
-my $dbh = DBI->connect($dsn, $user, $pass, { RaiseError => 1, PrintError => 0 })
-    or die "Cannot connect to MariaDB: $DBI::errstr";
+require "$trunk/bin/pt-online-schema-change";
 
-my $version = $dbh->selectrow_arrayref("SELECT VERSION()")->[0];
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dbh = $sb->get_dbh_for('source', { mysql_ssl => 0 });
 
-unless ($version =~ /mariadb/i && $version ge '10.5') {
-    plan skip_all => "Test requires MariaDB 10.5+";
+my $db_flavor = VersionParser->new($dbh)->flavor();
+
+if ( $sandbox_version lt 10.5 || $db_flavor !~ m/maria/i ) {
+   plan skip_all => "Test requires MariaDB 10.5+";
 }
-
-plan tests => 3;
+else {
+   plan tests => 4;
+}
 
 # Prepare database and table
 diag("Creating test database and table...");
@@ -34,47 +37,51 @@ $dbh->do("DROP DATABASE IF EXISTS test_flavor");
 $dbh->do("CREATE DATABASE test_flavor");
 $dbh->do("USE test_flavor");
 $dbh->do("CREATE TABLE test_table (id INT PRIMARY KEY AUTO_INCREMENT, test_column VARCHAR(255))");
-
-# Prepare tempfile for command output
-my ($fh, $filename) = tempfile();
+$dbh->do("INSERT INTO test_table VALUES(1, 'foobar')");
+$dbh->do("COMMIT");
 
 # Run pt-online-schema-change with your full options
-my $cmd = join(' ',
-    "$ENV{PERCONA_TOOLKIT_BRANCH}/bin/pt-online-schema-change",
-    "--alter 'ADD INDEX test_column_idx (test_column)'",
-    "--execute",
-    "D=test_flavor,t=test_table,h=$ENV{DB_TEST_HOST},P=3306,u=$ENV{DB_TEST_USER},p=$ENV{DB_TEST_PASSWORD}",  # Adjust port/user/pass as needed
-    "--sleep=0.2",
-    "--recursion-method=processlist",
-    "--pause-file=/tmp/pt-osc.pause",
-    "--max-load Threads_running=100",
-    "--critical-load Threads_running=140",
-    "--max-lag=2",
-    "--set-vars lock_wait_timeout=1",
-    "--tries create_triggers:100:1,drop_triggers:100:1,copy_rows:1000:0.25,swap_tables:100:1,analyze_table:100:1",
-    "--preserve-triggers",
-    "--progress=percentage,5",
-    "--no-drop-old-table",
-    "> $filename 2>&1"
+my ($output, $exit_code) = full_output(
+   sub { pt_online_schema_change::main(
+         "D=test_flavor,t=test_table,h=127.1,P=12345,u=msandbox,p=msandbox,s=0",
+         "--alter", "ADD INDEX test_column_idx (test_column)",
+         qw(--execute)
+      )
+   },
 );
 
-diag("Running pt-online-schema-change with full options...");
-system($cmd);
-ok($? == 0, "pt-online-schema-change executed successfully") or diag(`cat $filename`);
+is(
+   $exit_code,
+   0,
+   "pt-online-schema-change executed successfully"
+);
 
-# Check output for flavor errors
-open my $out, '<', $filename or die "Can't open $filename: $!";
-my $content = do { local $/; <$out> };
-close $out;
-
-unlike($content, qr/flavor mismatch|not supported/i, "No flavor mismatch or unsupported error") or diag($content);
+unlike(
+   $output,
+   qr/flavor mismatch|not supported/i,
+   "No flavor mismatch or unsupported error"
+) or diag($output);
 
 # Confirm index exists
-my $index = $dbh->selectrow_arrayref("SHOW INDEX FROM test_flavor.test_table WHERE Key_name = 'test_column_idx'");
-ok($index, "Index 'test_column_idx' created");
+$output = `/tmp/12345/use -Ne "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE INDEX_NAME = 'test_column_idx' AND TABLE_SCHEMA = 'test_flavor' AND TABLE_NAME = 'test_table'" 2>/dev/null`;
+
+chomp $output;
+
+is(
+   $output,
+   1,
+   "Index 'test_column_idx' created"
+);
 
 # Cleanup
-$dbh->do("DROP DATABASE test_flavor");
+#$dbh->do("DROP DATABASE test_flavor");
+
+# #############################################################################
+# Done.
+# #############################################################################
+
+$sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 
 done_testing;
 
