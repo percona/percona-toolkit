@@ -1,5 +1,5 @@
 # ########################################################################
-# test.dupe_key
+# test.dupe_key                                                           
 # ########################################################################
 
 # a is a left-prefix of a_2
@@ -9,11 +9,11 @@
 # Column types:
 #	  `a` int(11) default null
 #	  `b` int(11) default null
-# To remove this duplicate index, execute:
+# To make this index invisible, execute:
 ALTER TABLE `test`.`dupe_key` ALTER INDEX `a` INVISIBLE;
 
 # ########################################################################
-# Summary of indexes
+# Summary of indexes                                                      
 # ########################################################################
 
 # Size Duplicate Indexes   0
