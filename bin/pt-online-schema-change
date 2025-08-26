@@ -8749,7 +8749,7 @@ sub main {
    }
 
    # Explicit --chunk-size disable auto chunk sizing.
-   $o->set('chunk-time', 0) if $o->got('chunk-size');
+   $o->set('chunk-time', 0) if $o->got('chunk-size') && !$o->got('chunk-time');
    if (!$o->get('swap-tables') && !$o->get('drop-triggers')) {
        PTDEBUG && _d('Enabling no-drop-new-table since no-swap-tables & no-drop-triggers were specified');
        $o->set('drop-new-table', 0);
@@ -13093,8 +13093,9 @@ This option can override the default behavior, which is to adjust chunk size
 dynamically to try to make chunks run in exactly L<"--chunk-time"> seconds.
 When this option isn't set explicitly, its default value is used as a starting
 point, but after that, the tool ignores this option's value.  If you set this
-option explicitly, however, then it disables the dynamic adjustment behavior and
-tries to make all chunks exactly the specified number of rows.
+option explicitly, and do not set L<"--chunk-time"> explicitly, then it disables
+the dynamic adjustment behavior and tries to make all chunks exactly the specified
+number of rows.
 
 =item --chunk-size-limit
 
@@ -13131,7 +13132,13 @@ changes in server load, the tool adapts quickly.
 If this option is set to zero, the chunk size doesn't auto-adjust, so query
 times will vary, but query chunk sizes will not. Another way to do the same
 thing is to specify a value for L<"--chunk-size"> explicitly, instead of leaving
-it at the default.
+it at the default, and omit the option L<"--chunk-time">.
+
+If both options L<"--chunk-size"> and L<"--chunk-time"> set explicitly, initial
+chunk size will be as specified by the option L<"--chunk-size">, but later it will
+be adjusted, so that the next query takes this amount of time (in seconds) 
+to execute. Use this option if the tool spends too much time copying the first chunk
+with default L<"--chunk-size">.
 
 =item --config
 
