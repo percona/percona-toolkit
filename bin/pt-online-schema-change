@@ -8879,7 +8879,7 @@ sub main {
       # it's a hack, like ignoring a problem instead of fixing it somehow. We
       # should take a look at the things that get printed in a "normal"
       # non-quiet run, and "if !quiet" them, and then do some kind of Logger.pm
-      # or Messager.pm module for a future release.
+      # or Message.pm module for a future release.
       close STDOUT;
       open  STDOUT, '>', '/dev/null'
          or warn "Cannot reopen STDOUT to /dev/null: $OS_ERROR";

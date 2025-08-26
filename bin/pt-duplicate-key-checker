@@ -5301,12 +5301,19 @@ sub print_duplicate_key {
 
    if ( $o->get('sql') ) {
       if ( $dupe->{dupe_type} ne 'clustered' ) {
-         print "# To remove this duplicate "
-            . ($args{is_fk} ? 'foreign key' : 'index')
-            . ", execute:\n"
-            . 'ALTER TABLE ' . $q->quote($db, $tbl)
-            . ($args{is_fk} ? ' DROP FOREIGN KEY ' : ' DROP INDEX ')
-            . "`$dupe->{key}`;\n";
+         if ( $o->get('invisible') && !$args{is_fk} ) {
+            print "# To make this index invisible, execute:\n"
+               . 'ALTER TABLE ' . $q->quote($db, $tbl)
+               . " ALTER INDEX `$dupe->{key}` INVISIBLE;\n";
+         }
+         else {
+            print "# To remove this duplicate "
+               . ($args{is_fk} ? 'foreign key' : 'index')
+               . ", execute:\n"
+               . 'ALTER TABLE ' . $q->quote($db, $tbl)
+               . ($args{is_fk} ? ' DROP FOREIGN KEY ' : ' DROP INDEX ')
+               . "`$dupe->{key}`;\n";
+         }
       }
       else {
          # Suggest shortening clustered dupes instead of
@@ -5565,6 +5572,19 @@ type: Hash
 
 Ignore this comma-separated list of tables.  Table names may be qualified with
 the database name.
+
+=item --invisible
+
+The output SQL will make the index INVISIBLE, instead of dropping it.
+
+An invisible index cannot be considered by the query optimizer, but is still
+maintained when writes happen to the table. To make the index usable by the
+optimizer, execute ALTER INDEX .. VISIBLE
+
+While dropping an index is a fast, background operation, adding indexes is
+a slow, CPU, and disk IO intensive operation. If you discover that an index
+was made invisible incorrectly, it becomes a NOOP (no-operation) to make the index visible again,
+compared to completely re-adding the index.
 
 =item --key-types
 
