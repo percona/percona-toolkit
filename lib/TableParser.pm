@@ -341,12 +341,6 @@ sub check_table {
       return 0;
    }
 
-   PTDEBUG && _d("lower_case_table_names=$lower_case_table_names");
-   if ($lower_case_table_names > 0) {
-       PTDEBUG && _d("MySQL uses case-insensitive lookup, converting '$tbl' to lowercase");
-       $tbl = lc $tbl;
-   }
-
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
@@ -362,7 +356,9 @@ sub check_table {
       $self->{check_table_error} = $e;
       return 0;
    }
-   if ( !$row->[0] || $row->[0] ne $tbl ) {
+   if ( !$row->[0]
+      || ( $lower_case_table_names == 0 && $row->[0] ne $tbl )
+      || ( $lower_case_table_names > 0 && lc $row->[0] ne lc $tbl ) ) {
       PTDEBUG && _d('Table does not exist');
       return 0;
    }
