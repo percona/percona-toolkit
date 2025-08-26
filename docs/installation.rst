@@ -10,6 +10,10 @@ It is recommended to install Percona software from official repositories:
    `Percona Software Repositories Documentation
    <https://www.percona.com/doc/percona-repo-config/index.html>`_.
 
+#. Enable Percona Toolkit repository::
+
+     sudo percona-release enable pt
+
 #. Install Percona Toolkit using the corresponding package manager:
 
    * For Debian or Ubuntu::
