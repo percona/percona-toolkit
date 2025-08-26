@@ -10634,7 +10634,7 @@ sub main {
       $plugin->after_copy_rows();
    }
    if ( $o->get('preserve-triggers') ) {
-       if ( !$o->get('swap-tables') && $o->get('drop-new-table') && !$o->get('alter-foreign-keys-method') eq "drop-swap" ) {
+       if ( !$o->get('swap-tables') && $o->get('drop-new-table') && ( $o->get('alter-foreign-keys-method') ne "drop_swap" ) ) {
           print ts("Skipping triggers creation since --no-swap-tables was specified along with --drop-new-table\n");
       } else {
           print ts("Adding original triggers to new table.\n");
