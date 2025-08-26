@@ -10803,7 +10803,7 @@ sub _find_replicas_by_hosts {
    my $vp = VersionParser->new($dbh);
    my $sql = 'SHOW REPLICAS';
    my $source_name = 'source';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $sql = 'SHOW SLAVE HOSTS';
       $source_name='master';
    }
@@ -10926,7 +10926,7 @@ sub get_source_dsn {
    my $vp = VersionParser->new($dbh);
    my $source_host = 'source_host';
    my $source_port = 'source_port';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_host = 'master_host';
       $source_port = 'master_port';
    }
@@ -11000,7 +11000,7 @@ sub get_source_status {
 
    my $vp = VersionParser->new($dbh);
    my $source_name = 'binary log';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_name = 'master';
    }
 
@@ -11443,13 +11443,13 @@ sub get_cxn_from_dsn_table {
 sub get_source_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'master' : 'source';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'master' : 'source';
 }
 
 sub get_replica_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'slave' : 'replica';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'slave' : 'replica';
 }
 
 sub _d {
