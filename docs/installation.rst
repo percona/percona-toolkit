@@ -8,7 +8,7 @@ It is recommended to install Percona software from official repositories:
 
 1. Configure Percona repositories as described in
    `Percona Software Repositories Documentation
-   <https://www.percona.com/doc/percona-repo-config/index.html>`_.
+   <https://docs.percona.com/percona-software-repositories/index.html>`_.
 
 #. Install Percona Toolkit using the corresponding package manager:
 
