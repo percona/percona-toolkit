@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 46
+plan 47
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -823,6 +823,12 @@ no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_ps-5.1-martin.txt" \
    "section_percona_server_features works on 5.1"
+
+report_jemalloc_enabled "$samples/mysqld-instances-pt-2322" "$samples/mysql-variables-pt-2322" > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_pt-2322.txt" \
+   "PT-2322: report_jemalloc_enabled works"
 
 # ###########################################################################
 # Done
