@@ -12,7 +12,7 @@ It is recommended to install Percona software from official repositories:
 
 #. Enable Percona Toolkit repository::
 
-     sudo percona-release enable pt
+     sudo percona-release enable pt release
 
 #. Install Percona Toolkit using the corresponding package manager:
 
