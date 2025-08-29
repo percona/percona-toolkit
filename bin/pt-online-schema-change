@@ -9202,7 +9202,6 @@ sub main {
 
             if ( $is_source_of) {
                my $source_binlog_format = $source_cxn->dbh()->selectrow_arrayref("SHOW GLOBAL VARIABLES LIKE 'binlog_format'");
-               use Data::Dumper;
                if ( uc @$source_binlog_format[1] ne 'STATEMENT' ) {
                   _die("Server " . $dp->as_string($cxn->dsn())
                   . " is a replica of " . $dp->as_string($source_cxn->dsn())
