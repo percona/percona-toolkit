@@ -243,7 +243,7 @@ collect_mysql_data_one() {
    # get and keep a connection to the database; in troubled times
    # the database tends to exceed max_connections, so reconnecting
    # in the loop tends not to work very well.
-   if ! [ "${OPT_SKIP_COLLECTION}" =~ "mysqladmin" ]; then
+   if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "mysqladmin" ]]; then
       $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
       mysqladmin_pid=$!
    fi
@@ -291,7 +291,7 @@ collect_mysql_data_loop() {
 
    # SHOW FULL PROCESSLIST duplicates information in performance_schema.threads we collecting now
    # Keeping it for backward compatibility and may remove in the future
-   if ! [ "${OPT_SKIP_COLLECTION}" =~ "processlist" ]; then
+   if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "processlist" ]]; then
       (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
       >> "$d/$p-processlist" &
    fi
@@ -300,16 +300,16 @@ collect_mysql_data_loop() {
    >> "$d/$p-threads" &
 
    if [ "$have_lock_waits_table" ]; then
-      if ! [ "${OPT_SKIP_COLLECTION}" =~ "lock-waits" ]; then
+      if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "lock-waits" ]]; then
          (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
       fi
-      if ! [ "${OPT_SKIP_COLLECTION}" =~ "transactions" ]; then
+      if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "transactions" ]]; then
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
    fi
 
    if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ] \
-      && ! [ "${OPT_SKIP_COLLECTION}" =~ "ps-locks-transactions" ]; then
+      && ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "ps-locks-transactions" ]]; then
       ps_locks_transactions "$d/$p-ps-locks-transactions"
    fi
 
@@ -547,7 +547,7 @@ innodb_status() {
 
    local innostat=""
 
-   if ! [ "${OPT_SKIP_COLLECTION}" =~ "innodbstatus" ]; then
+   if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "innodbstatus" ]]; then
       $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
          >> "$d/$p-innodbstatus$n"
       grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
@@ -571,7 +571,7 @@ rocksdb_status() {
     has_rocksdb=`$CMD_MYSQL $EXT_ARGV -e "SHOW ENGINES" | grep -i 'rocksdb'`
     exit_code=$?
 
-    if [ $exit_code -eq 0 ] && ! [ "${OPT_SKIP_COLLECTION}" =~ "rocksdbstatus" ]; then
+    if [ $exit_code -eq 0 ] && ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "rocksdbstatus" ]]; then
         $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE ROCKSDB STATUS\G" \
                    >> "$d/$p-rocksdbstatus$n" || rm -f "$d/$p-rocksdbstatus$n"
     fi
@@ -657,7 +657,7 @@ collect_mysql_variables() {
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-   if ! [ "${OPT_SKIP_COLLECTION}" =~ "thread-variables" ]; then
+   if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "thread-variables" ]]; then
       sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
