@@ -9181,6 +9181,41 @@ sub main {
          channel      => $o->get('channel'),
       );
 
+      # Check if we are not a replica of the source server with ROW or MIXED base replication
+      if ( !$o->get('force') ) {
+         my $source = $ms->get_source_dsn($cxn->dbh(), $dsn, $dp);
+         if ( $source ) {
+            my $source_cxn = $make_cxn->(dsn => $source);
+
+            # Check source
+            my $is_source_of = eval {
+               $ms->is_source_of($source_cxn->{dbh}, $cxn->{dbh});
+            };
+
+            # We should not die if replica connected via tunnel or port redirection
+            if ( $EVAL_ERROR ) {
+               $EVAL_ERROR =~ m/The replica is connected to (\d+) but the source's port is \d+/;
+               if ( !$1 || $1 != $source->{P} ) {
+                  $is_source_of = 0;
+               }
+            }
+
+            if ( $is_source_of) {
+               my $source_binlog_format = $source_cxn->dbh()->selectrow_arrayref("SHOW GLOBAL VARIABLES LIKE 'binlog_format'");
+               if ( uc @$source_binlog_format[1] ne 'STATEMENT' ) {
+                  _die("Server " . $dp->as_string($cxn->dsn())
+                  . " is a replica of " . $dp->as_string($source_cxn->dsn())
+                  . " running with binary log format "
+                  . "@${source_binlog_format[1]}, therefore we cannot guarantee "
+                  . "that all replication updates will be applied to the new table.\n"
+                  . "Exiting.\n"
+                  . "If you want to bypass this check, specify option --force.",
+                  NO_MINIMUM_REQUIREMENTS);
+               }
+            }
+         }
+      }
+
      my $slaves_to_skip = $o->get('skip-check-replica-lag');
 
      my $get_replicas_cb = sub {
@@ -13304,6 +13339,8 @@ duplicate rows and this data will be lost.
 This option bypasses confirmation in case of using alter-foreign-keys-method = none, which might break foreign key constraints.
 
 This option also allows to use option --where without options --no-drop-new-table and --no-swap-tables.
+
+This option also allows to bypass the safety check that prevents the tool from running on replica that is replicating from a source with binary log format ROW or MIXED.
 
 =item --help
 
