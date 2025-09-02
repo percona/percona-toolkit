@@ -3701,6 +3701,10 @@ sub _normalize_value {
    $val = defined $val ? $val : '';
    $val = $alt_val_for{$val} if exists $alt_val_for{$val};
 
+   if ( $val =~ m/,/ && !$is_dir && !$base_path) {
+      $val = join(',', sort(split(',', $val)));
+   }
+
    if ( $val ) {
       if ( $is_dir ) {
          $val .= '/' unless $val =~ m/\/$/;
