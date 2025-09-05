@@ -232,6 +232,25 @@ like(
    "Rejects unsupported --skip-collection value"
 );
 
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --pid $pid_file --log $log_file --dest $dest --iterations 1 --skip-collection 'mysqladmin and' -- --defaults-file=$cnf >$log_file 2>&1");
+
+sleep 5;
+PerconaTest::kill_program(pid_file => $pid_file);
+
+is(
+   $retval >> 8,
+   1,
+   "Parent exit 1 on unsupported --skip-collection value"
+);
+
+like(
+   `cat $log_file`,
+   qr/Invalid --skip-collection value: mysqladmin and, exiting./,
+   "Rejects unsupported --skip-collection value"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################

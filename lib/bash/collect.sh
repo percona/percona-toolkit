@@ -243,7 +243,7 @@ collect_mysql_data_one() {
    # get and keep a connection to the database; in troubled times
    # the database tends to exceed max_connections, so reconnecting
    # in the loop tends not to work very well.
-   if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "mysqladmin" ]]; then
+   if ! _should_skip "mysqladmin"; then
       $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
       mysqladmin_pid=$!
    fi
@@ -291,7 +291,7 @@ collect_mysql_data_loop() {
 
    # SHOW FULL PROCESSLIST duplicates information in performance_schema.threads we collecting now
    # Keeping it for backward compatibility and may remove in the future
-   if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "processlist" ]]; then
+   if ! _should_skip "processlist"; then
       (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
       >> "$d/$p-processlist" &
    fi
@@ -300,16 +300,16 @@ collect_mysql_data_loop() {
    >> "$d/$p-threads" &
 
    if [ "$have_lock_waits_table" ]; then
-      if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "lock-waits" ]]; then
+      if ! _should_skip "lock-waits"; then
          (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
       fi
-      if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "transactions" ]]; then
+      if ! _should_skip "transactions"; then
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
    fi
 
    if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ] \
-      && ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "ps-locks-transactions" ]]; then
+      && ! _should_skip "ps-locks-transactions"; then
       ps_locks_transactions "$d/$p-ps-locks-transactions"
    fi
 
@@ -547,7 +547,7 @@ innodb_status() {
 
    local innostat=""
 
-   if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "innodbstatus" ]]; then
+   if ! _should_skip "innodbstatus"; then
       $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
          >> "$d/$p-innodbstatus$n"
       grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
@@ -571,7 +571,7 @@ rocksdb_status() {
     has_rocksdb=`$CMD_MYSQL $EXT_ARGV -e "SHOW ENGINES" | grep -i 'rocksdb'`
     exit_code=$?
 
-    if [ $exit_code -eq 0 ] && ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "rocksdbstatus" ]]; then
+    if [ $exit_code -eq 0 ] && ! _should_skip "rocksdbstatus"; then
         $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE ROCKSDB STATUS\G" \
                    >> "$d/$p-rocksdbstatus$n" || rm -f "$d/$p-rocksdbstatus$n"
     fi
@@ -657,7 +657,7 @@ collect_mysql_variables() {
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-   if ! [[ "${OPT_SKIP_COLLECTION[@]}" =~ "thread-variables" ]]; then
+   if ! _should_skip "thread-variables"; then
       sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
@@ -671,6 +671,19 @@ collect_mysql_variables() {
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    fi
 
+}
+
+_should_skip() {
+   local name=$1
+
+   for item in "${OPT_SKIP_COLLECTION[@]}"; do
+   echo $item >> /tmp/sveta
+      if [ "$item" == "$name" ]; then
+         return 0
+      fi
+   done
+
+   return 1
 }
 
 # ###########################################################################
