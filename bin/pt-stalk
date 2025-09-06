@@ -1550,7 +1550,7 @@ purge_samples() {
    local retention_size="$4"
 
    # Delete collect files which more than --retention-time days old.
-   if [ -n "$OPT_PREFIX" ]; then
+   if [ -n "${OPT_PREFIX:-}" ]; then
       find "$dir" -maxdepth 1 -type f -mtime +$retention_time -name "$OPT_PREFIX-*" -exec rm -f '{}' \;
    else
       find "$dir" -maxdepth 1 -type f -mtime +$retention_time -regextype posix-egrep -regex "$dir/[0-9]{4}(_[0-9]{2}){5}-.*" -exec rm -f '{}' \;
@@ -1749,10 +1749,6 @@ stalk() {
 main() {
    trap sigtrap SIGHUP SIGINT SIGTERM
 
-   if [ "$OPT_SYSTEM_ONLY" ] && [ "$OPT_MYSQL_ONLY" ]; then
-      log 'Both options --system-only and --mysql-only specified, collecting only disk-space, hostname, output, and trigger metrics';
-   fi
-
    # Note: $$ is the parent's PID, but we're a child proc.
    # Bash 4 has $BASHPID but we can't rely on that.  Consequently,
    # we don't know our own PID.  See the usage of $! below.
@@ -1796,6 +1792,10 @@ if    [ "${0##*/}" = "$TOOL" ] \
    mk_tmpdir
    parse_options "$0" "${@:-""}"
 
+   if [ "$OPT_SYSTEM_ONLY" ] && [ "$OPT_MYSQL_ONLY" ]; then
+      log 'Both options --system-only and --mysql-only specified, collecting only disk-space, hostname, output, and trigger metrics';
+   fi
+
    # Verify and set TRIGGER_FUNCTION based on --function.
    if ! set_trg_func "$OPT_FUNCTION"; then
       option_error "Invalid --function value: $OPT_FUNCTION"
@@ -1811,7 +1811,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
    fi
 
    if [ "$OPT_SKIP_COLLECTION" ]; then
-      local supported_skips=(ps-locks-transactions thread-variables innodbstatus lock-waits mysqladmin processlist rocksdbstatus transactions)
+      supported_skips=( "ps-locks-transactions" "thread-variables" "innodbstatus" "lock-waits" "mysqladmin" "processlist" "rocksdbstatus" "transactions" )
       IFS=',' read -ra skips <<< "$OPT_SKIP_COLLECTION"
       OPT_SKIP_COLLECTION=("${skips[@]}")
       for skip in "${skips[@]}"; do
