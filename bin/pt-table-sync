@@ -12965,14 +12965,43 @@ Possible methods are:
   ===========  ==================
   processlist  SHOW PROCESSLIST
   hosts        SHOW REPLICAS (SHOW SLAVE HOSTS before MySQL 8.1)
+  dsn=DSN      DSNs from a table
   none         Do not find replicas
 
-The processlist method is preferred because SHOW REPLICAS is not reliable.
-However, the hosts method is required if the server uses a non-standard
-port (not 3306).  Usually pt-table-sync does the right thing and finds
-the replicas, but you may give a preferred method and it will be used first.
-If it doesn't find any replicas, the other methods will be tried.
+The C<processlist> method is the default, because C<SHOW REPLICAS> is not
+reliable.  However, if the server uses a non-standard port (not 3306), then
+the C<hosts> method becomes the default because it works better in this case.
 
+The C<hosts> method requires replicas to be configured with C<report_host>,
+C<report_port>, etc.
+
+The C<dsn> method is special: rather than automatically discovering replicas,
+this method specifies a table with replica DSNs.  The tool will only connect
+to these replicas.  This method works best when replicas do not use the same
+MySQL username or password as the source, or when you want to prevent the tool
+from connecting to certain replicas.  The C<dsn> method is specified like:
+C<--recursion-method dsn=h=host,D=percona,t=dsns>.  The specified DSN must
+have D and t parts, or just a database-qualified t part, which specify the
+DSN table.  The DSN table must have the following structure:
+
+  CREATE TABLE `dsns` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `parent_id` int(11) DEFAULT NULL,
+    `dsn` varchar(255) NOT NULL,
+    PRIMARY KEY (`id`)
+  );
+
+DSNs are ordered by C<id>, but C<id> and C<parent_id> are otherwise ignored.
+The C<dsn> column contains a replica DSN like it would be given on the command
+line, for example: C<"h=replica_host,u=repl_user,p=repl_pass">.
+
+The C<none> method makes the tool ignore all replicas and cluster nodes. This
+method is not recommended because it effectively disables the
+L<"REPLICA CHECKS"> and no differences can be found. It is useful, however, if
+you only need to write checksums on the source or a single cluster node. The
+safer alternative is C<--no-replicate-check>: the tool finds replicas and
+cluster nodes, performs the L<"REPLICA CHECKS">, but does not check for
+differences. See L<"--[no]replicate-check">.
 
 =item --replace
 
