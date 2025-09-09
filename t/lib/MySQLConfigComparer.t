@@ -425,6 +425,30 @@ is_deeply(
    "..but can be turned off"
 );
 
+# ############################################################################
+# https://perconadev.atlassian.net/browse/PT-2014
+# pt-config-diff does not honor case insensitivity flag for boolean values
+# ############################################################################
+$c1 = new MySQLConfig(
+   file                => "$trunk/$sample/pt-2014-1.txt",
+   TextResultSetParser => $trp,
+);
+$c2 = new MySQLConfig(
+   file                => "$trunk/$sample/pt-2014-2.txt",
+   TextResultSetParser => $trp,
+);
+{
+    my $diff = $cc->diff(
+      configs => [$c1, $c2],
+    );
+
+    is_deeply(
+        $diff,
+        undef,
+        "Boolean values are the same regardless of the case"
+    ) or diag(Dumper($diff));
+}
+
 # #############################################################################
 # Done.
 # #############################################################################

@@ -294,7 +294,7 @@ sub _normalize_value {
    my ($val, $is_dir, $base_path) = @args{qw(value is_directory base_path)};
 
    $val = defined $val ? $val : '';
-   $val = $alt_val_for{lc($val)} if exists $alt_val_for{lc($val)};
+   $val = $alt_val_for{uc($val)} if exists $alt_val_for{uc($val)};
 
    if ( $val ) {
       if ( $is_dir ) {
