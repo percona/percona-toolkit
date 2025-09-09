@@ -10,7 +10,6 @@ import (
 	"github.com/pborman/getopt"
 
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
 func TestGetHostInfo(t *testing.T) {
@@ -83,16 +82,6 @@ func TestClusterWideInfo(t *testing.T) {
 			}
 		})
 	}
-}
-
-func addToCounters(ss proto.ServerStatus, increment int64) proto.ServerStatus {
-	ss.Opcounters.Command += increment
-	ss.Opcounters.Delete += increment
-	ss.Opcounters.GetMore += increment
-	ss.Opcounters.Insert += increment
-	ss.Opcounters.Query += increment
-	ss.Opcounters.Update += increment
-	return ss
 }
 
 func TestParseArgs(t *testing.T) {
