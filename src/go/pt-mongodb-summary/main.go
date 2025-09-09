@@ -208,7 +208,7 @@ func main() {
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
 		} else if advice != "" {
-			log.Infof(advice)
+			log.Infof("%s", advice)
 		}
 	}
 
