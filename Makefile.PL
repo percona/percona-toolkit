@@ -18,7 +18,7 @@ WriteMakefile(
       map {
          (my $name = $_) =~ s/^bin.//;
          my $file_name = $_;
-         if ( ( $file_name =~ m/mongo/ ) || ( $file_name =~ m/pg/ ) || ( $file_name =~ m/galera/ )  || ( $file_name =~ m/k8s/ ) || ( $file_name =~ m/secure/ ) ) {
+if ( $file_name =~ m/(mongo|pg|galera|k8s|secure)/ ) {
             # We have to put empty line here to avoid the MAN1PODS hash corruption
             '' => '',
          }
