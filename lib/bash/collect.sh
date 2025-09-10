@@ -677,7 +677,6 @@ _should_skip() {
    local name=$1
 
    for item in "${OPT_SKIP_COLLECTION[@]}"; do
-   echo $item >> /tmp/sveta
       if [ "$item" == "$name" ]; then
          return 0
       fi
