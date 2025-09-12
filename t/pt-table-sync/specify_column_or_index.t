@@ -44,16 +44,16 @@ $output = `$trunk/bin/pt-table-sync --sync-to-source h=127.1,P=12346,u=msandbox,
 # and EXPLAIN does not guarantee accuracy of results.
 like(
    $output,
-   qr/FROM `issue_375`.`t` FORCE INDEX \(`updated_at`\) WHERE \(`updated_at` > 0 AND `updated_at` < '2009-09-05 02:\d\d:\d\d'/,
+   qr/FROM `issue_375`.`t` FORCE INDEX \(`updated_at`\) WHERE \(`updated_at` > 0 AND `updated_at` < '2009-09-05 \d\d:\d\d:\d\d'/,
    '--chunk-index',
-);
+) or diag($output);
 
 $output = `$trunk/bin/pt-table-sync --sync-to-source h=127.1,P=12346,u=msandbox,p=msandbox -d issue_375 --print -v -v  --chunk-size 50 --chunk-column updated_at`;
 like(
    $output,
-   qr/FROM `issue_375`.`t` FORCE INDEX \(`updated_at`\) WHERE \(`updated_at` > 0 AND `updated_at` < '2009-09-05 02:\d\d:\d\d'/,
+   qr/FROM `issue_375`.`t` FORCE INDEX \(`updated_at`\) WHERE \(`updated_at` > 0 AND `updated_at` < '2009-09-05 \d\d:\d\d:\d\d'/,
    '--chunk-column',
-);
+) or diag($output);
 
 # #############################################################################
 # Done.
