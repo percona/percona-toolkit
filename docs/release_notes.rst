@@ -1,6 +1,44 @@
 Release Notes
 ***************
 
+v3.7.1 released 2025-09-
+==============================
+
+New Features
+------------------------------------------------------------
+
+* :jirabug:`PT-2052`: Tools should default to unbuffered stdout/stderr
+* :jirabug:`PT-2289`: Allow pt-stalk do disable ps-lock-transactions data collection via parameter
+
+Improvements
+------------------------------------------------------------
+
+* :jirabug:`PT-2015`: pt-config-diff does not sort variable flags
+* :jirabug:`PT-2440`: Support for MariaDB 10.5
+* :jirabug:`PT-2453`: Add -skip-pod-summary for pt-k8s-debug-collector
+* :jirabug:`PT-2459`: Mention "pt" repo for percona-toolkit installation
+* :jirabug:`PT-2465`: Fix Regex pattern search on version 3.7.0 for mariadb based DBs
+
+Bugs Fixed
+------------
+
+* :jirabug:`PT-2014`: pt-config-diff does not honor case insensitivity flag
+* :jirabug:`PT-2129`: pt-online-schem-change and other tools fail on non-readable version check file
+* :jirabug:`PT-2305`: pt-online-schema-change should error if server is a slave in row based replication
+* :jirabug:`PT-2322`: pt-mysql-summary does not detect jemalloc.
+* :jirabug:`PT-2346`: t/pt-table-sync/specify_column_or_index.t fails with 5.7
+* :jirabug:`PT-2356`: Every next run of pt-online-schema-change will result in an error and create a new table that won’t be cleaned up
+* :jirabug:`PT-2401`: pt-online-schema-change 'table does not exist' on macos
+* :jirabug:`PT-2418`: pt-online-schema-change 3.7.0 lost data when exe alter xxx rename column xxx
+* :jirabug:`PT-2424`: Typo in pt-table-checksum error message "--resume and --no-empty-replicate-table are mutually exclusive"
+* :jirabug:`PT-2425`: pt-table-sync performs case sensitive match for mariadb
+* :jirabug:`PT-2435`: t/pt-online-schema-change/pt-1717-resume.t fails after PT-2355 fix
+* :jirabug:`PT-2451`: VersionParser/MariaDB checks are incompatible with mixed-case version_comment mariadb variable
+* :jirabug:`PT-2467`: t/pt-show-grants/basics.t t/pt-table-checksum/basics.t t/pt-table-sync/filters.t t/pt-upgrade/diff_rows.t fail with the latest PT
+* :jirabug:`PT-2469`: version_cmp is binary file
+* :jirabug:`PT-2470`: pt-table-sync supports recursion methods dsn and cluster but documentation does not mention it
+* :jirabug:`PT-2471`: Link to the repository documentation is broken
+
 v3.7.0-2 released 2025-05-14
 ==============================
 
