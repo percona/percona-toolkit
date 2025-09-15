@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pborman/getopt"
+	"github.com/stretchr/testify/require"
 
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
 )
@@ -46,6 +47,26 @@ func TestGetHostInfo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetHostInfoResult(t *testing.T) {
+	assert := require.New(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	client, err := tu.TestClient(ctx, tu.MongoDBShard1PrimaryPort)
+	assert.NoError(err, "cannot get a new MongoDB client")
+
+	host, err := getHostInfo(ctx, client)
+	assert.NoError(err, "getHostInfo error")
+
+	// With the current setup, we should get this information.
+	assert.NotEmpty(host.ProcessName, "ProcessName should not be empty if serverStatus succeeds")
+	assert.NotEmpty(host.Version, "Version should not be empty if serverStatus succeeds")
+	assert.NotEmpty(host.ProcPath, "ProcPath should not be empty if getProcInfo succeeds")
+	assert.NotEmpty(host.ProcUserName, "ProcUserName should not be empty if getProcInfo succeeds")
+	assert.False(host.ProcCreateTime.IsZero(), "ProcCreateTime should not be zero if getProcInfo succeeds")
 }
 
 func TestClusterWideInfo(t *testing.T) {
