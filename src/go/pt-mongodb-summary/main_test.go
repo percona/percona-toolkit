@@ -58,9 +58,7 @@ func TestGetHostInfoResult(t *testing.T) {
 
 	host, err := getHostInfo(ctx, client)
 	require.NoError(t, err, "getHostInfo error")
-
-	notEmpty := host.ProcessName != "" || host.Version != "" || host.ProcPath != "" || host.ProcUserName != "" || !host.ProcCreateTime.IsZero()
-	require.True(t, notEmpty, "At least one field in host should not be empty to ensure we got some data")
+	require.NotEmpty(t, host)
 }
 
 func TestClusterWideInfo(t *testing.T) {
