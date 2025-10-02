@@ -11668,7 +11668,7 @@ sub check_orig_table {
          Cxn          => $cxn,
          tbl          => $orig_tbl,
          chunk_size   => $o->get('chunk-size'),
-         chunk_indx   => $o->get('chunk-index'), # typos:ignore-line
+         chunk_index  => $o->get('chunk-index'),
          OptionParser => $o,
          TableParser  => $tp,
       );
