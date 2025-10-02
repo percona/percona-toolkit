@@ -11668,7 +11668,7 @@ sub check_orig_table {
          Cxn          => $cxn,
          tbl          => $orig_tbl,
          chunk_size   => $o->get('chunk-size'),
-         chunk_indx   => $o->get('chunk-index'),
+         chunk_indx   => $o->get('chunk-index'), # typos:ignore-line
          OptionParser => $o,
          TableParser  => $tp,
       );
@@ -13512,7 +13512,7 @@ New rows will use the user defined default value if specified for the column.
 =item --only-same-schema-fks
 
 Check foreigns keys only on tables on the same schema than the original table.
-This option is dangerous since if you have FKs refenrencing tables in other
+This option is dangerous since if you have FKs referencing tables in other
 schemas, they won't be detected.
 
 

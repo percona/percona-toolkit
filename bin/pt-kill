@@ -8731,7 +8731,7 @@ type: string; default: Query
 
 group: Actions
 
-Comma sepatated list of commands that will be watched/killed if they ran for
+Comma separated list of commands that will be watched/killed if they ran for
 more than L<"--busy-time"> seconds. Default: C<Query>
 
 By default, L<"--busy-time"> kills only C<Query> commands but in some cases, it
