@@ -11438,13 +11438,22 @@ sub create_new_table {
          $sql =~ s/\s+ENGINE=\S+//;
       }
       if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
-          if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
-             $sql = insert_data_directory($sql, $o->get('data-dir'));
-             PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
-             PTDEBUG && _d("New query\n$sql\n");
-          } else {
-              die $o->get('data-dir') . " is not a directory or it is not writable";
-          }
+         # The directory must be in innodb_directories
+         my (undef, $innodb_directories) = $cxn->dbh->selectrow_array("SHOW VARIABLES LIKE 'innodb_directories'");
+         if ( $innodb_directories ) {
+            my @dirs = split(/\s*;\s*/, $innodb_directories);
+            my %dirs_lookup = map { $_ => 1 } @dirs;
+            if ($dirs_lookup{$o->get('data-dir')}) {
+               $sql = insert_data_directory($sql, $o->get('data-dir'));
+               PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
+               PTDEBUG && _d("New query\n$sql\n");
+            } else {
+               die "Data directory " . $o->get('data-dir') . " is not in innodb_directories variable: " . $innodb_directories;
+            }
+         } else {
+            # There is no innodb_directories variable or it is empty
+            die "Could not get innodb_directories variable from server or it is empty.";
+         }
       }
       if ( $o->got('remove-data-dir') ) {
          $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//;
