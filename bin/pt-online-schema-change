@@ -4377,10 +4377,10 @@ sub recurse_to_replicas {
 
    DBH: {
       if ( !defined $dbh ) {
-         foreach my $known_slave ( @{$args->{slaves}} ) {
-            if (($known_slave->{dsn}->{h} // '') eq ($slave_dsn->{h} // '') and
-                ($known_slave->{dsn}->{P} // '') eq ($slave_dsn->{P} // '')) {
-               $dbh = $known_slave->{dbh};
+         foreach my $known_replica ( @{$args->{replicas}} ) {
+            if (($known_replica->{dsn}->{h} // '') eq ($replica_dsn->{h} // '') and
+                ($known_replica->{dsn}->{P} // '') eq ($replica_dsn->{P} // '')) {
+               $dbh = $known_replica->{dbh};
                last DBH;
             }
         }
