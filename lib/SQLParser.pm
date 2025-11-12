@@ -1254,7 +1254,7 @@ sub remove_functions {
 #   GROUP BY and ORDER BY specify a list of identifiers.
 #
 # Parameters:
-#   $idents - Arrayref of indentifiers
+#   $idents - Arrayref of identifiers
 #
 # Returns:
 #   Arrayref of hashes with each identifier's parts, depending on what kind

@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/pborman/getopt"
+	"github.com/stretchr/testify/require"
 
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
 func TestGetHostInfo(t *testing.T) {
@@ -49,6 +49,18 @@ func TestGetHostInfo(t *testing.T) {
 	}
 }
 
+func TestGetHostInfoResult(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	client, err := tu.TestClient(ctx, tu.MongoDBShard1PrimaryPort)
+	require.NoError(t, err, "cannot get a new MongoDB client")
+
+	host, err := getHostInfo(ctx, client)
+	require.NoError(t, err, "getHostInfo error")
+	require.NotEmpty(t, host)
+}
+
 func TestClusterWideInfo(t *testing.T) {
 	testCases := []struct {
 		name string
@@ -83,16 +95,6 @@ func TestClusterWideInfo(t *testing.T) {
 			}
 		})
 	}
-}
-
-func addToCounters(ss proto.ServerStatus, increment int64) proto.ServerStatus {
-	ss.Opcounters.Command += increment
-	ss.Opcounters.Delete += increment
-	ss.Opcounters.GetMore += increment
-	ss.Opcounters.Insert += increment
-	ss.Opcounters.Query += increment
-	ss.Opcounters.Update += increment
-	return ss
 }
 
 func TestParseArgs(t *testing.T) {

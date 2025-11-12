@@ -6082,7 +6082,7 @@ as tmp_table_size.
 severity: warn
 
 These are the recommended minimum version for each major release: 3.23, 4.1.20,
-5.0.37, 5.1.30, 5.5.8, 5.6.10, 5.7.9, 8.0.11. This optiion does not complain
+5.0.37, 5.1.30, 5.5.8, 5.6.10, 5.7.9, 8.0.11. This option does not complain
 about Innovation releases.
 
 =item end-of-life mysql version

@@ -12591,7 +12591,7 @@ sub create_repl_table {
 #
 # Required Arguments:
 #   * tbl  - Standard tbl hashref
-#   * sth  - Sth with EXLAIN <statement>
+#   * sth  - Sth with EXPLAIN <statement>
 #   * vals - Values for sth, if any
 #
 # Returns:

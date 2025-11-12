@@ -460,7 +460,7 @@ sub pingback {
 
    # If the server has suggestions for items, it sends them back in
    # the same format: ITEM:TYPE:SUGGESTION\n.  ITEM:TYPE is mostly for
-   # debugging; the tool just repports the suggestions.
+   # debugging; the tool just reports the suggestions.
    $items = parse_server_response(
       response   => $response->{content},
       split_vars => 0,
