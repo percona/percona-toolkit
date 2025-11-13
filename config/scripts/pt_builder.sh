@@ -240,28 +240,11 @@ install_deps() {
       export DEBIAN_VERSION=$(lsb_release -sc)
       export ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
       apt-get -y install gnupg2
-      apt-get update || true
-      ENV export DEBIAN_FRONTEND=noninteractive
-      apt-get update
-      if [ $DEBIAN_VERSION = buster ]; then
-          apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E98404D386FA1D9
-          apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6ED0E7B82643E131
-          until DEBIAN_FRONTEND=noninteractive apt-get update --allow-releaseinfo-change; do
-              echo "waiting"
-              sleep 1
-          done
-      fi
-      if [ $DEBIAN_VERSION = bionic -o $DEBIAN_VERSION = focal -o $DEBIAN_VERSION = bullseye -o $DEBIAN_VERSION = buster -o $DEBIAN_VERSION = bookworm -o $DEBIAN_VERSION = jammy -o $DEBIAN_VERSION = xenial -o $DEBIAN_VERSION = noble ]; then
-          until apt-get update; do
-              echo "waiting"
-              sleep 1
-          done
-          DEBIAN_FRONTEND=noninteractive apt-get update
-          until DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential devscripts debconf debhelper perl; do
-              echo "waiting"
-              sleep 1
-          done
-      fi
+      DEBIAN_FRONTEND=noninteractive apt-get update
+      until DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential devscripts debconf debhelper perl; do
+          echo "waiting"
+          sleep 1
+      done
       install_go
       #update_pat
     fi
