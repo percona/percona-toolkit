@@ -44,6 +44,7 @@ ok(
    no_diff(
       "$cmd -- cat $sample/pt-130-in.txt",
       "t/pt-mext/samples/pt-130-out.txt",
+      post_pipe => "LOCALE=en_US.utf8 LANG=en_US.UTF-8 sort -k1,1",
    ),
    "having rsa key",
 ) or diag($test_diff);
