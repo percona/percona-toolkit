@@ -11820,7 +11820,7 @@ sub main {
       }
    }
 
-   # Restore origin QRT pligin state
+   # Restore origin QRT plugin state
    if ($o->get('disable-qrt-plugin')) {
        eval {
            if ($original_qrt_plugin_source_status) {
