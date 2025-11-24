@@ -20,7 +20,7 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
-my $output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila --buffer-stdout 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
+my $output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila --buffer-stdout 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
 
 my @lines = split(/\n/, $output);
 my @times = ( $lines[3] =~ m/\d\d-\d\dT\d\d:\d\d:\d\d/g );
@@ -41,7 +41,7 @@ cmp_ok(
    "Print delay is expected for the buffered output"
 ) or diag($output); 
 
-$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
+$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
 
 @lines = split(/\n/, $output);
 @times = ( $lines[3] =~ m/\d\d-\d\dT\d\d:\d\d:\d\d/g );
@@ -62,7 +62,7 @@ cmp_ok(
    "STDOUT is buffered by default"
 ) or diag($output); 
 
-$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila --no-buffer-stdout 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
+$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila --no-buffer-stdout 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
 
 @lines = split(/\n/, $output);
 @times = ( $lines[3] =~ m/\d\d-\d\dT\d\d:\d\d:\d\d/g );
@@ -83,7 +83,7 @@ cmp_ok(
    "Print delay is not expected when buffering is disabled"
 ) or diag($output); 
 
-$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila --nobuffer-stdout 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
+$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila --nobuffer-stdout 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
 
 @lines = split(/\n/, $output);
 @times = ( $lines[3] =~ m/\d\d-\d\dT\d\d:\d\d:\d\d/g );
