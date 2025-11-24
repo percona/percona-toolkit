@@ -26,7 +26,7 @@ ok(
    no_diff(
       "$cmd -- cat $sample/mext-001.txt",
       "t/pt-mext/samples/mext-001-result.txt",
-      post_pipe => "LOCALE=C sort -k1,1",
+      post_pipe => "LOCALE=en_US.utf8 LANG=en_US.UTF-8 sort -k1,1",
    ),
    "mext-001"
 ) or diag($test_diff);
@@ -35,7 +35,7 @@ ok(
    no_diff(
       "$cmd -r -- cat $sample/mext-002.txt",
       "t/pt-mext/samples/mext-002-result.txt",
-      post_pipe => "LOCALE=C sort -k1,1",
+      post_pipe => "LOCALE=en_US.utf8 LANG=en_US.UTF-8 sort -k1,1",
    ),
    "mext-002 -r"
 ) or diag($test_diff);
@@ -44,6 +44,7 @@ ok(
    no_diff(
       "$cmd -- cat $sample/pt-130-in.txt",
       "t/pt-mext/samples/pt-130-out.txt",
+      post_pipe => "LOCALE=en_US.utf8 LANG=en_US.UTF-8 sort -k1,1",
    ),
    "having rsa key",
 ) or diag($test_diff);
