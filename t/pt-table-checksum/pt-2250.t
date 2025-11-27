@@ -32,11 +32,6 @@ else {
 my @args       = (qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my ($output, $exit_code);
 
-# #############################################################################
-# Issue 388: mk-table-checksum crashes when column with comma in the name
-# is used in a key
-# #############################################################################
-
 $sb->create_dbs($dbh, [qw(test)]);
 $sb->load_file('source', 't/lib/samples/tables/issue-388.sql', 'test');
 
@@ -44,10 +39,10 @@ $sb->load_file('source', "t/pt-table-checksum/samples/pt-2250_dsns.sql");
 $dbh->do("insert into test.foo values (null, 'john, smith')");
 
 ($output, $exit_code) = full_output(
-   sub { 
+   sub {
       pt_table_checksum::main(
-         @args, 
-         'h=127.1,P=12345,u=msandbox,p=msandbox', 
+         @args,
+         'h=127.1,P=12345,u=msandbox,p=msandbox',
          qw(-d test),
          "--recursion-method=dsn=F=t/pt-archiver/samples/pt-191.cnf,D=dsns,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox")
    },
