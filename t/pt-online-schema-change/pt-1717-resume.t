@@ -192,8 +192,9 @@ like(
       },
 );
 
+diag($output);
 $output =~ /.*Chunk: (\d+)\n/ms;
-my $last_chunk = int($1);
+my $last_chunk = int($1) or diag($output);
 
 ok(
    $last_chunk * $chunk_size + int($copied_rows) == $num_rows,

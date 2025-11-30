@@ -11,6 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 use Time::Local;
+use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
@@ -24,6 +25,7 @@ my $output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox
 
 my @lines = split(/\n/, $output);
 my @times = ( $lines[3] =~ m/\d\d-\d\dT\d\d:\d\d:\d\d/g );
+diag(Dumper(@times));
 
 is(
    scalar(@times),
