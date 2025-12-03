@@ -32,9 +32,9 @@ is(
 ) or diag($output);
 
 my ($month, $day, $hour, $min, $sec) = split(/[T:-]+/, $times[0]);
-my $time_ts = timelocal($sec, $min, $hour, $day, $month);
+my $time_ts = timelocal($sec, $min, $hour, $day, $month - 1);
 ($month, $day, $hour, $min, $sec) = split(/[T:-]+/, $times[1]);
-my $time_tool = timelocal($sec, $min, $hour, $day, $month);
+my $time_tool = timelocal($sec, $min, $hour, $day, $month - 1);
 
 cmp_ok(
    $time_ts - $time_tool, 'gt', 1,
@@ -53,9 +53,9 @@ is(
 ) or diag($output);
 
 ($month, $day, $hour, $min, $sec) = split(/[T:-]+/, $times[0]);
-$time_ts = timelocal($sec, $min, $hour, $day, $month);
+$time_ts = timelocal($sec, $min, $hour, $day, $month - 1);
 ($month, $day, $hour, $min, $sec) = split(/[T:-]+/, $times[1]);
-$time_tool = timelocal($sec, $min, $hour, $day, $month);
+$time_tool = timelocal($sec, $min, $hour, $day, $month - 1);
 
 cmp_ok(
    $time_ts - $time_tool, 'gt', 1,
@@ -74,9 +74,9 @@ is(
 ) or diag($output);
 
 ($month, $day, $hour, $min, $sec) = split(/[T:-]+/, $times[0]);
-$time_ts = timelocal($sec, $min, $hour, $day, $month);
+$time_ts = timelocal($sec, $min, $hour, $day, $month - 1);
 ($month, $day, $hour, $min, $sec) = split(/[T:-]+/, $times[1]);
-$time_tool = timelocal($sec, $min, $hour, $day, $month);
+$time_tool = timelocal($sec, $min, $hour, $day, $month - 1);
 
 cmp_ok(
    $time_ts - $time_tool, 'le', 1,
@@ -95,9 +95,9 @@ is(
 ) or diag($output);
 
 ($month, $day, $hour, $min, $sec) = split(/[T:-]+/, $times[0]);
-$time_ts = timelocal($sec, $min, $hour, $day, $month);
+$time_ts = timelocal($sec, $min, $hour, $day, $month - 1);
 ($month, $day, $hour, $min, $sec) = split(/[T:-]+/, $times[1]);
-$time_tool = timelocal($sec, $min, $hour, $day, $month);
+$time_tool = timelocal($sec, $min, $hour, $day, $month - 1);
 
 cmp_ok(
    $time_ts - $time_tool, 'le', 1,
