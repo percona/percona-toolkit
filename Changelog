@@ -13,7 +13,7 @@ v3.7.1 released 2025-12-09
 * Improvement PT-2052: Tools should default to unbuffered stdout/stderr
 * Improvement PT-1423: LP #1682929: pt-table-checksum: First chunk takes too long
 * Improvement PT-2305: pt-online-schema-change should error if server is a slave in row based replication
-* Improvement PR-1013:  PMM-11406 Better check to prevent errors from missing fields. 
+* Improvement PR-1013:  PMM-11406 Better check to prevent errors from missing fields.
 * Fixed bug PT-2424: Typo in pt-table-checksum error message "--resume and --no-empty-replicate-table are mutually exclusive"
 * Fixed bug PR-953:  Update documentation of pt-query-digest - better description for --output secure-slowlog (Thanks to Paweł Kudzia for the contribution)
 * Fixed bug PT-2129: pt-online-schem-change and other tools fail on non-readable version check file
@@ -24,8 +24,7 @@ v3.7.1 released 2025-12-09
 * Fixed bug PT-2465: Fix Regex pattern search on version 3.7.0 for mariadb based DBs (Thanks to Nyele for the contribution)
 * Fixed bug PT-2435: t/pt-online-schema-change/pt-1717-resume.t fails after PT-2355 fix
 * Fixed bug PT-2467: t/pt-show-grants/basics.t t/pt-table-checksum/basics.t t/pt-table-sync/filters.t t/pt-upgrade/diff_rows.t fail with the latest PT
-* Fixed bug PT-2401: pt-online-schema-change 'table does not exist' on macos
-(Thanks to Taehyung Lim for the contribution)
+* Fixed bug PT-2401: pt-online-schema-change 'table does not exist' on macos (Thanks to Taehyung Lim for the contribution)
 * Fixed bug PR-989:  Fix script crashing with precedence error (Thanks to Viktoras Agejevas for the contribution)
 * Fixed bug PT-2471: Link to the repository documentation is broken
 * Fixed bug PT-2322: pt-mysql-summary does not detect jemalloc.
