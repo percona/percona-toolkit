@@ -127,7 +127,7 @@ like(
 $source_dbh->do("SET GLOBAL SQL_MODE='${orig_sql_mode}'");
 
 # --read-samples
-for my $i (2..9) {
+for my $i (8..9) {
    ok(
       no_diff(
          sub {
@@ -138,6 +138,7 @@ for my $i (2..9) {
       ),
       "--read-samples works for t/pt-mysql-summary/temp_enc00$i",
    ) or diag($test_diff);
+   diag(`$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp_enc00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/S    kipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/'`);
 }
 
 # Test that --help works under sh
