@@ -151,6 +151,11 @@ get_system(){
         ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
         OS_NAME="el$RHEL"
         OS="rpm"
+    elif [ -f /etc/amazon-linux-release ]; then
+        RHEL=$(rpm --eval %amzn)
+        ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
+        OS_NAME="amzn$RHEL"
+        OS="rpm"
     else
         ARCH=$(uname -m)
         OS_NAME="$(lsb_release -sc)"
@@ -231,8 +236,8 @@ install_deps() {
 #      mv -f percona-dev.repo /etc/yum.repos.d/
       yum clean all
       yum -y install curl epel-release
-      RHEL=$(rpm --eval %rhel)
-      yum -y install wget tar findutils coreutils rpm-build perl-ExtUtils-MakeMaker make perl-DBD-MySQL
+      yum -y install coreutils
+      yum -y install wget tar findutils rpm-build perl-ExtUtils-MakeMaker make perl-DBD-MySQL
       install_go
     else
       apt-get -y update
@@ -372,11 +377,9 @@ build_rpm(){
     mkdir -vp rpmbuild/{SOURCES,SPECS,BUILD,SRPMS,RPMS}
     cp $SRC_RPM rpmbuild/SRPMS/
     cd $WORKDIR
-    RHEL=$(rpm --eval %rhel)
-    ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
     echo "RHEL=${RHEL}" >> percona-toolkit.properties
     echo "ARCH=${ARCH}" >> percona-toolkit.properties
-    rpmbuild --define "version $VERSION" --define "VERSION $VERSION" --define "dist .el${RHEL}" --define "release $RPM_RELEASE.el${RHEL}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM}
+    rpmbuild --define "version $VERSION" --define "VERSION $VERSION" --define "dist .${OS_NAME}" --define "release $RPM_RELEASE.${OS_NAME}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM}
 
     return_code=$?
     if [ $return_code != 0 ]; then
