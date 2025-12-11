@@ -20,6 +20,14 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
+# pt-tc does not buffer output with 5.7, at least it is not possible
+# to catch buffering with the tee command we use for tests.
+# Since main issue of buffering is getting data in K8 environments,
+# and k8 environments mostly use 8.0+, no sense to test buffering with 5.7.
+if ( $sandbox_version eq '5.7' ) {
+   plan skip_all => 'Test requires 8.0 or newer';
+}
+
 my $output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila --buffer-stdout 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
 
 my @lines = split(/\n/, $output);
