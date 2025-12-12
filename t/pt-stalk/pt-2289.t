@@ -46,6 +46,12 @@ sub cleanup {
 
 cleanup();
 
+# We need to enable transaction instrumentation in 5.7
+if ( $sandbox_version eq '5.7' ) {
+   $dbh->do("UPDATE performance_schema.setup_instruments SET enabled = 'YES'"
+      . ", timed='YES' WHERE NAME IN ('transaction')");
+}
+
 # We need these to collect lock-waits
 sub start_thread_pt_1897_1 {
    # this must run in a thread because we need to have an active session
@@ -257,6 +263,11 @@ like(
 
 cleanup();
 diag(`rm -rf $dest 2>/dev/null`);
+if ( $sandbox_version eq '5.7' ) {
+   $dbh->do("UPDATE performance_schema.setup_instruments SET enabled = 'NO'"
+      . ", timed='NO' WHERE NAME IN ('transaction')");
+}
+
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
