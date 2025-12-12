@@ -12,6 +12,7 @@ New Features
 * `PR-996`: Add invisible option to pt-duplicate-key-checker (Thanks to Matthew Boehm for the contribution)
 * :jirabug:`PT-2289`: Allow pt-stalk to disable ps-lock-transactions data collection via parameter
 * :jirabug:`PKG-1138`: Build percona-toolkit on deb13
+* `PR-1041`:  Add support for Amazon Linux 2023
 
 Improvements
 ------------------------------------------------------------
