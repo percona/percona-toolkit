@@ -78,6 +78,13 @@ like(
    "Validates --critical-load"
 );
 
+$output = `$cmd --help`;
+like(
+   $output,
+   qr/--mysql_ssl_optional/,
+   "--mysql_ssl_optional option exists in help"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
