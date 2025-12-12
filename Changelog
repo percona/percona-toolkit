@@ -7,6 +7,7 @@ v3.7.1 released 2025-12-16
 * Feature PR-996:  Add invisible option to pt-duplicate-key-checker (Thanks to Matthew Boehm for the contribution)
 * Feature PT-2289: Allow pt-stalk do disable ps-lock-transactions data collection via parameter
 * Feature PKG-1138: Build percona-toolkit on deb13
+* Feature PR-1041: Add support for Amazon Linux 2023
 * Improvement PR-951:  PMM-12548 Add json tags for PMM purposes.
 * Improvement PT-1718: Have pt-stalk collect performance_schema.threads along with information_schema.processlist (Thanks to Nilnandan Joshi for the contribution)
 * Improvement PT-2469: version_cmp is binary file
