@@ -11577,6 +11577,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-upgrade m.n.p
+pt-upgrade 3.7.1
 
 =cut

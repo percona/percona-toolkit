@@ -6075,6 +6075,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-config-diff m.n.p
+pt-config-diff 3.7.1
 
 =cut

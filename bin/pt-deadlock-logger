@@ -5837,6 +5837,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-deadlock-logger m.n.p
+pt-deadlock-logger 3.7.1
 
 =cut
