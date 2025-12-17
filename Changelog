@@ -17,7 +17,7 @@ v3.7.1 released 2025-12-17
 * Improvement PR-1013:  PMM-11406 Better check to prevent errors from missing fields.
 * Fixed bug PT-2424: Typo in pt-table-checksum error message "--resume and --no-empty-replicate-table are mutually exclusive"
 * Fixed bug PR-953:  Update documentation of pt-query-digest - better description for --output secure-slowlog (Thanks to Paweł Kudzia for the contribution)
-* Fixed bug PT-2129: pt-online-schem-change and other tools fail on non-readable version check file
+* Fixed bug PT-2129: pt-online-schema-change and other tools fail on non-readable version check file
 * Fixed bug PR-890:  pt-config-diff: MySQL truncates run-time variable values longer than 1024 characters (Thanks to Maciej Dobrzanski for the contribution)
 * Fixed bug PT-2418: pt-online-schema-change 3.7.0 lost data when exe alter xxx rename column xxx (Thanks to Marek Knappe for the contribution)
 * Fixed bug PT-2458: remove-data-dir defaults to True (Thanks to Marek Knappe for the contribution)

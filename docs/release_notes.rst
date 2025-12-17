@@ -30,7 +30,7 @@ Bugs Fixed
 
 * :jirabug:`PT-2424`: Typo in pt-table-checksum error message "--resume and --no-empty-replicate-table are mutually exclusive" (Thanks to Paweł Kudzia for the contribution)
 * `PR-953`: Update documentation of pt-query-digest – better description for --output secure-slowlog (Thanks to Paweł Kudzia for the contribution)
-* :jirabug:`PT-2129`: pt-online-schem-change and other tools fail on non-readable version check file
+* :jirabug:`PT-2129`: pt-online-schema-change and other tools fail on non-readable version check file
 * `PR-890`: pt-config-diff: MySQL truncates run-time variable values longer than 1024 characters (Thanks to Maciej Dobrzanski for the contribution)
 * :jirabug:`PT-2418`: pt-online-schema-change 3.7.0 lost data when executing ALTER … RENAME COLUMN (Thanks to Marek Knappe for the contribution)
 * :jirabug:`PT-2458`: remove-data-dir defaults to True (Thanks to Marek Knappe for the contribution)
