@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.7.1 released 2025-12-16
+v3.7.1 released 2025-12-17
 
 * Feature PT-2453: Add -skip-pod-summary for pt-k8s-debug-collector (Thanks to Iwo Panowicz for the contribution)
 * Feature PT-191: add ssl options to DSN

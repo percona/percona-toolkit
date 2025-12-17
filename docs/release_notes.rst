@@ -1,7 +1,7 @@
 Release Notes
 ***************
 
-v3.7.1 released 2025-12-16
+v3.7.1 released 2025-12-17
 ==============================
 
 New Features
