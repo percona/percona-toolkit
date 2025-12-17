@@ -46,7 +46,7 @@ diag("Starting checksum");
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,s=1';
 my @args       = ($source_dsn, qw(--no-check-binlog-format --chunk-size 10));
 my $output;
 

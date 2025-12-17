@@ -1,6 +1,59 @@
 Release Notes
 ***************
 
+v3.7.1 released 2025-12-17
+==============================
+
+New Features
+------------------------------------------------------------
+
+* :jirabug:`PT-2453`: Add -skip-pod-summary for pt-k8s-debug-collector (Thanks to Iwo Panowicz for the contribution)
+* :jirabug:`PT-191`: Add SSL options to DSN
+* `PR-996`: Add invisible option to pt-duplicate-key-checker (Thanks to Matthew Boehm for the contribution)
+* :jirabug:`PT-2289`: Allow pt-stalk to disable ps-lock-transactions data collection via parameter
+* :jirabug:`PKG-1138`: Build percona-toolkit on deb13
+* `PR-1041`:  Add support for Amazon Linux 2023
+
+Improvements
+------------------------------------------------------------
+
+* `PR-951`: PMM-12548 Add JSON tags for PMM purposes
+* :jirabug:`PT-1718`: Have pt-stalk collect performance_schema.threads along with information_schema.processlist (Thanks to Nilnandan Joshi for the contribution)
+* :jirabug:`PT-2469`: version_cmp is binary file
+* :jirabug:`PT-2052`: Tools should default to unbuffered stdout/stderr
+* :jirabug:`PT-1423`: LP #1682929: pt-table-checksum: First chunk takes too long
+* :jirabug:`PT-2305`: pt-online-schema-change should error if server is a slave in row-based replication
+* `PR-1013`: PMM-11406 Better check to prevent errors from missing fields
+
+Bugs Fixed
+------------------------------------------------------------
+
+* :jirabug:`PT-2424`: Typo in pt-table-checksum error message "--resume and --no-empty-replicate-table are mutually exclusive" (Thanks to Paweł Kudzia for the contribution)
+* `PR-953`: Update documentation of pt-query-digest – better description for --output secure-slowlog (Thanks to Paweł Kudzia for the contribution)
+* :jirabug:`PT-2129`: pt-online-schema-change and other tools fail on non-readable version check file
+* `PR-890`: pt-config-diff: MySQL truncates run-time variable values longer than 1024 characters (Thanks to Maciej Dobrzanski for the contribution)
+* :jirabug:`PT-2418`: pt-online-schema-change 3.7.0 lost data when executing ALTER … RENAME COLUMN (Thanks to Marek Knappe for the contribution)
+* :jirabug:`PT-2458`: remove-data-dir defaults to True (Thanks to Marek Knappe for the contribution)
+* :jirabug:`PT-2463`: pt-galera-log-explainer broken due to md5 being recomputed (Thanks to Yoann La Cancellera for the contribution)
+* :jirabug:`PT-2465`: Fix Regex pattern search on version 3.7.0 for MariaDB-based DBs (Thanks to Nyele for the contribution)
+* :jirabug:`PT-2435`: t/pt-online-schema-change/pt-1717-resume.t fails after PT-2355 fix
+* :jirabug:`PT-2467`: t/pt-show-grants/basics.t t/pt-table-checksum/basics.t t/pt-table-sync/filters.t t/pt-upgrade/diff_rows.t fail with the latest PT
+* :jirabug:`PT-2401`: pt-online-schema-change 'table does not exist' on macOS (Thanks to Taehyung Lim for the contribution)
+* `PR-989`: Fix script crashing with precedence error (Thanks to Viktoras Agejevas for the contribution)
+* :jirabug:`PT-2471`: Link to the repository documentation is broken
+* :jirabug:`PT-2322`: pt-mysql-summary does not detect jemalloc
+* :jirabug:`PT-2015`: pt-config-diff does not sort variable flags (Thanks to Hartley McGuire for the contribution)
+* :jirabug:`PT-2459`: Mention "pt" repo for percona-toolkit installation
+* :jirabug:`PT-2470`: pt-table-sync supports recursion methods dsn and cluster but documentation does not mention it
+* :jirabug:`PT-2014`: pt-config-diff does not honor case-insensitivity flag (Thanks to Nilnandan Joshi for the contribution)
+* :jirabug:`PT-2346`: t/pt-table-sync/specify_column_or_index.t fails with 5.7
+* :jirabug:`PT-1151`: LP #1225577: pt-online-schema-change can silently drop rows
+* :jirabug:`PT-1564`: Man page broken for pt-secure-collect
+* :jirabug:`PT-2492`: t/pt-online-schema-change/pt-200.t fails after fix for PT-1151
+* :jirabug:`PT-2250`: pt-table-checksum reports error if recursion method is DSN
+* :jirabug:`PT-2498`: pt-sift does not work starting from version 3.7.0
+
+
 v3.7.0-2 released 2025-05-14
 ==============================
 
