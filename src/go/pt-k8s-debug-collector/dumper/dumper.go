@@ -392,7 +392,7 @@ func (d *Dumper) DumpCluster() error {
 				}
 
 				for _, path := range d.dirPath {
-					err = d.getAllFilesFormDirectory(ns.Name, pod.Name, path, location, tw)
+					err = d.getAllFilesFromDirectory(ns.Name, pod.Name, path, location, tw)
 					if err != nil {
 						d.logError(err.Error(), "get file "+path+" for pod "+pod.Name)
 						log.Printf("Error: get %s file: %v", path, err)
@@ -426,7 +426,10 @@ func (d *Dumper) DumpCluster() error {
 
 // runCmd run command (Dumper.cmd) with given args, return it output
 func (d *Dumper) runCmd(args ...string) ([]byte, error) {
-	baseArgs := []string{"--kubeconfig", d.kubeconfig}
+	var baseArgs []string
+	if d.kubeconfig != "" {
+		baseArgs = []string{"--kubeconfig", d.kubeconfig}
+	}
 	baseArgs = append(baseArgs, args...)
 
 	var outb, errb bytes.Buffer
@@ -524,18 +527,16 @@ func (d *Dumper) parseEnvs(namespace, podName, env string) (string, error) {
 		"sh", "-c", fmt.Sprintf("echo %s", env),
 	}
 
-	fmt.Printf("DBG: running parseEnvs: %v\n", args)
 	out, err := d.runCmd(args...)
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("DBG: running parseEnvs output: %v\n", string(out))
 
 	resolved := strings.TrimSpace(string(out))
 	return resolved, nil
 }
 
-func (d *Dumper) getAllFilesFormDirectory(namespace string, podName, path, location string, tw *tar.Writer) error {
+func (d *Dumper) getAllFilesFromDirectory(namespace string, podName, path, location string, tw *tar.Writer) error {
 	if len(d.fileContainer) == 0 {
 		return errors.Errorf("Logs container name is not specified for resource %s in namespace %s", resourceType(d.crType), d.namespace)
 	}
@@ -675,6 +676,7 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 	cmdPortFwd := exec.Command(d.cmd, argPortFwd...)
 	err := cmdPortFwd.Start()
 	if err != nil {
+		d.logError(err.Error(), "start port-forward")
 		return nil, err
 	}
 
