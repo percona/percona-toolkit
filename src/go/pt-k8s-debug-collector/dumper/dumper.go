@@ -6,6 +6,8 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -32,6 +34,7 @@ type Dumper struct {
 	kubeconfig     string
 	resources      []string
 	filePaths      []string
+	dirPath        []string
 	fileContainer  string
 	namespace      string
 	location       string
@@ -126,8 +129,13 @@ func New(location, namespace, resource string, kubeconfig string, forwardport st
 	}
 	sslSecrets := make([]sslSecret, 0)
 	filePaths := make([]string, 0)
+	dirPaths := make([]string, 0)
 	switch resourceType(resource) {
 	case "pg":
+		dirPaths = append(dirPaths,
+			"$PGBACKREST_DB_PATH/pg_log",
+		)
+		d.fileContainer = "database"
 		sslSecrets = append(sslSecrets,
 			sslSecret{
 				secret:    "{{ .Name }}-ssl-ca",
@@ -228,6 +236,7 @@ func New(location, namespace, resource string, kubeconfig string, forwardport st
 	d.sslSecrets = sslSecrets
 	d.crType = resource
 	d.filePaths = filePaths
+	d.dirPath = dirPaths
 	return d
 }
 
@@ -342,6 +351,7 @@ func (d *Dumper) DumpCluster() error {
 					log.Printf("Error: get %s resource: %v", resource, err)
 				}
 			}
+
 			if pod.Labels["app.kubernetes.io/component"] == component ||
 				(component == "pg" && pod.Labels["pgo-pg-database"] == "true") ||
 				(component == "pgv2" && pod.Labels["pgv2.percona.com/version"] != "" && pod.Labels["postgres-operator.crunchydata.com/instance"] != "") {
@@ -380,6 +390,14 @@ func (d *Dumper) DumpCluster() error {
 						log.Printf("Error: get %s file: %v", path, err)
 					}
 				}
+
+				for _, path := range d.dirPath {
+					err = d.getAllFilesFormDirectory(ns.Name, pod.Name, path, location, tw)
+					if err != nil {
+						d.logError(err.Error(), "get file "+path+" for pod "+pod.Name)
+						log.Printf("Error: get %s file: %v", path, err)
+					}
+				}
 			}
 		}
 
@@ -408,9 +426,11 @@ func (d *Dumper) DumpCluster() error {
 
 // runCmd run command (Dumper.cmd) with given args, return it output
 func (d *Dumper) runCmd(args ...string) ([]byte, error) {
+	baseArgs := []string{"--kubeconfig", d.kubeconfig}
+	baseArgs = append(baseArgs, args...)
+
 	var outb, errb bytes.Buffer
-	args = append(args, "--kubeconfig", d.kubeconfig)
-	cmd := exec.Command(d.cmd, args...)
+	cmd := exec.Command(d.cmd, baseArgs...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 	err := cmd.Run()
@@ -483,6 +503,7 @@ func (d *Dumper) getIndividualFiles(namespace string, podName, path, location st
 	if len(d.fileContainer) == 0 {
 		return errors.Errorf("Logs container name is not specified for resource %s in namespace %s", resourceType(d.crType), d.namespace)
 	}
+
 	args := []string{"-n", namespace, "-c", d.fileContainer, "cp", podName + ":" + path, "/dev/stdout"}
 	output, err := d.runCmd(args...)
 	if err != nil {
@@ -495,6 +516,95 @@ func (d *Dumper) getIndividualFiles(namespace string, podName, path, location st
 		return nil
 	}
 	return addToArchive(location+"/"+path, d.mode, output, tw)
+}
+
+func (d *Dumper) parseEnvs(namespace, podName, env string) (string, error) {
+	args := []string{
+		"-n", namespace, "-c", d.fileContainer, "exec", podName, "--",
+		"sh", "-c", fmt.Sprintf("echo %s", env),
+	}
+
+	fmt.Printf("DBG: running parseEnvs: %v\n", args)
+	out, err := d.runCmd(args...)
+	if err != nil {
+		return "", err
+	}
+	fmt.Printf("DBG: running parseEnvs output: %v\n", string(out))
+
+	resolved := strings.TrimSpace(string(out))
+	return resolved, nil
+}
+
+func (d *Dumper) getAllFilesFormDirectory(namespace string, podName, path, location string, tw *tar.Writer) error {
+	if len(d.fileContainer) == 0 {
+		return errors.Errorf("Logs container name is not specified for resource %s in namespace %s", resourceType(d.crType), d.namespace)
+	}
+
+	var err error
+	path, err = d.parseEnvs(namespace, podName, path)
+	if err != nil {
+		log.Printf("Error: parse envs in %s for resource %s in namespace %s: %v", path, resourceType(d.crType), d.namespace, err)
+		return addToArchive(location, d.mode, []byte(err.Error()), tw)
+	}
+
+	if len(path) == 0 {
+		return nil
+	}
+
+	args := []string{
+		"-n", namespace, "-c", d.fileContainer, "exec", podName, "--",
+		"sh", "-c", fmt.Sprintf("tar cf - -C %s .", path),
+	}
+
+	out, err := d.runCmd(args...)
+	if err != nil {
+		d.logError(err.Error(), args...)
+		log.Printf("Error: get path %s for resource %s in namespace %s: %v", path, resourceType(d.crType), d.namespace, err)
+		return addToArchive(location, d.mode, []byte(err.Error()), tw)
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
+
+	tr := tar.NewReader(bytes.NewBuffer(out))
+
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			d.logError(err.Error(), args...)
+			log.Printf("Error: get path %s for resource %s in namespace %s: %v", path, resourceType(d.crType), d.namespace, err)
+			return addToArchive(location, d.mode, []byte(err.Error()), tw)
+		}
+
+		if hdr.Typeflag != tar.TypeReg && hdr.Typeflag != tar.TypeSymlink {
+			continue
+		}
+
+		newHdr := &tar.Header{
+			Name:    filepath.Join(location, path, hdr.Name),
+			Mode:    hdr.Mode,
+			Size:    hdr.Size,
+			ModTime: hdr.ModTime,
+		}
+
+		if err := tw.WriteHeader(newHdr); err != nil {
+			d.logError(err.Error(), args...)
+			log.Printf("Error: get path %s for resource %s in namespace %s: %v", path, resourceType(d.crType), d.namespace, err)
+			return addToArchive(location, d.mode, []byte(err.Error()), tw)
+		}
+
+		if _, err := io.Copy(tw, tr); err != nil {
+			d.logError(err.Error(), args...)
+			log.Printf("Error: get path %s for resource %s in namespace %s: %v", path, resourceType(d.crType), d.namespace, err)
+			return addToArchive(location, d.mode, []byte(err.Error()), tw)
+		}
+	}
+
+	return nil
 }
 
 func (d *Dumper) getPodSummary(resource, podName, crName string, namespace string) ([]byte, error) {
@@ -561,13 +671,13 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 		summCmdArgs = []string{"--username=" + user, "--password=" + string(pass), "--authenticationDatabase=admin", "127.0.0.1:" + port}
 	}
 
-	cmdPortFwd := exec.Command(d.cmd, "port-forward", "pod/"+podName, ports, "-n", namespace, "--kubeconfig", d.kubeconfig)
-	go func() {
-		err := cmdPortFwd.Run()
-		if err != nil {
-			d.logError(err.Error(), "port-forward")
-		}
-	}()
+	argPortFwd := []string{"port-forward", "pod/" + podName, ports, "-n", namespace, "--kubeconfig", d.kubeconfig}
+	cmdPortFwd := exec.Command(d.cmd, argPortFwd...)
+	err := cmdPortFwd.Start()
+	if err != nil {
+		return nil, err
+	}
+
 	defer func() {
 		err := cmdPortFwd.Process.Kill()
 		if err != nil {
@@ -575,13 +685,13 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 		}
 	}()
 
-	time.Sleep(3 * time.Second) // wait for port-forward command
+	time.Sleep(10 * time.Second) // wait for port-forward command
 
 	var outb, errb bytes.Buffer
 	cmd := exec.Command(summCmdName, summCmdArgs...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		return nil, errors.Wrapf(err, "stderr: %s\nstdout: %s", errb.String(), outb.String())
 	}

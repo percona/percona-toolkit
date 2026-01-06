@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -41,75 +42,157 @@ Tests TODO:
   function or create a mock cluster, or find a better way to deploy test clusters.
 */
 
-/*
-Tests collection of the individual files by pt-k8s-debug-collector.
-Requires running K8SPXC instance and kubectl, configured to access that instance by default.
-*/
-func TestIndividualFiles(t *testing.T) {
-	if os.Getenv("KUBECONFIG_PXC") == "" {
-		t.Skip("TestIndividualFiles requires K8SPXC")
+type Resource struct {
+	name string
+	env  string
+}
+
+var (
+	PxcResource  = Resource{name: "pxc", env: "KUBECONFIG_PXC"}
+	PgResource   = Resource{name: "pg", env: "KUBECONFIG_PG"}
+	AutoResource = Resource{name: "auto", env: "KUBECONFIG_PXC"}
+)
+
+type Matcher interface {
+	Match(t *testing.T, got string)
+}
+
+type ExactMatch struct {
+	Want []string
+}
+
+func (m ExactMatch) Match(t *testing.T, got string) {
+	want := strings.Join(m.Want, "\n")
+	if got != want {
+		t.Fatalf("output mismatch\nGot:\n%s\nWant:\n%s", got, want)
 	}
+}
+
+type RegexMatch struct {
+	Pattern *regexp.Regexp
+}
+
+func (m RegexMatch) Match(t *testing.T, got string) {
+	for line := range strings.SplitSeq(got, "\n") {
+		if m.Pattern.MatchString(line) {
+			return
+		}
+	}
+	t.Fatalf("no line matches pattern %s\nGot:\n%s", m.Pattern, got)
+}
+
+func uniqueBasenames(in string) string {
+	files := strings.Split(in, "\n")
+	var result []string
+	for _, f := range files {
+		b := path.Base(f)
+		if !slices.Contains(result, b) && b != "." && b != "" {
+			result = append(result, b)
+		}
+	}
+	sort.Strings(result)
+	return strings.Join(result, "\n")
+}
+
+func firstLine(in string) string {
+	nl := strings.Index(in, "\n")
+	if nl == -1 {
+		return in
+	}
+	return in[:nl]
+}
+
+/*
+   Tests collection of the individual files by pt-k8s-debug-collector.
+   Requires running K8SPXC instance and kubectl, configured to access that instance by default.
+   If some of the env (KUBECONFIG_PXC, KUBECONFIG_PG) is not defined, theese tests will be skiped.
+*/
+
+func TestIndividualFiles(t *testing.T) {
 	tests := []struct {
 		name         string
 		cmd          []string
-		want         []string
+		env          string
 		preprocessor func(string) string
+		match        Matcher
 	}{
 		{
-			// If the tool collects required log files
+			// If the tool collects required mysql log files
 			name: "pxc_logs_list",
 			// tar -tf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/*'
-			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/*"},
-			want: []string{"auto.cnf", "grastate.dat", "gvwstate.dat", "innobackup.backup.log", "innobackup.move.log", "innobackup.prepare.log", "mysqld-error.log", "mysqld.post.processing.log"},
-			preprocessor: func(in string) string {
-				files := strings.Split(in, "\n")
-				var result []string
-				for _, f := range files {
-					b := path.Base(f)
-					if !slices.Contains(result, b) && b != "." && b != "" {
-						result = append(result, b)
-					}
-				}
-				slices.Sort(result)
-				return strings.Join(result, "\n")
+			cmd:          []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/*"},
+			env:          "KUBECONFIG_PXC",
+			preprocessor: uniqueBasenames,
+			match: ExactMatch{
+				Want: []string{
+					"auto.cnf",
+					"grastate.dat",
+					"gvwstate.dat",
+					"innobackup.backup.log",
+					"innobackup.move.log",
+					"innobackup.prepare.log",
+					"mysqld-error.log",
+					"mysqld.post.processing.log",
+				},
 			},
 		},
 		{
 			// If MySQL error log is not empty
 			name: "pxc_mysqld_error_log",
 			// tar --to-command="grep -m 1 -o Version:" -xzf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/mysqld-error.log'
-			cmd:  []string{"tar", "--to-command", "grep -m 1 -o Version:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/mysqld-error.log"},
-			want: []string{"Version:"},
-			preprocessor: func(in string) string {
-				nl := strings.Index(in, "\n")
-				if nl == -1 {
-					return ""
-				}
-				return in[:nl]
+			cmd:          []string{"tar", "--to-command", "grep -m 1 -o Version:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/mysqld-error.log"},
+			env:          "KUBECONFIG_PXC",
+			preprocessor: firstLine,
+			match: ExactMatch{
+				Want: []string{"Version:"},
+			},
+		},
+		{
+			// if the tool collects required pg log files
+			name:         "pg_logs_list",
+			cmd:          []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/pgdata/*"},
+			env:          "KUBECONFIG_PG",
+			preprocessor: uniqueBasenames,
+			match: RegexMatch{
+				Pattern: regexp.MustCompile(`^postgresql-[A-Za-z]{3}\.log$`),
 			},
 		},
 	}
 
-	for _, resource := range []string{"pxc", "auto"} {
-		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", os.Getenv("KUBECONFIG_PXC"), "--forwardport", os.Getenv("FORWARDPORT"), "--resource", resource)
+	for _, resource := range []Resource{PxcResource, PgResource, AutoResource} {
+		if os.Getenv(resource.env) == "" {
+			t.Logf("TestIndividualFiles requires %s env", resource.env)
+			continue
+		}
+
+		cmd := exec.Command("../../../bin/pt-k8s-debug-collector",
+			"--kubeconfig", os.Getenv(resource.env),
+			"--forwardport", os.Getenv("FORWARDPORT"),
+			"--resource", resource.name,
+		)
 		if err := cmd.Run(); err != nil {
 			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
 		}
+
 		defer func() {
-			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
-			if err := cmd.Run(); err != nil {
+			clean := exec.Command("rm", "-f", "cluster-dump.tar.gz")
+			if err := clean.Run(); err != nil {
 				t.Errorf("error cleaning up test data: %s", err.Error())
 			}
 		}()
 
 		for _, test := range tests {
+			if resource.env != test.env {
+				continue
+			}
+
 			out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
 			if err != nil {
-				t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, test.cmd[0], err.Error(), out)
+				t.Errorf("test %s, error running command %s:\n%s\nOutput:\n%s", test.name, test.cmd[0], err.Error(), out)
 			}
-			if test.preprocessor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
-				t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, test.preprocessor(bytes.NewBuffer(out).String()), test.want)
-			}
+
+			res := test.preprocessor(string(out))
+			test.match.Match(t, res)
 		}
 	}
 }
