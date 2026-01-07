@@ -294,7 +294,7 @@ if ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
    chomp $mysqlbinlog;
 }
 
-$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' | grep -v 'pseudo_replica_mode' | sort -u | sed -e 's/\`//g'`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' | grep -v 'pseudo_replica_mode' | LOCALE=en_US.utf8 LANG=en_US.UTF-8 sort -u | sed -e 's/\`//g'`;
 
 my $use_dbs = "use mysql/*!*/;
 use percona/*!*/;
@@ -317,7 +317,7 @@ $row = $source_dbh->selectrow_hashref("show ${source_status} status");
 
 pt_table_checksum::main(@args, qw(--quiet --replicate-database percona));
 
-$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' | grep -v 'pseudo_replica_mode' | sort -u | sed -e 's/\`//g'`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' | grep -v 'pseudo_replica_mode' | LOCALE=en_US.utf8 LANG=en_US.UTF-8 sort -u | sed -e 's/\`//g'`;
 
 is(
    $output,

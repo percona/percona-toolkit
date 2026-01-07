@@ -181,7 +181,7 @@ sub version_check {
    }
 
    # Always update the vc file, even if the version check fails.
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          # Update the check time for things we checked.  I.e. if we
          # didn't check it, do _not_ update its time.
@@ -460,7 +460,7 @@ sub pingback {
 
    # If the server has suggestions for items, it sends them back in
    # the same format: ITEM:TYPE:SUGGESTION\n.  ITEM:TYPE is mostly for
-   # debugging; the tool just repports the suggestions.
+   # debugging; the tool just reports the suggestions.
    $items = parse_server_response(
       response   => $response->{content},
       split_vars => 0,

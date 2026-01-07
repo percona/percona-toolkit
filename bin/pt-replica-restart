@@ -41,7 +41,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.0';
+our $VERSION = '3.7.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -551,7 +551,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -756,6 +758,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -2746,11 +2752,17 @@ sub get_replicas {
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
+      my @required_args = qw(dsn);
+      foreach my $arg ( @required_args ) {
+         die "I need a $arg argument" unless $args{$arg};
+      }
+      my ($dsn) = @args{@required_args};
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $replicas = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
          wait_no_die => $args{'wait_no_die'},
+         parent => $dsn,
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -2939,7 +2951,7 @@ sub _find_replicas_by_hosts {
    my $vp = VersionParser->new($dbh);
    my $sql = 'SHOW REPLICAS';
    my $source_name = 'source';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $sql = 'SHOW SLAVE HOSTS';
       $source_name='master';
    }
@@ -3062,7 +3074,7 @@ sub get_source_dsn {
    my $vp = VersionParser->new($dbh);
    my $source_host = 'source_host';
    my $source_port = 'source_port';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_host = 'master_host';
       $source_port = 'master_port';
    }
@@ -3136,7 +3148,7 @@ sub get_source_status {
 
    my $vp = VersionParser->new($dbh);
    my $source_name = 'binary log';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_name = 'master';
    }
 
@@ -3517,11 +3529,11 @@ sub reset_known_replication_threads {
 
 sub get_cxn_from_dsn_table {
    my ($self, %args) = @_;
-   my @required_args = qw(dsn_table_dsn make_cxn);
+   my @required_args = qw(dsn_table_dsn make_cxn parent);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dsn_table_dsn, $make_cxn) = @args{@required_args};
+   my ($dsn_table_dsn, $make_cxn, $parent) = @args{@required_args};
    PTDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
 
    my $dp = $self->{DSNParser};
@@ -3567,7 +3579,7 @@ sub get_cxn_from_dsn_table {
                }
                push @cxn, $lcxn;
             } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string);
+               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
             }
          }
       }
@@ -3579,13 +3591,13 @@ sub get_cxn_from_dsn_table {
 sub get_source_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'master' : 'source';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'master' : 'source';
 }
 
 sub get_replica_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'slave' : 'replica';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'slave' : 'replica';
 }
 
 sub _d {
@@ -4656,7 +4668,7 @@ sub version_check {
       PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
 
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          update_check_times(
             instances => $instances_to_check,
@@ -5432,7 +5444,7 @@ sub watch_server {
    my $source_name   = 'source';
    my $source_change = 'replication source';
    my $replica_name  = 'replica';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_name   = 'master';
       $source_change = 'master';
       $replica_name  = 'slave';
@@ -5908,6 +5920,13 @@ pt-replica-restart will not let you stop the replica manually if you want to!
 
 Prompt for a password when connecting to MySQL.
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --charset
 
 short form: -A; type: string
@@ -6033,6 +6052,12 @@ See L<"SLEEP">.
 
 Whether to monitor the replica (default).  Unless you specify --monitor
 explicitly, L<"--stop"> will disable it.
+
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
 
 =item --password
 
@@ -6475,6 +6500,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-replica-restart 3.7.0
+pt-replica-restart 3.7.1
 
 =cut

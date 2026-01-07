@@ -1193,7 +1193,7 @@ sub _get_value {
          unless $found_value;
    }
    else {
-      die "Event does not have attribute $attrib and there are no alterantes";
+      die "Event does not have attribute $attrib and there are no alternates";
    }
 
    return $value;

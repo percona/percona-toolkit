@@ -43,7 +43,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.0';
+our $VERSION = '3.7.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -1046,7 +1046,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -1251,6 +1253,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -3063,11 +3069,24 @@ sub _parse_config {
    }
    elsif ( my $dbh = $args{dbh} ) {
       $config_data{format} = $args{format} || 'show_variables';
+      my $mysql_version = _get_version($dbh);
       my $sql = "SHOW /*!40103 GLOBAL*/ VARIABLES";
       PTDEBUG && _d($dbh, $sql);
       my $rows = $dbh->selectall_arrayref($sql);
-      $config_data{vars} = { map { @$_ } @$rows };
-      $config_data{mysql_version} = _get_version($dbh);
+      $config_data{vars} = {
+         map {
+            my ($variable, $value) = @$_;
+            if ( length($value) == 1024 && $mysql_version ge '5.7.0' ) {
+               my $var_sql = "SELECT \@\@global.$variable";
+               PTDEBUG && _d($dbh, $var_sql);
+               my $var_sth = $dbh->prepare($var_sql);
+               $var_sth->execute();
+               ($value) = $var_sth->fetchrow_array();
+            }
+            $variable => $value
+         } @$rows
+      };
+      $config_data{mysql_version} = $mysql_version;
    }
    else {
       die "Unknown config source";
@@ -3496,12 +3515,12 @@ use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my %alt_val_for = (
-   ON    => 1,
-   YES   => 1,
-   TRUE  => 1,
-   OFF   => 0,
-   NO    => 0,
-   FALSE => 0,
+	  ON    => 1,
+	  YES   => 1,
+	  TRUE  => 1,
+	  OFF   => 0,
+	  NO    => 0,
+	  FALSE => 0,
 );
 
 sub new {
@@ -3618,7 +3637,8 @@ sub diff {
                next CONFIG if $val0 == $valN;
             }
             else {
-               next CONFIG if $ignore_case
+   	    
+		next CONFIG if $ignore_case
                               ? lc($val0) eq lc($valN)
                               : $val0 eq $valN;
 
@@ -3680,7 +3700,11 @@ sub _normalize_value {
    my ($val, $is_dir, $base_path) = @args{qw(value is_directory base_path)};
 
    $val = defined $val ? $val : '';
-   $val = $alt_val_for{$val} if exists $alt_val_for{$val};
+   $val = $alt_val_for{uc($val)} if exists $alt_val_for{uc($val)};
+
+   if ( $val =~ m/,/ && !$is_dir && !$base_path) {
+      $val = join(',', sort(split(',', $val)));
+   }
 
    if ( $val ) {
       if ( $is_dir ) {
@@ -4934,7 +4958,7 @@ sub version_check {
       PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
 
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          update_check_times(
             instances => $instances_to_check,
@@ -5723,6 +5747,13 @@ L<"SYNOPSIS"> and usage information for details.
 
 Prompt for a password when connecting to MySQL.
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --charset
 
 short form: -A; type: string
@@ -5775,6 +5806,12 @@ Compare the variables case-insensitively.
 type: array
 
 Ignore, do not compare, these variables.
+
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
 
 =item --password
 
@@ -6038,6 +6075,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-config-diff 3.7.0
+pt-config-diff 3.7.1
 
 =cut

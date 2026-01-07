@@ -38,7 +38,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.0';
+our $VERSION = '3.7.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -392,7 +392,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -597,6 +599,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -4431,7 +4437,7 @@ sub version_check {
       PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
 
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          update_check_times(
             instances => $instances_to_check,
@@ -5472,6 +5478,13 @@ L<"SYNOPSIS"> and usage information for details.
 
 =over
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --columns-regex
 
 type: string; default: .
@@ -5696,6 +5709,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-diskstats 3.7.0
+pt-diskstats 3.7.1
 
 =cut

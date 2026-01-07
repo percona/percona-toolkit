@@ -26,7 +26,7 @@ elsif ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
 }
 else {
-   plan tests => 7;
+   plan tests => 15;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -47,11 +47,13 @@ $sb->do_as_root(
    'source',
    q/CREATE USER IF NOT EXISTS sha256_user@'%' IDENTIFIED WITH caching_sha2_password BY 'sha256_user%password' REQUIRE SSL/,
    q/GRANT ALL ON test.* TO sha256_user@'%'/,
+   q/GRANT SELECT ON test_ssl.* TO sha256_user@'%'/,
    q/GRANT ALL ON percona.* TO sha256_user@'%'/,
    q/GRANT REPLICATION SLAVE ON *.* TO sha256_user@'%'/,
    q/GRANT REPLICATION CLIENT ON *.* TO sha256_user@'%'/,
 );
 
+$sb->load_file('source', "t/pt-online-schema-change/samples/ssl_dsns.sql");
 $dbh->do("insert into test.foo values (null, 'john, smith')");
 
 ($output, $exit_code) = full_output(
@@ -99,6 +101,79 @@ like(
    qr/^\S+\s+0\s+0\s+1\s+0\s+1\s+/m,
    'Checksums the table (issue 388)'
 );
+
+($output, $exit_code) = full_output(
+   sub { pt_table_checksum::main(
+         @args,
+         qw(--host 127.1 --port 12345 --user sha256_user),
+         qw(--password sha256_user%password --mysql_ssl 1),
+         qw(-d test)) },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl'
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Use of uninitialized value/,
+   'No error (issue 388) with option --mysql_ssl'
+);
+
+like(
+   $output,
+   qr/^\S+\s+0\s+0\s+1\s+0\s+1\s+/m,
+   'Checksums the table (issue 388) with option --mysql_ssl'
+);
+
+($output, $exit_code) = full_output(
+   sub { 
+      pt_table_checksum::main(
+         @args, 
+         'F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1', 
+         qw(-d test),
+         "--recursion-method=dsn=F=t/pt-archiver/samples/pt-191.cnf,D=test_ssl,t=dsns,h=127.0.0.1,P=12345,u=sha256_user,p=sha256_user%password,s=1")
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for SSL options in the configuration file"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with correct SSL options in the configuration file'
+) or diag($output);
+
+($output, $exit_code) = full_output(
+   sub { pt_table_checksum::main(@args, 'F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1', qw(-d test)) },
+   stderr => 1,
+);
+
+isnt(
+   $exit_code,
+   0,
+   "Error for invalid SSL options in the configuration file"
+) or diag($output);
+
+like(
+   $output,
+   qr/SSL connection error: Unable to get private key at/,
+   'SSL connection error with incorrect SSL options in the configuration file'
+) or diag($output);
 
 # #############################################################################
 # Done.

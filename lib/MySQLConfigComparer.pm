@@ -31,12 +31,12 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 # in SHOW VARS as var=TRUE.  I.e. there's several synonyms for basic
 # true (1) and false (0), so we normalize them to make comparisons easier.
 my %alt_val_for = (
-   ON    => 1,
-   YES   => 1,
-   TRUE  => 1,
-   OFF   => 0,
-   NO    => 0,
-   FALSE => 0,
+	  ON    => 1,
+	  YES   => 1,
+	  TRUE  => 1,
+	  OFF   => 0,
+	  NO    => 0,
+	  FALSE => 0,
 );
 
 # Sub: new
@@ -202,7 +202,8 @@ sub diff {
                next CONFIG if $val0 == $valN;
             }
             else {
-               next CONFIG if $ignore_case
+   	    
+		next CONFIG if $ignore_case
                               ? lc($val0) eq lc($valN)
                               : $val0 eq $valN;
 
@@ -293,7 +294,11 @@ sub _normalize_value {
    my ($val, $is_dir, $base_path) = @args{qw(value is_directory base_path)};
 
    $val = defined $val ? $val : '';
-   $val = $alt_val_for{$val} if exists $alt_val_for{$val};
+   $val = $alt_val_for{uc($val)} if exists $alt_val_for{uc($val)};
+
+   if ( $val =~ m/,/ && !$is_dir && !$base_path) {
+      $val = join(',', sort(split(',', $val)));
+   }
 
    if ( $val ) {
       if ( $is_dir ) {

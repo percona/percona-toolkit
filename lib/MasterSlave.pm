@@ -108,11 +108,19 @@ sub get_replicas {
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
+      my @required_args = qw(dsn);
+      foreach my $arg ( @required_args ) {
+         die "I need a $arg argument" unless $args{$arg};
+      }
+      my ($dsn) = @args{@required_args};
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $replicas = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
          wait_no_die => $args{'wait_no_die'},
+         # We will set current source server as a parent
+         # until https://perconadev.atlassian.net/browse/PT-2496 is implemented
+         parent => $dsn,
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -340,7 +348,7 @@ sub _find_replicas_by_hosts {
    my $vp = VersionParser->new($dbh);
    my $sql = 'SHOW REPLICAS';
    my $source_name = 'source';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $sql = 'SHOW SLAVE HOSTS';
       $source_name='master';
    }
@@ -485,7 +493,7 @@ sub get_source_dsn {
    my $vp = VersionParser->new($dbh);
    my $source_host = 'source_host';
    my $source_port = 'source_port';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_host = 'master_host';
       $source_port = 'master_port';
    }
@@ -566,7 +574,7 @@ sub get_source_status {
 
    my $vp = VersionParser->new($dbh);
    my $source_name = 'binary log';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_name = 'master';
    }
 
@@ -1061,11 +1069,11 @@ sub reset_known_replication_threads {
 
 sub get_cxn_from_dsn_table {
    my ($self, %args) = @_;
-   my @required_args = qw(dsn_table_dsn make_cxn);
+   my @required_args = qw(dsn_table_dsn make_cxn parent);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dsn_table_dsn, $make_cxn) = @args{@required_args};
+   my ($dsn_table_dsn, $make_cxn, $parent) = @args{@required_args};
    PTDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
 
    my $dp = $self->{DSNParser};
@@ -1111,7 +1119,7 @@ sub get_cxn_from_dsn_table {
                }
                push @cxn, $lcxn;
             } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string);
+               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
             }
          }
       }
@@ -1123,13 +1131,13 @@ sub get_cxn_from_dsn_table {
 sub get_source_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'master' : 'source';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'master' : 'source';
 }
 
 sub get_replica_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'slave' : 'replica';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'slave' : 'replica';
 }
 
 sub _d {

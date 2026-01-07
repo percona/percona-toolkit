@@ -151,6 +151,11 @@ get_system(){
         ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
         OS_NAME="el$RHEL"
         OS="rpm"
+    elif [ -f /etc/amazon-linux-release ]; then
+        RHEL=$(rpm --eval %amzn)
+        ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
+        OS_NAME="amzn$RHEL"
+        OS="rpm"
     else
         ARCH=$(uname -m)
         OS_NAME="$(lsb_release -sc)"
@@ -165,7 +170,7 @@ install_go() {
     #rm -rf /usr/local/go /usr/local/go1.8 /usr/local/go1.9
     #mv go1.9 /usr/local/
     #ln -s /usr/local/go1.9 /usr/local/go
-    GO_VERSION=1.23.4
+    GO_VERSION=1.25.5
     if [ x"$ARCH" = "xx86_64" ]; then
       GO_ARCH="amd64"
     elif [ x"$ARCH" = "xaarch64" ]; then
@@ -231,8 +236,8 @@ install_deps() {
 #      mv -f percona-dev.repo /etc/yum.repos.d/
       yum clean all
       yum -y install curl epel-release
-      RHEL=$(rpm --eval %rhel)
-      yum -y install wget tar findutils coreutils rpm-build perl-ExtUtils-MakeMaker make perl-DBD-MySQL
+      yum -y install coreutils
+      yum -y install wget tar findutils rpm-build perl-ExtUtils-MakeMaker make perl-DBD-MySQL
       install_go
     else
       apt-get -y update
@@ -240,28 +245,11 @@ install_deps() {
       export DEBIAN_VERSION=$(lsb_release -sc)
       export ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
       apt-get -y install gnupg2
-      apt-get update || true
-      ENV export DEBIAN_FRONTEND=noninteractive
-      apt-get update
-      if [ $DEBIAN_VERSION = buster ]; then
-          apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E98404D386FA1D9
-          apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6ED0E7B82643E131
-          until DEBIAN_FRONTEND=noninteractive apt-get update --allow-releaseinfo-change; do
-              echo "waiting"
-              sleep 1
-          done
-      fi
-      if [ $DEBIAN_VERSION = bionic -o $DEBIAN_VERSION = focal -o $DEBIAN_VERSION = bullseye -o $DEBIAN_VERSION = buster -o $DEBIAN_VERSION = bookworm -o $DEBIAN_VERSION = jammy -o $DEBIAN_VERSION = xenial -o $DEBIAN_VERSION = noble ]; then
-          until apt-get update; do
-              echo "waiting"
-              sleep 1
-          done
-          DEBIAN_FRONTEND=noninteractive apt-get update
-          until DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential devscripts debconf debhelper perl; do
-              echo "waiting"
-              sleep 1
-          done
-      fi
+      DEBIAN_FRONTEND=noninteractive apt-get update
+      until DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential devscripts debconf debhelper perl; do
+          echo "waiting"
+          sleep 1
+      done
       install_go
       #update_pat
     fi
@@ -389,11 +377,9 @@ build_rpm(){
     mkdir -vp rpmbuild/{SOURCES,SPECS,BUILD,SRPMS,RPMS}
     cp $SRC_RPM rpmbuild/SRPMS/
     cd $WORKDIR
-    RHEL=$(rpm --eval %rhel)
-    ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
     echo "RHEL=${RHEL}" >> percona-toolkit.properties
     echo "ARCH=${ARCH}" >> percona-toolkit.properties
-    rpmbuild --define "version $VERSION" --define "VERSION $VERSION" --define "dist .el${RHEL}" --define "release $RPM_RELEASE.el${RHEL}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM}
+    rpmbuild --define "version $VERSION" --define "VERSION $VERSION" --define "dist .${OS_NAME}" --define "release $RPM_RELEASE.${OS_NAME}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM}
 
     return_code=$?
     if [ $return_code != 0 ]; then
@@ -582,8 +568,8 @@ OS_NAME=
 ARCH=
 OS=
 INSTALL=0
-RPM_RELEASE=1
-DEB_RELEASE=1
+RPM_RELEASE=2
+DEB_RELEASE=2
 REVISION=0
 GIT_BRANCH=${GIT_BRANCH}
 GIT_REPO=https://github.com/percona/percona-toolkit.git

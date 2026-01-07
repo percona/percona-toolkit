@@ -1286,7 +1286,7 @@ report_jemalloc_enabled() {
    local variables_file="$2"
    local GENERAL_JEMALLOC_STATUS=0
 
-   for pid in $(grep '/mysqld ' "$instances_file" | awk '{print $1;}'); do
+   for pid in $(grep '/mysqld\b' "$instances_file" | awk '{print $1;}'); do
       local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
       if [ -z $jemalloc_status ]; then
          continue

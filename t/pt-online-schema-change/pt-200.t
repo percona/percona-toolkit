@@ -26,7 +26,7 @@ require "$trunk/bin/pt-online-schema-change";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $source_dbh = $sb->get_dbh_for('source');
-my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,s=1';
 
 if ( !$source_dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';

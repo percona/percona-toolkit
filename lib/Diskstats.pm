@@ -20,7 +20,7 @@
 {
 # Package: Diskstats
 # This package implements most of the logic in the old shell pt-diskstats;
-# it parses data from /proc/diskstats, calculcates deltas, and prints those.
+# it parses data from /proc/diskstats, calculates deltas, and prints those.
 
 package Diskstats;
 

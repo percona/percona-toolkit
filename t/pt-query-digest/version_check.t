@@ -17,12 +17,6 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-query-digest";
 
-ok (1,
-    "version checking site offline for now"
- );
-done_testing;
-exit 0;
-
 my $output;
 my $cmd = "$trunk/bin/pt-query-digest --limit 1 $trunk/t/lib/samples/slowlogs/slow001.txt";
 
@@ -49,7 +43,7 @@ ok(
 
 like(
    $output,
-   qr/# Query 1: 0 QPS, 0x concurrency, ID 0x7F7D57ACDD8A346E at byte 0/,
+   qr/# Query 1: 0 QPS, 0x concurrency, ID 0xA853B50CDEB4866B3A99CC42AEDCCFCD at byte 359/,
    "Tool ran after version-check"
 ) or diag(Dumper($output));
 
@@ -171,6 +165,23 @@ ok(
 ) or diag($output);
 
 unlink "/tmp/pt-query-digest.$PID" if "/tmp/pt-query-digest.$PID";
+
+# #############################################################################
+# # PT-2129 - tools fail on non-readable version check file
+# #############################################################################
+
+system("touch $vc_file");
+chmod 0000, $vc_file;
+
+$output = `$cmd --version-check 2>&1`;
+
+unlike(
+   $output,
+   qr/Can't use an undefined value as an ARRAY reference/,
+   'No undefined value error'
+) or diag($output);
+
+chmod 0664, $vc_file;
 
 # #############################################################################
 # Done.

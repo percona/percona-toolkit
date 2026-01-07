@@ -15,19 +15,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
-        go-version: '1.22'
+        go-version: '1.25'
     - name: Build
       run: cd src/go; make linux-amd64; cd ../../
 
     - name: Build the Docker image
       run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "RUN microdnf -y update" >> Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.30.0
+      uses: aquasecurity/trivy-action@0.33.1
       with:
           image-ref: 'percona-toolkit:${{ github.sha }}'
           format: 'table'
@@ -36,7 +36,7 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4.6.2
+      uses: actions/upload-artifact@v5.0.0
       with:
         name: binaries
         path: bin/*

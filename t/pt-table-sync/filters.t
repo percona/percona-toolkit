@@ -147,7 +147,7 @@ foreach my $args (
    my $stm = $args->[-1] eq '--sync-to-source' ? ' --sync-to-source' : '';
 
    test_filters(
-      name => $stm . "--replicate --tables t1",
+      name => $stm . " --replicate --tables t1",
       cmds => [@$args,
                qw(--tables t1)],
       res  => [qw(d1.t1 d2.t1 percona.checksums)],

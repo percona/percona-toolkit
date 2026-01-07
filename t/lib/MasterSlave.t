@@ -694,6 +694,7 @@ my $slaves = $ms->get_replicas(
       $cxn->connect();
       return $cxn;
    },
+   dsn => 'F=/tmp/12345/my.sandbox.cnf',
 );
 
 is_deeply(

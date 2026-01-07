@@ -393,18 +393,16 @@ my $tempdir = tempdir( CLEANUP => 1 );
 
 my $script = <<"EOT";
 . $trunk/bin/pt-stalk
-purge_samples $tempdir 10000 2>&1
+purge_samples $tempdir 10000 0 0 2>&1
 EOT
 
-$output = `$script`;
+$output = `bash -c "$script"`;
 
 unlike(
    $output,
    qr/\Qfind: warning: you have specified the -depth option/,
    "Bug 942114: no bad find usage"
 );
-
-
 # ###########################################################################
 # Test that it handles floating point values 
 # ###########################################################################

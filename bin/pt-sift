@@ -94,6 +94,53 @@ rm_tmpdir() {
 # ###########################################################################
 
 # ###########################################################################
+# alt_cmds package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/alt_cmds.sh
+#   t/lib/bash/alt_cmds.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+_pidof() {
+   local cmd="$1"
+   if ! pidof "$cmd" 2>/dev/null; then
+      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
+   fi
+}
+
+_lsof() {
+   local pid="$1"
+   if ! lsof -p $pid 2>/dev/null; then
+      /bin/ls -l /proc/$pid/fd 2>/dev/null
+   fi
+}
+
+
+
+_which() {
+   if [ -x /usr/bin/which ]; then
+      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   elif which which 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   else
+      echo "$1"
+   fi
+}
+
+# ###########################################################################
+# End alt_cmds package
+# ###########################################################################
+
+# ###########################################################################
 # parse_options package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the GitHub repository at,
@@ -1266,7 +1313,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-sift 3.7.0
+pt-sift 3.7.1
 
 =cut
 

@@ -58,7 +58,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.0';
+our $VERSION = '3.7.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -899,7 +899,7 @@ sub version_check {
       PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
 
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          update_check_times(
             instances => $instances_to_check,
@@ -2155,7 +2155,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -2360,6 +2362,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -4697,12 +4703,6 @@ sub check_table {
       return 0;
    }
 
-   PTDEBUG && _d("lower_case_table_names=$lower_case_table_names");
-   if ($lower_case_table_names > 0) {
-       PTDEBUG && _d("MySQL uses case-insensitive lookup, converting '$tbl' to lowercase");
-       $tbl = lc $tbl;
-   }
-
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
@@ -4718,7 +4718,9 @@ sub check_table {
       $self->{check_table_error} = $e;
       return 0;
    }
-   if ( !$row->[0] || $row->[0] ne $tbl ) {
+   if ( !$row->[0]
+      || ( $lower_case_table_names == 0 && $row->[0] ne $tbl )
+      || ( $lower_case_table_names > 0 && lc $row->[0] ne lc $tbl ) ) {
       PTDEBUG && _d('Table does not exist');
       return 0;
    }
@@ -5253,11 +5255,17 @@ sub get_replicas {
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
+      my @required_args = qw(dsn);
+      foreach my $arg ( @required_args ) {
+         die "I need a $arg argument" unless $args{$arg};
+      }
+      my ($dsn) = @args{@required_args};
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $replicas = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
          wait_no_die => $args{'wait_no_die'},
+         parent => $dsn,
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -5446,7 +5454,7 @@ sub _find_replicas_by_hosts {
    my $vp = VersionParser->new($dbh);
    my $sql = 'SHOW REPLICAS';
    my $source_name = 'source';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $sql = 'SHOW SLAVE HOSTS';
       $source_name='master';
    }
@@ -5569,7 +5577,7 @@ sub get_source_dsn {
    my $vp = VersionParser->new($dbh);
    my $source_host = 'source_host';
    my $source_port = 'source_port';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_host = 'master_host';
       $source_port = 'master_port';
    }
@@ -5643,7 +5651,7 @@ sub get_source_status {
 
    my $vp = VersionParser->new($dbh);
    my $source_name = 'binary log';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_name = 'master';
    }
 
@@ -6024,11 +6032,11 @@ sub reset_known_replication_threads {
 
 sub get_cxn_from_dsn_table {
    my ($self, %args) = @_;
-   my @required_args = qw(dsn_table_dsn make_cxn);
+   my @required_args = qw(dsn_table_dsn make_cxn parent);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dsn_table_dsn, $make_cxn) = @args{@required_args};
+   my ($dsn_table_dsn, $make_cxn, $parent) = @args{@required_args};
    PTDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
 
    my $dp = $self->{DSNParser};
@@ -6074,7 +6082,7 @@ sub get_cxn_from_dsn_table {
                }
                push @cxn, $lcxn;
             } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string);
+               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
             }
          }
       }
@@ -6086,13 +6094,13 @@ sub get_cxn_from_dsn_table {
 sub get_source_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'master' : 'source';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'master' : 'source';
 }
 
 sub get_replica_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'slave' : 'replica';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'slave' : 'replica';
 }
 
 sub _d {
@@ -9082,11 +9090,24 @@ sub _parse_config {
    }
    elsif ( my $dbh = $args{dbh} ) {
       $config_data{format} = $args{format} || 'show_variables';
+      my $mysql_version = _get_version($dbh);
       my $sql = "SHOW /*!40103 GLOBAL*/ VARIABLES";
       PTDEBUG && _d($dbh, $sql);
       my $rows = $dbh->selectall_arrayref($sql);
-      $config_data{vars} = { map { @$_ } @$rows };
-      $config_data{mysql_version} = _get_version($dbh);
+      $config_data{vars} = {
+         map {
+            my ($variable, $value) = @$_;
+            if ( length($value) == 1024 && $mysql_version ge '5.7.0' ) {
+               my $var_sql = "SELECT \@\@global.$variable";
+               PTDEBUG && _d($dbh, $var_sql);
+               my $var_sth = $dbh->prepare($var_sql);
+               $var_sth->execute();
+               ($value) = $var_sth->fetchrow_array();
+            }
+            $variable => $value
+         } @$rows
+      };
+      $config_data{mysql_version} = $mysql_version;
    }
    else {
       die "Unknown config source";
@@ -10272,11 +10293,11 @@ sub main {
 
 
    if ( $o->get('truncate-replicate-table') && $o->get('resume') ) {
-       die "--resume and truncate-replicate-table are mutually exclusive";
+      die "--resume and truncate-replicate-table are mutually exclusive";
    }
 
    if ( $o->get('truncate-replicate-table') && !$o->get('empty-replicate-table') ) {
-       die "--resume and --no-empty-replicate-table are mutually exclusive";
+      die "--truncate-replicate-table and --no-empty-replicate-table are mutually exclusive";
    }
 
    # ########################################################################
@@ -11805,7 +11826,7 @@ sub main {
       }
    }
 
-   # Restore origin QRT pligin state
+   # Restore origin QRT plugin state
    if ($o->get('disable-qrt-plugin')) {
        eval {
            if ($original_qrt_plugin_source_status) {
@@ -12576,7 +12597,7 @@ sub create_repl_table {
 #
 # Required Arguments:
 #   * tbl  - Standard tbl hashref
-#   * sth  - Sth with EXLAIN <statement>
+#   * sth  - Sth with EXPLAIN <statement>
 #   * vals - Values for sth, if any
 #
 # Returns:
@@ -13291,6 +13312,13 @@ group: Connection
 
 Prompt for a password when connecting to MySQL.
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --channel
 
 type: string
@@ -13320,6 +13348,16 @@ data type.
 This is useful in cases where you have trouble checksumming tables with keys that
 include a binary data type or that have non-standard character sets.
 See L<"--replicate">.
+
+=item --charset
+
+short form: -A; type: string
+
+Default character set.  If the value is utf8, sets Perl's binmode on
+STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and
+runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
+binmode on STDOUT without the utf8 layer, and runs SET NAMES after
+connecting to MySQL.
 
 =item --check-interval
 
@@ -13745,6 +13783,12 @@ you specify a threshold for this variable, then you can instruct the tool to
 wait until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
+
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
 
 =item --password
 
@@ -14430,6 +14474,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 3.7.0
+pt-table-checksum 3.7.1
 
 =cut

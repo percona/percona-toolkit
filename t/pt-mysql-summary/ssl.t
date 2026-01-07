@@ -29,7 +29,7 @@ elsif ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
 }
 else {
-   plan tests => 6;
+   plan tests => 10;
 }
 
 my ($tool) = 'pt-mysql-summary';
@@ -73,6 +73,34 @@ like(
    qr/SSL | Yes/,
    "Authentication with caching_sha2_password works"
 );
+
+$output = `$trunk/bin/$tool --host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password 2>&1 -- --defaults-file=t/pt-archiver/samples/pt-191.cnf --ssl-mode=required`;
+
+is(
+   $?,
+   0,
+   "No error for SSL options in the configuration file"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with correct SSL options in the configuration file'
+) or diag($output);
+
+$output = `$trunk/bin/$tool --host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password 2>&1 -- --defaults-file=t/pt-archiver/samples/pt-191-error.cnf --ssl-mode=required`;
+
+isnt(
+   $?,
+   0,
+   "Error for invalid SSL options in the configuration file"
+) or diag($output);
+
+like(
+   $output,
+   qr/SSL error: Unable to get private key from/,
+   'SSL connection error with incorrect SSL options in the configuration file'
+) or diag($output);
 
 # #############################################################################
 # Done.

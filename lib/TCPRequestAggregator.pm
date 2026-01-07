@@ -178,7 +178,7 @@ sub parse_event {
       # Otherwise, we need to compute the running sums and keep looping.
       else {
          if ( $self->{in_prg} ) {
-            # $self->{current_ts} is intitially 0, which would seem likely to
+            # $self->{current_ts} is initially 0, which would seem likely to
             # skew this computation.  But $self->{in_prg} will be 0 also, and
             # $self->{current_ts} will get set immediately after this, so
             # anytime this if() block runs, it'll be OK.

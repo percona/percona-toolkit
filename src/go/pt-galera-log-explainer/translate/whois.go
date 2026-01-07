@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"cmp"
+
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 	"github.com/xlab/treeprint"
 	"golang.org/x/exp/slices"
@@ -98,17 +100,24 @@ func (n *WhoisNode) valuesSortedByTimestamps() []string {
 	}
 
 	// keep nil timestamps at the top
-	slices.SortFunc(values, func(a, b string) bool {
-		if n.Values[a].Timestamp == nil && n.Values[b].Timestamp == nil {
-			return a < b
+	slices.SortFunc(values, func(a, b string) int {
+		va, vb := n.Values[a].Timestamp, n.Values[b].Timestamp
+		switch {
+		case va == nil && vb == nil:
+			return cmp.Compare(a, b)
+		case va == nil:
+			return -1 // nil < non-nil
+		case vb == nil:
+			return 1 // non-nil > nil
+		default:
+			if va.Before(*vb) {
+				return -1
+			}
+			if va.After(*vb) {
+				return 1
+			}
+			return cmp.Compare(a, b)
 		}
-		if n.Values[a].Timestamp == nil { // implied b!=nil
-			return true // meaning, nil < nonnil, a < b
-		}
-		if n.Values[b].Timestamp == nil { // implied a!=nil
-			return false // meaning a is greater than b
-		}
-		return n.Values[a].Timestamp.Before(*n.Values[b].Timestamp)
 	})
 	return values
 }

@@ -208,7 +208,7 @@ func main() {
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
 		} else if advice != "" {
-			log.Infof(advice)
+			log.Infof("%s", advice)
 		}
 	}
 
@@ -373,24 +373,6 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
 	}
 
-	cmdOpts := proto.CommandLineOptions{}
-	query := primitive.D{{Key: "getCmdLineOpts", Value: 1}}
-	err := client.Database("admin").RunCommand(ctx, query).Decode(&cmdOpts)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot get command line options")
-	}
-
-	ss := proto.ServerStatus{}
-	query = primitive.D{{Key: "serverStatus", Value: 1}}
-	if err := client.Database("admin").RunCommand(ctx, query).Decode(&ss); err != nil {
-		return nil, errors.Wrap(err, "GetHostInfo.serverStatus")
-	}
-
-	pi := procInfo{}
-	if err := getProcInfo(int32(ss.Pid), &pi); err != nil {
-		pi.Error = err
-	}
-
 	nodeType, _ := getNodeType(ctx, client)
 	procCount, _ := countMongodProcesses()
 
@@ -398,24 +380,41 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		Hostname:          hi.System.Hostname,
 		HostOsType:        hi.Os.Type,
 		HostSystemCPUArch: hi.System.CpuArch,
-		DBPath:            "", // Sets default. It will be overridden later if necessary
-
-		ProcessName:      ss.Process,
-		ProcProcessCount: procCount,
-		Version:          ss.Version,
-		NodeType:         nodeType,
-
-		ProcPath:       pi.Path,
-		ProcUserName:   pi.UserName,
-		ProcCreateTime: pi.CreateTime,
-		CmdlineArgs:    cmdOpts.Argv,
-	}
-	if ss.Repl != nil {
-		i.ReplicasetName = ss.Repl.SetName
+		ProcProcessCount:  procCount,
+		NodeType:          nodeType,
+		CmdlineArgs:       nil,
 	}
 
-	if cmdOpts.Parsed.Storage.DbPath != "" {
-		i.DBPath = cmdOpts.Parsed.Storage.DbPath
+	var cmdOpts proto.CommandLineOptions
+	query := primitive.D{{Key: "getCmdLineOpts", Value: 1}}
+	err := client.Database("admin").RunCommand(ctx, query).Decode(&cmdOpts)
+	if err == nil {
+		if len(cmdOpts.Argv) > 0 {
+			i.CmdlineArgs = cmdOpts.Argv
+		}
+		if cmdOpts.Parsed.Storage.DbPath != "" {
+			i.DBPath = cmdOpts.Parsed.Storage.DbPath
+		}
+	}
+
+	var ss proto.ServerStatus
+	query = primitive.D{{Key: "serverStatus", Value: 1}}
+	err = client.Database("admin").RunCommand(ctx, query).Decode(&ss)
+	if err == nil {
+		i.ProcessName = ss.Process
+		i.Version = ss.Version
+		if ss.Repl != nil {
+			i.ReplicasetName = ss.Repl.SetName
+		}
+
+		pi := procInfo{}
+		if err := getProcInfo(int32(ss.Pid), &pi); err != nil {
+			pi.Error = err
+		} else {
+			i.ProcPath = pi.Path
+			i.ProcUserName = pi.UserName
+			i.ProcCreateTime = pi.CreateTime
+		}
 	}
 
 	return i, nil
