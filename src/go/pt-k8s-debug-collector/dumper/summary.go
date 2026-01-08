@@ -3,6 +3,7 @@ package dumper
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -33,7 +34,6 @@ func (d *Dumper) getSummary(ctx context.Context, job exportJob, crType string, l
 func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName string) ([]byte, error) {
 	var (
 		summCmdName string
-		ports       string
 		summCmdArgs []string
 	)
 
@@ -54,10 +54,11 @@ func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName strin
 			return nil, fmt.Errorf("failed to get password from pxc/ps users secret: %w", err)
 		}
 
-		ports = port + ":3306"
-		localport, err := d.portForwardPod(ctx, pod, ports)
+		localport, err := d.portForwardPod(ctx, pod, port, "3306")
 		if err != nil {
-			return nil, err
+			if !errors.Is(err, ERR_PORT_ALREADY_FORWARDED) {
+				return nil, err
+			}
 		}
 
 		summCmdName = "pt-mysql-summary"
@@ -99,8 +100,7 @@ func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName strin
 			return nil, fmt.Errorf("get password from psmdb users secret: %w", err)
 		}
 
-		ports = port + ":27017"
-		localport, err := d.portForwardPod(ctx, pod, ports)
+		localport, err := d.portForwardPod(ctx, pod, port, "27017")
 		if err != nil {
 			return nil, err
 		}

@@ -37,6 +37,7 @@ type Dumper struct {
 	mode           int64
 	crTypes        []string
 	forwardport    string
+	usedPorts      sync.Map
 	skipPodSummary bool
 
 	sslSecrets      map[string]bool
@@ -104,6 +105,7 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 		discoveryClient: discclient,
 		restConfig:      config,
 		logger:          NewSafeLogger(),
+		usedPorts:       sync.Map{},
 	}
 
 	if resource == "none" || resource == "" {

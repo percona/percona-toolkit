@@ -45,14 +45,7 @@ Tests TODO:
 // You need to have anydbver in path to start tests (https://github.com/ihanick/anydbver)
 
 func TestMain(m *testing.M) {
-	//args := []string{"deploy", "k8s-pg:2.8.0", "k8s-pxc:1.18.0","k8s-psmdb:1.21.1", "k8s-ps:1.0.0", }
-
-	// For some reason ps is not reporting correctly that it is ready,
-	// you can deploy it manually using above command but it will hang until timeout
-	// even if it's deployed and ready
-
-	// TODO: fix ps and add pgv1
-	args := []string{"deploy", "k8s-pg:2.8.0", "k8s-pxc:1.18.0", "k8s-psmdb:1.21.1"}
+	args := []string{"deploy", "k8s-pg:2.8.0", "k8s-pxc:1.18.0", "k8s-psmdb:1.21.1", "k8s-ps:1.6.0"}
 	utils.DeployAnyDbVer(args)
 
 	exitCode := m.Run()
