@@ -3,13 +3,14 @@ package dumper
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"path"
-	"strings"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -18,10 +19,27 @@ import (
 	"k8s.io/client-go/transport/spdy"
 )
 
+var (
+	ERR_PORT_ALREADY_FORWARDED = errors.New("this localPort:remotePort is already forwarded")
+	ERR_LOCAL_PORT_IN_USE      = errors.New("this localPort is already in use")
+)
+
 /*
 Forwards ports to a specific pod. Close the returned channel to stop forwarding.
 */
-func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, remotePort string) (int, error) {
+func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, localPort string, remotePort string) (int, error) {
+	localPortParsed, err := strconv.ParseInt(localPort, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+
+	gotRemotePort, loaded := d.usedPorts.LoadOrStore(localPortParsed, remotePort)
+	if loaded && gotRemotePort == remotePort {
+		return int(localPortParsed), ERR_PORT_ALREADY_FORWARDED
+	} else if loaded && gotRemotePort != remotePort {
+		return 0, ERR_LOCAL_PORT_IN_USE
+	}
+
 	apiURL, err := url.Parse(d.restConfig.Host)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse config host URL: %w", err)
@@ -42,15 +60,8 @@ func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, remotePort 
 	readyChan := make(chan struct{}, 1)
 	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
 
-	var ports []string
-	if strings.Contains(remotePort, ":") {
-		ports = []string{remotePort}
-	} else {
-		ports = []string{fmt.Sprintf(":%s", remotePort)}
-	}
-
 	forwarderCtx, forwarderClose := context.WithCancel(ctx)
-	forwarder, err := portforward.New(dialer, ports, forwarderCtx.Done(), readyChan, out, errOut)
+	forwarder, err := portforward.New(dialer, []string{localPort + ":" + remotePort}, forwarderCtx.Done(), readyChan, out, errOut)
 	if err != nil {
 		forwarderClose()
 		return 0, fmt.Errorf("failed to create port forwarder: %w", err)
