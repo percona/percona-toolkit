@@ -46,7 +46,7 @@ func (d *Dumper) addPsmdb() error {
 	return nil
 }
 
-// TODO: review and make simplier
+// TODO: review and make simple
 func (d *Dumper) autoCustomResource() ([]string, error) {
 	apiGroupList, err := d.clientSet.DiscoveryClient.ServerGroups()
 	if err != nil {
