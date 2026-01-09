@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -9,10 +11,20 @@ import (
 	"strings"
 )
 
-func RunAnyDbVer(args ...string) (string, error) {
-	cmd := exec.Command("anydbver", args...)
-	output, err := cmd.CombinedOutput()
-	outputStr := strings.TrimSpace(string(output))
+func RunAnyDbVer(ctx context.Context, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, "anydbver", args...)
+
+	var outputBuilder strings.Builder
+
+	stdout := io.MultiWriter(&outputBuilder, os.Stdout)
+	stderr := io.MultiWriter(&outputBuilder, os.Stderr)
+
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	err := cmd.Run()
+	outputStr := strings.TrimSpace(outputBuilder.String())
+
 	if err != nil {
 		return outputStr, fmt.Errorf("failed to run anydbver: %s \nOutput: %s", err, outputStr)
 	}
@@ -20,17 +32,17 @@ func RunAnyDbVer(args ...string) (string, error) {
 	return outputStr, nil
 }
 
-func DeployAnyDbVer(args []string) {
+func DeployAnyDbVer(ctx context.Context, args []string) error {
 	log.Printf("Starting deployment")
-	output, err := RunAnyDbVer(args...)
+	output, err := RunAnyDbVer(ctx, args...)
 	if err != nil {
-		log.Printf("Fail when deploying: %v \nOutput: %s\n", err, output)
-		return
+		return fmt.Errorf("Fail when deploying: %v \nOutput: %s\n", err, output)
 	}
 	log.Printf("Successfully deployed \nOutput: %s\n", output)
+	return nil
 }
 
-func GetKubeConfigString() (string, error) {
+func GetKubeConfigPath() (string, error) {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if kubeconfig == "" {
 		home, err := os.UserHomeDir()
@@ -42,8 +54,8 @@ func GetKubeConfigString() (string, error) {
 	return kubeconfig, nil
 }
 
-func CleanUpAnyDbVer() error {
-	_, err := RunAnyDbVer("destroy")
+func CleanUpAnyDbVer(ctx context.Context) error {
+	_, err := RunAnyDbVer(ctx, "destroy")
 	if err != nil {
 		return fmt.Errorf("cleanup failed: %w", err)
 	}
