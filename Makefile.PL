@@ -6,7 +6,7 @@ sub MY::postamble {
 pkgs = $(shell find src/go -type d -name "pt-*" -exec basename {} \;)
 
 gotools:
-	cd src/go && $(MAKE) build
+	cd src/go && VERSION=$(VERSION) $(MAKE) build
 	@$(foreach pkg,$(pkgs),cp bin/$(pkg) $(INST_SCRIPT);)
 
 goclean:
