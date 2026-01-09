@@ -28,6 +28,10 @@ var (
 Forwards ports to a specific pod. Close the returned channel to stop forwarding.
 */
 func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, localPort string, remotePort string) (int, error) {
+	if localPort == "" {
+		localPort = remotePort
+	}
+
 	localPortParsed, err := strconv.ParseInt(localPort, 10, 32)
 	if err != nil {
 		return 0, err
