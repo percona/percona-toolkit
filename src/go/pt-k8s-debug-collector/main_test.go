@@ -31,18 +31,15 @@ This test requires:
 */
 var (
 	namespaces = []string{
-		//		"pxc", "ps", "psmdb", "pg", "pgv2",
-		"pgv2",
+		"pxc", "ps", "psmdb", "pg", "pgv2",
 	}
 
 	resources = []string{
-		//		"pxc", "ps", "psmdb", "pg", "pgv2",
-		"pgv2", "auto", "none",
+		"pxc", "ps", "psmdb", "pg", "pgv2",
 	}
 
 	deployments = []string{
-		//"k8s-pxc:1.18.0", "k8s-ps:1.0.0", "k8s-psmdb:1.21.1", "k8s-pg:1.6.0", "k8s-pg:2.8.0",
-		"k8s-pg:2.8.0",
+		"k8s-pxc:1.18.0", "k8s-ps:1.0.0", "k8s-psmdb:1.21.1", "k8s-pg:1.6.0", "k8s-pg:2.8.0",
 	}
 )
 
