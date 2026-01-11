@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -35,7 +36,7 @@ var (
 	}
 
 	resources = []string{
-		"pxc", "ps", "psmdb", "pg", "pgv2",
+		"pxc", "ps", "psmdb", "pg", "pgv2", "auto", "none",
 	}
 
 	deployments = []string{
@@ -125,7 +126,7 @@ func TestMain(m *testing.M) {
 Tests collection of the individual files by pt-k8s-debug-collector.
 Requires running K8SPXC instance and kubectl, configured to access that instance by default.
 */
-func _TestIndividualFiles(t *testing.T) {
+func TestIndividualFiles(t *testing.T) {
 	config, err := utils.GetKubeConfigPath()
 	if err != nil {
 		t.Fatalf("error getting config for kube: %v", err)
@@ -180,6 +181,10 @@ func _TestIndividualFiles(t *testing.T) {
 	}
 
 	for resource := range requestedClusterReports {
+		if !slices.Contains(resources, resource) {
+			continue
+		}
+
 		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", config, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", resource)
 		if err := cmd.Run(); err != nil {
 			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
@@ -206,17 +211,16 @@ func _TestIndividualFiles(t *testing.T) {
 /*
 Tests for supported values of the --resource option
 */
-func _TestResourceOption(t *testing.T) {
+func TestResourceOption(t *testing.T) {
 	config, err := utils.GetKubeConfigPath()
 	if err != nil {
 		t.Fatalf("error getting config for kube: %v", err)
 	}
 	testcmd := []string{"sh", "-c", "tar -tf cluster-dump.tar.gz --wildcards '*/summary.txt' 2>/dev/null | wc -l"}
 	tests := []struct {
-		name       string
-		resource   string
-		want       string
-		kubeconfig string
+		name     string
+		resource string
+		want     string
 	}{
 		{
 			name:     "none",
@@ -302,6 +306,15 @@ func _TestResourceOption(t *testing.T) {
 	}
 }
 
+type CmdCompare struct {
+	cmd []string
+	out string
+}
+
+func PreareFindFileInTarCmd(tarPath, filePath, substring string) []string {
+	return []string{"tar", "--to-command", fmt.Sprintf("grep -m 1 -o %s", substring), "-xzf", tarPath, "--wildcards", filePath}
+}
+
 /*
 PT-2299 - collect openssl x509 certificate information for each secret
 */
@@ -313,117 +326,52 @@ func TestSSLResourceOption(t *testing.T) {
 	tests := []struct {
 		name     string
 		resource string
-		cmds     [][]string // slice of commands to execute
-		want     []string   // slice of expected results
+		cmdOut   []CmdCompare
 	}{
 		{
 			name:     "auto pxc",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-internal", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-internal", "tls.crt"), "tls.crt"},
 			},
 		},
 		{
 			name:     "auto ps",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "tls.crt"), "tls.crt"},
 			},
 		},
 		{
 			name:     "auto psmdb",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-internal", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-internal", "tls.crt"), "tls.crt"},
 			},
 		},
 		{
 			name:     "auto pg",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-ca"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-ca"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-keypair"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-keypair"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pgo.tls"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pgo.tls"},
-			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt\ntls.crt",
-				"Certificate\nCertificate",
-				"tls.crt",
-				"Certificate",
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-keypair", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-pgo.tls", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-ca", "ca.crt"), "ca.crt"},
 			},
 		},
 		{
 			name:     "auto pgv2",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-cluster-cert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-cluster-cert"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-cluster-cert"},
-				{"tar", "--to-command", "grep -m 1 -o root.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pgo-root-cacert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pgo-root-cacert"},
-			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"root.crt",
-				"Certificate",
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ca-cert", "root.crt"), "root.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-cert", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-cert", "ca.crt"), "ca.crt"},
 			},
 		},
 	}
@@ -436,19 +384,19 @@ func TestSSLResourceOption(t *testing.T) {
 		if err := cmd.Run(); err != nil {
 			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
 		}
-		// defer func() {
-		// 	cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
-		// 	if err := cmd.Run(); err != nil {
-		// 		t.Errorf("error cleaning up test data: %s", err.Error())
-		// 	}
-		// }()
-		for ind, testcmd := range test.cmds {
-			out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
+		defer func() {
+			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
+			if err := cmd.Run(); err != nil {
+				t.Errorf("error cleaning up test data: %s", err.Error())
+			}
+		}()
+		for _, testcmd := range test.cmdOut {
+			out, err := exec.Command(testcmd.cmd[0], testcmd.cmd[1:]...).Output()
 			if err != nil {
 				t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, testcmd, err.Error(), out)
 			}
-			if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want[ind] {
-				t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want[ind])
+			if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != testcmd.out {
+				t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, testcmd.out)
 			}
 		}
 	}
@@ -553,7 +501,7 @@ func _TestPT_2453(t *testing.T) {
 /*
 Option --version
 */
-func __TestVersionOption(t *testing.T) {
+func TestVersionOption(t *testing.T) {
 	out, err := exec.Command("../../../bin/"+toolname, "--version").Output()
 	if err != nil {
 		t.Errorf("error executing %s --version: %s", toolname, err.Error())
@@ -568,14 +516,14 @@ func __TestVersionOption(t *testing.T) {
 /*
 If we handle error properly
 */
-func _TestPT_2169(t *testing.T) {
+func TestPT_2169(t *testing.T) {
 	config, err := utils.GetKubeConfigPath()
 	if err != nil {
 		t.Fatalf("error getting config for kube: %v", err)
 	}
 	busyport, _ := os.Getwd() // we are using wrong socket for ssh tunnel here to ensure we get error
 
-	testcmd := []string{"sh", "-c", "tar -xf cluster-dump.tar.gz --wildcards '*/summary.txt' --to-command 'grep stderr:' 2>/dev/null | wc -l"}
+	testcmd := []string{"sh", "-c", `tar -xf cluster-dump.tar.gz --wildcards "*/summary.txt" --to-command 'grep -m1 "err: strconv.ParseInt"' 2>/dev/null | wc -l`}
 	tests := []struct {
 		name     string
 		resource string
