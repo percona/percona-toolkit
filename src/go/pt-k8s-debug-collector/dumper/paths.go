@@ -14,12 +14,12 @@ func (d *Dumper) PodIndividualFilesPath(namespace, podName, internalFilePath str
 
 // /<location>/<namespace>/secrets/<secret>.yaml
 func (d *Dumper) PodSecretsPath(namespace, secretName string) string {
-	return filepath.Join(d.location, namespace, secretName+".yaml")
+	return filepath.Join(d.location, namespace, "secrets", secretName+".yaml")
 }
 
 // /<location>/<namespace>/secrets/<secret>
 func (d *Dumper) PodRawSecretsPath(namespace, secretName string) string {
-	return filepath.Join(d.location, namespace, secretName)
+	return filepath.Join(d.location, namespace, "secrets", secretName)
 }
 
 // /<location>/<logPrefix>.log

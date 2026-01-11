@@ -102,7 +102,9 @@ func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName strin
 
 		localport, err := d.portForwardPod(ctx, pod, port, "27017")
 		if err != nil {
-			return nil, err
+			if !errors.Is(err, ERR_PORT_ALREADY_FORWARDED) {
+				return nil, err
+			}
 		}
 
 		summCmdName = "pt-mongodb-summary"

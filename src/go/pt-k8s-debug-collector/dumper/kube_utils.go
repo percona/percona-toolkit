@@ -20,6 +20,9 @@ import (
 )
 
 var (
+	// Ignore this error only in case when all calls to portForwardPod have the same context.
+	// If it is not the case, igoning this error may result in a portForward closing while other
+	// entities is in process of using it.
 	ERR_PORT_ALREADY_FORWARDED = errors.New("this localPort:remotePort is already forwarded")
 	ERR_LOCAL_PORT_IN_USE      = errors.New("this localPort is already in use")
 )
@@ -34,7 +37,7 @@ func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, localPort s
 
 	localPortParsed, err := strconv.ParseInt(localPort, 10, 32)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to parse port: %s with err: %s", localPort, err)
 	}
 
 	gotRemotePort, loaded := d.usedPorts.LoadOrStore(localPortParsed, remotePort)

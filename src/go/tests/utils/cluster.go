@@ -71,7 +71,7 @@ func WaitForAllPodsReady(
 		}
 
 		for i, pod := range pods.Items {
-			if pod.Status.Phase != corev1.PodSucceeded {
+			if pod.Status.Phase == corev1.PodSucceeded {
 				continue
 			}
 

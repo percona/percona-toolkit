@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	TargetSSLKeys = []string{"tls.crt", "ca.crt", "tls-ca.crt"}
+	TargetSSLKeys = []string{"tls.crt", "ca.crt", "tls-ca.crt", "root.crt"}
 )
 
 func (d *Dumper) dumpSecrets(ctx context.Context, namespace string) error {
@@ -82,8 +82,6 @@ func decodeCertToBytes(secret corev1.Secret) ([]byte, error) {
 			continue
 		}
 
-		header := fmt.Sprintf("\n--- Decoded %s ---\n", key)
-		result = append(result, []byte(header)...)
 		cmd := exec.Command("openssl", "x509", "-noout", "-text")
 		cmd.Stdin = bytes.NewReader(certData)
 
@@ -96,6 +94,8 @@ func decodeCertToBytes(secret corev1.Secret) ([]byte, error) {
 			errMsg := fmt.Sprintf("ERROR running openssl on key %s: %v\nStderr: %s\n", key, err, errb.String())
 			result = append(result, []byte(errMsg)...)
 		} else {
+			header := fmt.Sprintf("\n--- Decoded %s ---\n", key)
+			result = append(result, []byte(header)...)
 			result = append(result, outb.Bytes()...)
 		}
 	}
