@@ -7,7 +7,7 @@ pkgs = $(shell find src/go -type d -name "pt-*" -exec basename {} \;)
 
 gotools:
 	cd src/go && VERSION=$(VERSION) $(MAKE) build
-	@$(foreach pkg,$(pkgs),cp bin/$(pkg) $(INST_SCRIPT);)
+	@$(foreach pkg,$(pkgs),cp bin/$(pkg) $(INST_BIN);)
 
 goclean:
 	@$(foreach pkg,$(pkgs),rm -f bin/$(pkg) 2> /dev/null;)
