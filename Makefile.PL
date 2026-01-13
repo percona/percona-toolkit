@@ -3,8 +3,18 @@ use ExtUtils::MY;
 
 sub MY::postamble {
     return <<'MAKE_GOTOOLS';
+pkgs = $(shell find src/go -type d -name "pt-*" -exec basename {} \;)
+
 gotools:
-	cd src/go && $(MAKE) build
+	cd src/go && VERSION=$(VERSION) $(MAKE) build
+	@$(foreach pkg,$(pkgs),cp bin/$(pkg) $(INST_BIN);)
+
+goclean:
+	@$(foreach pkg,$(pkgs),rm -f bin/$(pkg) 2> /dev/null;)
+
+all :: gotools
+install :: gotools
+clean :: goclean
 
 MAKE_GOTOOLS
 }
@@ -18,7 +28,7 @@ WriteMakefile(
       map {
          (my $name = $_) =~ s/^bin.//;
          my $file_name = $_;
-if ( $file_name =~ m/(mongo|pg|galera|k8s|secure)/ ) {
+         if ( $file_name =~ m/(mongo|pg|galera|k8s|secure)/ ) {
             # We have to put empty line here to avoid the MAN1PODS hash corruption
             '' => '',
          }
