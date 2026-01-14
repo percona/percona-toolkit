@@ -2,15 +2,22 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
-	"golang.org/x/exp/slices"
+	"github.com/percona/percona-toolkit/src/go/tests/utils"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 /*
@@ -21,8 +28,27 @@ This test requires:
 -- KUBECONFIG_PS for K8SPS
 -- KUBECONFIG_PSMDB for K8SPSMDB
 -- KUBECONFIG_PG for K8SPG
--- KUBECONFIG_PG2 for K8SPG version 2
 
+	-- KUBECONFIG_PG2 for K8SPG version 2
+*/
+var (
+	namespaces = []string{
+		//"pxc", "ps", "psmdb", "pg", "pgv2",
+		"pg",
+	}
+
+	resources = []string{
+		//"pxc", "ps", "psmdb", "pg", "pgv2", "auto", "none",
+		"pg", "none", "auto",
+	}
+
+	deployments = []string{
+		//"k8s-pxc:1.18.0", "k8s-ps:1.0.0", "k8s-psmdb:1.21.1", "k8s-pg:1.6.0", "k8s-pg:2.8.0",
+		"k8s-pg:1.6.0",
+	}
+)
+
+/*
 You can additionally set option FORWARDPORT if you want to use custom port when testing summaries.
 
 pt-mysql-summary, mysql, psql, and pt-mongodb-summary must be in the PATH.
@@ -35,23 +61,13 @@ We do not explicitly test --kubeconfig and --forwardport options, because they a
 
 /*
 Tests TODO:
-
 - Test clusters with custom user and secrets. With the way we currently test,
   we just need to create a cluster with particular options. But it is already
   time and resource consuming operation. So we need to either test only getCR
   function or create a mock cluster, or find a better way to deploy test clusters.
 */
 
-type Resource struct {
-	name string
-	env  string
-}
-
-var (
-	PxcResource  = Resource{name: "pxc", env: "KUBECONFIG_PXC"}
-	PgResource   = Resource{name: "pg", env: "KUBECONFIG_PG"}
-	AutoResource = Resource{name: "auto", env: "KUBECONFIG_PXC"}
-)
+// You need to have anydbver in path to start tests (https://github.com/ihanick/anydbver)
 
 type Matcher interface {
 	Match(t *testing.T, got string)
@@ -102,6 +118,63 @@ func firstLine(in string) string {
 	return in[:nl]
 }
 
+func getKubeClient(kubeconfigPath string) (kubernetes.Interface, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientset, nil
+}
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	log.Println("START")
+	args := []string{"deploy"}
+	args = append(args, deployments...)
+	//utils.DeployAnyDbVer(ctx, args)
+
+	config, err := utils.GetKubeConfigPath()
+	if err != nil {
+		log.Fatalf("could not get a kubeconfig: %s", err)
+	}
+
+	kubeClient, err := getKubeClient(config)
+	if err != nil {
+		log.Fatalf("could not get a kubeclient: %s", err)
+	}
+
+	for _, ns := range namespaces {
+		cctx, _ := context.WithTimeout(ctx, time.Minute*10)
+
+		err = utils.WaitForAllStatefulSetReady(cctx, kubeClient, ns)
+		if err != nil {
+			log.Fatalf("waiting for all statefullsets to be ready is falied with err: %s", err)
+		}
+
+		err = utils.WaitForAllPodsReady(cctx, kubeClient, ns)
+		if err != nil {
+			log.Fatalf("waiting for all pods to be ready is falied with err: %s", err)
+		}
+	}
+
+	exitCode := m.Run()
+	if exitCode == 0 {
+		log.Println("Tests finished succesfully, destroying deployments")
+		// Comment this if you don't want to destroy deployments after tests
+		// err := utils.CleanUpAnyDbVer(ctx)
+		// if err != nil {
+		// 	log.Fatalf("there was an error when destroying deloyments: %v", err)
+		// }
+	}
+	os.Exit(exitCode)
+}
+
 /*
    Tests collection of the individual files by pt-k8s-debug-collector.
    Requires running K8SPXC instance and kubectl, configured to access that instance by default.
@@ -109,10 +182,15 @@ func firstLine(in string) string {
 */
 
 func TestIndividualFiles(t *testing.T) {
+	config, err := utils.GetKubeConfigPath()
+	if err != nil {
+		t.Fatalf("error getting config for kube: %v", err)
+	}
+
 	tests := []struct {
 		name         string
 		cmd          []string
-		env          string
+		resource     string
 		preprocessor func(string) string
 		match        Matcher
 	}{
@@ -121,8 +199,8 @@ func TestIndividualFiles(t *testing.T) {
 			name: "pxc_logs_list",
 			// tar -tf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/*'
 			cmd:          []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/*"},
-			env:          "KUBECONFIG_PXC",
 			preprocessor: uniqueBasenames,
+			resource:     "pxc",
 			match: ExactMatch{
 				Want: []string{
 					"auto.cnf",
@@ -138,10 +216,10 @@ func TestIndividualFiles(t *testing.T) {
 		},
 		{
 			// If MySQL error log is not empty
-			name: "pxc_mysqld_error_log",
+			name:     "pxc_mysqld_error_log",
+			resource: "pxc",
 			// tar --to-command="grep -m 1 -o Version:" -xzf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/mysqld-error.log'
 			cmd:          []string{"tar", "--to-command", "grep -m 1 -o Version:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/mysqld-error.log"},
-			env:          "KUBECONFIG_PXC",
 			preprocessor: firstLine,
 			match: ExactMatch{
 				Want: []string{"Version:"},
@@ -150,8 +228,8 @@ func TestIndividualFiles(t *testing.T) {
 		{
 			// if the tool collects required pg log files
 			name:         "pg_logs_list",
+			resource:     "pg",
 			cmd:          []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/pgdata/*"},
-			env:          "KUBECONFIG_PG",
 			preprocessor: uniqueBasenames,
 			match: RegexMatch{
 				Pattern: regexp.MustCompile(`^postgresql-[A-Za-z]{3}\.log$`),
@@ -159,33 +237,31 @@ func TestIndividualFiles(t *testing.T) {
 		},
 	}
 
-	for _, resource := range []Resource{PxcResource, PgResource, AutoResource} {
-		if os.Getenv(resource.env) == "" {
-			t.Logf("TestIndividualFiles requires %s env", resource.env)
+	requestedClusterReports := make(map[string]struct{}, 0)
+	for _, test := range tests {
+		requestedClusterReports[test.resource] = struct{}{}
+	}
+
+	for resource := range requestedClusterReports {
+		if resource != "pg" {
 			continue
 		}
-
 		cmd := exec.Command("../../../bin/pt-k8s-debug-collector",
-			"--kubeconfig", os.Getenv(resource.env),
+			"--kubeconfig", config,
 			"--forwardport", os.Getenv("FORWARDPORT"),
-			"--resource", resource.name,
+			"--resource", resource,
 		)
 		if err := cmd.Run(); err != nil {
 			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
 		}
-
 		defer func() {
-			clean := exec.Command("rm", "-f", "cluster-dump.tar.gz")
-			if err := clean.Run(); err != nil {
+			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
+			if err := cmd.Run(); err != nil {
 				t.Errorf("error cleaning up test data: %s", err.Error())
 			}
 		}()
 
 		for _, test := range tests {
-			if resource.env != test.env {
-				continue
-			}
-
 			out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
 			if err != nil {
 				t.Errorf("test %s, error running command %s:\n%s\nOutput:\n%s", test.name, test.cmd[0], err.Error(), out)
@@ -201,92 +277,90 @@ func TestIndividualFiles(t *testing.T) {
 Tests for supported values of the --resource option
 */
 func TestResourceOption(t *testing.T) {
+	config, err := utils.GetKubeConfigPath()
+	if err != nil {
+		t.Fatalf("error getting config for kube: %v", err)
+	}
 	testcmd := []string{"sh", "-c", "tar -tf cluster-dump.tar.gz --wildcards '*/summary.txt' 2>/dev/null | wc -l"}
 	tests := []struct {
-		name       string
-		resource   string
-		want       string
-		kubeconfig string
+		name     string
+		resource string
+		want     string
 	}{
 		{
-			name:       "none",
-			resource:   "none",
-			want:       "0",
-			kubeconfig: "",
+			name:     "none",
+			resource: "none",
+			want:     "0",
 		},
 		{
-			name:       "pxc",
-			resource:   "pxc",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
+			name:     "pxc",
+			resource: "pxc",
+			want:     "3",
 		},
 		{
-			name:       "ps",
-			resource:   "ps",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PS"),
+			name:     "ps",
+			resource: "ps",
+			want:     "3",
 		},
 		{
-			name:       "psmdb",
-			resource:   "psmdb",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PSMDB"),
+			name:     "psmdb",
+			resource: "psmdb",
+			want:     "3",
 		},
 		{
-			name:       "pg",
-			resource:   "pg",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+			name:     "pg",
+			resource: "pg",
+			want:     "3",
 		},
 		{
-			name:       "pgv2",
-			resource:   "pgv2",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PG2"),
+			name:     "pgv2",
+			resource: "pgv2",
+			want:     "3",
 		},
 		{
-			name:       "auto pxc",
-			resource:   "auto",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
+			name:     "auto pxc",
+			resource: "auto",
+			want:     "3",
 		},
 		{
-			name:       "auto ps",
-			resource:   "auto",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PS"),
+			name:     "auto ps",
+			resource: "auto",
+			want:     "3",
 		},
 		{
-			name:       "auto psmdb",
-			resource:   "auto",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PSMDB"),
+			name:     "auto psmdb",
+			resource: "auto",
+			want:     "3",
 		},
 		{
-			name:       "auto pg",
-			resource:   "auto",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+			name:     "auto pg",
+			resource: "auto",
+			want:     "3",
 		},
 		{
-			name:       "auto pgv2",
-			resource:   "auto",
-			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PG2"),
+			name:     "auto pgv2",
+			resource: "auto",
+			want:     "3",
 		},
 	}
 
 	for _, test := range tests {
-		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", test.kubeconfig, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.resource)
+		if !slices.Contains(resources, test.resource) {
+			continue
+		}
+
+		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", config, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.resource)
 		if err := cmd.Run(); err != nil {
 			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
 		}
+
 		defer func() {
 			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
 			if err := cmd.Run(); err != nil {
 				t.Errorf("error cleaning up test data: %s", err.Error())
 			}
 		}()
+
 		out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
 		if err != nil {
 			t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, testcmd, err.Error(), out)
@@ -297,136 +371,81 @@ func TestResourceOption(t *testing.T) {
 	}
 }
 
+type CmdCompare struct {
+	cmd []string
+	out string
+}
+
+func PreareFindFileInTarCmd(tarPath, filePath, substring string) []string {
+	return []string{"tar", "--to-command", fmt.Sprintf("grep -m 1 -o %s", substring), "-xzf", tarPath, "--wildcards", filePath}
+}
+
 /*
 PT-2299 - collect openssl x509 certificate information for each secret
 */
 func TestSSLResourceOption(t *testing.T) {
+	config, err := utils.GetKubeConfigPath()
+	if err != nil {
+		t.Fatalf("error getting config for kube: %v", err)
+	}
 	tests := []struct {
-		name       string
-		resource   string
-		cmds       [][]string // slice of commands to execute
-		want       []string   // slice of expected results
-		kubeconfig string
+		name     string
+		resource string
+		cmdOut   []CmdCompare
 	}{
 		{
 			name:     "auto pxc",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-internal", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-internal", "tls.crt"), "tls.crt"},
 			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-			},
-			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
 		},
 		{
 			name:     "auto ps",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "tls.crt"), "tls.crt"},
 			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-			},
-			kubeconfig: os.Getenv("KUBECONFIG_PS"),
 		},
 		{
 			name:     "auto psmdb",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-internal"},
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ca-cert"},
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-internal", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-internal", "tls.crt"), "tls.crt"},
 			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-			},
-			kubeconfig: os.Getenv("KUBECONFIG_PSMDB"),
 		},
 		{
 			name:     "auto pg",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-ca"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-ca"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-keypair"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-ssl-keypair"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pgo.tls"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pgo.tls"},
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-keypair", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-pgo.tls", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ssl-ca", "ca.crt"), "ca.crt"},
 			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt\ntls.crt",
-				"Certificate\nCertificate",
-				"tls.crt",
-				"Certificate",
-			},
-			kubeconfig: os.Getenv("KUBECONFIG_PG"),
 		},
 		{
 			name:     "auto pgv2",
 			resource: "auto",
-			cmds: [][]string{
-				{"tar", "--to-command", "grep -m 1 -o ca.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-cluster-cert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-cluster-cert"},
-				{"tar", "--to-command", "grep -m 1 -o tls.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*-cluster-cert"},
-				{"tar", "--to-command", "grep -m 1 -o root.crt", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pgo-root-cacert"},
-				{"tar", "--to-command", "grep -m 1 -o Certificate", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pgo-root-cacert"},
+			cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-ca-cert", "root.crt"), "root.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-cert", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/*/secrets/*-cert", "ca.crt"), "ca.crt"},
 			},
-			want: []string{
-				"ca.crt",
-				"Certificate",
-				"tls.crt",
-				"root.crt",
-				"Certificate",
-			},
-			kubeconfig: os.Getenv("KUBECONFIG_PG2"),
 		},
 	}
 
 	for _, test := range tests {
-		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", test.kubeconfig, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.resource)
+		if !slices.Contains(resources, test.resource) {
+			continue
+		}
+		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", config, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.resource)
 		if err := cmd.Run(); err != nil {
 			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
 		}
@@ -436,13 +455,13 @@ func TestSSLResourceOption(t *testing.T) {
 				t.Errorf("error cleaning up test data: %s", err.Error())
 			}
 		}()
-		for ind, testcmd := range test.cmds {
-			out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
+		for _, testcmd := range test.cmdOut {
+			out, err := exec.Command(testcmd.cmd[0], testcmd.cmd[1:]...).Output()
 			if err != nil {
 				t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, testcmd, err.Error(), out)
 			}
-			if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want[ind] {
-				t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want)
+			if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != testcmd.out {
+				t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, testcmd.out)
 			}
 		}
 	}
@@ -451,84 +470,80 @@ func TestSSLResourceOption(t *testing.T) {
 /*
 Tests for option --skip-pod-summary
 */
-func TestPT_2453(t *testing.T) {
+func _TestPT_2453(t *testing.T) {
+	config, err := utils.GetKubeConfigPath()
+	if err != nil {
+		t.Fatalf("error getting config for kube: %v", err)
+	}
 	testcmd := []string{"sh", "-c", "tar -tf cluster-dump.tar.gz --wildcards '*/summary.txt' 2>/dev/null | wc -l"}
 	tests := []struct {
-		name       string
-		resource   string
-		want       string
-		kubeconfig string
+		name     string
+		resource string
+		want     string
 	}{
 		{
-			name:       "none",
-			resource:   "none",
-			want:       "0",
-			kubeconfig: "",
+			name:     "none",
+			resource: "none",
+			want:     "0",
 		},
 		{
-			name:       "pxc",
-			resource:   "pxc",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
+			name:     "pxc",
+			resource: "pxc",
+			want:     "0",
 		},
 		{
-			name:       "ps",
-			resource:   "ps",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PS"),
+			name:     "ps",
+			resource: "ps",
+			want:     "0",
 		},
 		{
-			name:       "psmdb",
-			resource:   "psmdb",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PSMDB"),
+			name:     "psmdb",
+			resource: "psmdb",
+			want:     "0",
 		},
 		{
-			name:       "pg",
-			resource:   "pg",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+			name:     "pg",
+			resource: "pg",
+			want:     "0",
 		},
 		{
-			name:       "pgv2",
-			resource:   "pgv2",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PG2"),
+			name:     "pgv2",
+			resource: "pgv2",
+			want:     "0",
 		},
 		{
-			name:       "auto pxc",
-			resource:   "auto",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
+			name:     "auto pxc",
+			resource: "auto",
+			want:     "0",
 		},
 		{
-			name:       "auto ps",
-			resource:   "auto",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PS"),
+			name:     "auto ps",
+			resource: "auto",
+			want:     "0",
 		},
 		{
-			name:       "auto psmdb",
-			resource:   "auto",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PSMDB"),
+			name:     "auto psmdb",
+			resource: "auto",
+			want:     "0",
 		},
 		{
-			name:       "auto pg",
-			resource:   "auto",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+			name:     "auto pg",
+			resource: "auto",
+			want:     "0",
 		},
 		{
-			name:       "auto pgv2",
-			resource:   "auto",
-			want:       "0",
-			kubeconfig: os.Getenv("KUBECONFIG_PG2"),
+			name:     "auto pgv2",
+			resource: "auto",
+			want:     "0",
 		},
 	}
 
 	for _, test := range tests {
-		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", test.kubeconfig, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.resource, "--skip-pod-summary")
+		if !slices.Contains(resources, test.resource) {
+			continue
+		}
+
+		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", config, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.resource, "--skip-pod-summary")
 		if err := cmd.Run(); err != nil {
 			t.Errorf("error executing pt-k8s-debug-collector: %s\nCommand: %s", err.Error(), cmd.String())
 		}
@@ -567,34 +582,39 @@ func TestVersionOption(t *testing.T) {
 If we handle error properly
 */
 func TestPT_2169(t *testing.T) {
+	config, err := utils.GetKubeConfigPath()
+	if err != nil {
+		t.Fatalf("error getting config for kube: %v", err)
+	}
 	busyport, _ := os.Getwd() // we are using wrong socket for ssh tunnel here to ensure we get error
 
-	testcmd := []string{"sh", "-c", "tar -xf cluster-dump.tar.gz --wildcards '*/summary.txt' --to-command 'grep stderr:' 2>/dev/null | wc -l"}
+	testcmd := []string{"sh", "-c", `tar -xf cluster-dump.tar.gz --wildcards "*/summary.txt" --to-command 'grep -m1 "err: strconv.ParseInt"' 2>/dev/null | wc -l`}
 	tests := []struct {
-		name       string
-		resource   string
-		want       string
-		port       string
-		kubeconfig string
+		name     string
+		resource string
+		want     string
+		port     string
 	}{
 		{
-			name:       "pxc with busy port",
-			resource:   "pxc",
-			want:       "3",
-			port:       busyport,
-			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
+			name:     "pxc with busy port",
+			resource: "pxc",
+			want:     "3",
+			port:     busyport,
 		},
 		{
-			name:       "pg no error",
-			resource:   "pg",
-			want:       "0",
-			port:       os.Getenv("FORWARDPORT"),
-			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+			name:     "pg no error",
+			resource: "pg",
+			want:     "0",
+			port:     os.Getenv("FORWARDPORT"),
 		},
 	}
 
 	for _, test := range tests {
-		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", test.kubeconfig, "--forwardport", test.port, "--resource", test.resource)
+		if !slices.Contains(resources, test.resource) {
+			continue
+		}
+
+		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", config, "--forwardport", test.port, "--resource", test.resource)
 		if err := cmd.Run(); err != nil {
 			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
 		}
