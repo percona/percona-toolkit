@@ -122,5 +122,5 @@ func (d *Dumper) getSecretValueFromPod(ctx context.Context, pod corev1.Pod, secr
 			return string(secretValueBytes), nil
 		}
 	}
-	return "", fmt.Errorf("could not find any secret with name %s in Pod '%s/%s", secretName, pod.Namespace, pod.Name)
+	return "", fmt.Errorf("could not find any secret with name %s in Pod '%s/%s'", secretName, pod.Namespace, pod.Name)
 }

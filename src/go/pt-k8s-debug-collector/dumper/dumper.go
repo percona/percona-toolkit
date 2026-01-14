@@ -118,8 +118,6 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 		return nil, err
 	}
 
-	log.Printf("DBG: FOUND CR's: %v", d.crTypes)
-
 	d.sslSecrets = make(map[string]bool, 0)
 	for _, cr := range d.crTypes {
 		switch resourceType(cr) {
