@@ -2,68 +2,119 @@ package dumper
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
-
-	corev1 "k8s.io/api/core/v1"
+	"path"
 )
 
 func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType string) {
 	for _, indf := range d.individualFiles {
-		if indf.resourceName == crType {
-			for _, indPath := range indf.filepaths {
-				file, err := d.getFileFromPod(ctx, job.Pod, indPath, indf.containerName)
-				if err != nil {
-					log.Printf("error while getting individual files for %q pod and %q namespace to dump: %s, SKIPPING", job.Pod.Name, job.Pod.Namespace, err)
-					continue
-				}
+		if indf.resourceName != crType {
+			continue
+		}
 
-				if len(file) != 0 {
-					log.Printf("Writing individual file with path %s to dump", indPath)
-					path := d.PodIndividualFilesPath(job.Pod.Namespace, job.Pod.Name, indPath)
-					err = d.archive.WriteVirtualFile(path, file)
-					if err != nil {
-						log.Printf("error while writing individual files for %q pod and %q namespace to dump: %s", job.Pod.Name, job.Pod.Namespace, err)
-					}
-				}
+		var err error
+		for _, indPath := range indf.filepaths {
+			indPath, err = d.ParseEnvsFromSpec(ctx, job.Pod.Namespace, job.Pod.Name, indf.containerName, indPath)
+			if err != nil {
+				log.Printf("Skipping file %q. Failed to parse ENV's", indPath)
+				continue
+			}
+			if err := d.processSingleFile(ctx, job, indf.containerName, indPath); err != nil {
+				log.Printf("Skipping file %q: %v", indPath, err)
+			}
+		}
+
+		for _, dirPath := range indf.dirpaths {
+			dirPath, err = d.ParseEnvsFromSpec(ctx, job.Pod.Namespace, job.Pod.Name, indf.containerName, dirPath)
+			if err != nil {
+				log.Printf("Skipping directory %q. Failed to parse ENV's", dirPath)
+				continue
+			}
+
+			if err := d.processDir(ctx, job, indf.containerName, dirPath); err != nil {
+				log.Printf("Skipping directory %q: %v", dirPath, err)
 			}
 		}
 	}
 }
 
-func (d *Dumper) getFileFromPod(ctx context.Context, pod corev1.Pod, filepath, containerName string) ([]byte, error) {
-	if len(filepath) == 0 || len(containerName) == 0 {
-		return nil, errors.New("container name or filepath is not specified")
-	}
+func (d *Dumper) processSingleFile(
+	ctx context.Context,
+	job exportJob,
+	container, filePath string,
+) error {
 
-	cmd := []string{"tar", "cf", "-", filepath}
-	stdout, stderr, err := d.executeInPod(ctx, cmd, pod, containerName, nil)
+	tr, rc, stderr, err := d.tarFromPod(ctx, job.Pod, container, filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute command in Pod: stderr: %s: %w", &stderr, err)
+		return fmt.Errorf("exec tar: %w (stderr: %s)", err, stderr.String())
 	}
+	defer rc.Close()
 
-	tarReader := tar.NewReader(&stdout)
-	var fileContentBuffer bytes.Buffer
 	for {
-		header, err := tarReader.Next()
+		hdr, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("error reading tar header: %w", err)
+			return err
 		}
 
-		if header.Typeflag == tar.TypeReg && header.Name == filepath {
-			_, copyErr := io.Copy(&fileContentBuffer, tarReader)
-			if copyErr != nil {
-				return nil, fmt.Errorf("error copying file content: %w", copyErr)
-			}
+		if hdr.Typeflag != tar.TypeReg {
+			continue
 		}
+
+		if path.Base(hdr.Name) != path.Base(filePath) {
+			continue
+		}
+
+		dst := d.PodIndividualFilesPath(
+			job.Pod.Namespace,
+			job.Pod.Name,
+			path.Base(filePath),
+		)
+
+		return d.archive.WriteFile(dst, tr, hdr.Size)
 	}
 
-	return fileContentBuffer.Bytes(), nil
+	return fmt.Errorf("file %q not found", filePath)
+}
+
+func (d *Dumper) processDir(
+	ctx context.Context,
+	job exportJob,
+	container, dir string,
+) error {
+
+	tr, rc, _, err := d.tarFromPod(ctx, job.Pod, container, "-C", dir, ".")
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		dst := d.PodIndividualFilesPath(
+			job.Pod.Namespace,
+			job.Pod.Name,
+			path.Base(hdr.Name),
+		)
+
+		if err := d.archive.WriteFile(dst, tr, hdr.Size); err != nil {
+			return err
+		}
+	}
 }
