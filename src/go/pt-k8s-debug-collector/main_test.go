@@ -380,6 +380,60 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			},
 		},
 		{
+			namespace: "pgv2",
+			name:      "pgv2_pgbackrest_log_list",
+			cmd:       []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/pgbackrest_log/*"},
+			want:      []string{"db-archive-push-async.log", "db-stanza-create.log"},
+			preprocessor: func(in string) string {
+				required := map[string]struct{}{
+					"db-archive-push-async.log": {},
+					"db-stanza-create.log":      {},
+				}
+
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					b := path.Base(f)
+					if _, ok := required[b]; !ok {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
+						result = append(result, b)
+					}
+				}
+				slices.Sort(result)
+				return strings.Join(result, "\n")
+			},
+		},
+		{
+			namespace: "pgv2",
+			name:      "pgv2_tools_log_list",
+			cmd:       []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/*"},
+			want:      []string{"patronictl-list.log", "pgbackrest-info.log"},
+			preprocessor: func(in string) string {
+				required := map[string]struct{}{
+					"patronictl-list.log": {},
+					"pgbackrest-info.log": {},
+				}
+
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					b := path.Base(f)
+					if _, ok := required[b]; !ok {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
+						result = append(result, b)
+					}
+				}
+				slices.Sort(result)
+				return strings.Join(result, "\n")
+			},
+		},
+		{
 			namespace: "pxc",
 			// If pod logs are exported as one file per container
 			name: "pxc_container_logs_split_by_container",
