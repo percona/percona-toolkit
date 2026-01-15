@@ -33,18 +33,15 @@ This test requires:
 */
 var (
 	namespaces = []string{
-		//"pxc", "ps", "psmdb", "pg", "pgv2",
-		"pg",
+		"pxc", "ps", "psmdb", "pg", "pgv2",
 	}
 
 	resources = []string{
-		//"pxc", "ps", "psmdb", "pg", "pgv2", "auto", "none",
-		"pg", "none", "auto",
+		"pxc", "ps", "psmdb", "pg", "pgv2", "auto", "none",
 	}
 
 	deployments = []string{
-		//"k8s-pxc:1.18.0", "k8s-ps:1.0.0", "k8s-psmdb:1.21.1", "k8s-pg:1.6.0", "k8s-pg:2.8.0",
-		"k8s-pg:1.6.0",
+		"k8s-pxc:1.18.0", "k8s-ps:1.0.0", "k8s-psmdb:1.21.1", "k8s-pg:1.6.0", "k8s-pg:2.8.0",
 	}
 )
 
@@ -137,7 +134,7 @@ func TestMain(m *testing.M) {
 	log.Println("START")
 	args := []string{"deploy"}
 	args = append(args, deployments...)
-	//utils.DeployAnyDbVer(ctx, args)
+	utils.DeployAnyDbVer(ctx, args)
 
 	config, err := utils.GetKubeConfigPath()
 	if err != nil {
@@ -167,10 +164,10 @@ func TestMain(m *testing.M) {
 	if exitCode == 0 {
 		log.Println("Tests finished succesfully, destroying deployments")
 		// Comment this if you don't want to destroy deployments after tests
-		// err := utils.CleanUpAnyDbVer(ctx)
-		// if err != nil {
-		// 	log.Fatalf("there was an error when destroying deloyments: %v", err)
-		// }
+		err := utils.CleanUpAnyDbVer(ctx)
+		if err != nil {
+			log.Fatalf("there was an error when destroying deloyments: %v", err)
+		}
 	}
 	os.Exit(exitCode)
 }
@@ -471,7 +468,7 @@ func TestSSLResourceOption(t *testing.T) {
 /*
 Tests for option --skip-pod-summary
 */
-func _TestPT_2453(t *testing.T) {
+func TestPT_2453(t *testing.T) {
 	config, err := utils.GetKubeConfigPath()
 	if err != nil {
 		t.Fatalf("error getting config for kube: %v", err)
