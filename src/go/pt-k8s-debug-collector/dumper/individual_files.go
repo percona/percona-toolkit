@@ -22,20 +22,22 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 				log.Printf("Skipping file %q. Failed to parse ENV's", indPath)
 				continue
 			}
-			if err := d.processSingleFile(ctx, job, indf.containerName, indPath); err != nil {
+			if err := d.processSingleFile(ctx, job, indf.containerName, "", indPath); err != nil {
 				log.Printf("Skipping file %q: %v", indPath, err)
 			}
 		}
 
-		for _, dirPath := range indf.dirpaths {
-			dirPath, err = d.ParseEnvsFromSpec(ctx, job.Pod.Namespace, job.Pod.Name, indf.containerName, dirPath)
-			if err != nil {
-				log.Printf("Skipping directory %q. Failed to parse ENV's", dirPath)
-				continue
-			}
+		for tarFolder, dirPaths := range indf.dirpaths {
+			for _, dirPath := range dirPaths {
+				dirPath, err = d.ParseEnvsFromSpec(ctx, job.Pod.Namespace, job.Pod.Name, indf.containerName, dirPath)
+				if err != nil {
+					log.Printf("Skipping directory %q. Failed to parse ENV's", dirPath)
+					continue
+				}
 
-			if err := d.processDir(ctx, job, indf.containerName, dirPath); err != nil {
-				log.Printf("Skipping directory %q: %v", dirPath, err)
+				if err := d.processDir(ctx, job, indf.containerName, tarFolder, dirPath); err != nil {
+					log.Printf("Skipping directory %q: %v", dirPath, err)
+				}
 			}
 		}
 	}
@@ -44,7 +46,7 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 func (d *Dumper) processSingleFile(
 	ctx context.Context,
 	job exportJob,
-	container, filePath string,
+	container, tarFolder, filePath string,
 ) error {
 
 	tr, rc, stderr, err := d.tarFromPod(ctx, job.Pod, container, filePath)
@@ -73,7 +75,7 @@ func (d *Dumper) processSingleFile(
 		dst := d.PodIndividualFilesPath(
 			job.Pod.Namespace,
 			job.Pod.Name,
-			path.Base(filePath),
+			path.Join(tarFolder, path.Base(filePath)),
 		)
 
 		return d.archive.WriteFile(dst, tr, hdr.Size)
@@ -85,7 +87,7 @@ func (d *Dumper) processSingleFile(
 func (d *Dumper) processDir(
 	ctx context.Context,
 	job exportJob,
-	container, dir string,
+	container, tarFolder, dir string,
 ) error {
 
 	tr, rc, _, err := d.tarFromPod(ctx, job.Pod, container, "-C", dir, ".")
@@ -110,7 +112,7 @@ func (d *Dumper) processDir(
 		dst := d.PodIndividualFilesPath(
 			job.Pod.Namespace,
 			job.Pod.Name,
-			path.Base(hdr.Name),
+			path.Join(tarFolder, path.Base(hdr.Name)),
 		)
 
 		if err := d.archive.WriteFile(dst, tr, hdr.Size); err != nil {

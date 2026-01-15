@@ -11,8 +11,8 @@ import (
 var resourcesRe = regexp.MustCompile(`(\w+\.(\w+).percona\.com)`)
 
 func (d *Dumper) addPg1() error {
-	dirpaths := []string{
-		"$PGBACKREST_DB_PATH/pg_log",
+	dirpaths := map[string][]string{
+		"pg_log": {"$PGBACKREST_DB_PATH/pg_log"},
 	}
 
 	d.individualFiles = append(d.individualFiles, individualFile{

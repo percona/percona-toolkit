@@ -229,7 +229,7 @@ func TestIndividualFiles(t *testing.T) {
 			// if the tool collects required pg log files
 			name:         "pg_logs_list",
 			resource:     "pg",
-			cmd:          []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/*"},
+			cmd:          []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/pg_log/*"},
 			preprocessor: uniqueBasenames,
 			match: RegexMatch{
 				Pattern: regexp.MustCompile(`^postgresql-[A-Za-z]{3}\.log$`),
