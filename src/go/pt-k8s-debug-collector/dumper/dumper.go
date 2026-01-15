@@ -41,7 +41,7 @@ type Dumper struct {
 	skipPodSummary bool
 
 	sslSecrets      map[string]bool
-	individualFiles []individualFile
+	dumpFiles       []dumpFile
 	clientSet       *kubernetes.Clientset
 	dynamicClient   *dynamic.DynamicClient
 	discoveryClient *discovery.DiscoveryClient
@@ -49,12 +49,18 @@ type Dumper struct {
 	restConfig      *rest.Config
 }
 
-// individualFile struct is used to dump the necessary files from the containers
-type individualFile struct {
+type toolLog struct {
+	filename string
+	args     []string
+}
+
+// dumpFile struct is used to dump the necessary files from the pod, or files by executing tool command inside pod
+type dumpFile struct {
 	resourceName  string
 	containerName string
 	filepaths     []string
 	dirpaths      map[string][]string
+	toolCmds      map[string][]toolLog
 }
 
 // resourceMap struct is used to dump the resources from namespace scope or cluster scope

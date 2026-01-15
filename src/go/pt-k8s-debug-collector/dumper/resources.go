@@ -15,7 +15,7 @@ func (d *Dumper) addPg1() error {
 		"pg_log": {"$PGBACKREST_DB_PATH/pg_log"},
 	}
 
-	d.individualFiles = append(d.individualFiles, individualFile{
+	d.dumpFiles = append(d.dumpFiles, dumpFile{
 		resourceName:  "pg",
 		containerName: "database",
 		dirpaths:      dirpaths,
@@ -24,6 +24,30 @@ func (d *Dumper) addPg1() error {
 }
 
 func (d *Dumper) addPg2() error {
+	dirpaths := map[string][]string{
+		"pg_log":         {"$PGDATA/log"},
+		"pgbackrest_log": {"pgdata/pgbackrest/log"},
+	}
+
+	tools := map[string][]toolLog{
+		"": {
+			{
+				filename: "patronictl-list.log",
+				args:     []string{"patronictl", "list"},
+			},
+			{
+				filename: "pgbackrest-info.log",
+				args:     []string{"pgbackrest", "info"},
+			},
+		},
+	}
+
+	d.dumpFiles = append(d.dumpFiles, dumpFile{
+		resourceName:  "pgv2",
+		containerName: "database",
+		dirpaths:      dirpaths,
+		toolCmds:      tools,
+	})
 	return nil
 }
 
@@ -39,7 +63,7 @@ func (d *Dumper) addPxc() error {
 		"var/lib/mysql/auto.cnf",
 	}
 
-	d.individualFiles = append(d.individualFiles, individualFile{
+	d.dumpFiles = append(d.dumpFiles, dumpFile{
 		resourceName:  "pxc",
 		containerName: "logs",
 		filepaths:     filepaths,

@@ -70,6 +70,18 @@ type Matcher interface {
 	Match(t *testing.T, got string)
 }
 
+type AllMatch struct {
+	Want []string
+}
+
+func (m AllMatch) Match(t *testing.T, got string) {
+	for _, w := range m.Want {
+		if !strings.Contains(got, w) {
+			t.Fatalf("output mismatch\nGot:\n%s\nWant:\n%s", got, w)
+		}
+	}
+}
+
 type ExactMatch struct {
 	Want []string
 }
@@ -230,6 +242,36 @@ func TestIndividualFiles(t *testing.T) {
 			preprocessor: uniqueBasenames,
 			match: RegexMatch{
 				Pattern: regexp.MustCompile(`^postgresql-[A-Za-z]{3}\.log$`),
+			},
+		},
+		{
+			// if the tool collects required pgv2 log files
+			name:         "pgv2_logs_list",
+			resource:     "pgv2",
+			cmd:          []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/pg_log/*"},
+			preprocessor: uniqueBasenames,
+			match: RegexMatch{
+				Pattern: regexp.MustCompile(`^postgresql-[A-Za-z]{3}\.log$`),
+			},
+		},
+		{
+			// if the tool collects required pgv2 log files
+			name:         "pgv2_pgbackrest_log_list",
+			resource:     "pgv2",
+			cmd:          []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/pgbackrest_log/*"},
+			preprocessor: uniqueBasenames,
+			match: AllMatch{
+				Want: []string{"db-archive-push-async.log", "db-stanza-create.log"},
+			},
+		},
+		{
+			// if the tool collects required pgv2 tool log files
+			name:         "pgv2_tools_log_list",
+			resource:     "pgv2",
+			cmd:          []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/*"},
+			preprocessor: uniqueBasenames,
+			match: AllMatch{
+				Want: []string{"patronictl-list.log", "pgbackrest-info.log"},
 			},
 		},
 	}
