@@ -5,7 +5,7 @@
 # notices and disclaimers.
 
 use strict;
-#use warnings FATAL => 'all';
+use warnings FATAL => 'all';
 
 # This tool is "fat-packed": most of its dependent modules are embedded
 # in this file.  Setting %INC to this file for each module makes Perl aware
@@ -1247,7 +1247,6 @@ if ( PTDEBUG ) {
 # End OptionParser package
 # ###########################################################################
 
-
 # ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
@@ -1259,7 +1258,10 @@ if ( PTDEBUG ) {
 package pt_eu_stack_resolver;
 
 use strict;
-#use warnings FATAL => 'all';
+use warnings FATAL => 'all';
+# We have to disable warnings here because Perl prints
+# warnings for numbers greater than 2^32.
+no warnings 'portable';
 
 use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
@@ -1370,7 +1372,7 @@ sub load_mapping {
       push @$arr, { S => hex($1), E => hex($2), B => hex($3), F => $4 };
    }
    close $FH;
-   sort { $a->{S} <=> $b->{S} } @$arr;
+   @$arr = sort { $a->{S} <=> $b->{S} } @$arr;
    return $arr;
 }
 
@@ -1414,7 +1416,7 @@ and resolve symbols.
 
 Usage: pt-eustack-resolver PID
 
-pt-eustack-resolver collects stack traces for the process with specified C<pid>.
+pt-eustack-resolver collects stack traces for the process with specified C<PID>.
 
 =head1 RISKS
 
@@ -1462,7 +1464,6 @@ Show help and exit.
 =item --version
 
 Show version and exit.
-
 
 =head1 ATTENTION
 
