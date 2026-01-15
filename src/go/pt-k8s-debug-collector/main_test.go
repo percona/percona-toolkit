@@ -243,9 +243,6 @@ func TestIndividualFiles(t *testing.T) {
 	}
 
 	for resource := range requestedClusterReports {
-		if resource != "pg" {
-			continue
-		}
 		cmd := exec.Command("../../../bin/pt-k8s-debug-collector",
 			"--kubeconfig", config,
 			"--forwardport", os.Getenv("FORWARDPORT"),
@@ -262,6 +259,10 @@ func TestIndividualFiles(t *testing.T) {
 		}()
 
 		for _, test := range tests {
+			if !slices.Contains(resources, test.resource) {
+				continue
+			}
+
 			out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
 			if err != nil {
 				t.Errorf("test %s, error running command %s:\n%s\nOutput:\n%s", test.name, test.cmd[0], err.Error(), out)
