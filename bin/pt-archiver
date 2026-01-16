@@ -7516,7 +7516,11 @@ sub escape {
    $optionally_enclosed_by ||= '';
 
    return join($fields_separated_by, map {
-      s/([\t\n\\])/\\$1/g if defined $_;  # Escape tabs etc
+      if (defined $_){
+         s/\\/\\\\/g;
+         s/\n/\\n/g;
+         s/\t/\\t/g;
+      }
       my $s = defined $_ ? $_ : '\N';             # NULL = \N
       # var & ~var will return 0 only for numbers
       if ($s !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"' && $s ne '\N') {
