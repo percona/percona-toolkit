@@ -318,7 +318,6 @@ func (d *Dumper) discoverResources() (*resourceMap, error) {
 		"apiaccesses":       true, // Deprecated
 		"componentstatuses": true, // Deprecated
 		"endpoints":         true, // Deprecated
-		"events":            true, // Too noisy
 		"pods":              true, // Handled by workers
 	}
 
