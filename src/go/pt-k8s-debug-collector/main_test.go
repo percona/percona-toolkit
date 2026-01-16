@@ -405,7 +405,7 @@ func TestSSLResourceOption(t *testing.T) {
 /*
 Tests for option --skip-pod-summary
 */
-func _TestPT_2453(t *testing.T) {
+func TestPT_2453(t *testing.T) {
 	config, err := utils.GetKubeConfigPath()
 	if err != nil {
 		t.Fatalf("error getting config for kube: %v", err)
