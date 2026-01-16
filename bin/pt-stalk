@@ -1847,6 +1847,11 @@ if    [ "${0##*/}" = "$TOOL" ] \
    MYSQL_ARGS="$(mysql_options)"
    EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
+   # Test if MySQL password provided on command line; warn if so.
+   # Matches: --password=VALUE or -pVALUE (short form with no space)
+   if [ -n "$OPT_PASSWORD" ] || $(echo "$EXT_ARGV" | grep -qP "(--password=.+?)|(^|\s)-p[^\s-]+(\s|$)"); then
+      log 'Providing MySQL password on the command line interface is insecure. It will be visible in the operating system process list and stored in the collected output of the ps command. Consider using a configuration file or the --ask-pass option instead.';
+   fi
 
    if [ ! "$OPT_SYSTEM_ONLY" ]; then
       # Check that mysql and mysqladmin are in PATH.  If not, we're
