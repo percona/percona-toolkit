@@ -10655,6 +10655,16 @@ sub main {
       );
 
       if ( $alter_fk_method eq 'drop_swap' ) {
+         if ( !$o->get('force-drop-swap') ) {
+            my $msg = "Cannot use rebuild_constraints method because child tables are too large.\n"
+                    . "The tool would need to use the drop_swap method, but this requires\n"
+                    . "--force-drop-swap to acknowledge the risks.\n\n"
+                    . "The drop_swap method is risky: it disables foreign key checks and drops\n"
+                    . "the original table before renaming the new table into place. During this\n"
+                    . "brief window, the table does not exist and queries will fail.\n"
+                    . "If the rename fails, data loss may occur.";
+            _die($msg, INVALID_PARAMETERS);
+         }
          $o->set('swap-tables',    0);
          $o->set('drop-old-table', 0);
       }
@@ -13347,6 +13357,21 @@ This option bypasses confirmation in case of using alter-foreign-keys-method = n
 This option also allows to use option --where without options --no-drop-new-table and --no-swap-tables.
 
 This option also allows to bypass the safety check that prevents the tool from running on replica that is replicating from a source with binary log format ROW or MIXED.
+
+=item --force-drop-swap
+
+This option is required when C<--alter-foreign-keys-method=auto> determines
+that the C<drop_swap> method is necessary (because child tables are too large
+for C<rebuild_constraints>).
+
+The C<drop_swap> method is risky: it disables foreign key checks and drops the
+original table before renaming the new table into place. During this brief
+window, the table does not exist and queries will fail. If the rename fails,
+data loss may occur.
+
+If this flag is not specified and auto mode would choose C<drop_swap>,
+the tool will exit with an error instead of proceeding. This flag is not
+required when explicitly using C<--alter-foreign-keys-method=drop_swap>.
 
 =item --help
 
