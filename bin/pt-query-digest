@@ -9447,8 +9447,8 @@ sub set_history_options {
 
    my $sql = "REPLACE INTO $args{table}("
       . join(', ',
-         map { Quoter->quote($_) } ('checksum', 'sample', @cols))
-      . ') VALUES (?, ?'
+         map { Quoter->quote($_) } ('checksum', 'username', 'sample', @cols))
+      . ') VALUES (?, ?, ?'
       . (@cols ? ', ' : '')  # issue 1265
       . join(', ', map {
          $_ eq 'ts_min' || $_ eq 'ts_max'
@@ -9471,6 +9471,7 @@ sub set_review_history {
    }
    $self->history_sth->execute(
       make_checksum($id),
+      $data{'user'}{'min'},
       $sample,
       map { $data{$_->[0]}->{$_->[1]} } @{$self->history_metrics});
 }
@@ -16023,6 +16024,7 @@ MAGIC_create_history_table
 
  CREATE TABLE IF NOT EXISTS query_history (
    checksum             CHAR(32) NOT NULL,
+   username             VARCHAR(64),
    sample               TEXT NOT NULL,
    ts_min               DATETIME,
    ts_max               DATETIME,
