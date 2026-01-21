@@ -6128,7 +6128,6 @@ sub main {
    }
 
    my $dp = $o->DSNParser;
-   $dp->prop('dbidriver', $o->get('dbi-driver'));
    $dp->prop('set-vars', $o->set_vars());
 
    if ( !$o->get('help') ) {
@@ -6564,15 +6563,13 @@ sub main {
       };
    }
    else { # --monitor or --check
-      my $dbi_driver = lc $o->get('dbi-driver');
-
       # UNIX_TIMESTAMP(UTC_TIMESTAMP()) instead of UNIX_TIMESTAMP() alone,
       # so we make sure that we aren't being fooled by a timezone.
       # UNIX_TIMESTAMP(ts) replaces unix_timestamp($ts) -- MySQL is the
       # authority here, so let it calculate everything.
       $heartbeat_sql
          = "SELECT " . ($utc ? 'UNIX_TIMESTAMP(ts)' : 'ts')
-         . ($dbi_driver eq 'mysql' ? '/*!50038, @@hostname AS host*/' : '')
+         . '/*!50038, @@hostname AS host*/'
          . ($id ? "" : ", server_id")
          . " FROM $db_tbl "
          . "WHERE $pk_col='$pk_val' "
@@ -6953,7 +6950,7 @@ pt-heartbeat - Monitor MySQL replication delay.
 
 Usage: pt-heartbeat [OPTIONS] [DSN] --update|--monitor|--check|--stop
 
-pt-heartbeat measures replication lag on a MySQL or PostgreSQL server.  You can
+pt-heartbeat measures replication lag on a MySQL server.  You can
 use it to update a replication source or monitor a replica.  If possible, MySQL
 connection options are read from your .my.cnf file.
 
@@ -6964,8 +6961,6 @@ Start daemonized process to update test.heartbeat table on replication source:
 Monitor replication lag on replica:
 
   pt-heartbeat -D test --monitor -h replica-server
-
-  pt-heartbeat -D test --monitor -h replica-server --dbi-driver Pg
 
 Check replica lag once and exit (using optional DSN to specify replica host):
 
@@ -6991,7 +6986,7 @@ server.  Before using this tool, please:
 
 =head1 DESCRIPTION
 
-pt-heartbeat is a two-part MySQL and PostgreSQL replication delay monitoring
+pt-heartbeat is a two-part MySQL replication delay monitoring
 system that measures delay by looking at actual replicated data.  This
 avoids reliance on the replication mechanism itself, which is unreliable.  (For
 example, C<SHOW REPLICA STATUS> on MySQL).
@@ -7037,9 +7032,6 @@ zero seconds of delay.
 
 pt-heartbeat will try to reconnect if the connection has an error, but will
 not retry if it can't get a connection when it first starts.
-
-The L<"--dbi-driver"> option lets you use pt-heartbeat to monitor PostgreSQL
-as well.  It is reported to work well with Slony-1 replication.
 
 =head1 MULTI-REPLICA HIERARCHY
 
@@ -7210,12 +7202,6 @@ Fork to the background and detach from the shell.  POSIX operating systems only.
 short form: -D; type: string
 
 The database to use for the connection.
-
-=item --dbi-driver
-
-default: mysql; type: string
-
-Specify a driver for the connection; C<mysql> and C<Pg> are supported.
 
 =item --defaults-file
 
