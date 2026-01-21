@@ -215,7 +215,7 @@ func (d *Dumper) DumpCluster() error {
 	return nil
 }
 
-const CONURENT_EXPORT_WORKERS = 10
+const CONURENT_EXPORT_WORKERS = 5
 
 func (d *Dumper) export(ctx context.Context) error {
 	resources, err := d.discoverResources()
@@ -347,10 +347,17 @@ func (d *Dumper) discoverResources() (*resourceMap, error) {
 	rm := &resourceMap{}
 
 	ignoredResources := map[string]bool{
-		"apiaccesses":       true, // Deprecated
-		"componentstatuses": true, // Deprecated
-		"endpoints":         true, // Deprecated
-		"pods":              true, // Handled by workers
+		"apiaccesses":               true, // Deprecated
+		"componentstatuses":         true, // Deprecated
+		"endpoints":                 true, // Deprecated
+		"pods":                      true, // Handled by workers
+		"subjectaccessreviews":      true, // Not allowed
+		"selfsubjectrulesreviews":   true, // Not allowed
+		"selfsubjectaccessreviews":  true, // Not allowed
+		"selfsubjectreviews":        true, // Not allowed
+		"localsubjectaccessreviews": true, // Not allowed
+		"bindings":                  true, // Not allowed
+		"tokenreviews":              true, // Not allowed
 	}
 
 	for _, list := range lists {
