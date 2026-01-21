@@ -15,9 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var (
-	TargetSSLKeys = []string{"tls.crt", "ca.crt", "tls-ca.crt", "root.crt"}
-)
+var TargetSSLKeys = []string{"tls.crt", "ca.crt", "tls-ca.crt", "root.crt"}
 
 func (d *Dumper) dumpSecrets(ctx context.Context, namespace string) error {
 	secretList, err := d.clientSet.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
@@ -30,7 +28,7 @@ func (d *Dumper) dumpSecrets(ctx context.Context, namespace string) error {
 		if secret.Type == corev1.SecretTypeTLS || secret.Type == corev1.SecretTypeOpaque {
 			result, err := decodeCertToBytes(secret)
 			if err != nil {
-				log.Printf("Error decoding cert %s: %v", secretName, err)
+				log.Printf("error decoding cert %s: %v", secretName, err)
 			}
 
 			if len(result) != 0 {

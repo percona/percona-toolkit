@@ -59,7 +59,7 @@ func (d *Dumper) autoCustomResource() ([]string, error) {
 		for _, version := range group.Versions {
 			resourceList, err := d.clientSet.DiscoveryClient.ServerResourcesForGroupVersion(version.GroupVersion)
 			if err != nil {
-				log.Printf("Warning: Could not get resources for GroupVersion %s: %v", version.GroupVersion, err)
+				log.Printf("warning: Could not get resources for GroupVersion %s: %v", version.GroupVersion, err)
 				continue
 			}
 			for _, resource := range resourceList.APIResources {

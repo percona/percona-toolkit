@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"go.yaml.in/yaml/v2"
+	"golang.org/x/sync/semaphore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -156,7 +157,7 @@ func (d *Dumper) DumpCluster() error {
 	var err error
 	d.archive, err = NewTarWriter(d.location + ".tar.gz")
 	if err != nil {
-		return fmt.Errorf("Failed to create archive: %v", err)
+		return fmt.Errorf("failed to create archive: %v", err)
 	}
 	defer d.archive.Close()
 
@@ -169,17 +170,17 @@ func (d *Dumper) DumpCluster() error {
 
 	defer d.logger.DumpToArchive(d.archive, d.DumperLogPath("dumper"))
 
-	log.Println("Initializing Pod Cache")
+	log.Println("initializing pod cache")
 	factory := informers.NewSharedInformerFactory(d.clientSet, 10*time.Minute)
 	podInformer := factory.Core().V1().Pods().Informer()
 	factory.Start(ctx.Done())
 
-	log.Println("Discovering and Exporting API Resources")
+	log.Println("discovering and exporting API resources")
 	if err := d.export(ctx); err != nil {
-		log.Printf("Error during resource export: %v", err)
+		log.Printf("error during resource export: %v", err)
 	}
 
-	log.Println("Starting Workers for Pod Logs/Files...")
+	log.Println("starting workers for pod logs/files...")
 	jobsChannel := make(chan exportJob, 100)
 	var wg sync.WaitGroup
 
@@ -191,18 +192,18 @@ func (d *Dumper) DumpCluster() error {
 		}(i)
 	}
 
-	log.Println("Waiting for Pod Cache to fully sync...")
+	log.Println("waiting for pod cache to fully sync...")
 	if !cache.WaitForCacheSync(ctx.Done(), podInformer.HasSynced) {
-		return fmt.Errorf("Timed out waiting for caches to sync.")
+		return fmt.Errorf("timed out waiting for caches to sync.")
 	}
 
 	podLister := factory.Core().V1().Pods().Lister()
 	allPods, err := podLister.List(labels.Everything())
 	if err != nil {
-		return fmt.Errorf("Failed to list all pods: %v", err)
+		return fmt.Errorf("failed to list all pods: %v", err)
 	}
 
-	log.Printf("Dispatching %d pods to workers...", len(allPods))
+	log.Printf("dispatching %d pods to workers...", len(allPods))
 	for _, pod := range allPods {
 		jobsChannel <- exportJob{Pod: *pod}
 	}
@@ -210,9 +211,11 @@ func (d *Dumper) DumpCluster() error {
 	close(jobsChannel)
 	wg.Wait()
 
-	log.Printf("Export Complete. Data saved to %s", d.location)
+	log.Printf("export complete\ndata saved to %s", d.location)
 	return nil
 }
+
+const CONURENT_EXPORT_WORKERS = 10
 
 func (d *Dumper) export(ctx context.Context) error {
 	resources, err := d.discoverResources()
@@ -221,14 +224,18 @@ func (d *Dumper) export(ctx context.Context) error {
 	}
 
 	var wg sync.WaitGroup
-	semCluster := make(chan struct{}, 5)
+	semCluster := semaphore.NewWeighted(CONURENT_EXPORT_WORKERS)
 
 	for _, gvr := range resources.ClusterScoped {
 		wg.Add(1)
 		go func(r schema.GroupVersionResource) {
 			defer wg.Done()
-			semCluster <- struct{}{}
-			defer func() { <-semCluster }()
+
+			if err := semCluster.Acquire(ctx, 1); err != nil {
+				log.Printf("semaphore acquire failed: %s", err)
+				return
+			}
+			defer semCluster.Release(1)
 
 			err := d.exportGeneric(ctx, r, "")
 			if err != nil {
@@ -243,29 +250,50 @@ func (d *Dumper) export(ctx context.Context) error {
 		return err
 	}
 
-	semNS := make(chan struct{}, 5)
+	semNS := semaphore.NewWeighted(CONURENT_EXPORT_WORKERS)
 
 	for _, ns := range namespaces.Items {
 		if d.namespace != "" && d.namespace != ns.Name {
 			continue
 		}
+
 		wg.Add(1)
 		go func(namespace string) {
 			defer wg.Done()
-			semNS <- struct{}{}
-			defer func() { <-semNS }()
+
+			if err := semNS.Acquire(ctx, 1); err != nil {
+				log.Printf("semaphore acquire failed: %s", err)
+				return
+			}
+			defer semNS.Release(1)
 
 			if err := d.dumpSecrets(ctx, namespace); err != nil {
-				log.Printf("Error dumping secrets for %s: %v", namespace, err)
-			}
-
-			for _, gvr := range resources.NamespaceScoped {
-				if gvr.Resource == "secrets" {
-					continue
-				}
-				d.exportGeneric(ctx, gvr, namespace)
+				log.Printf("error dumping secrets for namespace %q: %s", namespace, err)
 			}
 		}(ns.Name)
+
+		for _, gvr := range resources.NamespaceScoped {
+			if gvr.Resource == "secrets" {
+				continue
+			}
+
+			wg.Add(1)
+			go func(namespace string, gvr schema.GroupVersionResource) {
+				defer wg.Done()
+
+				if err := semNS.Acquire(ctx, 1); err != nil {
+					log.Printf("semaphore acquire failed: %s", err)
+					return
+				}
+				defer semNS.Release(1)
+
+				err := d.exportGeneric(ctx, gvr, namespace)
+				if err != nil {
+					log.Printf("failed to export resource %q for namespace %q: %s", gvr.Resource, namespace, err)
+					return
+				}
+			}(ns.Name, gvr)
+		}
 	}
 
 	wg.Wait()
@@ -281,13 +309,17 @@ func (d *Dumper) exportGeneric(ctx context.Context, gvr schema.GroupVersionResou
 	}
 
 	list, err := intf.List(ctx, metav1.ListOptions{})
-	if err != nil || len(list.Items) == 0 {
+	if err != nil {
 		return err
+	}
+
+	if len(list.Items) == 0 {
+		return nil
 	}
 
 	for i := range list.Items {
 		obj := list.Items[i].Object
-		if meta, ok := obj["metadata"].(map[string]interface{}); ok {
+		if meta, ok := obj["metadata"].(map[string]any); ok {
 			delete(meta, "managedFields")
 			delete(meta, "resourceVersion")
 			delete(meta, "uid")
@@ -322,7 +354,12 @@ func (d *Dumper) discoverResources() (*resourceMap, error) {
 	}
 
 	for _, list := range lists {
-		gv, _ := schema.ParseGroupVersion(list.GroupVersion)
+		gv, err := schema.ParseGroupVersion(list.GroupVersion)
+		if err != nil {
+			log.Printf("failed to parse group %q version, err: %s", list.GroupVersion, err)
+			continue
+		}
+
 		for _, resource := range list.APIResources {
 			if strings.Contains(resource.Name, "/") {
 				continue
@@ -360,11 +397,11 @@ func (d *Dumper) resilientWorker(id int, ctx context.Context, cancel context.Can
 			err := d.exportPodLogs(ctx, job.Pod)
 			if err != nil {
 				if isSpaceError(err) {
-					log.Printf("Worker %d stopping app: %v", id, err)
+					log.Printf("worker %d stopping app: %v", id, err)
 					cancel()
 					return
 				}
-				report := fmt.Sprintf("Error exporting logs: %v", err)
+				report := fmt.Sprintf("error exporting logs: %v", err)
 				errPath := filepath.Join(d.location, job.Pod.Namespace, job.Pod.Name)
 				d.archive.WriteVirtualFile(errPath, []byte(report))
 			}

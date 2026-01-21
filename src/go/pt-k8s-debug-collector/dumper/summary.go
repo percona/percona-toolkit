@@ -19,10 +19,10 @@ func (d *Dumper) getSummary(ctx context.Context, job exportJob, crType string, l
 			log.Printf("error while creating summary for %q pod and %q namespace: %s", job.Pod.Name, job.Pod.Namespace, err)
 			err = d.archive.WriteVirtualFile(location, []byte(err.Error()))
 			if err != nil {
-				log.Printf("Error: create summary errors archive for pod %s in namespace %s: %v", job.Pod.Name, job.Pod.Namespace, err)
+				log.Printf("error while creating summary for %q pod and %q namespace: %s", job.Pod.Name, job.Pod.Namespace, err)
 			}
 		} else {
-			log.Printf("Created summary for <pod>/<namespace> %s/%s, Writing to dump", job.Pod.Name, job.Pod.Namespace)
+			log.Printf("created summary for <pod>/<namespace> %s/%s, Writing to dump", job.Pod.Name, job.Pod.Namespace)
 			err = d.archive.WriteVirtualFile(location, output)
 			if err != nil {
 				log.Printf("error while writing summary for %q pod and %q namespace to dump: %s", job.Pod.Name, job.Pod.Namespace, err)
@@ -45,8 +45,6 @@ func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName strin
 		var port string
 		if d.forwardport != "" {
 			port = d.forwardport
-		} else {
-			port = ""
 		}
 
 		pass, err := d.getSecretValueFromPod(ctx, pod, "root")

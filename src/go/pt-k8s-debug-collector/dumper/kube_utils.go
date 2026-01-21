@@ -76,7 +76,7 @@ func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, localPort s
 
 	go func() {
 		if err = forwarder.ForwardPorts(); err != nil {
-			log.Printf("Port forwarding failed: %v", err)
+			log.Printf("port forwarding failed: %v", err)
 		}
 		forwarderClose()
 	}()
