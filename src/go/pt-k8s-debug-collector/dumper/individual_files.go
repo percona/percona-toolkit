@@ -18,16 +18,16 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 			for _, indPath := range indf.filepaths {
 				file, err := d.getFileFromPod(ctx, job.Pod, indPath, indf.containerName)
 				if err != nil {
-					log.Printf("error while getting individual files for %q pod and %q namespace to dump: %s, SKIPPING", job.Pod.Name, job.Pod.Namespace, err)
+					log.Printf("skipping file dump for %s/%s due to error: %s", job.Pod.Namespace, job.Pod.Name, err)
 					continue
 				}
 
 				if len(file) != 0 {
-					log.Printf("writing individual file with path %s to dump", indPath)
+					log.Printf("pod: %q writing individual file with path %s to dump", job.Pod.Name, indPath)
 					path := d.PodIndividualFilesPath(job.Pod.Namespace, job.Pod.Name, indPath)
 					err = d.archive.WriteVirtualFile(path, file)
 					if err != nil {
-						log.Printf("error while writing individual files for %q pod and %q namespace to dump: %s", job.Pod.Name, job.Pod.Namespace, err)
+						log.Printf("error while dumping individual files for %s%s: %s", job.Pod.Namespace, job.Pod.Name, err)
 					}
 				}
 			}
