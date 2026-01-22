@@ -27,7 +27,7 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 					path := d.PodIndividualFilesPath(job.Pod.Namespace, job.Pod.Name, indPath)
 					err = d.archive.WriteVirtualFile(path, file)
 					if err != nil {
-						log.Printf("error while dumping individual files for %s%s: %s", job.Pod.Namespace, job.Pod.Name, err)
+						log.Printf("error while dumping individual files for %s/%s: %s", job.Pod.Namespace, job.Pod.Name, err)
 					}
 				}
 			}

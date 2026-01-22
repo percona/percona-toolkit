@@ -70,18 +70,9 @@ type exportJob struct {
 
 // New return new Dumper object
 func New(location, namespace, kubeconfig, forwardport, resource string, skipPodSummary bool) (*Dumper, error) {
-	var (
-		err    error
-		config *rest.Config
-	)
+	var config *rest.Config
 
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("recovered from panic: %s", r)
-		}
-	}()
-
-	config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build config from flags: %w", err)
 	}
@@ -89,8 +80,16 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 	config.QPS = 10
 	config.Burst = 20
 
-	clientset := kubernetes.NewForConfigOrDie(config)
-	dynclient := dynamic.NewForConfigOrDie(config)
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kubeconfig: %w", err)
+	}
+
+	dynclient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse dynamic kubeconfig: %w", err)
+	}
+
 	discclient := discovery.NewDiscoveryClientForConfigOrDie(config)
 
 	// TODO: implement cluster name flag
@@ -177,7 +176,7 @@ func (d *Dumper) DumpCluster() error {
 
 	log.Println("discovering and exporting API resources")
 	if err := d.export(ctx); err != nil {
-		log.Printf("error during resource export: %v", err)
+		return fmt.Errorf("error during resource export: %v", err)
 	}
 
 	log.Println("starting workers for pod logs/files...")
@@ -185,11 +184,10 @@ func (d *Dumper) DumpCluster() error {
 	var wg sync.WaitGroup
 
 	for i := range NumWorkers {
-		wg.Add(1)
-		go func(id int) {
-			defer wg.Done()
+		id := i
+		wg.Go(func() {
 			d.resilientWorker(id, ctx, cancel, jobsChannel)
-		}(i)
+		})
 	}
 
 	log.Println("waiting for pod cache to fully sync...")
@@ -215,7 +213,7 @@ func (d *Dumper) DumpCluster() error {
 	return nil
 }
 
-const CONURENT_EXPORT_WORKERS = 5
+const CONCURRENT_EXPORT_WORKERS = 5
 
 func (d *Dumper) export(ctx context.Context) error {
 	resources, err := d.discoverResources()
@@ -224,7 +222,7 @@ func (d *Dumper) export(ctx context.Context) error {
 	}
 
 	var wg sync.WaitGroup
-	semCluster := semaphore.NewWeighted(CONURENT_EXPORT_WORKERS)
+	semCluster := semaphore.NewWeighted(CONCURRENT_EXPORT_WORKERS)
 
 	for _, gvr := range resources.ClusterScoped {
 		wg.Add(1)
@@ -250,7 +248,7 @@ func (d *Dumper) export(ctx context.Context) error {
 		return err
 	}
 
-	semNS := semaphore.NewWeighted(CONURENT_EXPORT_WORKERS)
+	semNS := semaphore.NewWeighted(CONCURRENT_EXPORT_WORKERS)
 
 	for _, ns := range namespaces.Items {
 		if d.namespace != "" && d.namespace != ns.Name {
@@ -436,9 +434,7 @@ func matchesCR(cr string, podLabels map[string]string) bool {
 	}
 
 	switch cr {
-	case "pg":
-		return podLabels["pgo-pg-database"] == "true"
-	case "pgo":
+	case "pg", "pgo":
 		return podLabels["pgo-pg-database"] == "true"
 	case "pgv2":
 		return podLabels["pgv2.percona.com/version"] != "" &&
