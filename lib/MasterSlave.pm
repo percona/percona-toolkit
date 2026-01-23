@@ -382,9 +382,7 @@ sub get_connected_replicas {
    my ( $self, $dbh ) = @_;
 
    # Check for the PROCESS privilege.
-   my $show = "SHOW GRANTS FOR ";
-   my $user = 'CURRENT_USER()';
-   my $sql = $show . $user;
+   my $sql = "SHOW GRANTS";
    PTDEBUG && _d($dbh, $sql);
 
    my $proc;
@@ -393,26 +391,9 @@ sub get_connected_replicas {
          m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
       } @{$dbh->selectcol_arrayref($sql)};
    };
-   if ( $EVAL_ERROR ) {
-
-      if ( $EVAL_ERROR =~ m/no such grant defined for user/ ) {
-         # Try again without a host.
-         PTDEBUG && _d('Retrying SHOW GRANTS without host; error:',
-            $EVAL_ERROR);
-         ($user) = split('@', $user);
-         $sql    = $show . $user;
-         PTDEBUG && _d($sql);
-         eval {
-            $proc = grep {
-               m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
-            } @{$dbh->selectcol_arrayref($sql)};
-         };
-      }
-
-      # The 2nd try above might have cleared $EVAL_ERROR.
-      # If not, die now.
-      die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
-   }
+   
+   die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
+   
    if ( !$proc ) {
       die "You do not have the PROCESS privilege";
    }
