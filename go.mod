@@ -26,7 +26,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	github.com/xlab/treeprint v1.2.0
-	go.mongodb.org/mongo-driver v1.17.6
+	go.mongodb.org/mongo-driver v1.17.7
 	golang.org/x/crypto v0.47.0
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
