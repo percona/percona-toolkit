@@ -9464,16 +9464,16 @@ sub set_history_options {
 }
 
 sub set_review_history {
-   my ( $self, $id, $sample, %data ) = @_;
+   my ( $self, $id, $sample, $data, $users) = @_;
    foreach my $thing ( qw(min max) ) {
-      next unless defined $data{ts} && defined $data{ts}->{$thing};
-      $data{ts}->{$thing} = parse_timestamp($data{ts}->{$thing});
+      next unless defined $data->{ts} && defined $data->{ts}->{$thing};
+      $data->{ts}->{$thing} = parse_timestamp($data->{ts}->{$thing});
    }
    $self->history_sth->execute(
       make_checksum($id),
-      $data{'user'}{'min'},
+      join(" ", sort keys %{$users}),
       $sample,
-      map { $data{$_->[0]}->{$_->[1]} } @{$self->history_metrics});
+      map { $data->{$_->[0]}->{$_->[1]} } @{$self->history_metrics});
 }
 
 sub _d {
@@ -15083,6 +15083,10 @@ sub update_query_history_table {
 
    foreach my $worst_info ( @$worst ) {
       my $item        = $worst_info->[0];
+      my %users       = ();
+      if (defined $ea->results->{'classes'}{$item}{'user'}{'unq'}) {
+         %users       = %{$ea->results->{'classes'}{$item}{'user'}{'unq'}};
+      }
       my $sample      = $ea->results->{samples}->{$item};
 
       my %history;
@@ -15093,7 +15097,7 @@ sub update_query_history_table {
          );
       }
       $qh->set_review_history(
-         $item, $sample->{arg} || '', %history);
+         $item, $sample->{arg} || '', \%history, \%users);
    }
 
    return;
@@ -15213,6 +15217,10 @@ sub sanitize_event {
    if ( $event->{Schema} ) {
       $event->{Schema} =~ s/^`//;
       $event->{Schema} =~ s/`$//;
+   }
+
+   if ( $event->{arg} ) {
+      $event->{arg} =~ s/ -- user_id: \d+//;
    }
 
    return;
@@ -16024,8 +16032,8 @@ MAGIC_create_history_table
 
  CREATE TABLE IF NOT EXISTS query_history (
    checksum             CHAR(32) NOT NULL,
-   username             VARCHAR(64),
-   sample               TEXT NOT NULL,
+   username             TEXT,
+   sample               MEDIUMTEXT NOT NULL,
    ts_min               DATETIME,
    ts_max               DATETIME,
    ts_cnt               FLOAT,
