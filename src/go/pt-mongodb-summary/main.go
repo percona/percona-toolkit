@@ -18,7 +18,6 @@ import (
 
 	version "github.com/hashicorp/go-version"
 	"github.com/howeyc/gopass"
-	"github.com/pborman/getopt"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
@@ -35,15 +34,8 @@ import (
 )
 
 const (
-	toolname = "pt-mongodb-summary"
-
-	DefaultAuthDB             = "admin"
-	DefaultHost               = "mongodb://localhost:27017"
-	DefaultLogLevel           = "warn"
-	DefaultRunningOpsInterval = 1000 // milliseconds
-	DefaultRunningOpsSamples  = 5
-	DefaultOutputFormat       = "text"
-	typeMongos                = "mongos"
+	toolname   = "pt-mongodb-summary"
+	typeMongos = "mongos"
 
 	// Exit Codes.
 	cannotFormatResults              = 1
@@ -147,20 +139,60 @@ type clusterwideInfo struct {
 }
 
 type cliOptions struct {
-	Host               string
-	User               string
-	Password           string
-	AuthDB             string
-	LogLevel           string
-	OutputFormat       string
-	SSLCAFile          string
-	SSLPEMKeyFile      string
-	RunningOpsSamples  int
-	RunningOpsInterval int
-	Help               bool
-	Version            bool
-	NoVersionCheck     bool
-	NoRunningOps       bool
+	Host               string                    `name:"host[:port]" arg:"" optional:"" default:"mongodb://localhost:27017"`
+	User               string                    `name:"username" short:"u" help:"Username to use for optional MongoDB authentication"`
+	Password           config.StdinRequestString `name:"password" short:"p" help:"Password to use for optional MongoDB authentication"`
+	AuthDB             string                    `name:"authenticationDatabase" short:"a" help:"Database to use for optional MongoDB authentication" default:"admin"`
+	LogLevel           string                    `name:"log-level" short:"l" help:"Log level: panic, fatal, error, warn, info, debug" default:"warn"`
+	OutputFormat       string                    `name:"output-format" short:"f" help:"Output format: text, json" default:"text"`
+	SSLCAFile          string                    `name:"sslCAFile" help:"SSL CA cert file used for authentication"`
+	SSLPEMKeyFile      string                    `name:"sslPEMKeyFile" help:"SSL client PEM file used for authentication"`
+	RunningOpsSamples  int                       `name:"running-ops-samples" short:"s" help:"Number of samples to collect for running ops" default:"5"`
+	RunningOpsInterval int                       `name:"running-ops-interval" short:"i" help:"Interval to wait between running ops samples in milliseconds" default:"1000"`
+	Version            bool                      `name:"version"`
+	VersionCheck       bool                      `name:"version-check" negatable:"" default:"true"`
+}
+
+func (c *cliOptions) AfterApply(args ...any) error {
+	if c.Version {
+		fmt.Println(toolname)
+		fmt.Printf("Version %s\n", Version)
+		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
+		fmt.Printf("Commit: %s\n", Commit)
+		return nil
+	}
+
+	if !strings.HasPrefix(c.Host, "mongodb://") {
+		c.Host = "mongodb://" + c.Host
+	}
+
+	if c.OutputFormat != "json" && c.OutputFormat != "text" {
+		log.Infof("Invalid output format '%s'. Using text format", c.OutputFormat)
+		c.OutputFormat = "text"
+	}
+
+	if c.VersionCheck {
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
+		if err != nil {
+			log.Infof("cannot check version updates: %s", err.Error())
+		} else if advice != "" {
+			log.Infof("%s", advice)
+		}
+	}
+
+	err := c.Password.Request(func() (string, error) {
+		print("Password: ")
+		pass, err := gopass.GetPasswd()
+		if err != nil {
+			return "", err
+		}
+		return string(pass), nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type collectedInfo struct {
@@ -175,14 +207,14 @@ type collectedInfo struct {
 }
 
 func main() {
-	opts, err := parseFlags()
+	opts := &cliOptions{}
+	_, _, err := config.Setup(toolname, opts)
 	if err != nil {
 		log.Errorf("cannot get parameters: %s", err.Error())
-
 		os.Exit(cannotParseCommandLineParameters)
 	}
 
-	if opts == nil && err == nil {
+	if opts.Version {
 		return
 	}
 
@@ -192,25 +224,6 @@ func main() {
 	}
 
 	log.SetLevel(logLevel)
-
-	if opts.Version {
-		fmt.Println(toolname)
-		fmt.Printf("Version %s\n", Version)
-		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
-		fmt.Printf("Commit: %s\n", Commit)
-
-		return
-	}
-
-	conf := config.DefaultConfig(toolname)
-	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
-		advice, err := versioncheck.CheckUpdates(toolname, Version)
-		if err != nil {
-			log.Infof("cannot check version updates: %s", err.Error())
-		} else if advice != "" {
-			log.Infof("%s", advice)
-		}
-	}
 
 	ctx := context.Background()
 	clientOptions, err := getClientOptions(opts)
@@ -905,78 +918,6 @@ func externalIP() (string, error) {
 	return "", errors.New("are you connected to the network?")
 }
 
-func parseFlags() (*cliOptions, error) {
-	opts := &cliOptions{
-		Host:               DefaultHost,
-		LogLevel:           DefaultLogLevel,
-		RunningOpsSamples:  DefaultRunningOpsSamples,
-		RunningOpsInterval: DefaultRunningOpsInterval, // milliseconds
-		AuthDB:             DefaultAuthDB,
-		OutputFormat:       DefaultOutputFormat,
-	}
-
-	gop := getopt.New()
-	gop.BoolVarLong(&opts.Help, "help", 'h', "Show help")
-	gop.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
-	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
-
-	gop.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
-	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").
-		SetOptional()
-	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
-		"Database to use for optional MongoDB authentication. Default: admin")
-	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "error",
-		"Log level: panic, fatal, error, warn, info, debug. Default: error")
-	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
-
-	gop.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
-		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples),
-	)
-
-	gop.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
-		fmt.Sprintf("Interval to wait between running ops samples in milliseconds. Default %d milliseconds",
-			opts.RunningOpsInterval),
-	)
-
-	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
-	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
-
-	gop.SetParameters("host[:port]")
-	gop.Parse(os.Args)
-
-	if gop.NArgs() > 0 {
-		opts.Host = gop.Arg(0)
-		gop.Parse(gop.Args())
-	}
-
-	if gop.IsSet("password") && opts.Password == "" {
-		print("Password: ")
-
-		pass, err := gopass.GetPasswd()
-		if err != nil {
-			return opts, err
-		}
-
-		opts.Password = string(pass)
-	}
-
-	if !strings.HasPrefix(opts.Host, "mongodb://") {
-		opts.Host = "mongodb://" + opts.Host
-	}
-
-	if opts.Help {
-		gop.PrintUsage(os.Stdout)
-
-		return nil, nil
-	}
-
-	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
-		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
-	}
-
-	return opts, nil
-}
-
 func getChunksCount(ctx context.Context, client *mongo.Client) ([]proto.ChunksByCollection, error) {
 	var result []proto.ChunksByCollection
 
@@ -1013,7 +954,7 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 	}
 
 	if opts.Password != "" {
-		credential.Password = opts.Password
+		credential.Password = string(opts.Password)
 		credential.PasswordSet = true
 		clientOptions.SetAuth(credential)
 	}

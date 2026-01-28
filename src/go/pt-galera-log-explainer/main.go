@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
+	"github.com/percona/percona-toolkit/src/go/lib/config"
+	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
@@ -26,9 +28,7 @@ var (
 	Commit    string //nolint
 )
 
-var buildInfo = fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s", toolname, Version, Build, GoVersion, Commit)
-
-var CLI struct {
+type CliOptions struct {
 	NoColor               bool
 	Since                 *time.Time      `help:"Only list events after this date, format: 2023-01-23T03:53:40Z (RFC3339)"`
 	Until                 *time.Time      `help:"Only list events before this date"`
@@ -46,22 +46,46 @@ var CLI struct {
 	RegexList regexList `cmd:""`
 	Conflicts conflicts `cmd:""`
 
-	Version kong.VersionFlag
-
 	GrepCmd string `help:"'grep' command path. Could need to be set to 'ggrep' for darwin systems" default:"grep"`
 
 	CustomRegexes map[string]string `help:"Add custom regexes, printed in magenta. Format: (golang regex string)=[optional static message to display]. If the static message is left empty, the captured string will be printed instead. Custom regexes are separated using semi-colon. Example: --custom-regexes=\"Page cleaner took [0-9]*ms to flush [0-9]* pages=;doesn't recommend.*pxc_strict_mode=unsafe query used\""`
+	Version       bool              `name:"version"`
+	VersionCheck  bool              `name:"version-check" negatable:"" default:"true"`
 }
 
+func (c *CliOptions) AfterApply(args ...any) error {
+	if c.Version {
+		fmt.Println(toolname)
+		fmt.Printf("Version %s\n", Version)
+		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
+		fmt.Printf("Commit: %s\n", Commit)
+		return nil
+	}
+
+	if c.VersionCheck {
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
+		if err != nil {
+			log.Error().Msgf("cannot check version updates: %s", err.Error())
+		} else if advice != "" {
+			log.Info().Msgf("%s", advice)
+		}
+	}
+
+	return nil
+}
+
+var CLI = &CliOptions{}
+
 func main() {
-	kongcli := kong.Parse(&CLI,
-		kong.Name(toolname),
-		kong.Description("An utility to merge and help analyzing Galera logs"),
-		kong.UsageOnError(),
-		kong.Vars{
-			"version": buildInfo,
-		},
-	)
+	kCtx, _, err := config.Setup(toolname, CLI, kong.Description("An utility to merge and help analyzing Galera logs"))
+	if err != nil {
+		log.Error().Msgf("cannot get parameters: %s", err.Error())
+		os.Exit(1)
+	}
+
+	if CLI.Version {
+		return
+	}
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -73,10 +97,10 @@ func main() {
 
 	utils.SkipColor = CLI.NoColor
 
-	err := regex.AddCustomRegexes(CLI.CustomRegexes)
-	kongcli.FatalIfErrorf(err)
+	err = regex.AddCustomRegexes(CLI.CustomRegexes)
+	kCtx.FatalIfErrorf(err)
 
-	for _, path := range kongcli.Path {
+	for _, path := range kCtx.Path {
 		if path.Positional != nil && path.Positional.Name == "paths" {
 			paths, ok := path.Positional.Target.Interface().([]string)
 			if ok && !CLI.PxcOperator && !CLI.SkipOperatorDetection && areOperatorFiles(paths) {
@@ -88,6 +112,6 @@ func main() {
 
 	translate.AssumeIPStable = !CLI.PxcOperator
 
-	err = kongcli.Run()
-	kongcli.FatalIfErrorf(err)
+	err = kCtx.Run()
+	kCtx.FatalIfErrorf(err)
 }
