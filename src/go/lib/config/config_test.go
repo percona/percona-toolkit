@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/user"
@@ -430,6 +431,139 @@ cycles=2
 				t.Errorf("loadConfig() passthrough = %v, want %v", got.passthrough, tt.wantPassthrough)
 			}
 		})
+	}
+}
+
+func TestCmdWithArgs(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		cli      any
+		wantJson string
+	}{
+		{
+			name: "cmd_one_arg",
+			args: []string{"test-cmd", "file.txt"},
+			cli: &struct {
+				TestCmd struct {
+					Paths []string `arg:"" name:"paths"`
+				} `cmd:"" name:"test-cmd"`
+			}{},
+			wantJson: `{"TestCmd":{"Paths":["file.txt"]}}`,
+		},
+		{
+			name: "cmd_one_path_arg",
+			args: []string{"test-cmd", "tests/logs/upgrade/node1.log"},
+			cli: &struct {
+				TestCmd struct {
+					Paths []string `arg:"" name:"paths"`
+				} `cmd:"" name:"test-cmd"`
+			}{},
+			wantJson: `{"TestCmd":{"Paths":["tests/logs/upgrade/node1.log"]}}`,
+		},
+		{
+			name: "cmd_many_arg",
+			args: []string{"test-cmd", "file.txt", "file2.txt", "file3.txt"},
+			cli: &struct {
+				TestCmd struct {
+					Paths []string `arg:"" name:"paths"`
+				} `cmd:"" name:"test-cmd"`
+			}{},
+			wantJson: `{"TestCmd":{"Paths":["file.txt","file2.txt","file3.txt"]}}`,
+		},
+	}
+
+	for _, test := range tests {
+		os.Args = []string{test.name}
+		os.Args = append(os.Args, test.args...)
+		t.Log(os.Args)
+		_, _, err := Setup(test.name, test.cli)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := json.Marshal(test.cli)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != test.wantJson {
+			t.Errorf("got %s, want %s", string(data), test.wantJson)
+		}
+	}
+}
+
+func TestCmdWithArgsAndConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		cli      any
+		config   string
+		wantJson string
+	}{
+		{
+			name:   "cmd_one_arg",
+			args:   []string{"test-cmd", "file.txt"},
+			config: `no-version`,
+			cli: &struct {
+				TestCmd struct {
+					Paths []string `arg:"" name:"paths"`
+				} `cmd:"" name:"test-cmd"`
+				Version bool `negatable:"" default:"true" name:"version"`
+			}{},
+			wantJson: `{"TestCmd":{"Paths":["file.txt"]},"Version":false}`,
+		},
+		{
+			name:   "cmd_one_arg",
+			args:   []string{"test-cmd", "file.txt"},
+			config: `test-list=a,b,c`,
+			cli: &struct {
+				TestCmd struct {
+					Paths []string `arg:"" name:"paths"`
+				} `cmd:"" name:"test-cmd"`
+				TestList []string `name:"test-list"`
+			}{},
+			wantJson: `{"TestCmd":{"Paths":["file.txt"]},"TestList":["a","b","c"]}`,
+		},
+		{
+			name: "cmd_one_arg",
+			args: []string{"test-cmd", "file.txt"},
+			config: `test-list=a,b,c
+			limit=123`,
+			cli: &struct {
+				TestCmd struct {
+					Paths []string `arg:"" name:"paths"`
+					Limit int      `name:"limit"`
+				} `cmd:"" name:"test-cmd"`
+				TestList []string `name:"test-list"`
+			}{},
+			wantJson: `{"TestCmd":{"Paths":["file.txt"],"Limit":123},"TestList":["a","b","c"]}`,
+		},
+	}
+
+	var oldGlobalDefaultPath = GLOBAL_DEFAULT_PATH
+	defer func() {
+		GLOBAL_DEFAULT_PATH = oldGlobalDefaultPath
+	}()
+	for _, test := range tests {
+		tmpDir := t.TempDir()
+		tmpConf := filepath.Join(tmpDir, "test.conf")
+		os.WriteFile(tmpConf, []byte(test.config), 0644)
+
+		GLOBAL_DEFAULT_PATH = tmpConf
+
+		os.Args = []string{test.name}
+		os.Args = append(os.Args, test.args...)
+		t.Log(os.Args)
+		_, _, err := Setup(test.name, test.cli)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := json.Marshal(test.cli)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != test.wantJson {
+			t.Errorf("got %s, want %s", string(data), test.wantJson)
+		}
 	}
 }
 

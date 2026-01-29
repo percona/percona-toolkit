@@ -313,6 +313,8 @@ func loadConfigFiles(configPaths []string, specifiedConfig bool) ([]kong.Resolve
 	return resolvers, filePassthrough, nil
 }
 
+var GLOBAL_DEFAULT_PATH = "/etc/percona-toolkit/percona-toolkit.conf"
+
 // getDefaultPaths returns the default configuration file paths for a tool.
 // Returns paths in order of precedence (lowest to highest):
 //  1. /etc/percona-toolkit/percona-toolkit.conf
@@ -323,13 +325,13 @@ func getDefaultPaths(toolName string) []string {
 	u, err := user.Current()
 	if err != nil {
 		return []string{
-			"/etc/percona-toolkit/percona-toolkit.conf",
+			GLOBAL_DEFAULT_PATH,
 			fmt.Sprintf("/etc/percona-toolkit/%s.conf", toolName),
 		}
 	}
 
 	return []string{
-		"/etc/percona-toolkit/percona-toolkit.conf",
+		GLOBAL_DEFAULT_PATH,
 		fmt.Sprintf("/etc/percona-toolkit/%s.conf", toolName),
 		filepath.Join(u.HomeDir, ".percona-toolkit.conf"),
 		filepath.Join(u.HomeDir, fmt.Sprintf(".%s.conf", toolName)),
