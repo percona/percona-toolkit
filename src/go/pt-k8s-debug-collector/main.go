@@ -33,7 +33,7 @@ type cliOptions struct {
 	VersionCheck   bool   `name:"version-check" negatable:"" default:"true"`
 }
 
-func (c *cliOptions) AfterApply(args ...any) error {
+func (c *cliOptions) AfterApply() error {
 	if c.Version {
 		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
