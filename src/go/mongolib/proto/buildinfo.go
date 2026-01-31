@@ -1,4 +1,4 @@
-// This program is copyright 2026 Percona LLC and/or its affiliates.
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
 //
 // THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 // WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
