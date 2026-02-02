@@ -194,3 +194,38 @@ Authors
 =======
 
 Max Dudin, Andrii Dema, Carlos Salguero, Sveta Smirnova
+
+ABOUT PERCONA TOOLKIT
+=====================
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+`http://www.percona.com/software/ <http://www.percona.com/software/>`_ to learn about other free, open-source
+software from Percona.
+
+COPYRIGHT, LICENSE, AND WARRANTY
+================================
+
+This program is copyright 2011-2026 Percona LLC and/or its affiliates.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue \`man perlgpl' or \`man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+VERSION
+=======
+
+:program:`pt-k8s-debug-collector` 3.7.1
+
