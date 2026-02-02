@@ -3,6 +3,8 @@ package dumper
 import (
 	"bytes"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // SafeLogger is a thread-safe io.Writer that accumulates log bytes.
@@ -42,4 +44,25 @@ func (s *SafeLogger) Reset() {
 	s.mu.Lock()
 	s.buf.Reset()
 	s.mu.Unlock()
+}
+
+type ErrorArchiveHook struct {
+	safeLogger *SafeLogger
+}
+
+func (h *ErrorArchiveHook) Levels() []log.Level {
+	return []log.Level{
+		log.ErrorLevel,
+		log.FatalLevel,
+		log.PanicLevel,
+	}
+}
+
+func (h *ErrorArchiveHook) Fire(entry *log.Entry) error {
+	line, err := entry.String()
+	if err != nil {
+		return err
+	}
+	_, err = h.safeLogger.Write([]byte(line))
+	return err
 }

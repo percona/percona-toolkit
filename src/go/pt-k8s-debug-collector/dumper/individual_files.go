@@ -7,7 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+
+	log "github.com/sirupsen/logrus"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -18,16 +19,16 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 			for _, indPath := range indf.filepaths {
 				file, err := d.getFileFromPod(ctx, job.Pod, indPath, indf.containerName)
 				if err != nil {
-					log.Printf("skipping file dump for %s/%s due to error: %s", job.Pod.Namespace, job.Pod.Name, err)
+					log.Infof("skipping file dump for %s/%s due to error: %s", job.Pod.Namespace, job.Pod.Name, err)
 					continue
 				}
 
 				if len(file) != 0 {
-					log.Printf("pod: %q writing individual file with path %s to dump", job.Pod.Name, indPath)
+					log.Infof("pod: %q writing individual file with path %s to dump", job.Pod.Name, indPath)
 					path := d.PodIndividualFilesPath(job.Pod.Namespace, job.Pod.Name, indPath)
 					err = d.archive.WriteVirtualFile(path, file)
 					if err != nil {
-						log.Printf("error while dumping individual files for %s/%s: %s", job.Pod.Namespace, job.Pod.Name, err)
+						log.Errorf("error while dumping individual files for %s/%s: %s", job.Pod.Namespace, job.Pod.Name, err)
 					}
 				}
 			}

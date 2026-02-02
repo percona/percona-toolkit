@@ -2,10 +2,11 @@ package dumper
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"slices"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var resourcesRe = regexp.MustCompile(`(\w+\.(\w+).percona\.com)`)
@@ -59,7 +60,7 @@ func (d *Dumper) autoCustomResource() ([]string, error) {
 		for _, version := range group.Versions {
 			resourceList, err := d.clientSet.DiscoveryClient.ServerResourcesForGroupVersion(version.GroupVersion)
 			if err != nil {
-				log.Printf("warning: Could not get resources for GroupVersion %s: %v", version.GroupVersion, err)
+				log.Warnf("could not get resources for GroupVersion %s: %v", version.GroupVersion, err)
 				continue
 			}
 			for _, resource := range resourceList.APIResources {

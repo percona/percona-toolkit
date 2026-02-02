@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/percona/percona-toolkit/src/go/pt-k8s-debug-collector/dumper"
 )
@@ -27,6 +28,7 @@ func main() {
 	clusterName := ""
 	kubeconfig := ""
 	forwardport := ""
+	logLevelStr := ""
 	version := false
 	skipPodSummary := false
 
@@ -35,6 +37,7 @@ func main() {
 	flag.StringVar(&clusterName, "cluster", "", "Cluster name")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to kubeconfig")
 	flag.StringVar(&forwardport, "forwardport", "", "Port to use for  port forwarding")
+	flag.StringVar(&logLevelStr, "log-level", "error", "Log level (debug, info, warn, error, fatal, panic)")
 	flag.BoolVar(&version, "version", false, "Print version")
 	flag.BoolVar(&skipPodSummary, "skip-pod-summary", false, "Skip pod summary collection")
 	flag.Parse()
@@ -52,18 +55,30 @@ func main() {
 		resource += "/" + clusterName
 	}
 
+	level, err := log.ParseLevel(logLevelStr)
+	if err != nil {
+		fmt.Printf("Invalid log level: %v\n", err)
+		os.Exit(1)
+	}
+	log.SetLevel(level)
+
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp: true,
+		DisableColors: true,
+	})
+
 	d, err := dumper.New("cluster-dump", namespace, kubeconfig, forwardport, resource, skipPodSummary)
 	if err != nil {
 		log.Println("Error:", err)
 		os.Exit(1)
 	}
-	log.Println("Start collecting cluster data")
+	log.Info("start collecting cluster data")
 
 	err = d.DumpCluster()
 	if err != nil {
-		log.Println("Error:", err)
+		log.Error(err)
 		os.Exit(1)
 	}
 
-	log.Println("Done")
+	log.Info("done")
 }

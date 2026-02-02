@@ -5,9 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os/exec"
+
+	log "github.com/sirupsen/logrus"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -19,16 +20,16 @@ func (d *Dumper) getSummary(ctx context.Context, job exportJob, crType string, l
 
 	output, err := d.getPodSummary(ctx, job.Pod, crType)
 	if err != nil {
-		log.Printf("error while creating summary for %s/%s: %s", job.Pod.Namespace, job.Pod.Name, err)
+		log.Errorf("error while creating summary for %s/%s: %s", job.Pod.Namespace, job.Pod.Name, err)
 		err = d.archive.WriteVirtualFile(location, []byte(err.Error()))
 		if err != nil {
-			log.Printf("error while creating summary for %s/%s: %s", job.Pod.Namespace, job.Pod.Name, err)
+			log.Errorf("error while creating summary for %s/%s: %s", job.Pod.Namespace, job.Pod.Name, err)
 		}
 	} else {
-		log.Printf("created summary for %s/%s, Writing to dump", job.Pod.Namespace, job.Pod.Name)
+		log.Infof("created summary for %s/%s, Writing to dump", job.Pod.Namespace, job.Pod.Name)
 		err = d.archive.WriteVirtualFile(location, output)
 		if err != nil {
-			log.Printf("error while dumping summary for %s/%s: %s", job.Pod.Namespace, job.Pod.Name, err)
+			log.Errorf("error while dumping summary for %s/%s: %s", job.Pod.Namespace, job.Pod.Name, err)
 		}
 	}
 }

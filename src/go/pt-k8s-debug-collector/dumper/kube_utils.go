@@ -6,11 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
+
+	log "github.com/sirupsen/logrus"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -76,7 +77,7 @@ func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, localPort s
 
 	go func() {
 		if err = forwarder.ForwardPorts(); err != nil {
-			log.Printf("port forwarding failed: %v", err)
+			log.Errorf("port forwarding failed: %v", err)
 		}
 		forwarderClose()
 	}()

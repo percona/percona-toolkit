@@ -3,12 +3,12 @@ package dumper
 import (
 	"context"
 	"fmt"
-	"io"
-	"log"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"go.yaml.in/yaml/v2"
 	"golang.org/x/sync/semaphore"
@@ -92,7 +92,6 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 
 	discclient := discovery.NewDiscoveryClientForConfigOrDie(config)
 
-	// TODO: implement cluster name flag
 	d := &Dumper{
 		kubeconfig:      kubeconfig,
 		location:        location,
@@ -104,7 +103,6 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 		dynamicClient:   dynclient,
 		discoveryClient: discclient,
 		restConfig:      config,
-		logger:          NewSafeLogger(),
 		usedPorts:       sync.Map{},
 	}
 
@@ -148,6 +146,12 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 		}
 	}
 
+	safeLog := NewSafeLogger()
+
+	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
+
+	d.logger = safeLog
+
 	return d, err
 }
 
@@ -160,26 +164,22 @@ func (d *Dumper) DumpCluster() error {
 	}
 	defer d.archive.Close()
 
-	oldLoggerOut := log.Writer()
-	log.SetOutput(io.MultiWriter(log.Writer(), d.logger))
-	defer log.SetOutput(oldLoggerOut)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	defer d.logger.DumpToArchive(d.archive, d.DumperLogPath("dumper"))
 
-	log.Println("initializing pod cache")
+	log.Info("initializing pod cache")
 	factory := informers.NewSharedInformerFactory(d.clientSet, 10*time.Minute)
 	podInformer := factory.Core().V1().Pods().Informer()
 	factory.Start(ctx.Done())
 
-	log.Println("discovering and exporting API resources")
+	log.Info("discovering and exporting API resources")
 	if err := d.export(ctx); err != nil {
 		return fmt.Errorf("error during resource export: %v", err)
 	}
 
-	log.Println("starting workers for pod logs/files...")
+	log.Info("starting workers for pod logs/files...")
 	jobsChannel := make(chan exportJob, 100)
 	var wg sync.WaitGroup
 
@@ -190,7 +190,7 @@ func (d *Dumper) DumpCluster() error {
 		})
 	}
 
-	log.Println("waiting for pod cache to fully sync...")
+	log.Info("waiting for pod cache to fully sync...")
 	if !cache.WaitForCacheSync(ctx.Done(), podInformer.HasSynced) {
 		return fmt.Errorf("timed out waiting for caches to sync.")
 	}
@@ -201,7 +201,7 @@ func (d *Dumper) DumpCluster() error {
 		return fmt.Errorf("failed to list all pods: %v", err)
 	}
 
-	log.Printf("dispatching %d pods to workers...", len(allPods))
+	log.Infof("dispatching %d pods to workers...", len(allPods))
 	for _, pod := range allPods {
 		jobsChannel <- exportJob{Pod: *pod}
 	}
@@ -209,7 +209,7 @@ func (d *Dumper) DumpCluster() error {
 	close(jobsChannel)
 	wg.Wait()
 
-	log.Printf("export complete\ndata saved to %s", d.location)
+	log.Infof("export complete\ndata saved to %s", d.location)
 	return nil
 }
 
@@ -230,14 +230,14 @@ func (d *Dumper) export(ctx context.Context) error {
 			defer wg.Done()
 
 			if err := semCluster.Acquire(ctx, 1); err != nil {
-				log.Printf("semaphore acquire failed: %s", err)
+				log.Errorf("semaphore acquire failed: %s", err)
 				return
 			}
 			defer semCluster.Release(1)
 
 			err := d.exportGeneric(ctx, r, "")
 			if err != nil {
-				log.Printf("failed to export resource %q: %s", r.Resource, err)
+				log.Errorf("failed to export resource %q: %s", r.Resource, err)
 				return
 			}
 		}(gvr)
@@ -254,23 +254,8 @@ func (d *Dumper) export(ctx context.Context) error {
 		if d.namespace != "" && d.namespace != ns.Name {
 			continue
 		}
-
-		wg.Add(1)
-		go func(namespace string) {
-			defer wg.Done()
-
-			if err := semNS.Acquire(ctx, 1); err != nil {
-				log.Printf("semaphore acquire failed: %s", err)
-				return
-			}
-			defer semNS.Release(1)
-
-			if err := d.dumpSecrets(ctx, namespace); err != nil {
-				log.Printf("error dumping secrets for namespace %q: %s", namespace, err)
-			}
-		}(ns.Name)
-
 		for _, gvr := range resources.NamespaceScoped {
+			// Do not collect secrets
 			if gvr.Resource == "secrets" {
 				continue
 			}
@@ -280,14 +265,14 @@ func (d *Dumper) export(ctx context.Context) error {
 				defer wg.Done()
 
 				if err := semNS.Acquire(ctx, 1); err != nil {
-					log.Printf("semaphore acquire failed: %s", err)
+					log.Errorf("semaphore acquire failed: %s", err)
 					return
 				}
 				defer semNS.Release(1)
 
 				err := d.exportGeneric(ctx, gvr, namespace)
 				if err != nil {
-					log.Printf("failed to export resource %q for namespace %q: %s", gvr.Resource, namespace, err)
+					log.Errorf("failed to export resource %q for namespace %q: %s", gvr.Resource, namespace, err)
 					return
 				}
 			}(ns.Name, gvr)
@@ -337,6 +322,32 @@ func (d *Dumper) exportGeneric(ctx context.Context, gvr schema.GroupVersionResou
 	return nil
 }
 
+var ignoredResources = map[string]bool{
+	"apiaccesses":               true, // Deprecated
+	"componentstatuses":         true, // Deprecated
+	"endpoints":                 true, // Deprecated
+	"pods":                      true, // Handled by workers
+	"subjectaccessreviews":      true, // Not allowed
+	"selfsubjectrulesreviews":   true, // Not allowed
+	"selfsubjectaccessreviews":  true, // Not allowed
+	"selfsubjectreviews":        true, // Not allowed
+	"localsubjectaccessreviews": true, // Not allowed
+	"bindings":                  true, // Not allowed
+	"tokenreviews":              true, // Not allowed
+}
+
+func filterResource(resourceName string) bool {
+	if strings.Contains(resourceName, "/") {
+		return false
+	}
+
+	if ignoredResources[resourceName] {
+		return false
+	}
+
+	return true
+}
+
 func (d *Dumper) discoverResources() (*resourceMap, error) {
 	lists, err := d.discoveryClient.ServerPreferredResources()
 	if err != nil {
@@ -344,33 +355,38 @@ func (d *Dumper) discoverResources() (*resourceMap, error) {
 	}
 	rm := &resourceMap{}
 
-	ignoredResources := map[string]bool{
-		"apiaccesses":               true, // Deprecated
-		"componentstatuses":         true, // Deprecated
-		"endpoints":                 true, // Deprecated
-		"pods":                      true, // Handled by workers
-		"subjectaccessreviews":      true, // Not allowed
-		"selfsubjectrulesreviews":   true, // Not allowed
-		"selfsubjectaccessreviews":  true, // Not allowed
-		"selfsubjectreviews":        true, // Not allowed
-		"localsubjectaccessreviews": true, // Not allowed
-		"bindings":                  true, // Not allowed
-		"tokenreviews":              true, // Not allowed
-	}
+	chosenGroups := make(map[string]string)
 
+	// Extract groups with priority.
+	// If resource exists in legacy (v1) group and in events.k8s.io group
+	// events.k8s.io will be choosen
 	for _, list := range lists {
-		gv, err := schema.ParseGroupVersion(list.GroupVersion)
-		if err != nil {
-			log.Printf("failed to parse group %q version, err: %s", list.GroupVersion, err)
-			continue
-		}
-
 		for _, resource := range list.APIResources {
-			if strings.Contains(resource.Name, "/") {
+			if !filterResource(resource.Name) {
+				continue
+			}
+			currentGroup := list.GroupVersion
+			existingGroup, found := chosenGroups[resource.Name]
+
+			if !found {
+				chosenGroups[resource.Name] = currentGroup
 				continue
 			}
 
-			if ignoredResources[resource.Name] {
+			if existingGroup == "v1" && currentGroup != "v1" {
+				chosenGroups[resource.Name] = currentGroup
+			}
+		}
+	}
+
+	for _, list := range lists {
+		gv, _ := schema.ParseGroupVersion(list.GroupVersion)
+		for _, resource := range list.APIResources {
+			if !filterResource(resource.Name) {
+				continue
+			}
+
+			if chosenGroups[resource.Name] != list.GroupVersion {
 				continue
 			}
 
@@ -379,6 +395,7 @@ func (d *Dumper) discoverResources() (*resourceMap, error) {
 				Version:  gv.Version,
 				Resource: resource.Name,
 			}
+
 			if resource.Namespaced {
 				rm.NamespaceScoped = append(rm.NamespaceScoped, gvr)
 			} else {
@@ -402,7 +419,7 @@ func (d *Dumper) resilientWorker(id int, ctx context.Context, cancel context.Can
 			err := d.exportPodLogs(ctx, job.Pod)
 			if err != nil {
 				if isSpaceError(err) {
-					log.Printf("worker %d stopping app: %v", id, err)
+					log.Infof("worker %d stopping app: %v", id, err)
 					cancel()
 					return
 				}
