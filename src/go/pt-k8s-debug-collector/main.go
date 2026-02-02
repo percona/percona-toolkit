@@ -1,12 +1,15 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
+	flag "github.com/spf13/pflag"
+
 	log "github.com/sirupsen/logrus"
 
+	"github.com/percona/percona-toolkit/src/go/lib/config"
+	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/pt-k8s-debug-collector/dumper"
 )
 
@@ -22,27 +25,65 @@ var (
 	Commit    string //nolint
 )
 
-func main() {
-	namespace := ""
-	resource := ""
-	clusterName := ""
-	kubeconfig := ""
-	forwardport := ""
-	logLevelStr := ""
-	version := false
-	skipPodSummary := false
+type cliOptions struct {
+	namespace      string
+	resource       string
+	clusterName    string
+	kubeconfig     string
+	forwardport    string
+	logLevelStr    string
+	version        bool
+	noVersionCheck bool
+	skipPodSummary bool
+}
 
-	flag.StringVar(&namespace, "namespace", "", "Namespace for collecting data. If empty data will be collected from all namespaces")
-	flag.StringVar(&resource, "resource", "auto", "Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, ps, none, auto")
-	flag.StringVar(&clusterName, "cluster", "", "Cluster name")
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to kubeconfig")
-	flag.StringVar(&forwardport, "forwardport", "", "Port to use for  port forwarding")
-	flag.StringVar(&logLevelStr, "log-level", "error", "Log level (debug, info, warn, error, fatal, panic)")
-	flag.BoolVar(&version, "version", false, "Print version")
-	flag.BoolVar(&skipPodSummary, "skip-pod-summary", false, "Skip pod summary collection")
+func (opts *cliOptions) parseDefaultConfig() {
+	conf := config.DefaultConfig(toolname)
+	if val := conf.GetString("namespace"); val != "" && !flag.Lookup("namespace").Changed {
+		opts.namespace = val
+	}
+	if val := conf.GetString("resource"); val != "" && !flag.Lookup("resource").Changed {
+		opts.resource = val
+	}
+	if val := conf.GetString("cluster"); val != "" && !flag.Lookup("cluster").Changed {
+		opts.clusterName = val
+	}
+	if val := conf.GetString("kubeconfig"); val != "" && !flag.Lookup("kubeconfig").Changed {
+		opts.kubeconfig = val
+	}
+	if val := conf.GetString("forwardport"); val != "" && !flag.Lookup("forwardport").Changed {
+		opts.forwardport = val
+	}
+	if val := conf.GetString("log-level"); val != "" && !flag.Lookup("log-level").Changed {
+		opts.logLevelStr = val
+	}
+
+	if val := conf.GetBool("no-version-check"); !flag.Lookup("no-version-check").Changed {
+		opts.noVersionCheck = val
+	}
+
+	if val := conf.GetBool("skip-pod-summary"); !flag.Lookup("skip-pod-summary").Changed {
+		opts.skipPodSummary = val
+	}
+}
+
+func main() {
+	opts := cliOptions{}
+
+	flag.StringVar(&opts.namespace, "namespace", "", "Namespace for collecting data. If empty data will be collected from all namespaces")
+	flag.StringVar(&opts.resource, "resource", "auto", "Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, ps, none, auto")
+	flag.StringVar(&opts.clusterName, "cluster", "", "Cluster name")
+	flag.StringVar(&opts.kubeconfig, "kubeconfig", "", "Path to kubeconfig")
+	flag.StringVar(&opts.forwardport, "forwardport", "", "Port to use for  port forwarding")
+	flag.StringVar(&opts.logLevelStr, "log-level", "error", "Log level (debug, info, warn, error, fatal, panic)")
+	flag.BoolVar(&opts.version, "version", false, "Print version")
+	flag.BoolVar(&opts.skipPodSummary, "skip-pod-summary", false, "Skip pod summary collection")
+	flag.BoolVar(&opts.noVersionCheck, "no-version-check", false, "Default: Don't check for updates")
 	flag.Parse()
 
-	if version {
+	opts.parseDefaultConfig()
+
+	if opts.version {
 		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
@@ -51,11 +92,20 @@ func main() {
 		return
 	}
 
-	if len(clusterName) > 0 {
-		resource += "/" + clusterName
+	if !opts.noVersionCheck {
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
+		if err != nil {
+			log.Infof("cannot check version updates: %s", err.Error())
+		} else if advice != "" {
+			log.Warn(advice)
+		}
 	}
 
-	level, err := log.ParseLevel(logLevelStr)
+	if len(opts.clusterName) > 0 {
+		opts.resource += "/" + opts.clusterName
+	}
+
+	level, err := log.ParseLevel(opts.logLevelStr)
 	if err != nil {
 		fmt.Printf("Invalid log level: %v\n", err)
 		os.Exit(1)
@@ -67,9 +117,9 @@ func main() {
 		DisableColors: true,
 	})
 
-	d, err := dumper.New("cluster-dump", namespace, kubeconfig, forwardport, resource, skipPodSummary)
+	d, err := dumper.New("cluster-dump", opts.namespace, opts.kubeconfig, opts.forwardport, opts.resource, opts.skipPodSummary)
 	if err != nil {
-		log.Println("Error:", err)
+		log.Error(err)
 		os.Exit(1)
 	}
 	log.Info("start collecting cluster data")
