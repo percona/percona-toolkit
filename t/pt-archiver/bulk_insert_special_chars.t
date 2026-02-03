@@ -19,12 +19,19 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-archiver";
 
+# Skip if sandbox not running (check before Sandbox uses /tmp/12345/use)
+if ( !-x '/tmp/12345/use' ) {
+   plan skip_all => 'Sandbox not running (start with sandbox/test-env start)';
+   exit 0;
+}
+
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
+   exit 0;
 }
 
 my $cnf = "/tmp/12345/my.sandbox.cnf";
