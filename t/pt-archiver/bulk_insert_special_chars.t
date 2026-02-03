@@ -64,10 +64,16 @@ is($src_count, 0, 'Source table is purged');
 is($dst_count, scalar(@test_rows), 'All rows archived to dest');
 
 # Compare archived data with expected (order by id).
+# Normalize numeric columns (id, stu_id) so comparison is robust across DBD::mysql
+# returning integers or strings.
 my $archived = $dbh->selectall_arrayref(
    'SELECT id, name, job, stu_id, title FROM bulk_escape.dest ORDER BY id'
 );
-is_deeply($archived, \@test_rows, 'Bulk-insert preserves tabs, newlines, backslashes (no field misalignment)');
+my $normalized = [ map {
+   [ 0 + $_->[0], $_->[1], $_->[2], 0 + $_->[3], $_->[4] ]
+} @$archived ];
+is_deeply($normalized, \@test_rows,
+   'Bulk-insert preserves tabs, newlines, backslashes (no field misalignment)');
 
 $sb->wipe_clean($dbh);
 ok($sb->ok(), 'Sandbox servers') or BAIL_OUT(__FILE__ . ' broke the sandbox');
