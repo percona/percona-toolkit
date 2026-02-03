@@ -97,7 +97,7 @@ func TestMain(m *testing.M) {
 	}
 
 	for _, ns := range namespaces {
-		cctx, _ := context.WithTimeout(ctx, time.Minute*10)
+		cctx, _ := context.WithTimeout(ctx, time.Minute*60)
 
 		err = utils.WaitForAllStatefulSetReady(cctx, kubeClient, ns)
 		if err != nil {
