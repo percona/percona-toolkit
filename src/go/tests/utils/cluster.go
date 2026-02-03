@@ -5,7 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/goforj/godump"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -35,8 +34,6 @@ func WaitForAllStatefulSetReady(ctx context.Context, client kubernetes.Interface
 			}
 
 			ready := sts.Status.ReadyReplicas
-
-			log.Printf("StatefulSet %q: \n%s", stsItem.Name, godump.DumpStr(sts.Status))
 
 			log.Printf("StatefulSet %q: desired=%d ready=%d\n", stsItem.Name, desired, ready)
 
@@ -70,12 +67,10 @@ func WaitForAllPodsReady(
 			return false, nil
 		}
 
-		for i, pod := range pods.Items {
+		for _, pod := range pods.Items {
 			if pod.Status.Phase == corev1.PodSucceeded {
 				continue
 			}
-
-			log.Printf("%dPOD:\n%s", i, godump.DumpStr(pod))
 
 			if pod.Status.Phase != corev1.PodRunning {
 				return false, nil
