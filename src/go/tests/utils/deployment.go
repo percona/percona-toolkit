@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -23,7 +22,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// ClusterConfig describes k3d cluster configuration
 type ClusterConfig struct {
 	Port        int
 	OperatorURL string
@@ -87,35 +85,6 @@ func createCluster(ctx context.Context, name string, port int) error {
 	}
 
 	return nil
-}
-
-func getKubeClient(contextName string) (*kubernetes.Clientset, *dynamic.DynamicClient, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get home dir: %w", err)
-	}
-
-	kubeconfigPath := filepath.Join(homeDir, ".kube", "config")
-
-	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
-		&clientcmd.ConfigOverrides{CurrentContext: contextName},
-	).ClientConfig()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load kubeconfig: %w", err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create kubernetes client: %w", err)
-	}
-
-	dynamicClient, err := dynamic.NewForConfig(config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create dynamic client: %w", err)
-	}
-
-	return clientset, dynamicClient, nil
 }
 
 func waitForJob(ctx context.Context, clientset *kubernetes.Clientset, ns, jobName string, timeout time.Duration) error {
