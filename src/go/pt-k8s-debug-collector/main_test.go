@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -15,55 +16,53 @@ import (
 	"time"
 
 	"github.com/percona/percona-toolkit/src/go/tests/utils"
+	"github.com/spf13/pflag"
+	"github.com/stretchr/testify/suite"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 /*
-This test requires:
-- Running K8 Operator installation
-- kubectl configuration files, one for each supported operator
--- KUBECONFIG_PXC for K8SPXC
--- KUBECONFIG_PS for K8SPS
--- KUBECONFIG_PSMDB for K8SPSMDB
--- KUBECONFIG_PG for K8SPG
+TEST PREREQUISITES:
+  - Cluster State: All target clusters must be deployed and in a "Ready" state.
+  - Required Namespaces: The test targets the following specific namespaces:
+    "pxc", "ps", "psmdb", "pgo", "pgv2".
+  - Connectivity: A valid kubeconfig must be provided with active contexts for each cluster.
 
-	-- KUBECONFIG_PG2 for K8SPG version 2
+AUTOMATIC DEPLOYMENT (Optional):
+  If the environment is not ready, you can use k3d for automated setup.
+  Note: Deployment may take time, so increasing the timeout is mandatory.
+
+  Usage:
+    go test ./... -timeout 60m --args --deploy-k3d [comma-separated-deployments]
+
+  Available deployment targets:
+    "pxc", "ps", "psmdb", "pgo", "pgv2"
+
+  Example:
+    go test ./... -timeout 60m --args --deploy pxc,pgv2
+
+ENVIRONMENT VARIABLES:
+  - KUBECONFIG:  Custom path to your kubeconfig file.
+                 Default: $HOME/.kube/config
+  - FORWARDPORT (Optional): Specifies a custom local port for port-forwarding to pods.
+                 Use this if the default port is already bound or in use by another process.
 */
+
+const (
+	DEFAULT_FORWARD_PORT = "18443"
+	TOOL_PATH            = "../../../bin/pt-k8s-debug-collector"
+)
+
 var (
 	namespaces = []string{
-		"pxc", "ps", "psmdb", "pg", "pgv2",
+		"pxc", "ps", "psmdb", "pgo", "pgv2",
 	}
 
 	resources = []string{
-		"pxc", "ps", "psmdb", "pg", "pgv2", "auto", "none",
-	}
-
-	deployments = []string{
-		"k8s-pxc:1.18.0", "k8s-ps:1.0.0", "k8s-psmdb:1.21.1", "k8s-pg:1.6.0", "k8s-pg:2.8.0",
+		"pxc", "ps", "psmdb", "pgo", "pgv2", "auto", "none",
 	}
 )
-
-/*
-You can additionally set option FORWARDPORT if you want to use custom port when testing summaries.
-
-pt-mysql-summary, mysql, psql, and pt-mongodb-summary must be in the PATH.
-
-Since running pt-k8s-debug-collector may take long time run go test with increase timeout:
-go test -timeout 6000s
-
-We do not explicitly test --kubeconfig and --forwardport options, because they are used in other tests.
-*/
-
-/*
-Tests TODO:
-- Test clusters with custom user and secrets. With the way we currently test,
-  we just need to create a cluster with particular options. But it is already
-  time and resource consuming operation. So we need to either test only getCR
-  function or create a mock cluster, or find a better way to deploy test clusters.
-*/
-
-// You need to have anydbver in path to start tests (https://github.com/ihanick/anydbver)
 
 func getKubeClient(kubeconfigPath string) (kubernetes.Interface, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
@@ -79,67 +78,190 @@ func getKubeClient(kubeconfigPath string) (kubernetes.Interface, error) {
 	return clientset, nil
 }
 
-func TestMain(m *testing.M) {
-	ctx := context.Background()
-	log.Println("START")
-	args := []string{"deploy"}
-	args = append(args, deployments...)
-	utils.DeployAnyDbVer(ctx, args)
-
+func getExistingNamespaces(ctx context.Context) []string {
+	testNs := []string{}
 	config, err := utils.GetKubeConfigPath()
 	if err != nil {
-		log.Fatalf("could not get a kubeconfig: %s", err)
+		log.Printf("could not get a kubeconfig: %s", err)
+		return testNs
 	}
 
 	kubeClient, err := getKubeClient(config)
 	if err != nil {
-		log.Fatalf("could not get a kubeclient: %s", err)
+		log.Printf("could not get a kubeclient: %s", err)
+		return testNs
 	}
 
-	for _, ns := range namespaces {
-		cctx, _ := context.WithTimeout(ctx, time.Minute*120)
-
-		err = utils.WaitForAllStatefulSetReady(cctx, kubeClient, ns)
-		if err != nil {
-			log.Fatalf("waiting for all statefullsets to be ready is falied with err: %s", err)
-		}
-
-		err = utils.WaitForAllPodsReady(cctx, kubeClient, ns)
-		if err != nil {
-			log.Fatalf("waiting for all pods to be ready is falied with err: %s", err)
+	existingNs, _ := utils.GetNamespaces(ctx, kubeClient)
+	for _, exNs := range existingNs {
+		for _, ns := range namespaces {
+			if ns == exNs {
+				testNs = append(testNs, ns)
+			}
 		}
 	}
+
+	return testNs
+}
+
+var (
+	selectedDeploymentNames        []string
+	selectedDeploymentNamesChanged bool
+	testNamespaces                 []string
+)
+
+func init() {
+	pflag.StringSliceVar(&selectedDeploymentNames, "deploy-k3d", namespaces, fmt.Sprintf("Select a specific deployments to test against. Avaliable deployments: %s", strings.Join(namespaces, ",")))
+}
+
+func TestMain(m *testing.M) {
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	pflag.Parse()
+
+	selectedDeploymentNamesChanged = pflag.Lookup("deploy-k3d").Changed
+
+	ctx := context.Background()
+
+	testNamespaces = getExistingNamespaces(ctx)
+
+	if len(testNamespaces) != 0 && selectedDeploymentNamesChanged {
+		log.Fatalf("You already have runing clusters in this namespaces: %s, use --deploy-k3d only with zero init configuration", testNamespaces)
+	}
+
+	if len(testNamespaces) == 0 && !selectedDeploymentNamesChanged {
+		log.Fatalf(`Target namespaces not found in the cluster.
+    
+Expected one of: %s
+Found in cluster: %s
+
+Possible reasons:
+1. The cluster hasn't been deployed yet.
+2. Your kubeconfig does not contains proper contexts
+
+Action: Run tests with the "--deploy-k3d" flag to automatically set up the required environment.`,
+			strings.Join(namespaces, ", "), strings.Join(testNamespaces, ", "))
+	}
+
+	log.Printf("Starting tests for deployments: %s\n", strings.Join(testNamespaces, ","))
 
 	exitCode := m.Run()
-	if exitCode == 0 {
-		log.Println("Tests finished succesfully, destroying deployments")
-		// Comment this if you don't want to destroy deployments after tests
-		err := utils.CleanUpAnyDbVer(ctx)
-		if err != nil {
-			log.Fatalf("there was an error when destroying deloyments: %v", err)
-		}
-	}
 	os.Exit(exitCode)
 }
 
-/*
-Tests collection of the individual files by pt-k8s-debug-collector.
-Requires running K8SPXC instance and kubectl, configured to access that instance by default.
-*/
-func TestIndividualFiles(t *testing.T) {
-	config, err := utils.GetKubeConfigPath()
-	if err != nil {
-		t.Fatalf("error getting config for kube: %v", err)
+type CollectorSuite struct {
+	suite.Suite
+	KubeConfig  string
+	KubeClient  kubernetes.Interface
+	Namespace   string
+	ForwardPort string
+	Resources   []string
+}
+
+func (s *CollectorSuite) SetupSuite() {
+	if selectedDeploymentNamesChanged {
+		rawConfig, err := utils.DeployK3d(s.T().Context(), s.Namespace)
+		if err != nil {
+			s.Require().NoError(err)
+			return
+		}
+
+		tmpFile, err := os.CreateTemp("", "kubeconfig-*.yaml")
+		if err != nil {
+			s.Require().NoError(err)
+			return
+		}
+
+		_, err = tmpFile.WriteString(rawConfig)
+		if err != nil {
+			s.Require().NoError(err)
+			return
+		}
+		tmpFile.Close()
+
+		s.KubeConfig = tmpFile.Name()
+
+		client, _, err := utils.GetKubeClientFromRaw(rawConfig, "k3d-"+s.Namespace)
+		if err != nil {
+			s.Require().NoError(err)
+			return
+		}
+		s.KubeClient = client
 	}
+
+	stsCtx, stsCancel := context.WithTimeout(s.T().Context(), 2*time.Minute)
+	defer stsCancel()
+
+	err := utils.WaitForAllStatefulSetReady(stsCtx, s.KubeClient, s.Namespace)
+	if err != nil {
+		s.T().Logf("failed to wait for STS: %s, skipping", err)
+	}
+
+	podCtx, podCancel := context.WithTimeout(s.T().Context(), 60*time.Minute)
+	defer podCancel()
+
+	s.Require().NoError(utils.WaitForAllPodsReady(podCtx, s.KubeClient, s.Namespace))
+}
+
+func (s *CollectorSuite) TearDownSuite() {
+	if selectedDeploymentNamesChanged {
+		s.T().Logf("Cleaning up %s", s.Namespace)
+		utils.DestroyK3d(s.T().Context(), s.Namespace)
+	}
+}
+
+func (s *CollectorSuite) TearDownTest() {
+	_ = os.Remove("cluster-dump.tar.gz")
+}
+
+func TestCollectorRunner(t *testing.T) {
+	config, _ := utils.GetKubeConfigPath()
+	client, _ := getKubeClient(config)
+
+	ns := selectedDeploymentNames
+	if len(testNamespaces) != 0 {
+		ns = testNamespaces
+	}
+
+	for _, name := range ns {
+		t.Run("Operator_"+name, func(t *testing.T) {
+			fport := strings.TrimSpace(os.Getenv("FORWARDPORT"))
+			if fport == "" {
+				fport = DEFAULT_FORWARD_PORT
+			}
+
+			suite.Run(t, &CollectorSuite{
+				KubeConfig:  config,
+				KubeClient:  client,
+				Namespace:   name,
+				ForwardPort: fport,
+				Resources:   []string{name, "auto", "none"},
+			})
+		})
+	}
+}
+
+func TestVersionOption(t *testing.T) {
+	out, err := exec.Command(TOOL_PATH, "--version").Output()
+	if err != nil {
+		t.Errorf("error executing %s --version: %s", toolname, err.Error())
+	}
+	// We are using MustCompile here, because hard-coded RE should not fail
+	re := regexp.MustCompile(toolname + `\n.*Version v?\d+\.\d+\.\d+\n`)
+	if !re.Match(out) {
+		t.Errorf("%s --version returns wrong result:\n%s", toolname, out)
+	}
+}
+
+func (s *CollectorSuite) TestIndividualFiles() {
 	tests := []struct {
-		deployment   string
+		namespace    string
 		name         string
 		cmd          []string
 		want         []string
 		preprocessor func(string) string
 	}{
 		{
-			deployment: "pxc",
+			namespace: "pxc",
 			// If the tool collects required log files
 			name: "pxc_logs_list",
 			// tar -tf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/*'
@@ -159,7 +281,7 @@ func TestIndividualFiles(t *testing.T) {
 			},
 		},
 		{
-			deployment: "pxc",
+			namespace: "pxc",
 			// If MySQL error log is not empty
 			name: "pxc_mysqld_error_log",
 			// tar --to-command="grep -m 1 -o Version:" -xzf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/mysqld-error.log'
@@ -175,309 +297,137 @@ func TestIndividualFiles(t *testing.T) {
 		},
 	}
 
-	requestedClusterReports := make(map[string]struct{}, 0)
-	for _, test := range tests {
-		requestedClusterReports[test.deployment] = struct{}{}
+	if s.Namespace != "pxc" {
+		s.T().Skip("This test is specifically for pxc namespace")
 	}
 
-	for resource := range requestedClusterReports {
-		if !slices.Contains(resources, resource) {
-			continue
-		}
+	for _, resource := range s.Resources {
+		s.Run("Resource_"+resource, func() {
+			cmd := exec.Command(TOOL_PATH, "--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
+			err := cmd.Run()
+			s.NoError(err)
 
-		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", config, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", resource)
-		if err := cmd.Run(); err != nil {
-			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
-		}
-		defer func() {
-			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
-			if err := cmd.Run(); err != nil {
-				t.Errorf("error cleaning up test data: %s", err.Error())
+			for _, test := range tests {
+				out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
+				if err != nil && resource == "none" {
+					continue
+				}
+				s.NoError(err)
+				if test.preprocessor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
+					s.Failf("Preprocessor Check", "test %s\nresource:%s\nnamespace: %s\noutput is not as expected\nOutput: %s\nWanted: %s", test.name, resource, test.namespace, test.preprocessor(bytes.NewBuffer(out).String()), test.want)
+				}
 			}
-		}()
-
-		for _, test := range tests {
-			out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
-			if err != nil {
-				t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, test.cmd[0], err.Error(), out)
-			}
-			if test.preprocessor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
-				t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, test.preprocessor(bytes.NewBuffer(out).String()), test.want)
-			}
-		}
+		})
 	}
 }
 
-/*
-Tests for supported values of the --resource option
-*/
-func TestResourceOption(t *testing.T) {
-	config, err := utils.GetKubeConfigPath()
-	if err != nil {
-		t.Fatalf("error getting config for kube: %v", err)
-	}
+func (s *CollectorSuite) TestResourceOption() {
 	testcmd := []string{"sh", "-c", "tar -tf cluster-dump.tar.gz --wildcards '*/summary.txt' 2>/dev/null | wc -l"}
 	tests := []struct {
-		name     string
-		resource string
-		want     string
+		name      string
+		namespace string
+		skip      bool
+		want      string
 	}{
-		{
-			name:     "none",
-			resource: "none",
-			want:     "0",
-		},
-		{
-			name:     "pxc",
-			resource: "pxc",
-			want:     "3",
-		},
-		{
-			name:     "ps",
-			resource: "ps",
-			want:     "3",
-		},
-		{
-			name:     "psmdb",
-			resource: "psmdb",
-			want:     "3",
-		},
-		{
-			name:     "pg",
-			resource: "pg",
-			want:     "3",
-		},
-		{
-			name:     "pgv2",
-			resource: "pgv2",
-			want:     "3",
-		},
-		{
-			name:     "auto pxc",
-			resource: "auto",
-			want:     "3",
-		},
-		{
-			name:     "auto ps",
-			resource: "auto",
-			want:     "3",
-		},
-		{
-			name:     "auto psmdb",
-			resource: "auto",
-			want:     "3",
-		},
-		{
-			name:     "auto pg",
-			resource: "auto",
-			want:     "3",
-		},
-		{
-			name:     "auto pgv2",
-			resource: "auto",
-			want:     "3",
-		},
+		{name: "pxc", namespace: "pxc", want: "3"},
+		{name: "ps", namespace: "ps", want: "3"},
+		{name: "psmdb", namespace: "psmdb", want: "3"},
+		{name: "pg", namespace: "pg", want: "3"},
+		{name: "pgv2", namespace: "pgv2", want: "3"},
 	}
 
-	for _, test := range tests {
-		if !slices.Contains(resources, test.resource) {
-			continue
-		}
+	for _, resource := range s.Resources {
+		s.Run("Resource_"+resource, func() {
+			cmd := exec.Command(TOOL_PATH, "--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
+			err := cmd.Run()
+			s.NoError(err)
 
-		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", config, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.resource)
-		if err := cmd.Run(); err != nil {
-			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
-		}
+			for _, test := range tests {
+				if test.namespace != s.Namespace {
+					continue
+				}
 
-		defer func() {
-			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
-			if err := cmd.Run(); err != nil {
-				t.Errorf("error cleaning up test data: %s", err.Error())
+				if resource == "none" {
+					test.want = "0"
+				}
+
+				out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
+				s.NoErrorf(err, "test %s, error running command %s\nCommand output:\n%s", test.name, testcmd, out)
+				if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
+					s.Failf("Summary Check", "test %s\nresource %s\nnamespace %s\noutput is not as expected\nOutput: %s\nWanted: %s", test.name, resource, test.namespace, out, test.want)
+				}
 			}
-		}()
-
-		out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
-		if err != nil {
-			t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, testcmd, err.Error(), out)
-		}
-		if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
-			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want)
-		}
+		})
 	}
 }
 
-type CmdCompare struct {
-	cmd []string
-	out string
-}
-
-func PreareFindFileInTarCmd(tarPath, filePath, substring string) []string {
-	return []string{"tar", "--to-command", fmt.Sprintf("grep -m 1 -o %s", substring), "-xzf", tarPath, "--wildcards", filePath}
-}
-
-/*
-Tests for option --skip-pod-summary
-*/
-func TestPT_2453(t *testing.T) {
-	config, err := utils.GetKubeConfigPath()
-	if err != nil {
-		t.Fatalf("error getting config for kube: %v", err)
-	}
+func (s *CollectorSuite) TestPT_2453() {
 	testcmd := []string{"sh", "-c", "tar -tf cluster-dump.tar.gz --wildcards '*/summary.txt' 2>/dev/null | wc -l"}
 	tests := []struct {
-		name     string
-		resource string
-		want     string
+		name      string
+		namespace string
+		skip      bool
+		want      string
 	}{
-		{
-			name:     "none",
-			resource: "none",
-			want:     "0",
-		},
-		{
-			name:     "pxc",
-			resource: "pxc",
-			want:     "0",
-		},
-		{
-			name:     "ps",
-			resource: "ps",
-			want:     "0",
-		},
-		{
-			name:     "psmdb",
-			resource: "psmdb",
-			want:     "0",
-		},
-		{
-			name:     "pg",
-			resource: "pg",
-			want:     "0",
-		},
-		{
-			name:     "pgv2",
-			resource: "pgv2",
-			want:     "0",
-		},
-		{
-			name:     "auto pxc",
-			resource: "auto",
-			want:     "0",
-		},
-		{
-			name:     "auto ps",
-			resource: "auto",
-			want:     "0",
-		},
-		{
-			name:     "auto psmdb",
-			resource: "auto",
-			want:     "0",
-		},
-		{
-			name:     "auto pg",
-			resource: "auto",
-			want:     "0",
-		},
-		{
-			name:     "auto pgv2",
-			resource: "auto",
-			want:     "0",
-		},
+		{name: "pxc", namespace: "pxc", want: "0"},
+		{name: "ps", namespace: "ps", want: "0"},
+		{name: "psmdb", namespace: "psmdb", want: "0"},
+		{name: "pg", namespace: "pg", want: "0"},
+		{name: "pgv2", namespace: "pgv2", want: "0"},
 	}
 
-	for _, test := range tests {
-		if !slices.Contains(resources, test.resource) {
-			continue
-		}
+	for _, resource := range s.Resources {
+		s.Run("Resource_"+resource, func() {
+			cmd := exec.Command(TOOL_PATH,
+				"--kubeconfig", s.KubeConfig,
+				"--forwardport", s.ForwardPort,
+				"--resource", resource,
+				"--skip-pod-summary")
+			err := cmd.Run()
+			s.NoError(err)
 
-		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", config, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.resource, "--skip-pod-summary")
-		if err := cmd.Run(); err != nil {
-			t.Errorf("error executing pt-k8s-debug-collector: %s\nCommand: %s", err.Error(), cmd.String())
-		}
-		defer func() {
-			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
-			if err := cmd.Run(); err != nil {
-				t.Errorf("error cleaning up test data: %s", err.Error())
+			for _, test := range tests {
+				if test.namespace != s.Namespace {
+					continue
+				}
+
+				out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
+				s.NoErrorf(err, "test %s, error running command %s\nCommand output:\n%s", test.name, testcmd, out)
+				if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
+					s.Failf("Summary Check", "test %s\nresource %s\nnamespace %s\noutput is not as expected\nOutput: %s\nWanted: %s", test.name, resource, test.namespace, out, test.want)
+				}
 			}
-		}()
-		out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
-		if err != nil {
-			t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, testcmd, err.Error(), out)
-		}
-		if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
-			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want)
-		}
+		})
 	}
 }
 
-/*
-Option --version
-*/
-func TestVersionOption(t *testing.T) {
-	out, err := exec.Command("../../../bin/"+toolname, "--version").Output()
-	if err != nil {
-		t.Errorf("error executing %s --version: %s", toolname, err.Error())
-	}
-	// We are using MustCompile here, because hard-coded RE should not fail
-	re := regexp.MustCompile(toolname + `\n.*Version v?\d+\.\d+\.\d+\n`)
-	if !re.Match(out) {
-		t.Errorf("%s --version returns wrong result:\n%s", toolname, out)
-	}
-}
+var busyPortTested bool
 
-/*
-If we handle error properly
-*/
-func TestPT_2169(t *testing.T) {
-	config, err := utils.GetKubeConfigPath()
-	if err != nil {
-		t.Fatalf("error getting config for kube: %v", err)
-	}
-	busyport, _ := os.Getwd() // we are using wrong socket for ssh tunnel here to ensure we get error
-
-	testcmd := []string{"sh", "-c", `tar -xf cluster-dump.tar.gz --wildcards "*/summary.txt" --to-command 'grep -m1 "err: strconv.ParseInt"' 2>/dev/null | wc -l`}
-	tests := []struct {
-		name     string
-		resource string
-		want     string
-		port     string
-	}{
-		{
-			name:     "pxc with busy port",
-			resource: "pxc",
-			want:     "3",
-			port:     busyport,
-		},
-		{
-			name:     "pg no error",
-			resource: "pg",
-			want:     "0",
-			port:     os.Getenv("FORWARDPORT"),
-		},
+func (s *CollectorSuite) TestBusyPortError() {
+	if busyPortTested {
+		s.T().Skip("Already tested in another namespace run")
 	}
 
-	for _, test := range tests {
-		if !slices.Contains(resources, test.resource) {
-			continue
-		}
-
-		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", config, "--forwardport", test.port, "--resource", test.resource)
-		if err := cmd.Run(); err != nil {
-			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
-		}
-		defer func() {
-			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
-			if err := cmd.Run(); err != nil {
-				t.Errorf("error cleaning up test data: %s", err.Error())
-			}
-		}()
-		out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
-		if err != nil {
-			t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, testcmd, err.Error(), out)
-		}
-		if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
-			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want)
-		}
+	if s.Namespace == "pgo" || s.Namespace == "pgv2" {
+		s.T().Skip("Forward port not used in postgres dump")
 	}
+
+	busyPortTested = true
+
+	s.Run("strconv_error_on_busy_port", func() {
+		busyPort, _ := os.Getwd()
+
+		cmd := exec.Command(TOOL_PATH,
+			"--kubeconfig", s.KubeConfig,
+			"--forwardport", busyPort,
+			"--resource", s.Namespace,
+		)
+
+		_ = cmd.Run()
+		testcmd := "tar -xf cluster-dump.tar.gz --wildcards \"*/summary.txt\" --to-command 'grep \"err: strconv.ParseInt\"' | wc -l"
+		out, err := exec.Command("sh", "-c", testcmd).Output()
+
+		s.NoError(err)
+		s.Equal("3", strings.TrimSpace(string(out)), "Should find error logs in summary files due to busy port")
+	})
 }

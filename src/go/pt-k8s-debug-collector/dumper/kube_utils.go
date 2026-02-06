@@ -68,6 +68,7 @@ func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, localPort s
 	readyChan := make(chan struct{}, 1)
 	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
 
+	log.Infof("start frowarder for %s:%s", localPort, remotePort)
 	forwarderCtx, forwarderClose := context.WithCancel(ctx)
 	forwarder, err := portforward.New(dialer, []string{localPort + ":" + remotePort}, forwarderCtx.Done(), readyChan, out, errOut)
 	if err != nil {

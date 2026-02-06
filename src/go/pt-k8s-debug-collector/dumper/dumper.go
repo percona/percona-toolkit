@@ -72,6 +72,10 @@ type exportJob struct {
 func New(location, namespace, kubeconfig, forwardport, resource string, skipPodSummary bool) (*Dumper, error) {
 	var config *rest.Config
 
+	safeLog := NewSafeLogger()
+
+	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
+
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build config from flags: %w", err)
@@ -97,13 +101,14 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 		location:        location,
 		mode:            int64(0o777),
 		namespace:       namespace,
-		forwardport:     forwardport,
+		forwardport:     strings.TrimSpace(forwardport),
 		skipPodSummary:  skipPodSummary,
 		clientSet:       clientset,
 		dynamicClient:   dynclient,
 		discoveryClient: discclient,
 		restConfig:      config,
 		usedPorts:       sync.Map{},
+		logger:          safeLog,
 	}
 
 	if resource == "none" || resource == "" {
@@ -145,12 +150,6 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 			}
 		}
 	}
-
-	safeLog := NewSafeLogger()
-
-	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
-
-	d.logger = safeLog
 
 	return d, err
 }
