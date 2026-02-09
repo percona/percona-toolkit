@@ -121,10 +121,11 @@ func main() {
 	if !flag.Lookup("kubeconfig").Changed {
 		path, err := utils.GetKubeConfigPath()
 		if err != nil {
-			log.Errorf("Failed to get default kubeconfig: %s", err)
+			log.Errorf("failed to get default kubeconfig: %s", err)
 		}
 
 		opts.kubeconfig = path
+		log.Infof("loaded default kubeconfig: %s", path)
 	}
 
 	d, err := dumper.New("cluster-dump", opts.namespace, opts.kubeconfig, opts.forwardport, opts.resource, opts.skipPodSummary)
