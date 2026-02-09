@@ -11,6 +11,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/pt-k8s-debug-collector/dumper"
+	"github.com/percona/percona-toolkit/src/go/tests/utils"
 )
 
 const (
@@ -116,6 +117,15 @@ func main() {
 		FullTimestamp: true,
 		DisableColors: true,
 	})
+
+	if !flag.Lookup("kubeconfig").Changed {
+		path, err := utils.GetKubeConfigPath()
+		if err != nil {
+			log.Errorf("Failed to get default kubeconfig: %s", err)
+		}
+
+		opts.kubeconfig = path
+	}
 
 	d, err := dumper.New("cluster-dump", opts.namespace, opts.kubeconfig, opts.forwardport, opts.resource, opts.skipPodSummary)
 	if err != nil {
