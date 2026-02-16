@@ -3,7 +3,6 @@ package dumper
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -422,9 +421,7 @@ func (d *Dumper) resilientWorker(id int, ctx context.Context, cancel context.Can
 					cancel()
 					return
 				}
-				report := fmt.Sprintf("error exporting logs: %v", err)
-				errPath := filepath.Join(d.location, job.Pod.Namespace, job.Pod.Name)
-				d.archive.WriteVirtualFile(errPath, []byte(report))
+				log.Errorf("error exporting logs: %v", err)
 			}
 
 			if job.Pod.Status.Phase == corev1.PodRunning {
