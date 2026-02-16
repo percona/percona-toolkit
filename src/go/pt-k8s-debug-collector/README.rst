@@ -146,24 +146,29 @@ Targeted custom resource name. Supported values:
 Default: ``auto``
 
 ``--namespace``
-
-Targeted namespace. By default data will be collected from all namespaces
+    Targeted namespace. By default data will be collected from all namespaces
 
 ``--cluster``
-
-Targeted cluster. By default data from all available clusters to be collected
+    Targeted cluster. By default data from all available clusters to be collected
 
 ``--kubeconfig``
-
-Path to kubeconfig. Default configuration be used if none specified
+    Path to kubeconfig. Default configuration be used if none specified
 
 ``--forwardport``
+    Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
 
-Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
+``--log-level``
+    Set the logging level. Supported values: ``debug``, ``info``, ``warn``, ``error``, ``fatal``, ``panic``. Default: ``error``.
+
+``--no-version-check``
+    Do not check for tool updates on startup.
+
+``--skip-pod-summary``
+    Skip the collection of pod-specific summary data.
 
 ``--version``
+    Print version info.
 
-Print version info
 
 Requirements
 ============
