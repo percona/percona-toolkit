@@ -7,7 +7,7 @@ require (
 	github.com/Ladicle/tabwriter v1.0.0
 	github.com/Masterminds/semver v1.5.0
 	github.com/alecthomas/kingpin v2.2.6+incompatible
-	github.com/alecthomas/kong v1.13.0
+	github.com/alecthomas/kong v1.14.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/go-ini/ini v1.67.0
 	github.com/golang/mock v1.6.0
@@ -15,7 +15,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-version v1.8.0
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.11.1
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/montanaflynn/stats v0.7.1
 	github.com/pborman/getopt v1.1.0
@@ -26,7 +26,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	github.com/xlab/treeprint v1.2.0
-	go.mongodb.org/mongo-driver v1.17.6
+	go.mongodb.org/mongo-driver v1.17.9
 	golang.org/x/crypto v0.47.0
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
