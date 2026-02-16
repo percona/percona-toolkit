@@ -166,7 +166,7 @@ func (d *Dumper) DumpCluster() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	defer d.logger.DumpToArchive(d.archive, d.DumperLogPath("dumper"))
+	defer d.logger.DumpToArchive(d.archive, d.DumperLogPath("errors"))
 
 	log.Info("initializing pod cache")
 	factory := informers.NewSharedInformerFactory(d.clientSet, 10*time.Minute)

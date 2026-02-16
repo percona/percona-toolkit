@@ -24,7 +24,7 @@ func (d *Dumper) PodRawSecretsPath(namespace, secretName string) string {
 
 // /<location>/<logPrefix>.log
 func (d *Dumper) DumperLogPath(logPrefix string) string {
-	return filepath.Join(d.location, logPrefix+".log")
+	return filepath.Join(d.location, logPrefix+".txt")
 }
 
 // /<location>/<namespace>/<resourceName>.yaml
