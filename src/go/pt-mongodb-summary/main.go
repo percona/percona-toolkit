@@ -15,6 +15,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -26,6 +27,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -35,6 +37,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -159,6 +162,29 @@ type clusterwideInfo struct {
 	Chunks                  []proto.ChunksByCollection
 }
 
+type mongosInstance struct {
+	Name     string    `bson:"_id"`
+	LastPing time.Time `bson:"ping"`
+	UpTime   int       `bson:"up"`
+	Version  string    `bson:"mongoVersion"`
+}
+
+type mongosInfo struct {
+	Instances []mongosInstance `bson:"instances"`
+}
+
+func (t mongosInfo) MaxNameLen() int {
+	if len(t.Instances) == 0 {
+		return 0
+	}
+
+	maxInst := slices.MaxFunc(t.Instances, func(a, b mongosInstance) int {
+		return cmp.Compare(len(a.Name), len(b.Name))
+	})
+
+	return len(maxInst.Name)
+}
+
 type cliOptions struct {
 	Host               string
 	User               string
@@ -184,6 +210,7 @@ type collectedInfo struct {
 	RunningOps       *opCounters
 	SecuritySettings *security
 	HostInfo         *hostInfo
+	MongosInfo       *mongosInfo
 	Errors           []string
 }
 
@@ -255,6 +282,11 @@ func main() {
 	log.Debugf("hostnames: %v", hostnames)
 
 	ci := &collectedInfo{}
+
+	ci.MongosInfo, err = getMongosInfo(ctx, client)
+	if err != nil {
+		log.Warnf("[Error] cannot get mongos info: %v\n", err)
+	}
 
 	ci.HostInfo, err = getHostInfo(ctx, client)
 	if err != nil {
@@ -332,7 +364,12 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	default:
 		buf = new(bytes.Buffer)
 
-		t := template.Must(template.New("replicas").Parse(templates.Replicas))
+		t := template.Must(template.New("mongos").Parse(templates.MongosInfo))
+		if err := t.Execute(buf, ci.MongosInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
+		}
+
+		t = template.Must(template.New("replicas").Parse(templates.Replicas))
 		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
 			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
 		}
@@ -452,6 +489,29 @@ func countMongodProcesses() (int, error) {
 		}
 	}
 	return count, nil
+}
+
+func getMongosInfo(ctx context.Context, client *mongo.Client) (*mongosInfo, error) {
+	threshold := time.Now().Add(-300 * time.Second)
+
+	filter := bson.M{
+		"ping": bson.M{
+			"$gt": threshold,
+		},
+	}
+
+	cursor, err := client.Database("config").Collection("mongos").Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find mongos: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var instances []mongosInstance
+	if err := cursor.All(ctx, &instances); err != nil {
+		return nil, fmt.Errorf("failed to decode mongos: %w", err)
+	}
+
+	return &mongosInfo{Instances: instances}, nil
 }
 
 func getClusterwideInfo(ctx context.Context, client *mongo.Client) (*clusterwideInfo, error) {
