@@ -117,6 +117,7 @@ func init() {
 func TestMain(m *testing.M) {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
+	pflag.ParseSkippedFlags(os.Args[1:], flag.CommandLine)
 
 	selectedDeploymentNamesChanged = pflag.Lookup("deploy-k3d").Changed
 
