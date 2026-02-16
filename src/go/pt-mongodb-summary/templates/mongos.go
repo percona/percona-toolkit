@@ -27,7 +27,7 @@ const MongosInfo = `
 {{ if .Instances -}}
 {{- range .Instances -}}
 {{ printf "%-*s" $hostWidth .Name }}{{ $padding }}
-{{- printf "%-*s" $timeWidth (.LastPing.Format "2006-01-02 15:04:05") }}{{ $padding }}
+{{- printf "%-*s" $timeWidth (.LastPing.Format "2006-01-02T15:04:05Z07:00") }}{{ $padding }}
 {{- printf "%-*s" $versionWidth .Version }}{{ $padding }}
 {{- printf "%-15d" .UpTime }}
 {{ end }}
