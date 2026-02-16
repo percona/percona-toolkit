@@ -15,24 +15,23 @@ package templates
 
 const MongosInfo = `
 # Mongos #################################################################################################
-{{ $padding := 4 }}
-{{- $timeWidth := 25 -}}
+{{ "" }}
+{{- $padding := "    " -}}
+{{- $timeWidth := 20 -}}
 {{- $hostWidth := .MaxNameLen -}}
-{{- $versionWidth := 12 -}}
-{{- printf "%-*s" $hostWidth "Host" -}}
-{{- printf "%-*s" $padding " " -}}
-{{- printf "%-*s" $timeWidth "LastPing" -}}
-{{- printf "%-*s" $padding " " -}}
-{{- printf "%-*s" $versionWidth "Version" -}}
-{{- printf "%-*s" $padding " " -}}Uptime (sec)
-{{- if .Instances -}}
-{{- range .Instances }}
-{{ printf "%-*s" $hostWidth .Name }}
-{{- printf "%-*s" $padding " " -}}{{ printf "%-*s" $timeWidth (.LastPing.Format "2006-01-02T15:04:05Z07:00") }}
-{{- printf "%-*s" $padding " " -}}{{ printf "%-*s" $versionWidth .Version }}
-{{- printf "%-*s" $padding " " -}}{{ printf "%-15d" .UpTime }}
-{{- end }}
-{{- else }}
+{{- $versionWidth := 15 -}}
+
+{{ printf "%-*s" $hostWidth "Host" }}{{ $padding }}
+{{- printf "%-*s" $timeWidth "LastPing" }}{{ $padding }}
+{{- printf "%-*s" $versionWidth "Version" }}{{ $padding }}Uptime (sec)
+{{ if .Instances -}}
+{{- range .Instances -}}
+{{ printf "%-*s" $hostWidth .Name }}{{ $padding }}
+{{- printf "%-*s" $timeWidth (.LastPing.Format "2006-01-02 15:04:05") }}{{ $padding }}
+{{- printf "%-*s" $versionWidth .Version }}{{ $padding }}
+{{- printf "%-15d" .UpTime }}
+{{ end }}
+{{- else -}}
                                         no mongos instances found
 {{- end }}
 `
