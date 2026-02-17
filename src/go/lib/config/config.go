@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync"
 
 	"github.com/alecthomas/kong"
 )
@@ -90,7 +89,6 @@ func (p *StdinRequestString) Request(f func() (string, error)) error {
 }
 
 type PerconaResolver struct {
-	mu     sync.RWMutex
 	values map[string]any
 }
 
@@ -155,8 +153,6 @@ func (p *PerconaResolver) Validate(app *kong.Application) error {
 }
 
 func (p *PerconaResolver) Resolve(ctx *kong.Context, parent *kong.Path, flag *kong.Flag) (any, error) {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
 	return p.values[flag.Name], nil
 }
 
@@ -217,9 +213,7 @@ func loadConfig(path string) (*configFile, error) {
 // Setup initializes kong parser with Percona Toolkit configuration file support.
 //
 // It handles:
-//   - --config flag as the first argument (must be separated by space)
-//   - Default config file locations if --config not specified
-//   - Multiple config files (comma-separated)
+//   - --config flag as the first argument
 //   - Passthrough arguments after "--" in config files
 //   - Accepting kong.Options
 //
@@ -230,7 +224,12 @@ func loadConfig(path string) (*configFile, error) {
 func Setup(toolName string, cli any, options ...kong.Option) (*kong.Context, []string, error) {
 	rawArgs := os.Args[1:]
 
-	configPaths, specifiedConfig, remainingArgs, err := parseConfigFlag(rawArgs)
+	err := validateConfigPosition(rawArgs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	configPaths, specifiedConfig, err := parseConfigFlag(rawArgs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -256,34 +255,49 @@ func Setup(toolName string, cli any, options ...kong.Option) (*kong.Context, []s
 		return nil, nil, err
 	}
 
-	ctx, err := parser.Parse(remainingArgs)
+	ctx, err := parser.Parse(rawArgs)
 	parser.FatalIfErrorf(err)
 
 	return ctx, filePassthrough, nil
 }
 
-func parseConfigFlag(rawArgs []string) ([]string, bool, []string, error) {
-	if len(rawArgs) == 0 {
-		return nil, false, rawArgs, nil
+func validateConfigPosition(args []string) error {
+	if len(args) == 0 {
+		return nil
 	}
 
-	if strings.HasPrefix(rawArgs[0], "--config=") {
-		return nil, false, nil, errors.New("Error: --config must not use '='. Use: --config /path/to/file")
+	if args[0] == "--config" {
+		return nil
+	}
+
+	for i, a := range args {
+		if a == "--config" {
+			return fmt.Errorf("--config must be the first argument (found at position %d)", i+1)
+		}
+		if strings.HasPrefix(a, "--config=") {
+			return fmt.Errorf("--config must not use '=' syntax. Use: --config file.conf")
+		}
+	}
+
+	return nil
+}
+
+func parseConfigFlag(rawArgs []string) ([]string, bool, error) {
+	if len(rawArgs) == 0 {
+		return nil, false, nil
 	}
 
 	if rawArgs[0] != "--config" {
-		return nil, false, rawArgs, nil
+		return nil, false, nil
 	}
 
 	if len(rawArgs) < 2 {
-		return nil, false, nil, errors.New("Error: --config requires a value")
+		return nil, false, errors.New("Error: --config requires a value")
 	}
 
 	val := rawArgs[1]
-	remainingArgs := rawArgs[2:]
-
 	if val == "" || val == "''" || val == `""` {
-		return nil, true, remainingArgs, nil
+		return nil, true, nil
 	}
 
 	configPaths := strings.Split(val, ",")
@@ -292,7 +306,7 @@ func parseConfigFlag(rawArgs []string) ([]string, bool, []string, error) {
 		configPaths[i] = strings.TrimSpace(configPaths[i])
 	}
 
-	return configPaths, true, remainingArgs, nil
+	return configPaths, true, nil
 }
 
 func loadConfigFiles(configPaths []string, specifiedConfig bool) ([]kong.Resolver, []string, error) {

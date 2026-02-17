@@ -99,6 +99,9 @@ Will print every implemented regexes:
 Available flags
 ~~~~~~~~~~~~~~~
 
+``--config``
+    List of Percona Toolkit configuration file(s) separeted by comma without equal sign. Must be a first flag. Uses default config file locations if not specified.
+
 ``-h``, ``--help``               
     Show help and exit.
 

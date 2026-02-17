@@ -42,6 +42,7 @@ var (
 )
 
 type CliOptions struct {
+	config.ConfigFlag
 	NoColor               bool
 	Since                 *time.Time      `help:"Only list events after this date, format: 2023-01-23T03:53:40Z (RFC3339)"`
 	Until                 *time.Time      `help:"Only list events before this date"`

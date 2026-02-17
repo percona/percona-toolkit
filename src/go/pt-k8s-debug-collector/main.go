@@ -36,14 +36,15 @@ var (
 )
 
 type cliOptions struct {
+	config.ConfigFlag
 	Namespace      string `name:"namespace" help:"Namespace for collecting data. If empty data will be collected from all namespaces"`
 	Resource       string `name:"resource" help:"Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, ps, none, auto" default:"auto"`
 	ClusterName    string `name:"cluster" help:"Cluster name"`
 	Kubeconfig     string `name:"kubeconfig" help:"Path to kubeconfig"`
 	ForwardPort    string `name:"forwardport" help:"Port to use for  port forwarding"`
 	SkipPodSummary bool   `name:"skip-pod-summary" help:"Skip pod summary collection"`
-	Version        bool   `name:"version"`
-	VersionCheck   bool   `name:"version-check" negatable:"" default:"true"`
+	config.VersionCheckFlag
+	config.VersionFlag
 }
 
 func (c *cliOptions) AfterApply() error {
@@ -55,10 +56,6 @@ func (c *cliOptions) AfterApply() error {
 		return nil
 	}
 
-	if len(c.ClusterName) > 0 {
-		c.Resource += "/" + c.ClusterName
-	}
-
 	if c.VersionCheck {
 		advice, err := versioncheck.CheckUpdates(toolname, Version)
 		if err != nil {
@@ -67,6 +64,11 @@ func (c *cliOptions) AfterApply() error {
 			log.Printf("%s", advice)
 		}
 	}
+
+	if len(c.ClusterName) > 0 {
+		c.Resource += "/" + c.ClusterName
+	}
+
 	return nil
 }
 

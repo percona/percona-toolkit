@@ -25,11 +25,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alecthomas/kong"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 )
 
 type KongFlags struct {
+	ConfigFlag
 	VersionCheck   bool    `name:"version-check" negatable:"" default:"true"`
 	TrueBoolVar    bool    `name:"trueboolvar" help:"test"`
 	YesBoolVar     BoolYN  `name:"yesboolvar" help:"test"`
@@ -489,7 +489,6 @@ func TestCmdWithArgs(t *testing.T) {
 	for _, test := range tests {
 		os.Args = []string{test.name}
 		os.Args = append(os.Args, test.args...)
-		t.Log(os.Args)
 		_, _, err := Setup(test.name, test.cli)
 		if err != nil {
 			t.Fatal(err)
@@ -504,7 +503,7 @@ func TestCmdWithArgs(t *testing.T) {
 	}
 }
 
-func TestCmdWithArgsAndConfig(t *testing.T) {
+func TestCmdWithArgsAndDefaultConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     []string
@@ -580,7 +579,7 @@ func TestCmdWithArgsAndConfig(t *testing.T) {
 	}
 }
 
-func TestParseConfigFlag(t *testing.T) {
+func TestParseAndValidateConfigFlag(t *testing.T) {
 	tests := []struct {
 		name             string
 		args             []string
@@ -590,36 +589,32 @@ func TestParseConfigFlag(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			name:             "no_config_flag",
-			args:             []string{"--verbose", "--host=localhost"},
-			wantPaths:        nil,
-			wantSpecified:    false,
-			wantRemainingLen: 2,
-			wantErr:          false,
+			name:          "no_config_flag",
+			args:          []string{"--verbose", "--host=localhost"},
+			wantPaths:     nil,
+			wantSpecified: false,
+			wantErr:       false,
 		},
 		{
-			name:             "single_config",
-			args:             []string{"--config", "/path/to/config.conf", "--verbose"},
-			wantPaths:        []string{"/path/to/config.conf"},
-			wantSpecified:    true,
-			wantRemainingLen: 1,
-			wantErr:          false,
+			name:          "single_config",
+			args:          []string{"--config", "/path/to/config.conf", "--verbose"},
+			wantPaths:     []string{"/path/to/config.conf"},
+			wantSpecified: true,
+			wantErr:       false,
 		},
 		{
-			name:             "multiple_configs",
-			args:             []string{"--config", "/etc/config.conf,~/.config.conf", "--verbose"},
-			wantPaths:        []string{"/etc/config.conf", "~/.config.conf"},
-			wantSpecified:    true,
-			wantRemainingLen: 1,
-			wantErr:          false,
+			name:          "multiple_configs",
+			args:          []string{"--config", "/etc/config.conf,~/.config.conf", "--verbose"},
+			wantPaths:     []string{"/etc/config.conf", "~/.config.conf"},
+			wantSpecified: true,
+			wantErr:       false,
 		},
 		{
-			name:             "empty_config",
-			args:             []string{"--config", "''", "--verbose"},
-			wantPaths:        nil,
-			wantSpecified:    true,
-			wantRemainingLen: 1,
-			wantErr:          false,
+			name:          "empty_config",
+			args:          []string{"--config", "''", "--verbose"},
+			wantPaths:     nil,
+			wantSpecified: true,
+			wantErr:       false,
 		},
 		{
 			name:      "config_with_equals",
@@ -637,9 +632,15 @@ func TestParseConfigFlag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotPaths, gotSpecified, gotRemaining, err := parseConfigFlag(tt.args)
+			err := validateConfigPosition(tt.args)
+			if err != nil && !tt.wantErr {
+				t.Errorf("parseConfigFlag() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-			if (err != nil) != tt.wantErr {
+			gotPaths, gotSpecified, err := parseConfigFlag(tt.args)
+
+			if err != nil && !tt.wantErr {
 				t.Errorf("parseConfigFlag() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
@@ -655,38 +656,91 @@ func TestParseConfigFlag(t *testing.T) {
 			if gotSpecified != tt.wantSpecified {
 				t.Errorf("parseConfigFlag() specified = %v, want %v", gotSpecified, tt.wantSpecified)
 			}
-
-			if len(gotRemaining) != tt.wantRemainingLen {
-				t.Errorf("parseConfigFlag() remaining len = %d, want %d", len(gotRemaining), tt.wantRemainingLen)
-			}
 		})
 	}
 }
 
-type mockScanner struct {
-	value    string
-	hasValue bool
-}
-
-func (m *mockScanner) Len() int {
-	if m.hasValue {
-		return 1
+func TestSetupWithConfigFlag(t *testing.T) {
+	type TestCLI struct {
+		ConfigFlag
+		User string `name:"user" default:"guest"`
+		Host string `name:"host" default:"localhost"`
 	}
-	return 0
-}
 
-func (m *mockScanner) PopValueInto(name string, target interface{}) error {
-	if !m.hasValue {
-		return fmt.Errorf("no value set")
+	tests := []struct {
+		name       string
+		args       []string
+		globalConf string
+		customConf string
+		wantUser   string
+		wantHost   string
+		wantErr    bool
+	}{
+		{
+			name:       "Explicit config overrides default and flags",
+			args:       []string{"--config", "CUSTOM_PATH"},
+			globalConf: "user=default_user",
+			customConf: "user=custom_user\nhost=remote",
+			wantUser:   "custom_user",
+			wantHost:   "remote",
+		},
+		{
+			name:       "Empty config flag disables all configs",
+			args:       []string{"--config", ""},
+			globalConf: "user=should_not_be_read",
+			customConf: "",
+			wantUser:   "guest",
+			wantHost:   "localhost",
+		},
+		{
+			name:    "Error if config is not first",
+			args:    []string{"--user", "admin", "--config", "some.conf"},
+			wantErr: true,
+		},
 	}
-	if s, ok := target.(*string); ok {
-		*s = m.value
-		return nil
-	}
-	return fmt.Errorf("scanner error")
-}
 
-// Additional mock methods required by kong.Scanner interface
-func (m *mockScanner) Pop() *kong.Token                   { return nil }
-func (m *mockScanner) Peek() *kong.Token                  { return nil }
-func (m *mockScanner) PushTyped(interface{}, *kong.Token) {}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+
+			globalPath := filepath.Join(tmpDir, "global.conf")
+			os.WriteFile(globalPath, []byte(tt.globalConf), 0644)
+
+			oldGlobal := GLOBAL_DEFAULT_PATH
+			GLOBAL_DEFAULT_PATH = globalPath
+			defer func() { GLOBAL_DEFAULT_PATH = oldGlobal }()
+
+			args := append([]string{"tool"}, tt.args...)
+			for i, arg := range args {
+				if arg == "CUSTOM_PATH" {
+					customPath := filepath.Join(tmpDir, "custom.conf")
+					os.WriteFile(customPath, []byte(tt.customConf), 0644)
+					args[i] = customPath
+				}
+			}
+
+			os.Args = args
+			cli := &TestCLI{}
+
+			_, _, err := Setup("test-tool", cli)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if cli.User != tt.wantUser {
+				t.Errorf("User: got %s, want %s", cli.User, tt.wantUser)
+			}
+			if cli.Host != tt.wantHost {
+				t.Errorf("Host: got %s, want %s", cli.Host, tt.wantHost)
+			}
+		})
+	}
+}
