@@ -171,6 +171,7 @@ $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review_history',
 $expected = [
   {
     checksum => '32F63B9B2CE5A9B1B211BA2B8D6D065C',
+    usernames => '["[SQL_SLAVE1]", "[SQL_SLAVE]"]',
     filesort_cnt => '2',
     filesort_on_disk_cnt => '2',
     filesort_on_disk_sum => '0',

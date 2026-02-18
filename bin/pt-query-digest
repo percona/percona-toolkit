@@ -9405,6 +9405,11 @@ has history_metrics => (
    isa => 'ArrayRef',
 );
 
+has main_columns => (
+   is => 'rw',
+   isa => 'ArrayRef',
+);
+
 has column_pattern => (
    is       => 'ro',
    isa      => 'Regexp',
@@ -9426,29 +9431,32 @@ sub set_history_options {
    my $col_pat = $self->column_pattern();
 
    my @cols;
+   my @main_cols;
    my @metrics;
    foreach my $col ( @{$args{tbl_struct}->{cols}} ) {
       my ( $attr, $metric ) = $col =~ m/$col_pat/;
-      next unless $attr && $metric;
+      if ( $attr && $metric ) {
+        $attr = ucfirst $attr if $attr =~ m/_/;
+        $attr = 'Filesort' if $attr eq 'filesort';
 
+        $attr =~ s/^Qc_hit/QC_Hit/;  # Qc_hit is really QC_Hit
+        $attr =~ s/^Innodb/InnoDB/g; # Innodb is really InnoDB
+        $attr =~ s/_io_/_IO_/g;      # io is really IO
 
-      $attr = ucfirst $attr if $attr =~ m/_/;
-      $attr = 'Filesort' if $attr eq 'filesort';
-
-      $attr =~ s/^Qc_hit/QC_Hit/;  # Qc_hit is really QC_Hit
-      $attr =~ s/^Innodb/InnoDB/g; # Innodb is really InnoDB
-      $attr =~ s/_io_/_IO_/g;      # io is really IO
-
-      push @cols, $col;
-      push @metrics, [$attr, $metric];
+        push @cols, $col;
+        push @metrics, [$attr, $metric];
+      } else {
+          push @main_cols, $col;
+      }
    }
 
    my $ts_default = $self->ts_default;
 
    my $sql = "REPLACE INTO $args{table}("
       . join(', ',
-         map { Quoter->quote($_) } ('checksum', 'sample', 'usernames', @cols))
-      . ') VALUES (?, ?, ?'
+         map { Quoter->quote($_) } (@main_cols, @cols))
+      . ') VALUES ('
+      . join(', ', map { '?' } @main_cols)
       . (@cols ? ', ' : '')  # issue 1265
       . join(', ', map {
          $_ eq 'ts_min' || $_ eq 'ts_max'
@@ -9459,6 +9467,7 @@ sub set_history_options {
 
    $self->history_sth($self->history_dbh->prepare($sql));
    $self->history_metrics(\@metrics);
+   $self->main_columns(\@main_cols);
 
    return;
 }
@@ -9469,11 +9478,14 @@ sub set_review_history {
       next unless defined $data->{ts} && defined $data->{ts}->{$thing};
       $data->{ts}->{$thing} = parse_timestamp($data->{ts}->{$thing});
    }
-   $self->history_sth->execute(
-      make_checksum($id),
-      $sample,
-      "[".join(",", map { "\"".$_."\""} sort keys %{$users})."]",
-      map { $data->{$_->[0]}->{$_->[1]} } @{$self->history_metrics});
+   my @execute_params;
+   for my $col (@{$self->main_columns}) {
+     push @execute_params, make_checksum($id) if $col eq 'checksum';
+     push @execute_params, $sample if $col eq 'sample';
+     push @execute_params, "[".join(",", map { "\"".$_."\""} sort keys %{$users})."]" if $col eq 'usernames';
+   }
+   push @execute_params, map { $data->{$_->[0]}->{$_->[1]} } @{$self->history_metrics};
+   $self->history_sth->execute(@execute_params);
 }
 
 sub _d {
