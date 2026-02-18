@@ -15231,10 +15231,6 @@ sub sanitize_event {
       $event->{Schema} =~ s/`$//;
    }
 
-   if ( $event->{arg} ) {
-      $event->{arg} =~ s/ -- user_id: \d+//;
-   }
-
    return;
 }
 
@@ -16044,7 +16040,7 @@ MAGIC_create_history_table
 
  CREATE TABLE IF NOT EXISTS query_history (
    checksum             CHAR(32) NOT NULL,
-   sample               MEDIUMTEXT NOT NULL,
+   sample               TEXT NOT NULL,
    usernames            JSON,
    ts_min               DATETIME,
    ts_max               DATETIME,
