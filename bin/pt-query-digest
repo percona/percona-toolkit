@@ -16013,6 +16013,8 @@ least the following columns:
     sample       TEXT NOT NULL
   );
 
+There could be also C<usernames JSON> column.
+
 Any columns not mentioned above are inspected to see if they follow a certain
 naming convention.  The column is special if the name ends with an underscore
 followed by any of these values:
