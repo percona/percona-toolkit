@@ -49,7 +49,7 @@ WHERE  vab3concept1upload='6994465';
 SET insert_id=34484549,timestamp=1197996507;
 INSERT INTO db1.conch (word3, vid83)
 VALUES ('211', '18');
-# User@Host: [SQL_SLAVE] @  []
+# User@Host: [SQL_SLAVE1] @  []
 # Thread_id: 10
 # Query_time: 0.000530  Lock_time: 0.000027  Rows_sent: 0  Rows_examined: 0
 # QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No

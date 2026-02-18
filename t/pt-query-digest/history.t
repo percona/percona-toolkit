@@ -161,7 +161,7 @@ is($table, 'query_history', '--create-history-table creates both percona_schema 
 # #############################################################################
 $dbh->do('truncate table test.query_review_history');
 
-run_with("slow002.txt",
+run_with("slow062.txt",
          '--history', "$dsn,D=test,t=query_review_history",
          '--no-report', '--filter', '$event->{arg} =~ m/foo\.bar/');
 
