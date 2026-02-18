@@ -432,3 +432,86 @@ func (s *CollectorSuite) TestBusyPortError() {
 		s.Equal("3", strings.TrimSpace(string(out)), "Should find error logs in summary files due to busy port")
 	})
 }
+
+type CmdCompare struct {
+	cmd []string
+	out string
+}
+
+func PreareFindFileInTarCmd(tarPath, filePath, substring string) []string {
+	return []string{"sh", "-c", fmt.Sprintf("tar -xzf %s --wildcards %s -O | grep -o %s", tarPath, filePath, substring)}
+}
+
+/*
+PT-2299 - collect openssl x509 certificate information for each secret
+*/
+func (s *CollectorSuite) TestSSLResourceOption() {
+	tests := []struct {
+		name      string
+		namespace string
+		cmdOut    []CmdCompare
+	}{
+		{
+			name: "pxc", namespace: "pxc", cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pxc/*-ssl", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pxc/*-ssl", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pxc/*-ssl-internal", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pxc/*-ssl-internal", "tls.crt"), "tls.crt"},
+			},
+		},
+		{
+			name: "ps", namespace: "ps", cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/ps/*-ssl", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/ps/*-ssl", "tls.crt"), "tls.crt"},
+			},
+		},
+		{
+			name: "psmdb", namespace: "psmdb", cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/psmdb/*-ssl", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/psmdb/*-ssl", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/psmdb/*-ssl-internal", "ca.crt"), "ca.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/psmdb/*-ssl-internal", "tls.crt"), "tls.crt"},
+			},
+		},
+		{
+			name: "pgo", namespace: "pgo", cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgo/*-ssl-keypair", "tls.crt"), strings.Repeat("tls.crt", 2)}, // there are two files with tls.crt
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgo/*.tls", "tls.crt"), "tls.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgo/*-ssl-ca", "ca.crt"), "ca.crt"},
+			},
+		},
+		{
+			name: "pgv2", namespace: "pgv2", cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-ca-cert", "root.crt"), "root.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-cert", "tls.crt"), strings.Repeat("tls.crt", 2)}, // there are two files with tls.crt
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-cert", "ca.crt"), strings.Repeat("ca.crt", 2)},   // there are two files with ca.crt
+			},
+		},
+	}
+
+	for _, resource := range s.Resources {
+		s.Run("Resource_"+resource, func() {
+			cmd := exec.Command(TOOL_PATH,
+				"--kubeconfig", s.KubeConfig,
+				"--forwardport", s.ForwardPort,
+				"--resource", resource,
+				"--skip-pod-summary")
+			err := cmd.Run()
+			s.NoError(err)
+
+			for _, test := range tests {
+				if test.namespace != s.Namespace {
+					continue
+				}
+
+				for _, testcmd := range test.cmdOut {
+					out, err := exec.Command(testcmd.cmd[0], testcmd.cmd[1:]...).Output()
+					s.NoErrorf(err, "test %s, error running command %s\nCommand output:\n%s", test.name, testcmd, out)
+					if strings.Replace(bytes.NewBuffer(out).String(), "\n", "", -1) != testcmd.out {
+						s.Failf("SSL Metadata check", "test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, testcmd.out)
+					}
+				}
+			}
+		})
+	}
+}

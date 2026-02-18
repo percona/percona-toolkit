@@ -2,6 +2,11 @@ package dumper
 
 import "path/filepath"
 
+// /<location>/<namespace>/<individualFile>
+func (d *Dumper) NamespaceIndividualFilesPath(namespace, individualFile string) string {
+	return filepath.Join(d.location, namespace, individualFile)
+}
+
 // /<location>/<namespace>/<podName>/summary.txt
 func (d *Dumper) PodSummaryPath(namespace, podName string) string {
 	return filepath.Join(d.location, namespace, podName, "summary.txt")
@@ -15,11 +20,6 @@ func (d *Dumper) PodIndividualFilesPath(namespace, podName, internalFilePath str
 // /<location>/<namespace>/secrets/<secret>.yaml
 func (d *Dumper) PodSecretsPath(namespace, secretName string) string {
 	return filepath.Join(d.location, namespace, "secrets", secretName+".yaml")
-}
-
-// /<location>/<namespace>/secrets/<secret>
-func (d *Dumper) PodRawSecretsPath(namespace, secretName string) string {
-	return filepath.Join(d.location, namespace, "secrets", secretName)
 }
 
 // /<location>/<logPrefix>.log

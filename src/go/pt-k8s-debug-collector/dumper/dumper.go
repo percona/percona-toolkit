@@ -252,6 +252,22 @@ func (d *Dumper) export(ctx context.Context) error {
 		if d.namespace != "" && d.namespace != ns.Name {
 			continue
 		}
+
+		wg.Add(1)
+		go func(namespace string) {
+			defer wg.Done()
+
+			if err := semNS.Acquire(ctx, 1); err != nil {
+				log.Printf("semaphore acquire failed: %s", err)
+				return
+			}
+			defer semNS.Release(1)
+
+			if err := d.dumpSSLInfo(ctx, namespace); err != nil {
+				log.Printf("error dumping secrets for namespace %q: %s", namespace, err)
+			}
+		}(ns.Name)
+
 		for _, gvr := range resources.NamespaceScoped {
 			// Do not collect secrets
 			if gvr.Resource == "secrets" {
