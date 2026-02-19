@@ -306,6 +306,46 @@ unlike(
 );
 
 # #############################################################################
+# Issue 1265: mk-query-digest --review-history table with minimum 2 columns
+# #############################################################################
+$dbh->do('use test');
+$dbh->do('drop table test.query_review_history');
+
+# mqd says "The table must have at least the following columns:"
+my $usernames_tbl = "CREATE TABLE test.query_review_history (
+  checksum     CHAR(32) NOT NULL PRIMARY KEY,
+  sample       TEXT NOT NULL,
+  usernames    JSON
+)";
+$dbh->do($usernames_tbl);
+
+run_with("slow062.txt",
+         '--history', "$dsn,D=test,t=query_review_history",
+         '--no-report', '--filter', '$event->{arg} =~ m/foo\.bar/');
+
+$res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review_history',
+   { Slice => {} } );
+
+$expected = [
+  {
+    checksum => '32F63B9B2CE5A9B1B211BA2B8D6D065C',
+    usernames => '["[SQL_SLAVE1]", "[SQL_SLAVE]"]',
+    sample => 'UPDATE foo.bar
+SET    biz = \'91848182522\'',
+  }
+];
+
+normalize_numbers($res);
+normalize_numbers($expected);
+
+# 4
+is_deeply(
+   $res,
+   $expected,
+   "Review history with 3 main columns working",
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
