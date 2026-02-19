@@ -151,3 +151,23 @@ func TestParseArgs(t *testing.T) {
 
 	os.Stdout = old
 }
+
+func TestGetMongosInfo(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	client, err := tu.TestClient(ctx, tu.MongoDBMongosPort)
+	require.NoError(t, err)
+
+	info, err := getMongosInfo(ctx, client)
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	require.NotEmpty(t, info.Instances)
+
+	for _, m := range info.Instances {
+		require.NotEmpty(t, m.Name)
+		require.NotEmpty(t, m.Version)
+		require.NotEqual(t, 0, m.UpTime)
+		require.False(t, m.LastPing.IsZero())
+	}
+}
