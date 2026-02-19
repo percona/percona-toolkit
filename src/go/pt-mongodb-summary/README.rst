@@ -64,8 +64,6 @@ Output example
    my-cluster-name-mongos-0:27017    2026-02-16T13:01:22Z         8.0.17-6        3553           
    my-cluster-name-mongos-1:27017    2026-02-16T13:01:26Z         8.0.17-6        3543           
    my-cluster-name-mongos-2:27017    2026-02-16T13:01:28Z         8.0.17-6        3533           
-   
-		
 
    # Instances ####################################################################################
    ID    Host                         Type                                 ReplSet
