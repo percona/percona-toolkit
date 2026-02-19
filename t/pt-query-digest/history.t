@@ -306,7 +306,7 @@ unlike(
 );
 
 # #############################################################################
-# Issue 1265: mk-query-digest --review-history table with minimum 2 columns
+# Review history with 3 main columns working 
 # #############################################################################
 $dbh->do('use test');
 $dbh->do('drop table test.query_review_history');
