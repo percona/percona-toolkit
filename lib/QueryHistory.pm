@@ -43,6 +43,11 @@ has history_metrics => (
    isa => 'ArrayRef',
 );
 
+has main_columns => (
+   is => 'rw',
+   isa => 'ArrayRef',
+);
+
 has column_pattern => (
    is       => 'ro',
    isa      => 'Regexp',
@@ -68,37 +73,41 @@ sub set_history_options {
    # Pick out columns, attributes and metrics that need to be stored in the
    # table.
    my @cols;
+   my @main_cols;
    my @metrics;
    foreach my $col ( @{$args{tbl_struct}->{cols}} ) {
       my ( $attr, $metric ) = $col =~ m/$col_pat/;
-      next unless $attr && $metric;
+      if ( $attr && $metric ) {
+        # TableParser lowercases the column names so, e.g., Query_time
+        # becomes query_time.  We have to fix this so attribs in the event
+        # match keys in $self->{history_metrics}...
 
-      # TableParser lowercases the column names so, e.g., Query_time
-      # becomes query_time.  We have to fix this so attribs in the event
-      # match keys in $self->{history_metrics}...
+        # If the attrib name has at least one _ then it's a multi-word
+        # attrib like Query_time or Lock_time, so the first letter should
+        # be uppercase.  Else, it's a one-word attrib like ts, checksum
+        # or sample, so we leave it alone.  Except Filesort which is yet
+        # another exception.
+        $attr = ucfirst $attr if $attr =~ m/_/;
+        $attr = 'Filesort' if $attr eq 'filesort';
 
-      # If the attrib name has at least one _ then it's a multi-word
-      # attrib like Query_time or Lock_time, so the first letter should
-      # be uppercase.  Else, it's a one-word attrib like ts, checksum
-      # or sample, so we leave it alone.  Except Filesort which is yet
-      # another exception.
-      $attr = ucfirst $attr if $attr =~ m/_/;
-      $attr = 'Filesort' if $attr eq 'filesort';
+        $attr =~ s/^Qc_hit/QC_Hit/;  # Qc_hit is really QC_Hit
+        $attr =~ s/^Innodb/InnoDB/g; # Innodb is really InnoDB
+        $attr =~ s/_io_/_IO_/g;      # io is really IO
 
-      $attr =~ s/^Qc_hit/QC_Hit/;  # Qc_hit is really QC_Hit
-      $attr =~ s/^Innodb/InnoDB/g; # Innodb is really InnoDB
-      $attr =~ s/_io_/_IO_/g;      # io is really IO
-
-      push @cols, $col;
-      push @metrics, [$attr, $metric];
+        push @cols, $col;
+        push @metrics, [$attr, $metric];
+      } else {
+          push @main_cols, $col;
+      }
    }
 
    my $ts_default = $self->ts_default;
 
    my $sql = "REPLACE INTO $args{table}("
       . join(', ',
-         map { Quoter->quote($_) } ('checksum', 'sample', @cols))
-      . ') VALUES (?, ?'
+         map { Quoter->quote($_) } (@main_cols, @cols))
+      . ') VALUES ('
+      . join(', ', map { '?' } @main_cols)
       . (@cols ? ', ' : '')  # issue 1265
       . join(', ', map {
          # ts_min and ts_max might be part of the PK, in which case they must
@@ -111,6 +120,7 @@ sub set_history_options {
 
    $self->history_sth($self->history_dbh->prepare($sql));
    $self->history_metrics(\@metrics);
+   $self->main_columns(\@main_cols);
 
    return;
 }
@@ -119,16 +129,20 @@ sub set_history_options {
 # of hashes.  Each top-level key is an attribute name, and each second-level key
 # is a metric name.  Look at the test for more examples.
 sub set_review_history {
-   my ( $self, $id, $sample, %data ) = @_;
+   my ( $self, $id, $sample, $data, $users) = @_;
    # Need to transform ts->min/max into timestamps
    foreach my $thing ( qw(min max) ) {
-      next unless defined $data{ts} && defined $data{ts}->{$thing};
-      $data{ts}->{$thing} = parse_timestamp($data{ts}->{$thing});
+      next unless defined $data->{ts} && defined $data->{ts}->{$thing};
+      $data->{ts}->{$thing} = parse_timestamp($data->{ts}->{$thing});
    }
-   $self->history_sth->execute(
-      make_checksum($id),
-      $sample,
-      map { $data{$_->[0]}->{$_->[1]} } @{$self->history_metrics});
+   my @execute_params;
+   for my $col (@{$self->main_columns}) {
+     push @execute_params, make_checksum($id) if $col eq 'checksum';
+     push @execute_params, $sample if $col eq 'sample';
+     push @execute_params, "[".join(",", map { "\"".$_."\""} sort keys %{$users})."]" if $col eq 'usernames';
+   }
+   push @execute_params, map { $data->{$_->[0]}->{$_->[1]} } @{$self->history_metrics};
+   $self->history_sth->execute(@execute_params);
 }
 
 sub _d {

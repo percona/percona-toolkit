@@ -9436,6 +9436,7 @@ sub set_history_options {
    foreach my $col ( @{$args{tbl_struct}->{cols}} ) {
       my ( $attr, $metric ) = $col =~ m/$col_pat/;
       if ( $attr && $metric ) {
+
         $attr = ucfirst $attr if $attr =~ m/_/;
         $attr = 'Filesort' if $attr eq 'filesort';
 
