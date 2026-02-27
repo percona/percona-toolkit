@@ -417,6 +417,7 @@ func (s *CollectorSuite) TestPT_2453() {
 
 var busyPortTested bool
 
+// PT-2169
 func (s *CollectorSuite) TestBusyPortError() {
 	if busyPortTested {
 		s.T().Skip("Already tested in another namespace run")
