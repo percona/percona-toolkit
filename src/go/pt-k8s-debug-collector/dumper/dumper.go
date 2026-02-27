@@ -386,7 +386,7 @@ func (d *Dumper) discoverResources() (*resourceMap, error) {
 
 	// Extract groups with priority.
 	// If resource exists in legacy (v1) group and in events.k8s.io group
-	// events.k8s.io will be choosen
+	// events.k8s.io will be chosen
 	for _, list := range lists {
 		for _, resource := range list.APIResources {
 			if !filterResource(resource.Name) {
