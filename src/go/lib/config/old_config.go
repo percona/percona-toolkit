@@ -11,6 +11,15 @@
 // You should have received a copy of the GNU General Public License, version 2
 // along with this program; if not, see <https://www.gnu.org/licenses/>.
 
+// DEPRECATED: This file is kept for backward compatibility only.
+//
+// This configuration implementation is considered legacy and is no longer
+// actively maintained. It is read-only and should not be extended,
+// modified, or used for new development.
+//
+// New code must use the replacement configuration mechanism instead.
+// This file will be removed in a future major release.
+
 package config
 
 import (
