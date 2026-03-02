@@ -419,12 +419,25 @@ var busyPortTested bool
 
 // PT-2169
 func (s *CollectorSuite) TestBusyPortError() {
-	if busyPortTested {
-		s.T().Skip("Already tested in another namespace run")
+	if s.Namespace == "pgv2" {
+		s.Run("pg_gather_no_error", func() {
+			cmd := exec.Command(TOOL_PATH,
+				"--kubeconfig", s.KubeConfig,
+				"--forwardport", s.ForwardPort,
+				"--resource", s.Namespace,
+			)
+
+			_ = cmd.Run()
+			testcmd := "tar -xf cluster-dump.tar.gz --wildcards \"*/summary.txt\" --to-command 'grep \"err: strconv.ParseInt\"' | wc -l"
+			out, err := exec.Command("sh", "-c", testcmd).Output()
+
+			s.NoError(err)
+			s.Equal("0", strings.TrimSpace(string(out)), "Should not find error logs in summary files")
+		})
 	}
 
-	if s.Namespace == "pgo" || s.Namespace == "pgv2" {
-		s.T().Skip("Forward port not used in postgres dump")
+	if busyPortTested {
+		s.T().Skip("Already tested in another namespace run")
 	}
 
 	busyPortTested = true
