@@ -85,6 +85,7 @@ Options
   Full MongoDB URI describing hosts and options.
   Command-line flags have higher priority than URI settings.
   If a full URI is provided, you cannot also specify ``--host`` or ``--port``.
+  Example: ``mongodb://admin:secret@localhost:27017``
 
 ``-u``, ``--username``
   Specifies the username to use when connecting to a server

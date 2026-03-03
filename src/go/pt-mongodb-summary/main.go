@@ -933,7 +933,7 @@ func parseFlags() (*cliOptions, error) {
 	gop.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
 	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
 
-	gop.StringVarLong(&opts.URI, "uri", 0, "URI describes the hosts to be used and options. Flags has higher priority.")
+	gop.StringVarLong(&opts.URI, "uri", 0, `URI describes the hosts to be used and options. Flags has higher priority. If a full URI is provided, you cannot also specify "--host" or "--port".`)
 	gop.StringVarLong(&opts.Host, "host", 0, "Host")
 	gop.StringVarLong(&opts.Port, "port", 0, "Port")
 
@@ -962,8 +962,8 @@ func parseFlags() (*cliOptions, error) {
 	gop.Parse(os.Args)
 
 	if gop.NArgs() > 0 {
-		if gop.IsSet("host") || gop.IsSet("port") {
-			return nil, fmt.Errorf(`parameter host[:port] is not compatible with "--host" and "--port" flags set`)
+		if gop.IsSet("host") || gop.IsSet("port") || gop.IsSet("uri") {
+			return nil, fmt.Errorf(`parameter host[:port] is not compatible with "--uri", "--host" and "--port" flags set`)
 		}
 		var err error
 		opts.Host, opts.Port, err = net.SplitHostPort(gop.Arg(0))
