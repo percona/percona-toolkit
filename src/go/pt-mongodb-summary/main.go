@@ -285,7 +285,7 @@ func main() {
 
 	ci.MongosInfo, err = getMongosInfo(ctx, client)
 	if err != nil {
-		log.Warnf("[Error] cannot get mongos info: %v\n", err)
+		log.Warnf("[Warning] cannot get mongos info: %v\n", err)
 	}
 
 	ci.HostInfo, err = getHostInfo(ctx, client)
@@ -295,7 +295,7 @@ func main() {
 	}
 
 	if ci.ReplicaMembers, err = util.GetReplicasetMembers(ctx, clientOptions); err != nil {
-		log.Warnf("[Error] cannot get replicaset members: %v\n", err)
+		log.Warnf("[Warning] cannot get replicaset members: %v\n", err)
 	}
 
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
