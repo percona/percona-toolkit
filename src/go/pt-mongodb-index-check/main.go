@@ -105,7 +105,8 @@ func main() {
 		resp.Unused = findUnused(ctx, client, args.Databases, args.Collections)
 		resp.Duplicated = findDuplicated(ctx, client, args.Databases, args.Collections)
 	default:
-		kong.DefaultHelpPrinter(kong.HelpOptions{}, kongctx)
+		kongctx.PrintUsage(false)
+		return
 	}
 
 	fmt.Println(output(resp, args.JSON))
