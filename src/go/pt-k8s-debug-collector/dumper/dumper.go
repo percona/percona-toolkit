@@ -38,20 +38,23 @@ import (
 )
 
 const (
-	NumWorkers = 10 // Concurrency for Pod Logs
+	defaultConcurrentExportWorkers = 16
 )
 
 // Dumper struct is for dumping cluster
 type Dumper struct {
-	kubeconfig     string
-	namespace      string
-	location       string
-	logger         *SafeLogger
-	mode           int64
-	crTypes        []string
-	forwardport    string
-	usedPorts      sync.Map
-	skipPodSummary bool
+	kubeconfig                       string
+	namespace                        string
+	location                         string
+	logger                           *SafeLogger
+	mode                             int64
+	crTypes                          []string
+	forwardport                      string
+	usedPorts                        sync.Map
+	skipPodSummary                   bool
+	concurrentExportWorkers          int
+	concurrentExportWorkersCluster   int
+	concurrentExportWorkersNamespace int
 
 	sslSecrets      map[string]bool
 	individualFiles []individualFile
@@ -81,7 +84,7 @@ type exportJob struct {
 }
 
 // New return new Dumper object
-func New(location, namespace, kubeconfig, forwardport, resource string, skipPodSummary bool) (*Dumper, error) {
+func New(location, namespace, kubeconfig, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
 	var config *rest.Config
 
 	safeLog := NewSafeLogger()
@@ -93,8 +96,17 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 		return nil, fmt.Errorf("failed to build config from flags: %w", err)
 	}
 
-	config.QPS = 10
-	config.Burst = 20
+	// Validate and set concurrency level
+	if concurrentExportWorkers <= 0 {
+		concurrentExportWorkers = defaultConcurrentExportWorkers
+	}
+
+	if concurrentExportWorkers > 20 {
+		log.Warnf("concurrentExportWorkers value of %d may overwhelm the Kubernetes API server. Consider using a value of 20 or less.", concurrentExportWorkers)
+	}
+
+	config.QPS = float32(concurrentExportWorkers) + 1
+	config.Burst = (concurrentExportWorkers + 1) * 2
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -109,18 +121,21 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 	discclient := discovery.NewDiscoveryClientForConfigOrDie(config)
 
 	d := &Dumper{
-		kubeconfig:      kubeconfig,
-		location:        location,
-		mode:            int64(0o777),
-		namespace:       namespace,
-		forwardport:     strings.TrimSpace(forwardport),
-		skipPodSummary:  skipPodSummary,
-		clientSet:       clientset,
-		dynamicClient:   dynclient,
-		discoveryClient: discclient,
-		restConfig:      config,
-		usedPorts:       sync.Map{},
-		logger:          safeLog,
+		kubeconfig:                       kubeconfig,
+		location:                         location,
+		mode:                             int64(0o777),
+		namespace:                        namespace,
+		forwardport:                      strings.TrimSpace(forwardport),
+		skipPodSummary:                   skipPodSummary,
+		concurrentExportWorkers:          concurrentExportWorkers,
+		concurrentExportWorkersCluster:   concurrentExportWorkers / 2,
+		concurrentExportWorkersNamespace: concurrentExportWorkers / 2,
+		clientSet:                        clientset,
+		dynamicClient:                    dynclient,
+		discoveryClient:                  discclient,
+		restConfig:                       config,
+		usedPorts:                        sync.Map{},
+		logger:                           safeLog,
 	}
 
 	if resource == "none" || resource == "" {
@@ -194,7 +209,7 @@ func (d *Dumper) DumpCluster() error {
 	jobsChannel := make(chan exportJob, 100)
 	var wg sync.WaitGroup
 
-	for i := range NumWorkers {
+	for i := range d.concurrentExportWorkers {
 		id := i
 		wg.Go(func() {
 			d.resilientWorker(id, ctx, cancel, jobsChannel)
@@ -224,8 +239,6 @@ func (d *Dumper) DumpCluster() error {
 	return nil
 }
 
-const CONCURRENT_EXPORT_WORKERS = 5
-
 func (d *Dumper) export(ctx context.Context) error {
 	resources, err := d.discoverResources()
 	if err != nil {
@@ -233,7 +246,7 @@ func (d *Dumper) export(ctx context.Context) error {
 	}
 
 	var wg sync.WaitGroup
-	semCluster := semaphore.NewWeighted(CONCURRENT_EXPORT_WORKERS)
+	semCluster := semaphore.NewWeighted(int64(d.concurrentExportWorkersCluster))
 
 	for _, gvr := range resources.ClusterScoped {
 		wg.Add(1)
@@ -259,7 +272,7 @@ func (d *Dumper) export(ctx context.Context) error {
 		return err
 	}
 
-	semNS := semaphore.NewWeighted(CONCURRENT_EXPORT_WORKERS)
+	semNS := semaphore.NewWeighted(int64(d.concurrentExportWorkersNamespace))
 
 	for _, ns := range namespaces.Items {
 		if d.namespace != "" && d.namespace != ns.Name {

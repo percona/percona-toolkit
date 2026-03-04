@@ -40,15 +40,16 @@ var (
 )
 
 type cliOptions struct {
-	namespace      string
-	resource       string
-	clusterName    string
-	kubeconfig     string
-	forwardport    string
-	logLevelStr    string
-	version        bool
-	noVersionCheck bool
-	skipPodSummary bool
+	namespace               string
+	resource                string
+	clusterName             string
+	kubeconfig              string
+	forwardport             string
+	logLevelStr             string
+	concurrentExportWorkers int
+	version                 bool
+	noVersionCheck          bool
+	skipPodSummary          bool
 }
 
 func (opts *cliOptions) parseDefaultConfig() {
@@ -79,6 +80,10 @@ func (opts *cliOptions) parseDefaultConfig() {
 	if val := conf.GetBool("skip-pod-summary"); !flag.Lookup("skip-pod-summary").Changed {
 		opts.skipPodSummary = val
 	}
+
+	if val := conf.GetInt64("concurrent-export-workers"); val > 0 && !flag.Lookup("concurrent-export-workers").Changed {
+		opts.concurrentExportWorkers = int(val)
+	}
 }
 
 func main() {
@@ -89,7 +94,8 @@ func main() {
 	flag.StringVar(&opts.clusterName, "cluster", "", "Cluster name")
 	flag.StringVar(&opts.kubeconfig, "kubeconfig", "", "Path to kubeconfig")
 	flag.StringVar(&opts.forwardport, "forwardport", "", "Port to use for  port forwarding")
-	flag.StringVar(&opts.logLevelStr, "log-level", "error", "Log level (debug, info, warn, error, fatal, panic)")
+	flag.StringVar(&opts.logLevelStr, "log-level", log.WarnLevel.String(), "Log level (debug, info, warn, error, fatal, panic)")
+	flag.IntVar(&opts.concurrentExportWorkers, "concurrent-export-workers", 0, "Number of concurrent workers for exporting resources (0 = use default 16). Warning: values above 20 may overwhelm the Kubernetes API server")
 	flag.BoolVar(&opts.version, "version", false, "Print version")
 	flag.BoolVar(&opts.skipPodSummary, "skip-pod-summary", false, "Skip pod summary collection")
 	flag.BoolVar(&opts.noVersionCheck, "no-version-check", false, "Default: Don't check for updates")
@@ -124,6 +130,7 @@ func main() {
 		fmt.Printf("Invalid log level: %v\n", err)
 		os.Exit(1)
 	}
+
 	log.SetLevel(level)
 
 	log.SetFormatter(&log.TextFormatter{
@@ -141,7 +148,7 @@ func main() {
 		log.Infof("loaded default kubeconfig: %s", path)
 	}
 
-	d, err := dumper.New("cluster-dump", opts.namespace, opts.kubeconfig, opts.forwardport, opts.resource, opts.skipPodSummary)
+	d, err := dumper.New("cluster-dump", opts.namespace, opts.kubeconfig, opts.forwardport, opts.resource, opts.skipPodSummary, opts.concurrentExportWorkers)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
