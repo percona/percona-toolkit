@@ -54,7 +54,8 @@ const (
 	toolname = "pt-mongodb-summary"
 
 	DefaultAuthDB             = "admin"
-	DefaultHost               = "mongodb://localhost:27017"
+	DefaultHost               = "localhost"
+	DefaultPort               = "27017"
 	DefaultLogLevel           = "warn"
 	DefaultRunningOpsInterval = 1000 // milliseconds
 	DefaultRunningOpsSamples  = 5
@@ -187,6 +188,7 @@ func (t mongosInfo) MaxNameLen() int {
 
 type cliOptions struct {
 	Host               string
+	Port               string
 	User               string
 	Password           string
 	AuthDB             string
@@ -196,6 +198,7 @@ type cliOptions struct {
 	SSLPEMKeyFile      string
 	RunningOpsSamples  int
 	RunningOpsInterval int
+	URI                string
 	Help               bool
 	Version            bool
 	NoVersionCheck     bool
@@ -279,8 +282,6 @@ func main() {
 		log.Errorf("Cannot get hostnames: %s", err)
 	}
 
-	log.Debugf("hostnames: %v", hostnames)
-
 	ci := &collectedInfo{}
 
 	ci.MongosInfo, err = getMongosInfo(ctx, client)
@@ -290,7 +291,7 @@ func main() {
 
 	ci.HostInfo, err = getHostInfo(ctx, client)
 	if err != nil {
-		log.Errorf("Cannot get host info for %q: %s", opts.Host, err)
+		log.Errorf("Cannot get host info for %q: %s", clientOptions.Hosts, err)
 		os.Exit(cannotGetHostInfo) //nolint:gocritic
 	}
 
@@ -980,7 +981,6 @@ func externalIP() (string, error) {
 
 func parseFlags() (*cliOptions, error) {
 	opts := &cliOptions{
-		Host:               DefaultHost,
 		LogLevel:           DefaultLogLevel,
 		RunningOpsSamples:  DefaultRunningOpsSamples,
 		RunningOpsInterval: DefaultRunningOpsInterval, // milliseconds
@@ -992,6 +992,10 @@ func parseFlags() (*cliOptions, error) {
 	gop.BoolVarLong(&opts.Help, "help", 'h', "Show help")
 	gop.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
 	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
+
+	gop.StringVarLong(&opts.URI, "uri", 0, `URI describes the hosts to be used and options. Flags has higher priority. If a full URI is provided, you cannot also specify "--host" or "--port".`)
+	gop.StringVarLong(&opts.Host, "host", 0, "Host")
+	gop.StringVarLong(&opts.Port, "port", 0, "Port")
 
 	gop.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
 	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").
@@ -1018,7 +1022,14 @@ func parseFlags() (*cliOptions, error) {
 	gop.Parse(os.Args)
 
 	if gop.NArgs() > 0 {
-		opts.Host = gop.Arg(0)
+		if gop.IsSet("host") || gop.IsSet("port") || gop.IsSet("uri") {
+			return nil, fmt.Errorf(`parameter host[:port] is not compatible with "--uri", "--host" and "--port" flags set`)
+		}
+		var err error
+		opts.Host, opts.Port, err = net.SplitHostPort(gop.Arg(0))
+		if err != nil {
+			return nil, err
+		}
 		gop.Parse(gop.Args())
 	}
 
@@ -1033,8 +1044,8 @@ func parseFlags() (*cliOptions, error) {
 		opts.Password = string(pass)
 	}
 
-	if !strings.HasPrefix(opts.Host, "mongodb://") {
-		opts.Host = "mongodb://" + opts.Host
+	if gop.IsSet("uri") && (gop.IsSet("host") || gop.IsSet("port")) {
+		return nil, fmt.Errorf("If a full URI is provided, you cannot also specify --host or --port")
 	}
 
 	if opts.Help {
@@ -1075,20 +1086,38 @@ func getChunksCount(ctx context.Context, client *mongo.Client) ([]proto.ChunksBy
 }
 
 func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
-	clientOptions := options.Client().ApplyURI(opts.Host)
+	var clientOptions *options.ClientOptions
 
-	clientOptions.ServerSelectionTimeout = &defaultConnectionTimeout
-	clientOptions.Direct = &directConnection
-	credential := options.Credential{}
-	if opts.User != "" {
-		credential.Username = opts.User
-		clientOptions.SetAuth(credential)
+	if opts.URI != "" {
+		clientOptions = options.Client().ApplyURI(opts.URI)
+	} else {
+		host := opts.Host
+		if host == "" {
+			host = DefaultHost
+		}
+		port := opts.Port
+		if port == "" {
+			port = DefaultPort
+		}
+
+		clientOptions = options.Client().ApplyURI("mongodb://" + net.JoinHostPort(host, port))
 	}
 
+	auth := clientOptions.Auth
+	if auth == nil {
+		auth = &options.Credential{}
+	}
+
+	if opts.User != "" {
+		auth.Username = opts.User
+	}
 	if opts.Password != "" {
-		credential.Password = opts.Password
-		credential.PasswordSet = true
-		clientOptions.SetAuth(credential)
+		auth.Password = opts.Password
+		auth.PasswordSet = true
+	}
+
+	if auth.Username != "" {
+		clientOptions.SetAuth(*auth)
 	}
 
 	if opts.SSLPEMKeyFile != "" || opts.SSLCAFile != "" {
@@ -1100,7 +1129,15 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 		clientOptions.TLSConfig = tlsConfig
 	}
 
-	return clientOptions, nil
+	// Defaults
+	if clientOptions.ServerSelectionTimeout == nil {
+		clientOptions.ServerSelectionTimeout = &defaultConnectionTimeout
+	}
+	if clientOptions.Direct == nil {
+		clientOptions.Direct = &directConnection
+	}
+
+	return clientOptions, clientOptions.Validate()
 }
 
 func getTLSConfig(sslPEMKeyFile, sslCAFile string) (*tls.Config, error) {
