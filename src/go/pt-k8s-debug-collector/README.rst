@@ -125,6 +125,10 @@ Usage
 Supported Flags
 ================
 
+``--config``
+
+List of Percona Toolkit configuration file(s) separated by a comma without an equal sign. Must be a first flag. Uses default config file locations if not specified.
+
 ``--resource``
 
 Targeted custom resource name. Supported values:
