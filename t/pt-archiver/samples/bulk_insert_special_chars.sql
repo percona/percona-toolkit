@@ -13,7 +13,7 @@ CREATE TABLE `bulk_escape`.`source` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `bulk_escape`.`dest` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `id` int unsigned NOT NULL,
   `name` varchar(500) DEFAULT NULL,
   `job` varchar(450) DEFAULT NULL,
   `stu_id` int DEFAULT NULL,
