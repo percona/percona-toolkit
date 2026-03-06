@@ -127,7 +127,7 @@ Supported Flags
 
 ``--config``
 
-List of Percona Toolkit configuration file(s) separeted by comma without equal sign. Must be a first flag. Uses default config file locations if not specified.
+List of Percona Toolkit configuration file(s) separated by a comma without an equal sign. Must be a first flag. Uses default config file locations if not specified.
 
 ``--resource``
 
