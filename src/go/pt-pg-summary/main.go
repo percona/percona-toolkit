@@ -20,13 +20,15 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/alecthomas/kingpin"
+	"github.com/alecthomas/kong"
+	"github.com/howeyc/gopass"
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
+	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/templates"
 )
 
@@ -43,50 +45,86 @@ var (
 )
 
 type connOpts struct {
-	Host       string
-	Port       int
-	User       string
-	Password   string
-	DisableSSL bool
+	Host     string                    `name:"host" short:"h" help:"Host to connect to"`
+	Port     int                       `name:"port" short:"p" help:"Port number to use for connection"`
+	User     string                    `name:"username" short:"u" help:"User for login if not current user"`
+	Password config.StdinRequestString `name:"passwrord" short:"W" help:"Password to use when connecting"`
+	SSL      bool                      `name:"ssl" help:"Enable SSL for the connection" default:"false" negatable:""`
 }
 
 type cliOptions struct {
-	app                 *kingpin.Application
-	connOpts            connOpts
-	Config              string
-	DefaultsFile        string
-	ReadSamples         string
-	SaveSamples         string
-	Databases           []string
-	Seconds             int
-	AllDatabases        bool
-	AskPass             bool
-	ListEncryptedTables bool
-	Verbose             bool
-	Debug               bool
+	config.ConfigFlag
+	connOpts
+	ReadSamples         string   `name:"read-samples" hidden:"" help:"Create a report from the files found in this directory"`
+	SaveSamples         string   `name:"save-samples" hidden:"" help:"Save the data files used to generate the summary in this directory"`
+	Databases           []string `name:"databases" help:"Summarize this comma-separated list of databases. All if not specified"`
+	Seconds             int      `name:"sleep" help:"Seconds to sleep when gathering status counters" default:"10"`
+	DefaultsFile        string   `name:"defaults-file" hidden:"" help:"Only read PostgreSQL options from the given file"`
+	ListEncryptedTables bool     `name:"list-encrypted-tables" hidden:"" help:"Include a list of the encrypted tables in all databases"`
+	LogLevel            string   `name:"log-level" short:"l" help:"Log level: panic, fatal, error, warn, info, debug." default:"warn"`
+	config.VersionFlag
+	config.VersionCheckFlag
+}
+
+func (c *cliOptions) AfterApply() error {
+	err := c.connOpts.Password.Request(func() (string, error) {
+		print("Password: ")
+		pass, err := gopass.GetPasswd()
+		return string(pass), err
+	})
+	if err != nil {
+		return err
+	}
+
+	logLevel, err := log.ParseLevel(c.LogLevel)
+	if err != nil {
+		fmt.Printf("cannot set log level: %s", err.Error())
+	}
+
+	log.SetLevel(logLevel)
+
+	if c.VersionCheck {
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
+		if err != nil {
+			log.Errorf("cannot check version updates: %s", err.Error())
+		} else if advice != "" {
+			log.Infof("%s", advice)
+		}
+	}
+
+	return nil
 }
 
 func main() {
-	opts, err := parseCommandLineOpts(os.Args[1:])
+	var opts cliOptions
+	kongCtx, _, err := config.Setup(
+		toolname,
+		&opts,
+		kong.UsageOnError(),
+		kong.Vars{
+			"version": fmt.Sprintf(
+				"%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
+				toolname, Version, Build, GoVersion, Commit,
+			),
+		},
+	)
 	if err != nil {
-		fmt.Printf("Cannot parse command line arguments: %s", err)
+		log.Errorf("cannot get parameters: %s", err.Error())
 		os.Exit(1)
 	}
-	logger := logrus.New()
-	if opts.Verbose {
-		logger.SetLevel(logrus.InfoLevel)
-	}
-	if opts.Debug {
-		logger.SetLevel(logrus.DebugLevel)
+
+	if opts.Version {
+		return
 	}
 
 	dsn := buildConnString(opts.connOpts, "postgres")
+	logger := log.New()
 	logger.Infof("Connecting to the database server using: %s", safeConnString(opts.connOpts, "postgres"))
 
 	db, err := connect(dsn)
 	if err != nil {
 		logger.Errorf("Cannot connect to the database: %s\n", err)
-		opts.app.Usage(os.Args[1:])
+		kongCtx.PrintUsage(true)
 		os.Exit(1)
 	}
 	logger.Infof("Connection OK")
@@ -189,7 +227,9 @@ func buildConnString(opts connOpts, dbName string) string {
 	if opts.Password != "" {
 		parts = append(parts, fmt.Sprintf("password=%s", opts.Password))
 	}
-	if opts.DisableSSL {
+	if opts.SSL {
+		parts = append(parts, "sslmode=enable")
+	} else {
 		parts = append(parts, "sslmode=disable")
 	}
 	if dbName == "" {
@@ -216,7 +256,9 @@ func safeConnString(opts connOpts, dbName string) string {
 	if opts.Password != "" {
 		parts = append(parts, "password=******")
 	}
-	if opts.DisableSSL {
+	if opts.SSL {
+		parts = append(parts, "sslmode=enable")
+	} else {
 		parts = append(parts, "sslmode=disable")
 	}
 	if dbName == "" {
@@ -225,57 +267,4 @@ func safeConnString(opts connOpts, dbName string) string {
 	parts = append(parts, fmt.Sprintf("dbname=%s", dbName))
 
 	return strings.Join(parts, " ")
-}
-
-func parseCommandLineOpts(args []string) (cliOptions, error) {
-	app := kingpin.New(toolname, "Percona Toolkit - PostgreSQL Summary")
-	app.UsageWriter(os.Stdout)
-	// version, commit and date will be set at build time by the compiler -ldflags param
-	app.Version(fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
-		app.Name, Version, Build, GoVersion, Commit))
-	opts := cliOptions{app: app}
-
-	app.Flag("ask-pass", "Prompt for a password when connecting to PostgreSQL").
-		Hidden().BoolVar(&opts.AskPass) // hidden because it is not implemented yet
-	app.Flag("config", "Config file").
-		Hidden().StringVar(&opts.Config) // hidden because it is not implemented yet
-	app.Flag("databases", "Summarize this comma-separated list of databases. All if not specified").
-		StringsVar(&opts.Databases)
-	app.Flag("defaults-file", "Only read PostgreSQL options from the given file").
-		Hidden().StringVar(&opts.DefaultsFile) // hidden because it is not implemented yet
-	app.Flag("host", "Host to connect to").
-		Short('h').
-		StringVar(&opts.connOpts.Host)
-	app.Flag("list-encrypted-tables", "Include a list of the encrypted tables in all databases").
-		Hidden().BoolVar(&opts.ListEncryptedTables)
-	app.Flag("password", "Password to use when connecting").
-		Short('W').
-		StringVar(&opts.connOpts.Password)
-	app.Flag("port", "Port number to use for connection").
-		Short('p').
-		IntVar(&opts.connOpts.Port)
-	app.Flag("read-samples", "Create a report from the files found in this directory").
-		Hidden().StringVar(&opts.ReadSamples) // hidden because it is not implemented yet
-	app.Flag("save-samples", "Save the data files used to generate the summary in this directory").
-		Hidden().StringVar(&opts.SaveSamples) // hidden because it is not implemented yet
-	app.Flag("sleep", "Seconds to sleep when gathering status counters").
-		Default("10").IntVar(&opts.Seconds)
-	app.Flag("username", "User for login if not current user").
-		Short('U').
-		StringVar(&opts.connOpts.User)
-	app.Flag("disable-ssl", "Disable SSL for the connection").
-		Default("true").BoolVar(&opts.connOpts.DisableSSL)
-	app.Flag("verbose", "Show verbose log").
-		Default("false").BoolVar(&opts.Verbose)
-	app.Flag("debug", "Show debug information in the logs").
-		Default("false").BoolVar(&opts.Debug)
-	_, err := app.Parse(args)
-
-	dbs := []string{}
-	for _, databases := range opts.Databases {
-		ds := strings.Split(databases, ",")
-		dbs = append(dbs, ds...)
-	}
-	opts.Databases = dbs
-	return opts, err
 }
