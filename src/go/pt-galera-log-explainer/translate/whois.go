@@ -106,6 +106,7 @@ func (n *WhoisNode) tree() treeprint.Tree {
 	return root
 }
 
+// test
 func (n *WhoisNode) valuesSortedByTimestamps() []string {
 	values := []string{}
 	for value := range n.Values {
