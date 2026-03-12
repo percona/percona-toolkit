@@ -20,7 +20,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version-file: 'go.mod'
+        go-version-file: ${{ github.workspace }}/go.mod
     - name: Build
       run: cd src/go; make linux-amd64; cd ../../
 
