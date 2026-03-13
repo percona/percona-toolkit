@@ -1,3 +1,16 @@
+// This program is copyright 2023-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package regex
 
 import (
@@ -158,6 +171,18 @@ func TestApplicativeRegex(t *testing.T) {
 			},
 			expectedOut: "vote (success) inconsistent, leaving cluster",
 			key:         "RegexInconsistencyVoteInconsistentWithGroup",
+		},
+
+		{
+			log: "2001-01-01T01:01:01.000000Z 16 [ERROR] [MY-000000] [Galera] Recomputed vote based on error codes: 3638. New vote c4915064add984b1 will be used for further steps. Old Vote: b3be677140613e7",
+			input: regexTestState{
+				LogCtx: types.LogCtx{OwnNames: []string{"node2"}, Conflicts: types.Conflicts{&types.Conflict{InitiatedBy: []string{"node1"}, Seqno: "20", VotePerNode: map[string]types.ConflictVote{"node1": types.ConflictVote{MD5: "b3be677140613e7", Error: "some error"}, "node2": types.ConflictVote{MD5: "b3be677140613e7", Error: "some error"}}}}},
+			},
+			expected: regexTestState{
+				LogCtx: types.LogCtx{OwnNames: []string{"node2"}, Conflicts: types.Conflicts{&types.Conflict{InitiatedBy: []string{"node1"}, Seqno: "20", VotePerNode: map[string]types.ConflictVote{"node1": types.ConflictVote{MD5: "c4915064add984b1", Error: "some error"}, "node2": types.ConflictVote{MD5: "c4915064add984b1", Error: "some error"}}}}},
+			},
+			expectedOut: "vote md5 recomputed from b3be677140613e7 to c4915064add984b1",
+			key:         "RegexInconsistencyVoteRecomputed",
 		},
 	}
 

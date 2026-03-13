@@ -83,6 +83,77 @@ like(
    'Queries printed'
 ) or diag($output);
 
+($output, $exit_code) = full_output(
+   sub {
+      pt_archiver::main('--source=t=film',
+         qw(--host 127.1 --port 12345 -D sakila),
+         qw(--user sha256_user --password sha256_user%password --mysql_ssl 1),
+         qw(--no-check-charset --purge --dry-run --port 12345),
+         "--where", "film_id < 100")
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password and option --mysql_ssl"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl'
+) or diag($output);
+
+like(
+   $output,
+   qr/DELETE FROM `sakila`.`film` WHERE/,
+   'Queries printed with option --mysql_ssl'
+) or diag($output);
+
+($output, $exit_code) = full_output(
+   sub {
+      pt_archiver::main('--source', "F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,D=sakila,t=film,u=sha256_user,p=sha256_user%password,s=1",
+         qw(--no-check-charset --purge --dry-run --port 12345),
+         "--where", "film_id < 100")
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for SSL options in the configuration file"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with correct SSL options in the configuration file'
+) or diag($output);
+
+($output, $exit_code) = full_output(
+   sub {
+      pt_archiver::main('--source', "F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,D=sakila,t=film,u=sha256_user,p=sha256_user%password,s=1",
+         qw(--no-check-charset --purge --dry-run --port 12345),
+         "--where", "film_id < 100")
+   },
+   stderr => 1,
+);
+
+isnt(
+   $exit_code,
+   0,
+   "Error for invalid SSL options in the configuration file"
+) or diag($output);
+
+like(
+   $output,
+   qr/SSL connection error: Unable to get private key at/,
+   'SSL connection error with incorrect SSL options in the configuration file'
+) or diag($output);
+
 # #############################################################################
 # Done.
 # #############################################################################

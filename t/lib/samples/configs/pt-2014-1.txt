@@ -1,0 +1,7 @@
+[mysqld]
+log_bin=1
+gtid_mode=on
+read_only=off
+autocommit=no
+binlog_format=mixed
+skip_name_resolve=true

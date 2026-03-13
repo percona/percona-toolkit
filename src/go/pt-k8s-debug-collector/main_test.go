@@ -1,3 +1,16 @@
+// This program is copyright 2020-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
@@ -361,6 +374,106 @@ func TestSSLResourceOption(t *testing.T) {
 			if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want[ind] {
 				t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want)
 			}
+		}
+	}
+}
+
+/*
+Tests for option --skip-pod-summary
+*/
+func TestPT_2453(t *testing.T) {
+	testcmd := []string{"sh", "-c", "tar -tf cluster-dump.tar.gz --wildcards '*/summary.txt' 2>/dev/null | wc -l"}
+	tests := []struct {
+		name       string
+		resource   string
+		want       string
+		kubeconfig string
+	}{
+		{
+			name:       "none",
+			resource:   "none",
+			want:       "0",
+			kubeconfig: "",
+		},
+		{
+			name:       "pxc",
+			resource:   "pxc",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
+		},
+		{
+			name:       "ps",
+			resource:   "ps",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PS"),
+		},
+		{
+			name:       "psmdb",
+			resource:   "psmdb",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PSMDB"),
+		},
+		{
+			name:       "pg",
+			resource:   "pg",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+		},
+		{
+			name:       "pgv2",
+			resource:   "pgv2",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PG2"),
+		},
+		{
+			name:       "auto pxc",
+			resource:   "auto",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
+		},
+		{
+			name:       "auto ps",
+			resource:   "auto",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PS"),
+		},
+		{
+			name:       "auto psmdb",
+			resource:   "auto",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PSMDB"),
+		},
+		{
+			name:       "auto pg",
+			resource:   "auto",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+		},
+		{
+			name:       "auto pgv2",
+			resource:   "auto",
+			want:       "0",
+			kubeconfig: os.Getenv("KUBECONFIG_PG2"),
+		},
+	}
+
+	for _, test := range tests {
+		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", test.kubeconfig, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.resource, "--skip-pod-summary")
+		if err := cmd.Run(); err != nil {
+			t.Errorf("error executing pt-k8s-debug-collector: %s\nCommand: %s", err.Error(), cmd.String())
+		}
+		defer func() {
+			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
+			if err := cmd.Run(); err != nil {
+				t.Errorf("error cleaning up test data: %s", err.Error())
+			}
+		}()
+		out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
+		if err != nil {
+			t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, testcmd, err.Error(), out)
+		}
+		if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
+			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want)
 		}
 	}
 }

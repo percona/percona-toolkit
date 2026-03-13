@@ -1,4 +1,4 @@
-# This program is copyright 2012-2014 Percona Ireland Ltd.
+# This program is copyright 2012-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # VersionCheck package
 # ###########################################################################
@@ -181,7 +180,7 @@ sub version_check {
    }
 
    # Always update the vc file, even if the version check fails.
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          # Update the check time for things we checked.  I.e. if we
          # didn't check it, do _not_ update its time.
@@ -460,7 +459,7 @@ sub pingback {
 
    # If the server has suggestions for items, it sends them back in
    # the same format: ITEM:TYPE:SUGGESTION\n.  ITEM:TYPE is mostly for
-   # debugging; the tool just repports the suggestions.
+   # debugging; the tool just reports the suggestions.
    $items = parse_server_response(
       response   => $response->{content},
       split_vars => 0,

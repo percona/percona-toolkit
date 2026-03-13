@@ -56,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.0';
+our $VERSION = '3.7.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -458,7 +458,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -663,6 +665,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -3503,12 +3509,6 @@ sub check_table {
       return 0;
    }
 
-   PTDEBUG && _d("lower_case_table_names=$lower_case_table_names");
-   if ($lower_case_table_names > 0) {
-       PTDEBUG && _d("MySQL uses case-insensitive lookup, converting '$tbl' to lowercase");
-       $tbl = lc $tbl;
-   }
-
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
@@ -3524,7 +3524,9 @@ sub check_table {
       $self->{check_table_error} = $e;
       return 0;
    }
-   if ( !$row->[0] || $row->[0] ne $tbl ) {
+   if ( !$row->[0]
+      || ( $lower_case_table_names == 0 && $row->[0] ne $tbl )
+      || ( $lower_case_table_names > 0 && lc $row->[0] ne lc $tbl ) ) {
       PTDEBUG && _d('Table does not exist');
       return 0;
    }
@@ -4298,11 +4300,17 @@ sub get_replicas {
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
+      my @required_args = qw(dsn);
+      foreach my $arg ( @required_args ) {
+         die "I need a $arg argument" unless $args{$arg};
+      }
+      my ($dsn) = @args{@required_args};
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $replicas = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
          wait_no_die => $args{'wait_no_die'},
+         parent => $dsn,
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -4491,7 +4499,7 @@ sub _find_replicas_by_hosts {
    my $vp = VersionParser->new($dbh);
    my $sql = 'SHOW REPLICAS';
    my $source_name = 'source';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $sql = 'SHOW SLAVE HOSTS';
       $source_name='master';
    }
@@ -4521,9 +4529,7 @@ sub _find_replicas_by_hosts {
 sub get_connected_replicas {
    my ( $self, $dbh ) = @_;
 
-   my $show = "SHOW GRANTS FOR ";
-   my $user = 'CURRENT_USER()';
-   my $sql = $show . $user;
+   my $sql = "SHOW GRANTS";
    PTDEBUG && _d($dbh, $sql);
 
    my $proc;
@@ -4532,23 +4538,9 @@ sub get_connected_replicas {
          m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
       } @{$dbh->selectcol_arrayref($sql)};
    };
-   if ( $EVAL_ERROR ) {
-
-      if ( $EVAL_ERROR =~ m/no such grant defined for user/ ) {
-         PTDEBUG && _d('Retrying SHOW GRANTS without host; error:',
-            $EVAL_ERROR);
-         ($user) = split('@', $user);
-         $sql    = $show . $user;
-         PTDEBUG && _d($sql);
-         eval {
-            $proc = grep {
-               m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
-            } @{$dbh->selectcol_arrayref($sql)};
-         };
-      }
-
-      die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
-   }
+   
+   die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
+   
    if ( !$proc ) {
       die "You do not have the PROCESS privilege";
    }
@@ -4614,7 +4606,7 @@ sub get_source_dsn {
    my $vp = VersionParser->new($dbh);
    my $source_host = 'source_host';
    my $source_port = 'source_port';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_host = 'master_host';
       $source_port = 'master_port';
    }
@@ -4688,7 +4680,7 @@ sub get_source_status {
 
    my $vp = VersionParser->new($dbh);
    my $source_name = 'binary log';
-   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/ ) {
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
       $source_name = 'master';
    }
 
@@ -5069,11 +5061,11 @@ sub reset_known_replication_threads {
 
 sub get_cxn_from_dsn_table {
    my ($self, %args) = @_;
-   my @required_args = qw(dsn_table_dsn make_cxn);
+   my @required_args = qw(dsn_table_dsn make_cxn parent);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dsn_table_dsn, $make_cxn) = @args{@required_args};
+   my ($dsn_table_dsn, $make_cxn, $parent) = @args{@required_args};
    PTDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
 
    my $dp = $self->{DSNParser};
@@ -5119,7 +5111,7 @@ sub get_cxn_from_dsn_table {
                }
                push @cxn, $lcxn;
             } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string);
+               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
             }
          }
       }
@@ -5131,13 +5123,13 @@ sub get_cxn_from_dsn_table {
 sub get_source_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'master' : 'source';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'master' : 'source';
 }
 
 sub get_replica_name {
    my ($dbh) = @_;
    my $vp = VersionParser->new($dbh);
-   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/) ? 'slave' : 'replica';
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'slave' : 'replica';
 }
 
 sub _d {
@@ -7858,7 +7850,7 @@ sub version_check {
       PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
 
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          update_check_times(
             instances => $instances_to_check,
@@ -8743,7 +8735,7 @@ sub main {
    }
 
    # Explicit --chunk-size disable auto chunk sizing.
-   $o->set('chunk-time', 0) if $o->got('chunk-size');
+   $o->set('chunk-time', 0) if $o->got('chunk-size') && !$o->got('chunk-time');
    if (!$o->get('swap-tables') && !$o->get('drop-triggers')) {
        PTDEBUG && _d('Enabling no-drop-new-table since no-swap-tables & no-drop-triggers were specified');
        $o->set('drop-new-table', 0);
@@ -8873,7 +8865,7 @@ sub main {
       # it's a hack, like ignoring a problem instead of fixing it somehow. We
       # should take a look at the things that get printed in a "normal"
       # non-quiet run, and "if !quiet" them, and then do some kind of Logger.pm
-      # or Messager.pm module for a future release.
+      # or Message.pm module for a future release.
       close STDOUT;
       open  STDOUT, '>', '/dev/null'
          or warn "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
@@ -8943,9 +8935,17 @@ sub main {
       $sth->finish();
       PTDEBUG && _d('Last chunk:', Dumper($last_chunk));
 
-      if ( !$last_chunk || !$last_chunk->{new_table_name} ) {
+      if ( !$last_chunk ) {
          $oktorun = undef;
          _die("Option --resume refers non-existing job ID: ${old_job_id}. Exiting."
+            , UNSUPPORTED_OPERATION);
+      }
+
+      if ( !$last_chunk->{new_table_name}
+         || !$last_chunk->{lower_boundary}
+         || !$last_chunk->{upper_boundary} ) {
+         $oktorun = undef;
+         _die("Option --resume refers job ${old_job_id} with empty boundaries. Exiting."
             , UNSUPPORTED_OPERATION);
       }
 
@@ -9170,6 +9170,41 @@ sub main {
          Quoter       => $q,
          channel      => $o->get('channel'),
       );
+
+      # Check if we are not a replica of the source server with ROW or MIXED base replication
+      if ( !$o->get('force') ) {
+         my $source = $ms->get_source_dsn($cxn->dbh(), $dsn, $dp);
+         if ( $source ) {
+            my $source_cxn = $make_cxn->(dsn => $source);
+
+            # Check source
+            my $is_source_of = eval {
+               $ms->is_source_of($source_cxn->{dbh}, $cxn->{dbh});
+            };
+
+            # We should not die if replica connected via tunnel or port redirection
+            if ( $EVAL_ERROR ) {
+               $EVAL_ERROR =~ m/The replica is connected to (\d+) but the source's port is \d+/;
+               if ( !$1 || $1 != $source->{P} ) {
+                  $is_source_of = 0;
+               }
+            }
+
+            if ( $is_source_of) {
+               my $source_binlog_format = $source_cxn->dbh()->selectrow_arrayref("SHOW GLOBAL VARIABLES LIKE 'binlog_format'");
+               if ( uc @$source_binlog_format[1] ne 'STATEMENT' ) {
+                  _die("Server " . $dp->as_string($cxn->dsn())
+                  . " is a replica of " . $dp->as_string($source_cxn->dsn())
+                  . " running with binary log format "
+                  . "@${source_binlog_format[1]}, therefore we cannot guarantee "
+                  . "that all replication updates will be applied to the new table.\n"
+                  . "Exiting.\n"
+                  . "If you want to bypass this check, specify option --force.",
+                  NO_MINIMUM_REQUIREMENTS);
+               }
+            }
+         }
+      }
 
      my $slaves_to_skip = $o->get('skip-check-replica-lag');
 
@@ -9607,11 +9642,16 @@ sub main {
          #                   ''
          #   doesn't match '(?-xism:Failed to find a unique new table name)'
 
-         # (*) Frank:  commented them out because it caused infinite loop
-         # and the mentioned test error doesn't arise
-
          my $original_error = $EVAL_ERROR;
-         my $original_error_code = $?;
+         my $original_error_code;
+         if ( $? ) {
+            $original_error_code = $?;
+         } 
+         else {
+            $original_error_code = $!;
+         }
+
+         $SIG{__DIE__} = 'DEFAULT';
 
          foreach my $task ( reverse @cleanup_tasks ) {
             eval {
@@ -9797,9 +9837,9 @@ sub main {
 
    if ( $o->get('history') ) {
       my $sth = $cxn->dbh()->prepare(
-         "UPDATE ${hist_table} SET new_table_name = ?"
+         "UPDATE ${hist_table} SET new_table_name = ? WHERE job_id = ?"
       );
-      $sth->execute($new_tbl->{tbl});
+      $sth->execute($new_tbl->{tbl}, $job_id);
    }
 
    # If the new table still exists, drop it unless the tool was interrupted.
@@ -9912,7 +9952,7 @@ sub main {
       );
    }
 
-   if ( my $alter = $o->get('alter') ) {
+   if ( (my $alter = $o->get('alter')) && !$o->get('resume') ) {
       print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
       print $sql, "\n" if $o->get('print');
@@ -9921,10 +9961,12 @@ sub main {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
-        if ( $plugin && $plugin->can('before_die') ) {
-          $plugin->before_die(exit_status => $EVAL_ERROR);
-        }
+         if ( $plugin && $plugin->can('before_die') ) {
+            $plugin->before_die(exit_status => $EVAL_ERROR);
+         }
          # this is trapped by a signal handler. Don't replace it with _die
+         # we need to override $SIG{__DIE__} to return correct error code
+         $SIG{__DIE__} = sub { print(STDERR "$_[0]"); exit ERROR_ALTERING_TABLE;  };
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n";
       }
       print "Altered $new_tbl->{name} OK.\n";
@@ -10613,7 +10655,7 @@ sub main {
       $plugin->after_copy_rows();
    }
    if ( $o->get('preserve-triggers') ) {
-       if ( !$o->get('swap-tables') && $o->get('drop-new-table') && !$o->get('alter-foreign-keys-method') eq "drop-swap" ) {
+       if ( !$o->get('swap-tables') && $o->get('drop-new-table') && ( $o->get('alter-foreign-keys-method') ne "drop_swap" ) ) {
           print ts("Skipping triggers creation since --no-swap-tables was specified along with --drop-new-table\n");
       } else {
           print ts("Adding original triggers to new table.\n");
@@ -11159,7 +11201,7 @@ sub get_unique_index_fields {
    $clean .= $suffix;
 
    my $fields = [];
-   my $fields_re = qr/\s(?:PRIMARY|UNIQUE)\s+(?:INDEX|KEY|)\s*(?:.*?)\s*\((.*?)\)/i;
+   my $fields_re = qr/\s(?:(?:(?:PRIMARY|UNIQUE)\s+(?:INDEX|KEY))|UNIQUE)\s*(?:[^\s]*?)\s*\((.*?)\)/i;
 
    while($clean =~ /$fields_re/g) {
       push @$fields, [ split /\s*,\s*/, $1 ];
@@ -11211,6 +11253,8 @@ sub find_renamed_cols {
 
    my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)?
                                 ($table_ident) \s+ ($table_ident)/ix;
+   my $alter_rename_col_re = qr/\bRENAME \s+ COLUMN \s+
+                                ($table_ident) \s+ TO \s+ ($table_ident)/ix;
 
    my %renames;
    while ( $alter =~ /$alter_change_col_re/g ) {
@@ -11219,6 +11263,17 @@ sub find_renamed_cols {
       my (undef, $orig_tbl) = Quoter->split_unquote($orig);
       my (undef, $new_tbl)  = Quoter->split_unquote($new);
       # Silly but plausible: CHANGE COLUMN same_name same_name ...
+      next if lc($orig_tbl) eq lc($new_tbl);
+      $renames{lc($orig_tbl)} = $new_tbl;
+   }
+
+   # Also handle RENAME COLUMN syntax (MySQL 8.0+)
+   while ( $alter =~ /$alter_rename_col_re/g ) {
+      my ($orig, $new) = map { $tp->ansi_to_legacy($_) } $1, $2;
+      next unless $orig && $new;
+      my (undef, $orig_tbl) = Quoter->split_unquote($orig);
+      my (undef, $new_tbl)  = Quoter->split_unquote($new);
+      # Silly but plausible: RENAME COLUMN same_name TO same_name ...
       next if lc($orig_tbl) eq lc($new_tbl);
       $renames{lc($orig_tbl)} = $new_tbl;
    }
@@ -11384,6 +11439,10 @@ sub create_new_table {
       if ( $o->got('remove-data-dir') ) {
          $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//;
          PTDEBUG && _d("removing data dir");
+      }
+      if ( $o->got('remove-tablespace') ) {
+         $sql =~ s/TABLESPACE\s+`[^`]+`\s*//;
+         PTDEBUG && _d("removing tablespace");
       }
       PTDEBUG && _d($sql);
       eval {
@@ -11599,7 +11658,7 @@ sub check_orig_table {
          Cxn          => $cxn,
          tbl          => $orig_tbl,
          chunk_size   => $o->get('chunk-size'),
-         chunk_indx   => $o->get('chunk-index'),
+         chunk_index  => $o->get('chunk-index'),
          OptionParser => $o,
          TableParser  => $tp,
       );
@@ -12428,9 +12487,8 @@ sub exec_nibble {
          # Success: no warnings, no errors.  Record and return nibble time.
          if ( $hist_sth ) {
             $hist_sth->execute(
-               # WHERE
-               @{$boundary->{lower}},  # upper boundary values
-               @{$boundary->{upper}},  # lower boundary values
+               $lb_quoted,  # upper boundary values
+               $ub_quoted,  # lower boundary values
             );
          }
 
@@ -12444,7 +12502,7 @@ sub exec_nibble {
 #
 # Required Arguments:
 #   * tbl  - Standard tbl hashref
-#   * sth  - Sth with EXLAIN <statement>
+#   * sth  - Sth with EXPLAIN <statement>
 #   * vals - Values for sth, if any
 #
 # Returns:
@@ -12889,6 +12947,13 @@ This is useful when you change large tables with keys that include a binary
 data type or that have non-standard character sets.
 See L<"--history"> and L<"--resume">.
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --channel
 
 type: string
@@ -13048,8 +13113,9 @@ This option can override the default behavior, which is to adjust chunk size
 dynamically to try to make chunks run in exactly L<"--chunk-time"> seconds.
 When this option isn't set explicitly, its default value is used as a starting
 point, but after that, the tool ignores this option's value.  If you set this
-option explicitly, however, then it disables the dynamic adjustment behavior and
-tries to make all chunks exactly the specified number of rows.
+option explicitly, and do not set L<"--chunk-time"> explicitly, then it disables
+the dynamic adjustment behavior and tries to make all chunks exactly the specified
+number of rows.
 
 =item --chunk-size-limit
 
@@ -13086,7 +13152,13 @@ changes in server load, the tool adapts quickly.
 If this option is set to zero, the chunk size doesn't auto-adjust, so query
 times will vary, but query chunk sizes will not. Another way to do the same
 thing is to specify a value for L<"--chunk-size"> explicitly, instead of leaving
-it at the default.
+it at the default, and omit the option L<"--chunk-time">.
+
+If both options L<"--chunk-size"> and L<"--chunk-time"> set explicitly, initial
+chunk size will be as specified by the option L<"--chunk-size">, but later it will
+be adjusted, so that the next query takes this amount of time (in seconds) 
+to execute. Use this option if the tool spends too much time copying the first chunk
+with default L<"--chunk-size">.
 
 =item --config
 
@@ -13155,7 +13227,14 @@ than remove-data-dir.
 default: no
 
 If the original table was created using the DATA DIRECTORY feature, remove it and create
-the new table in MySQL default directory without creating a new isl file.
+the new table in MySQL directory without creating a new isl file.
+
+=item --remove-tablespace
+
+default: no
+
+If the original table was created using the TABLESPACE feature, remove it and create
+the new table without the TABLESPACE specification.
 
 =item --defaults-file
 
@@ -13251,6 +13330,8 @@ This option bypasses confirmation in case of using alter-foreign-keys-method = n
 
 This option also allows to use option --where without options --no-drop-new-table and --no-swap-tables.
 
+This option also allows to bypass the safety check that prevents the tool from running on replica that is replicating from a source with binary log format ROW or MIXED.
+
 =item --help
 
 Show help and exit.
@@ -13342,6 +13423,12 @@ until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
 
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
 =item --preserve-triggers
 
 Preserves old triggers when specified.
@@ -13415,7 +13502,7 @@ New rows will use the user defined default value if specified for the column.
 =item --only-same-schema-fks
 
 Check foreigns keys only on tables on the same schema than the original table.
-This option is dangerous since if you have FKs refenrencing tables in other
+This option is dangerous since if you have FKs referencing tables in other
 schemas, they won't be detected.
 
 
@@ -14182,7 +14269,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2024 Percona LLC and/or its affiliates.
+This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -14194,12 +14281,11 @@ Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
 systems, you can issue `man perlgpl' or `man perlartistic' to read these
 licenses.
 
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA  02111-1307  USA.
+You should have received a copy of the GNU General Public License, version 2
+along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 
-pt-online-schema-change 3.7.0
+pt-online-schema-change 3.7.1
 
 =cut

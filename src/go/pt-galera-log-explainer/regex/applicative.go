@@ -1,3 +1,16 @@
+// This program is copyright 2023-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package regex
 
 import (
@@ -198,6 +211,26 @@ var ApplicativeMap = types.RegexMap{
 			c.VotePerNode[logCtx.OwnNames[len(logCtx.OwnNames)-1]] = vote
 
 			return logCtx, types.SimpleDisplayer(voteResponse(vote, *c))
+		},
+		Verbosity: types.DebugMySQL,
+	},
+
+	"RegexInconsistencyVoteRecomputed": &types.LogRegex{
+		Regex:         regexp.MustCompile("Recomputed vote based on error codes"),
+		InternalRegex: regexp.MustCompile("New vote " + regexErrorMD5 + " will be used.*Old Vote: (?P<" + groupErrorMD5 + "2" + ">[a-z0-9]*)"),
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			oldMD5 := submatches[groupErrorMD5+"2"]
+			md5 := submatches[groupErrorMD5]
+
+			for _, conflict := range logCtx.Conflicts {
+				for node, vote := range conflict.VotePerNode {
+					if vote.MD5 == oldMD5 {
+						vote.MD5 = md5
+						conflict.VotePerNode[node] = vote
+					}
+				}
+			}
+			return logCtx, types.SimpleDisplayer("vote md5 recomputed from " + oldMD5 + " to " + md5)
 		},
 		Verbosity: types.DebugMySQL,
 	},

@@ -1,4 +1,4 @@
-# This program is copyright 2011-2012 Percona Inc.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # collect package
 # ###########################################################################
@@ -243,8 +242,10 @@ collect_mysql_data_one() {
    # get and keep a connection to the database; in troubled times
    # the database tends to exceed max_connections, so reconnecting
    # in the loop tends not to work very well.
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-   mysqladmin_pid=$!
+   if ! _should_skip "mysqladmin"; then
+      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+      mysqladmin_pid=$!
+   fi
 
    ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
@@ -286,14 +287,28 @@ collect_system_data() {
 }
 
 collect_mysql_data_loop() {
-   (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+
+   # SHOW FULL PROCESSLIST duplicates information in performance_schema.threads we collecting now
+   # Keeping it for backward compatibility and may remove in the future
+   if ! _should_skip "processlist"; then
+      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
       >> "$d/$p-processlist" &
-   if [ "$have_lock_waits_table" ]; then
-      (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
-      (echo $ts; transactions) >>"$d/$p-transactions" &
    fi
 
-   if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
+   (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM performance_schema.threads\G") \
+   >> "$d/$p-threads" &
+
+   if [ "$have_lock_waits_table" ]; then
+      if ! _should_skip "lock-waits"; then
+         (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
+      fi
+      if ! _should_skip "transactions"; then
+         (echo $ts; transactions) >>"$d/$p-transactions" &
+      fi
+   fi
+
+   if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ] \
+      && ! _should_skip "ps-locks-transactions"; then
       ps_locks_transactions "$d/$p-ps-locks-transactions"
    fi
 
@@ -531,20 +546,22 @@ innodb_status() {
 
    local innostat=""
 
-   $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
-      >> "$d/$p-innodbstatus$n"
-   grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
-      if [ -d /proc -a -d /proc/$mysqld_pid ]; then
-         for fd in /proc/$mysqld_pid/fd/*; do
-            file $fd | grep deleted >/dev/null && {
-               grep 'INNODB' $fd >/dev/null && {
-                  cat $fd > "$d/$p-innodbstatus$n"
-                  break
+   if ! _should_skip "innodbstatus"; then
+      $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
+         >> "$d/$p-innodbstatus$n"
+      grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
+         if [ -d /proc -a -d /proc/$mysqld_pid ]; then
+            for fd in /proc/$mysqld_pid/fd/*; do
+               file $fd | grep deleted >/dev/null && {
+                  grep 'INNODB' $fd >/dev/null && {
+                     cat $fd > "$d/$p-innodbstatus$n"
+                     break
+                  }
                }
-            }
-         done
-      fi
-   }
+            done
+         fi
+      }
+   fi
 }
 
 rocksdb_status() {
@@ -553,7 +570,7 @@ rocksdb_status() {
     has_rocksdb=`$CMD_MYSQL $EXT_ARGV -e "SHOW ENGINES" | grep -i 'rocksdb'`
     exit_code=$?
 
-    if [ $exit_code -eq 0 ]; then
+    if [ $exit_code -eq 0 ] && ! _should_skip "rocksdbstatus"; then
         $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE ROCKSDB STATUS\G" \
                    >> "$d/$p-rocksdbstatus$n" || rm -f "$d/$p-rocksdbstatus$n"
     fi
@@ -639,18 +656,32 @@ collect_mysql_variables() {
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-   sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
-   echo -e "\n$sql\n" >> $outfile
-   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   if ! _should_skip "thread-variables"; then
+      sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-   sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
-   echo -e "\n$sql\n" >> $outfile
-   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+      sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-   sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
-   echo -e "\n$sql\n" >> $outfile
-   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+      sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   fi
 
+}
+
+_should_skip() {
+   local name=$1
+
+   for item in "${OPT_SKIP_COLLECTION[@]}"; do
+      if [ "$item" == "$name" ]; then
+         return 0
+      fi
+   done
+
+   return 1
 }
 
 # ###########################################################################

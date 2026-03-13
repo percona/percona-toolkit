@@ -971,8 +971,10 @@ collect_mysql_data_one() {
       fi
    fi
 
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-   mysqladmin_pid=$!
+   if ! _should_skip "mysqladmin"; then
+      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+      mysqladmin_pid=$!
+   fi
 
    ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
@@ -1013,14 +1015,26 @@ collect_system_data() {
 }
 
 collect_mysql_data_loop() {
-   (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+
+   if ! _should_skip "processlist"; then
+      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
       >> "$d/$p-processlist" &
-   if [ "$have_lock_waits_table" ]; then
-      (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
-      (echo $ts; transactions) >>"$d/$p-transactions" &
    fi
 
-   if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
+   (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM performance_schema.threads\G") \
+   >> "$d/$p-threads" &
+
+   if [ "$have_lock_waits_table" ]; then
+      if ! _should_skip "lock-waits"; then
+         (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
+      fi
+      if ! _should_skip "transactions"; then
+         (echo $ts; transactions) >>"$d/$p-transactions" &
+      fi
+   fi
+
+   if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ] \
+      && ! _should_skip "ps-locks-transactions"; then
       ps_locks_transactions "$d/$p-ps-locks-transactions"
    fi
 
@@ -1247,20 +1261,22 @@ innodb_status() {
 
    local innostat=""
 
-   $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
-      >> "$d/$p-innodbstatus$n"
-   grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
-      if [ -d /proc -a -d /proc/$mysqld_pid ]; then
-         for fd in /proc/$mysqld_pid/fd/*; do
-            file $fd | grep deleted >/dev/null && {
-               grep 'INNODB' $fd >/dev/null && {
-                  cat $fd > "$d/$p-innodbstatus$n"
-                  break
+   if ! _should_skip "innodbstatus"; then
+      $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
+         >> "$d/$p-innodbstatus$n"
+      grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
+         if [ -d /proc -a -d /proc/$mysqld_pid ]; then
+            for fd in /proc/$mysqld_pid/fd/*; do
+               file $fd | grep deleted >/dev/null && {
+                  grep 'INNODB' $fd >/dev/null && {
+                     cat $fd > "$d/$p-innodbstatus$n"
+                     break
+                  }
                }
-            }
-         done
-      fi
-   }
+            done
+         fi
+      }
+   fi
 }
 
 rocksdb_status() {
@@ -1269,7 +1285,7 @@ rocksdb_status() {
     has_rocksdb=`$CMD_MYSQL $EXT_ARGV -e "SHOW ENGINES" | grep -i 'rocksdb'`
     exit_code=$?
 
-    if [ $exit_code -eq 0 ]; then
+    if [ $exit_code -eq 0 ] && ! _should_skip "rocksdbstatus"; then
         $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE ROCKSDB STATUS\G" \
                    >> "$d/$p-rocksdbstatus$n" || rm -f "$d/$p-rocksdbstatus$n"
     fi
@@ -1351,18 +1367,32 @@ collect_mysql_variables() {
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-   sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
-   echo -e "\n$sql\n" >> $outfile
-   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   if ! _should_skip "thread-variables"; then
+      sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-   sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
-   echo -e "\n$sql\n" >> $outfile
-   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+      sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-   sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
-   echo -e "\n$sql\n" >> $outfile
-   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+      sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   fi
 
+}
+
+_should_skip() {
+   local name=$1
+
+   for item in "${OPT_SKIP_COLLECTION[@]}"; do
+      if [ "$item" == "$name" ]; then
+         return 0
+      fi
+   done
+
+   return 1
 }
 
 # ###########################################################################
@@ -1519,7 +1549,7 @@ purge_samples() {
    local retention_size="$4"
 
    # Delete collect files which more than --retention-time days old.
-   if [ -n "$OPT_PREFIX" ]; then
+   if [ -n "${OPT_PREFIX:-}" ]; then
       find "$dir" -maxdepth 1 -type f -mtime +$retention_time -name "$OPT_PREFIX-*" -exec rm -f '{}' \;
    else
       find "$dir" -maxdepth 1 -type f -mtime +$retention_time -regextype posix-egrep -regex "$dir/[0-9]{4}(_[0-9]{2}){5}-.*" -exec rm -f '{}' \;
@@ -1718,10 +1748,6 @@ stalk() {
 main() {
    trap sigtrap SIGHUP SIGINT SIGTERM
 
-   if [ "$OPT_SYSTEM_ONLY" ] && [ "$OPT_MYSQL_ONLY" ]; then
-      log 'Both options --system-only and --mysql-only specified, collecting only disk-space, hostname, output, and trigger metrics';
-   fi
-
    # Note: $$ is the parent's PID, but we're a child proc.
    # Bash 4 has $BASHPID but we can't rely on that.  Consequently,
    # we don't know our own PID.  See the usage of $! below.
@@ -1765,6 +1791,10 @@ if    [ "${0##*/}" = "$TOOL" ] \
    mk_tmpdir
    parse_options "$0" "${@:-""}"
 
+   if [ "$OPT_SYSTEM_ONLY" ] && [ "$OPT_MYSQL_ONLY" ]; then
+      log 'Both options --system-only and --mysql-only specified, collecting only disk-space, hostname, output, and trigger metrics';
+   fi
+
    # Verify and set TRIGGER_FUNCTION based on --function.
    if ! set_trg_func "$OPT_FUNCTION"; then
       option_error "Invalid --function value: $OPT_FUNCTION"
@@ -1777,6 +1807,19 @@ if    [ "${0##*/}" = "$TOOL" ] \
       else
          option_error "Invalid --plugin value: $OPT_PLUGIN is not a file"
       fi
+   fi
+
+   if [ "$OPT_SKIP_COLLECTION" ]; then
+      supported_skips=( "ps-locks-transactions" "thread-variables" "innodbstatus" "lock-waits" "mysqladmin" "processlist" "rocksdbstatus" "transactions" )
+      IFS=',' read -ra skips <<< "$OPT_SKIP_COLLECTION"
+      OPT_SKIP_COLLECTION=("${skips[@]}")
+      for skip in "${skips[@]}"; do
+         echo "$supported_skips" | grep -q "$skip"
+         if ! [[ " ${supported_skips[@]} " =~ " ${skip} " ]]; then
+            log "Invalid --skip-collection value: $skip, exiting."
+            exit 1
+         fi
+      done
    fi
 
    if [ -z "$OPT_STALK" -a "$OPT_COLLECT" ]; then
@@ -1804,6 +1847,10 @@ if    [ "${0##*/}" = "$TOOL" ] \
    MYSQL_ARGS="$(mysql_options)"
    EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
+   # Test if MySQL password provided on command line; warn if so.
+   if [ -n "$OPT_PASSWORD" ] || $(echo "$EXT_ARGV" | grep -qP "(\-\-password=)|((^|\s)+\-p[^\s]+)"); then
+      log 'Providing MySQL password on the command line interface is insecure. It will be visible in the operating system process list and stored in the collected output of the ps command. Consider using a configuration file or the --ask-pass option instead.';
+   fi
 
    if [ ! "$OPT_SYSTEM_ONLY" ]; then
       # Check that mysql and mysqladmin are in PATH.  If not, we're
@@ -1899,6 +1946,8 @@ server.  Before using this tool, please:
 =item * Test the tool on a non-production server
 
 =item * Backup your production server and verify the backups
+
+=item * Do NOT provide the MySQL password on the command line with the L<"--password"> option. MySQL passwords provided on the command line are visible to all users on the system and are stored in the collected output of the C<"ps"> command. Use a MySQL option file or the L<"--ask-pass"> option instead.
 
 =back
 
@@ -2226,6 +2275,10 @@ short form: -p; type: string
 Password to use when connecting.
 If password contains commas they must be escaped with a backslash: "exam\,ple"
 
+B<WARNING>: Providing the password on the command line is insecure. The password will
+be visible to all users on the system and will be stored in the collected output of
+the C<"ps"> command. Use a MySQL option file or the L<"--ask-pass"> option instead.
+
 =item --pid
 
 type: string; default: /var/run/pt-stalk.pid
@@ -2385,6 +2438,12 @@ type: int; default: 1
 How long to sleep between collection loop cycles.  This is useful with
 C<--no-stalk> to do long collections.  For example, to collect data every
 minute for an hour, specify: C<--no-stalk --run-time 3600 --sleep-collect 60>.
+
+=item --skip-collection
+
+type: array
+
+A comma-separated list of collection types to skip.  Valid values are: C<"ps-locks-transactions,thread-variables,innodbstatus,lock-waits,mysqladmin,processlist,rocksdbstatus,transactions">.
 
 =item --socket
 
@@ -2588,7 +2647,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2024 Percona LLC and/or its affiliates,
+This program is copyright 2011-2026 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -2601,13 +2660,12 @@ Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
 systems, you can issue `man perlgpl' or `man perlartistic' to read these
 licenses.
 
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA  02111-1307  USA.
+You should have received a copy of the GNU General Public License, version 2
+along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 
-pt-stalk 3.7.0
+pt-stalk 3.7.1
 
 =cut
 

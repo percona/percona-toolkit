@@ -1,3 +1,16 @@
+// This program is copyright 2017-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
@@ -497,23 +510,23 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 			}
 
 		//
-		case "docs-scanned":
+		case "docs-examined":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Scanned.Max < c2.Scanned.Max
+				return c1.DocsExamined.Max < c2.DocsExamined.Max
 			}
-		case "-docs-scanned":
+		case "-docs-examined":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Scanned.Max > c2.Scanned.Max
+				return c1.DocsExamined.Max > c2.DocsExamined.Max
 			}
 
 		//
 		case "docs-returned":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Returned.Max < c2.Scanned.Max
+				return c1.Returned.Max < c2.DocsExamined.Max
 			}
 		case "-docs-returned":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Returned.Max > c2.Scanned.Max
+				return c1.Returned.Max > c2.DocsExamined.Max
 			}
 		}
 		// count,query-time,docs-scanned, docs-returned. - in front of the field name denotes reverse order.")

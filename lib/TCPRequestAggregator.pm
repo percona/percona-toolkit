@@ -1,4 +1,4 @@
-# This program is copyright 2011 Baron Schwartz, 2011 Percona Ireland Ltd.
+# This program is copyright 2011 Baron Schwartz, 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # TCPRequestAggregator package
 # ###########################################################################
@@ -178,7 +177,7 @@ sub parse_event {
       # Otherwise, we need to compute the running sums and keep looping.
       else {
          if ( $self->{in_prg} ) {
-            # $self->{current_ts} is intitially 0, which would seem likely to
+            # $self->{current_ts} is initially 0, which would seem likely to
             # skew this computation.  But $self->{in_prg} will be 0 also, and
             # $self->{current_ts} will get set immediately after this, so
             # anytime this if() block runs, it'll be OK.

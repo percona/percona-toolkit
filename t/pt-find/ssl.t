@@ -29,7 +29,7 @@ elsif ( $sandbox_version lt '8.0' ) {
 
 my $output;
 my $cnf = '/tmp/12345/my.sandbox.cnf';
-my $cmd = "$trunk/bin/pt-find -F $cnf ";
+my $cmd = "$trunk/bin/pt-find";
 
 $sb->do_as_root(
    'source',
@@ -37,7 +37,7 @@ $sb->do_as_root(
    q/GRANT ALL ON *.* TO sha256_user@'%'/,
 );
 
-$output = `$cmd mysql --tblregex column --user=sha256_user --password=sha256_user%password --mysql_ssl=0 2>&1`; 
+$output = `$cmd -F $cnf --host=127.0.0.1 --port=12345 mysql --tblregex column --user=sha256_user --password=sha256_user%password --mysql_ssl=0 2>&1`; 
 
 isnt(
    $?,
@@ -47,25 +47,79 @@ isnt(
 
 like(
    $output,
-   qr/Access denied/,
-   'Secure connection error raised when no SSL connection used'
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error raised when SSL connection used'
 ) or diag($output);
 
-$output = `$cmd mysql --tblregex column --user=sha256_user --password=sha256_user%password --mysql_ssl=1 2>&1`; 
+$output = `$cmd -F $cnf --host=127.0.0.1 --port=12345 mysql --tblregex column --user=sha256_user --password=sha256_user%password --mysql_ssl=1 2>&1`; 
 
 is(
    $?,
    0,
-   "Error raised when SSL connection is not used"
+   "Error not raised when SSL connection is used"
 ) or diag($output);
 
 unlike(
    $output,
-   qr/Access denied/,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
 like($output, qr/`mysql`.`columns_priv`/, 'Found mysql.columns_priv');
+
+$dbh->do('CREATE DATABASE IF NOT EXISTS test');
+$dbh->do('CREATE TABLE test.pt_find_ssl(cnt INT)');
+
+$output = `$cmd -F $cnf --host=127.0.0.1 --port=12345 mysql --tblregex column --user=sha256_user --password=sha256_user%password --mysql_ssl=1 --exec-dsn=h=127.1,P=12346,u=sha256_user,p=sha256_user%password,s=1 --exec-plus "INSERT INTO test.pt_find_ssl() SELECT COUNT(*) FROM %s" 2>&1`; 
+
+is(
+   $?,
+   0,
+   "Error not raised when SSL connection is used with DSN"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error raised when SSL connection used with DSN'
+) or diag($output);
+
+$output = `/tmp/12346/use -N -e "SELECT COUNT(*) FROM test.pt_find_ssl"`;
+chomp($output);
+
+is(
+   $output,
+   1, 
+   'DSN option s works with pt-find'
+) or diag($output);
+
+$output = `$cmd -F t/pt-archiver/samples/pt-191.cnf --host=127.0.0.1 --port=12345 mysql --tblregex column --user=sha256_user --password=sha256_user%password --mysql_ssl=1 2>&1`; 
+
+is(
+   $?,
+   0,
+   "No error for SSL options in the configuration file"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with correct SSL options in the configuration file'
+) or diag($output);
+
+$output = `$cmd -F t/pt-archiver/samples/pt-191-error.cnf --host=127.0.0.1 --port=12345 mysql --tblregex column --user=sha256_user --password=sha256_user%password --mysql_ssl=1 2>&1`; 
+
+isnt(
+   $?,
+   0,
+   "Error for invalid SSL options in the configuration file"
+) or diag($output);
+
+like(
+   $output,
+   qr/SSL connection error: Unable to get private key at/,
+   'SSL connection error with incorrect SSL options in the configuration file'
+) or diag($output);
 
 # #############################################################################
 # Done.

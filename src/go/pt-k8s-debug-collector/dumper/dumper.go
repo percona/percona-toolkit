@@ -1,3 +1,16 @@
+// This program is copyright 2020-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package dumper
 
 import (
@@ -28,31 +41,33 @@ type sslSecret struct {
 
 // Dumper struct is for dumping cluster
 type Dumper struct {
-	cmd           string
-	kubeconfig    string
-	resources     []string
-	filePaths     []string
-	fileContainer string
-	namespace     string
-	location      string
-	errors        string
-	mode          int64
-	crType        string
-	forwardport   string
-	sslSecrets    []sslSecret
+	cmd            string
+	kubeconfig     string
+	resources      []string
+	filePaths      []string
+	fileContainer  string
+	namespace      string
+	location       string
+	errors         string
+	mode           int64
+	crType         string
+	forwardport    string
+	sslSecrets     []sslSecret
+	skipPodSummary bool
 }
 
 var resourcesRe = regexp.MustCompile(`(\w+\.(\w+).percona\.com)`)
 
 // New return new Dumper object
-func New(location, namespace, resource string, kubeconfig string, forwardport string) Dumper {
+func New(location, namespace, resource string, kubeconfig string, forwardport string, skipPodSummary bool) Dumper {
 	d := Dumper{
-		cmd:         "kubectl",
-		kubeconfig:  kubeconfig,
-		location:    "cluster-dump",
-		mode:        int64(0o777),
-		namespace:   namespace,
-		forwardport: forwardport,
+		cmd:            "kubectl",
+		kubeconfig:     kubeconfig,
+		location:       "cluster-dump",
+		mode:           int64(0o777),
+		namespace:      namespace,
+		forwardport:    forwardport,
+		skipPodSummary: skipPodSummary,
 	}
 	resources := []string{
 		"pods",
@@ -352,18 +367,20 @@ func (d *Dumper) DumpCluster() error {
 					crName = pod.Labels["app.kubernetes.io/instance"]
 				}
 				// Get summary
-				output, err = d.getPodSummary(resourceType(d.crType), pod.Name, crName, ns.Name)
-				if err != nil {
-					d.logError(err.Error(), d.crType, pod.Name)
-					err = addToArchive(location, d.mode, []byte(err.Error()), tw)
+				if !d.skipPodSummary {
+					output, err = d.getPodSummary(resourceType(d.crType), pod.Name, crName, ns.Name)
 					if err != nil {
-						log.Printf("Error: create summary errors archive for pod %s in namespace %s: %v", pod.Name, ns.Name, err)
-					}
-				} else {
-					err = addToArchive(location, d.mode, output, tw)
-					if err != nil {
-						d.logError(err.Error(), "create summary archive for pod "+pod.Name)
-						log.Printf("Error: create summary  archive for pod %s: %v", pod.Name, err)
+						d.logError(err.Error(), d.crType, pod.Name)
+						err = addToArchive(location, d.mode, []byte(err.Error()), tw)
+						if err != nil {
+							log.Printf("Error: create summary errors archive for pod %s in namespace %s: %v", pod.Name, ns.Name, err)
+						}
+					} else {
+						err = addToArchive(location, d.mode, output, tw)
+						if err != nil {
+							d.logError(err.Error(), "create summary archive for pod "+pod.Name)
+							log.Printf("Error: create summary  archive for pod %s: %v", pod.Name, err)
+						}
 					}
 				}
 

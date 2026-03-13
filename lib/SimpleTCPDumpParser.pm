@@ -1,4 +1,4 @@
-# This program is copyright 2011 Baron Schwartz, 2011 Percona Ireland Ltd.
+# This program is copyright 2011 Baron Schwartz, 2011 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -79,8 +79,8 @@ sub new {
 #
 # TCP requests and responses form "sessions", which can be in one of these
 # statuses:
-#  [Q]uerying     - The remote host is sending the query to the server.
-#  [R]esponding   - The server is replying back to the remote host.
+#  Querying     - The remote host is sending the query to the server. 
+#  Responding   - The server is replying back to the remote host.
 sub parse_event {
    my ( $self, %args ) = @_;
    my @required_args = qw(next_event tell);

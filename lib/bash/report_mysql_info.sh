@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # report_mysql_info package
 # ###########################################################################
@@ -1286,7 +1285,7 @@ report_jemalloc_enabled() {
    local variables_file="$2"
    local GENERAL_JEMALLOC_STATUS=0
 
-   for pid in $(grep '/mysqld ' "$instances_file" | awk '{print $1;}'); do
+   for pid in $(grep '/mysqld\b' "$instances_file" | awk '{print $1;}'); do
       local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
       if [ -z $jemalloc_status ]; then
          continue

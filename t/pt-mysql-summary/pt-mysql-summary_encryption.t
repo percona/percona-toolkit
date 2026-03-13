@@ -132,7 +132,7 @@ for my $i (2..9) {
       no_diff(
          sub {
             local $ENV{_NO_FALSE_NEGATIVES} = 1;
-            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp_enc00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/'`
+            print `LOCALE=en_US.utf8 LANG=en_US.UTF-8 $env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp_enc00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/'`
          },
          "t/pt-mysql-summary/samples/expected_output_temp_enc00$i.txt",
       ),

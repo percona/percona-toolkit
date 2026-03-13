@@ -32,14 +32,32 @@ For better results, host must be a **mongos** server.
 Options
 -------
 
-``-a``, ``--auth-db``
+``-a``, ``--authenticationDatabase``
   Specifies the database used to establish credentials and privileges
   with a MongoDB server.
   By default, the ``admin`` database is used.
 
+``-c``, ``--no-version-check``
+  Disables checking the version of MongoDB before running the report.
+
 ``-f``, ``--output-format``
   Specifies the report output format. Valid options are: ``text``, ``json``.
   The default value is ``text``.
+
+``-h``, ``--help``
+  Show help message and exit.
+
+``--host``
+  Specifies the hostname or IP address of the MongoDB server to connect to.
+
+``-i``, ``--running-ops-interval``
+  Interval in milliseconds to wait between samples of running operations.
+  Default: 1000 milliseconds.
+
+``-l``, ``--log-level``
+  Specifies the logging level. Valid options: ``panic``, ``fatal``, ``error``, 
+  ``warn``, ``info``, ``debug``.
+  Default: ``error``.
 
 ``-p``, ``--password``
   Specifies the password to use when connecting to a server
@@ -48,16 +66,44 @@ Options
   Do not add a space between the option and its value: ``-p<password>``.
 
   If you specify the option without any value,
-  ``pt-mongodb-summary`` will ask for password interactively.
+  ``pt-mongodb-summary`` will ask for the password interactively.
 
-``-u``, ``--user``
-  Specifies the user name for connecting to a server
+``--port``
+  Specifies the port of the MongoDB server to connect to.
+
+``-s``, ``--running-ops-samples``
+  Number of samples to collect for running operations.
+  Default: 5.
+
+``--sslCAFile``
+  Path to the SSL CA certificate file used for authentication.
+
+``--sslPEMKeyFile``
+  Path to the SSL client PEM file used for authentication.
+
+``--uri``
+  Full MongoDB URI describing hosts and options.
+  Command-line flags have higher priority than URI settings.
+  If a full URI is provided, you cannot also specify ``--host`` or ``--port``.
+  Example: ``mongodb://admin:secret@localhost:27017``
+
+``-u``, ``--username``
+  Specifies the username to use when connecting to a server
   with authentication enabled.
+
+``-v``, ``--version``
+  Show version information and exit.
 
 Output example
 ==============
 
 .. code-block:: none
+
+   # Mongos #################################################################################################
+   Host                              LastPing                     Version         Uptime (sec)
+   my-cluster-name-mongos-0:27017    2026-02-16T13:01:22Z         8.0.17-6        3553           
+   my-cluster-name-mongos-1:27017    2026-02-16T13:01:26Z         8.0.17-6        3543           
+   my-cluster-name-mongos-2:27017    2026-02-16T13:01:28Z         8.0.17-6        3533           
 
    # Instances ####################################################################################
    ID    Host                         Type                                 ReplSet
@@ -170,3 +216,38 @@ Authors
 =======
 
 Carlos Salguero
+
+ABOUT PERCONA TOOLKIT
+=====================
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+`http://www.percona.com/software/ <http://www.percona.com/software/>`_ to learn about other free, open-source
+software from Percona.
+
+COPYRIGHT, LICENSE, AND WARRANTY
+================================
+
+This program is copyright 2011-2026 Percona LLC and/or its affiliates.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue \`man perlgpl' or \`man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+VERSION
+=======
+
+:program:`pt-mongodb-summary` 3.7.1
+

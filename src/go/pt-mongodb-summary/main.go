@@ -1,7 +1,21 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -13,6 +27,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -22,6 +37,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -38,7 +54,8 @@ const (
 	toolname = "pt-mongodb-summary"
 
 	DefaultAuthDB             = "admin"
-	DefaultHost               = "mongodb://localhost:27017"
+	DefaultHost               = "localhost"
+	DefaultPort               = "27017"
 	DefaultLogLevel           = "warn"
 	DefaultRunningOpsInterval = 1000 // milliseconds
 	DefaultRunningOpsSamples  = 5
@@ -146,8 +163,32 @@ type clusterwideInfo struct {
 	Chunks                  []proto.ChunksByCollection
 }
 
+type mongosInstance struct {
+	Name     string    `bson:"_id"`
+	LastPing time.Time `bson:"ping"`
+	UpTime   int       `bson:"up"`
+	Version  string    `bson:"mongoVersion"`
+}
+
+type mongosInfo struct {
+	Instances []mongosInstance `bson:"instances"`
+}
+
+func (t mongosInfo) MaxNameLen() int {
+	if len(t.Instances) == 0 {
+		return 0
+	}
+
+	maxInst := slices.MaxFunc(t.Instances, func(a, b mongosInstance) int {
+		return cmp.Compare(len(a.Name), len(b.Name))
+	})
+
+	return len(maxInst.Name)
+}
+
 type cliOptions struct {
 	Host               string
+	Port               string
 	User               string
 	Password           string
 	AuthDB             string
@@ -157,6 +198,7 @@ type cliOptions struct {
 	SSLPEMKeyFile      string
 	RunningOpsSamples  int
 	RunningOpsInterval int
+	URI                string
 	Help               bool
 	Version            bool
 	NoVersionCheck     bool
@@ -171,6 +213,7 @@ type collectedInfo struct {
 	RunningOps       *opCounters
 	SecuritySettings *security
 	HostInfo         *hostInfo
+	MongosInfo       *mongosInfo
 	Errors           []string
 }
 
@@ -208,7 +251,7 @@ func main() {
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
 		} else if advice != "" {
-			log.Infof(advice)
+			log.Infof("%s", advice)
 		}
 	}
 
@@ -239,18 +282,21 @@ func main() {
 		log.Errorf("Cannot get hostnames: %s", err)
 	}
 
-	log.Debugf("hostnames: %v", hostnames)
-
 	ci := &collectedInfo{}
+
+	ci.MongosInfo, err = getMongosInfo(ctx, client)
+	if err != nil {
+		log.Warnf("[Warning] cannot get mongos info: %v\n", err)
+	}
 
 	ci.HostInfo, err = getHostInfo(ctx, client)
 	if err != nil {
-		log.Errorf("Cannot get host info for %q: %s", opts.Host, err)
+		log.Errorf("Cannot get host info for %q: %s", clientOptions.Hosts, err)
 		os.Exit(cannotGetHostInfo) //nolint:gocritic
 	}
 
 	if ci.ReplicaMembers, err = util.GetReplicasetMembers(ctx, clientOptions); err != nil {
-		log.Warnf("[Error] cannot get replicaset members: %v\n", err)
+		log.Warnf("[Warning] cannot get replicaset members: %v\n", err)
 	}
 
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
@@ -319,7 +365,12 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	default:
 		buf = new(bytes.Buffer)
 
-		t := template.Must(template.New("replicas").Parse(templates.Replicas))
+		t := template.Must(template.New("mongos").Parse(templates.MongosInfo))
+		if err := t.Execute(buf, ci.MongosInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
+		}
+
+		t = template.Must(template.New("replicas").Parse(templates.Replicas))
 		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
 			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
 		}
@@ -373,24 +424,6 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
 	}
 
-	cmdOpts := proto.CommandLineOptions{}
-	query := primitive.D{{Key: "getCmdLineOpts", Value: 1}}
-	err := client.Database("admin").RunCommand(ctx, query).Decode(&cmdOpts)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot get command line options")
-	}
-
-	ss := proto.ServerStatus{}
-	query = primitive.D{{Key: "serverStatus", Value: 1}}
-	if err := client.Database("admin").RunCommand(ctx, query).Decode(&ss); err != nil {
-		return nil, errors.Wrap(err, "GetHostInfo.serverStatus")
-	}
-
-	pi := procInfo{}
-	if err := getProcInfo(int32(ss.Pid), &pi); err != nil {
-		pi.Error = err
-	}
-
 	nodeType, _ := getNodeType(ctx, client)
 	procCount, _ := countMongodProcesses()
 
@@ -398,24 +431,41 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		Hostname:          hi.System.Hostname,
 		HostOsType:        hi.Os.Type,
 		HostSystemCPUArch: hi.System.CpuArch,
-		DBPath:            "", // Sets default. It will be overridden later if necessary
-
-		ProcessName:      ss.Process,
-		ProcProcessCount: procCount,
-		Version:          ss.Version,
-		NodeType:         nodeType,
-
-		ProcPath:       pi.Path,
-		ProcUserName:   pi.UserName,
-		ProcCreateTime: pi.CreateTime,
-		CmdlineArgs:    cmdOpts.Argv,
-	}
-	if ss.Repl != nil {
-		i.ReplicasetName = ss.Repl.SetName
+		ProcProcessCount:  procCount,
+		NodeType:          nodeType,
+		CmdlineArgs:       nil,
 	}
 
-	if cmdOpts.Parsed.Storage.DbPath != "" {
-		i.DBPath = cmdOpts.Parsed.Storage.DbPath
+	var cmdOpts proto.CommandLineOptions
+	query := primitive.D{{Key: "getCmdLineOpts", Value: 1}}
+	err := client.Database("admin").RunCommand(ctx, query).Decode(&cmdOpts)
+	if err == nil {
+		if len(cmdOpts.Argv) > 0 {
+			i.CmdlineArgs = cmdOpts.Argv
+		}
+		if cmdOpts.Parsed.Storage.DbPath != "" {
+			i.DBPath = cmdOpts.Parsed.Storage.DbPath
+		}
+	}
+
+	var ss proto.ServerStatus
+	query = primitive.D{{Key: "serverStatus", Value: 1}}
+	err = client.Database("admin").RunCommand(ctx, query).Decode(&ss)
+	if err == nil {
+		i.ProcessName = ss.Process
+		i.Version = ss.Version
+		if ss.Repl != nil {
+			i.ReplicasetName = ss.Repl.SetName
+		}
+
+		pi := procInfo{}
+		if err := getProcInfo(int32(ss.Pid), &pi); err != nil {
+			pi.Error = err
+		} else {
+			i.ProcPath = pi.Path
+			i.ProcUserName = pi.UserName
+			i.ProcCreateTime = pi.CreateTime
+		}
 	}
 
 	return i, nil
@@ -440,6 +490,29 @@ func countMongodProcesses() (int, error) {
 		}
 	}
 	return count, nil
+}
+
+func getMongosInfo(ctx context.Context, client *mongo.Client) (*mongosInfo, error) {
+	threshold := time.Now().Add(-300 * time.Second)
+
+	filter := bson.M{
+		"ping": bson.M{
+			"$gt": threshold,
+		},
+	}
+
+	cursor, err := client.Database("config").Collection("mongos").Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find mongos: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var instances []mongosInstance
+	if err := cursor.All(ctx, &instances); err != nil {
+		return nil, fmt.Errorf("failed to decode mongos: %w", err)
+	}
+
+	return &mongosInfo{Instances: instances}, nil
 }
 
 func getClusterwideInfo(ctx context.Context, client *mongo.Client) (*clusterwideInfo, error) {
@@ -908,7 +981,6 @@ func externalIP() (string, error) {
 
 func parseFlags() (*cliOptions, error) {
 	opts := &cliOptions{
-		Host:               DefaultHost,
 		LogLevel:           DefaultLogLevel,
 		RunningOpsSamples:  DefaultRunningOpsSamples,
 		RunningOpsInterval: DefaultRunningOpsInterval, // milliseconds
@@ -920,6 +992,10 @@ func parseFlags() (*cliOptions, error) {
 	gop.BoolVarLong(&opts.Help, "help", 'h', "Show help")
 	gop.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
 	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
+
+	gop.StringVarLong(&opts.URI, "uri", 0, `URI describes the hosts to be used and options. Flags has higher priority. If a full URI is provided, you cannot also specify "--host" or "--port".`)
+	gop.StringVarLong(&opts.Host, "host", 0, "Host")
+	gop.StringVarLong(&opts.Port, "port", 0, "Port")
 
 	gop.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
 	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").
@@ -946,7 +1022,14 @@ func parseFlags() (*cliOptions, error) {
 	gop.Parse(os.Args)
 
 	if gop.NArgs() > 0 {
-		opts.Host = gop.Arg(0)
+		if gop.IsSet("host") || gop.IsSet("port") || gop.IsSet("uri") {
+			return nil, fmt.Errorf(`parameter host[:port] is not compatible with "--uri", "--host" and "--port" flags set`)
+		}
+		var err error
+		opts.Host, opts.Port, err = net.SplitHostPort(gop.Arg(0))
+		if err != nil {
+			return nil, err
+		}
 		gop.Parse(gop.Args())
 	}
 
@@ -961,8 +1044,8 @@ func parseFlags() (*cliOptions, error) {
 		opts.Password = string(pass)
 	}
 
-	if !strings.HasPrefix(opts.Host, "mongodb://") {
-		opts.Host = "mongodb://" + opts.Host
+	if gop.IsSet("uri") && (gop.IsSet("host") || gop.IsSet("port")) {
+		return nil, fmt.Errorf("If a full URI is provided, you cannot also specify --host or --port")
 	}
 
 	if opts.Help {
@@ -1003,20 +1086,38 @@ func getChunksCount(ctx context.Context, client *mongo.Client) ([]proto.ChunksBy
 }
 
 func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
-	clientOptions := options.Client().ApplyURI(opts.Host)
+	var clientOptions *options.ClientOptions
 
-	clientOptions.ServerSelectionTimeout = &defaultConnectionTimeout
-	clientOptions.Direct = &directConnection
-	credential := options.Credential{}
-	if opts.User != "" {
-		credential.Username = opts.User
-		clientOptions.SetAuth(credential)
+	if opts.URI != "" {
+		clientOptions = options.Client().ApplyURI(opts.URI)
+	} else {
+		host := opts.Host
+		if host == "" {
+			host = DefaultHost
+		}
+		port := opts.Port
+		if port == "" {
+			port = DefaultPort
+		}
+
+		clientOptions = options.Client().ApplyURI("mongodb://" + net.JoinHostPort(host, port))
 	}
 
+	auth := clientOptions.Auth
+	if auth == nil {
+		auth = &options.Credential{}
+	}
+
+	if opts.User != "" {
+		auth.Username = opts.User
+	}
 	if opts.Password != "" {
-		credential.Password = opts.Password
-		credential.PasswordSet = true
-		clientOptions.SetAuth(credential)
+		auth.Password = opts.Password
+		auth.PasswordSet = true
+	}
+
+	if auth.Username != "" {
+		clientOptions.SetAuth(*auth)
 	}
 
 	if opts.SSLPEMKeyFile != "" || opts.SSLCAFile != "" {
@@ -1028,7 +1129,15 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 		clientOptions.TLSConfig = tlsConfig
 	}
 
-	return clientOptions, nil
+	// Defaults
+	if clientOptions.ServerSelectionTimeout == nil {
+		clientOptions.ServerSelectionTimeout = &defaultConnectionTimeout
+	}
+	if clientOptions.Direct == nil {
+		clientOptions.Direct = &directConnection
+	}
+
+	return clientOptions, clientOptions.Validate()
 }
 
 func getTLSConfig(sslPEMKeyFile, sslCAFile string) (*tls.Config, error) {

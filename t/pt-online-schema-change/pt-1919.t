@@ -312,7 +312,7 @@ sub test_alter_table {
        $orig_triggers,
        $new_triggers,
        'Triggers should remain in place',
-   );
+   ) or diag($output);
 
    return;
 }
