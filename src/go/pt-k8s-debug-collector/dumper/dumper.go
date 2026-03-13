@@ -366,7 +366,6 @@ var ignoredResources = map[string]bool{
 	"apiaccesses":               true, // Deprecated
 	"componentstatuses":         true, // Deprecated
 	"endpoints":                 true, // Deprecated
-	"pods":                      true, // Handled by workers
 	"subjectaccessreviews":      true, // Not allowed
 	"selfsubjectrulesreviews":   true, // Not allowed
 	"selfsubjectaccessreviews":  true, // Not allowed
@@ -405,16 +404,20 @@ func (d *Dumper) discoverResources() (*resourceMap, error) {
 			if !filterResource(resource.Name) {
 				continue
 			}
-			currentGroup := list.GroupVersion
-			existingGroup, found := chosenGroups[resource.Name]
 
+			currentGroupVersion := list.GroupVersion
+			gv, _ := schema.ParseGroupVersion(currentGroupVersion)
+			currentGroup := gv.Group
+
+			existingGroupVersion, found := chosenGroups[resource.Name]
 			if !found {
-				chosenGroups[resource.Name] = currentGroup
+				chosenGroups[resource.Name] = currentGroupVersion
 				continue
 			}
 
-			if existingGroup == "v1" && currentGroup != "v1" {
-				chosenGroups[resource.Name] = currentGroup
+			egv, _ := schema.ParseGroupVersion(existingGroupVersion)
+			if currentGroup == "events.k8s.io" && egv.Group != "events.k8s.io" {
+				chosenGroups[resource.Name] = currentGroupVersion
 			}
 		}
 	}
