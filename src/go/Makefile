@@ -117,14 +117,14 @@ env:
 # TODO: create envs specific to products: MySQL, PostgreSQL, MongoDB, K8
 env-up: env					## Start MongoDB docker containers cluster
 	TEST_PSMDB_VERSION=$(TEST_PSMDB_VERSION) \
-	docker-compose up \
+	docker compose up \
 	--detach \
 	--force-recreate \
 	--always-recreate-deps \
 	--renew-anon-volumes
 
 env-down: env				## Clean-up MongoDB docker containers cluster
-	docker-compose down -v
+	docker compose down -v
 	rm .env
 
 linux-amd64: 				## Build Go tools for linux-amd64.
