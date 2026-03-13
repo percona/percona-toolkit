@@ -1,34 +1,34 @@
 name: Go
 
 on:
-    push:
-        branches:
-            - 3.x
-    pull_request:
-        branches:
-            - 3.x
+  push:
+    branches:
+      - 3.x
+  pull_request:
+    branches:
+      - 3.x
 
 jobs:
-    test:
-        runs-on: ubuntu-latest
+  test:
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-            - name: Set up Go
-              uses: actions/setup-go@v4
-              with:
-                  go-version: '1.23'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: ${{ github.workspace }}/go.mod
 
-            - name: Install dependencies
-              run: go mod download
-              working-directory: src/go
+      - name: Install dependencies
+        run: go mod download
+        working-directory: src/go
 
-            - name: Setup environment
-              run: make env-up
-              working-directory: src/go
+      - name: Setup environment
+        run: make env-up
+        working-directory: src/go
 
-            - name: Run tests
-              run: go test ./...
-              working-directory: src/go
+      - name: Run tests
+        run: go test ./...
+        working-directory: src/go
