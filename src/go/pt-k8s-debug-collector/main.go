@@ -136,6 +136,7 @@ func main() {
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
 		DisableColors: true,
+		DisableQuote:  true,
 	})
 
 	if !flag.Lookup("kubeconfig").Changed {
