@@ -57,6 +57,7 @@ func WaitForAllPodsReady(
 	namespace string,
 ) error {
 	return wait.PollUntilContextCancel(ctx, 15*time.Second, true, func(ctx context.Context) (bool, error) {
+		log.Printf("Waiting for all pods to be Ready. Delete all pods that are Failed form the cluster")
 		pods, err := client.CoreV1().
 			Pods(namespace).
 			List(ctx, metav1.ListOptions{})
@@ -73,12 +74,13 @@ func WaitForAllPodsReady(
 				continue
 			}
 
+			log.Printf("Waiting for pod %s: Phase=%s, Ready=false", pod.Name, pod.Status.Phase)
+
 			if pod.Status.Phase != corev1.PodRunning {
 				return false, nil
 			}
 
 			if !isPodReady(&pod) {
-				log.Printf("Waiting for pod %s: Phase=%s, Ready=false", pod.Name, pod.Status.Phase)
 				return false, nil
 			}
 		}

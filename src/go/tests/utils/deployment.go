@@ -432,3 +432,25 @@ func GetKubeClientFromRaw(rawConfig string, contextName string) (*kubernetes.Cli
 	dc, err := dynamic.NewForConfig(config)
 	return cs, dc, err
 }
+
+func CreateResource(ctx context.Context, dc dynamic.Interface, yamlData string, namespace string) error {
+	obj := &unstructured.Unstructured{}
+	err := yaml.Unmarshal([]byte(yamlData), &obj)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal yaml: %v", err)
+	}
+
+	gvk := obj.GroupVersionKind()
+	gvr := schema.GroupVersionResource{
+		Group:    gvk.Group,
+		Version:  gvk.Version,
+		Resource: strings.ToLower(gvk.Kind) + "s",
+	}
+
+	_, err = dc.Resource(gvr).Namespace(namespace).Create(ctx, obj, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create resource %s: %v", gvk.Kind, err)
+	}
+
+	return nil
+}

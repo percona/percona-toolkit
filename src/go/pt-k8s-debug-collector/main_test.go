@@ -31,6 +31,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/tests/utils"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/suite"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -84,6 +85,20 @@ func getKubeClient(kubeconfigPath string) (kubernetes.Interface, error) {
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientset, nil
+}
+
+func getDynKubeClient(kubeconfigPath string) (dynamic.Interface, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
@@ -164,11 +179,12 @@ Action: Run tests with the "--deploy-k3d" flag to automatically set up the requi
 
 type CollectorSuite struct {
 	suite.Suite
-	KubeConfig  string
-	KubeClient  kubernetes.Interface
-	Namespace   string
-	ForwardPort string
-	Resources   []string
+	KubeConfig    string
+	KubeClient    kubernetes.Interface
+	DynKubeClient dynamic.Interface
+	Namespace     string
+	ForwardPort   string
+	Resources     []string
 }
 
 func (s *CollectorSuite) SetupSuite() {
@@ -194,12 +210,13 @@ func (s *CollectorSuite) SetupSuite() {
 
 		s.KubeConfig = tmpFile.Name()
 
-		client, _, err := utils.GetKubeClientFromRaw(rawConfig, "k3d-"+s.Namespace)
+		client, dyn, err := utils.GetKubeClientFromRaw(rawConfig, "k3d-"+s.Namespace)
 		if err != nil {
 			s.Require().NoError(err)
 			return
 		}
 		s.KubeClient = client
+		s.DynKubeClient = dyn
 	}
 
 	stsCtx, stsCancel := context.WithTimeout(s.T().Context(), 2*time.Minute)
@@ -230,6 +247,7 @@ func (s *CollectorSuite) TearDownTest() {
 func TestCollectorRunner(t *testing.T) {
 	config, _ := utils.GetKubeConfigPath()
 	client, _ := getKubeClient(config)
+	dync, _ := getDynKubeClient(config)
 
 	ns := selectedDeploymentNames
 	if len(testNamespaces) != 0 {
@@ -244,11 +262,12 @@ func TestCollectorRunner(t *testing.T) {
 			}
 
 			suite.Run(t, &CollectorSuite{
-				KubeConfig:  config,
-				KubeClient:  client,
-				Namespace:   name,
-				ForwardPort: fport,
-				Resources:   []string{name, "auto", "none"},
+				KubeConfig:    config,
+				KubeClient:    client,
+				DynKubeClient: dync,
+				Namespace:     name,
+				ForwardPort:   fport,
+				Resources:     []string{name, "auto", "none"},
 			})
 		})
 	}
@@ -434,10 +453,15 @@ func (s *CollectorSuite) TestBusyPortError() {
 			s.NoError(err)
 			s.Equal("0", strings.TrimSpace(string(out)), "Should not find error logs in summary files")
 		})
+		return
 	}
 
 	if busyPortTested {
 		s.T().Skip("Already tested in another namespace run")
+	}
+
+	if s.Namespace != "pxc" {
+		s.T().Skip("Only testable for PXC")
 	}
 
 	busyPortTested = true
@@ -540,5 +564,145 @@ func (s *CollectorSuite) TestSSLResourceOption() {
 				}
 			}
 		})
+	}
+}
+
+var (
+	requiredFilesTested = false
+	mockResources       = map[string][]string{
+		"": []string{
+			utils.REPL_CONTROLLER_MOCK_RESOURCE,
+			utils.JOB_MOCK_RESOURSE,
+			utils.CRON_JOB_MOCK_RESOURCE,
+		},
+		"pgv2": []string{
+			utils.PGV2_BACKUP_MOCK_RESOURCE,
+			utils.PGV2_RESTORE_MOCK_RESOURCE,
+		},
+		"pgo": []string{
+			utils.PGO_BACKUP_MOCK_RESOURCE,
+			utils.PGO_RESTORE_MOCK_RESOURCE,
+		},
+		"pxc": []string{
+			utils.PXC_BACKUP_MOCK_RESOURCE,
+			utils.PXC_RESTORE_MOCK_RESOURCE,
+		},
+		"ps": []string{
+			utils.PS_BACKUP_MOCK_RESOURCE,
+			utils.PS_RESTORE_MOCK_RESOURCE,
+		},
+		"psmdb": []string{
+			utils.PSMDB_BACKUP_MOCK_RESOURCE,
+			utils.PSMDB_RESTORE_MOCK_RESOURCE,
+		},
+	}
+)
+
+func (s *CollectorSuite) TestRequiredFilesExist() {
+	for mockNs, resS := range mockResources {
+		if mockNs != "" && mockNs != s.Namespace {
+			continue
+		}
+
+		for _, res := range resS {
+			err := utils.CreateResource(s.T().Context(), s.DynKubeClient, res, s.Namespace)
+			if err != nil && strings.Contains(err.Error(), "already exists") {
+				continue
+			}
+			s.NoError(err)
+			s.T().Logf("Created resource for: %s", s.Namespace)
+		}
+	}
+
+	cmd := exec.Command(TOOL_PATH,
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+	)
+	err := cmd.Run()
+	s.NoError(err)
+
+	out, err := exec.Command("tar", "-tf", "cluster-dump.tar.gz").Output()
+	s.NoError(err)
+
+	output := string(out)
+
+	// This files is present only in the new versions of operator
+	// pgo (pg v1.6.0) do not have thees
+	requiredNewFiles := []string{
+		fmt.Sprintf("%s/controllerrevisions.yaml", s.Namespace),
+		fmt.Sprintf("%s/leases.yaml", s.Namespace),
+		fmt.Sprintf("%s/poddisruptionbudgets.yaml", s.Namespace),
+		fmt.Sprintf("%s/statefulsets.yaml", s.Namespace),
+	}
+
+	requiredFiles := map[string][]string{
+		"": {
+			"cluster-scope/apiservices.yaml",
+			"cluster-scope/clusterrolebindings.yaml",
+			"cluster-scope/clusterroles.yaml",
+			"cluster-scope/csinodes.yaml",
+			"cluster-scope/customresourcedefinitions.yaml",
+			"cluster-scope/flowschemas.yaml",
+			"cluster-scope/ingressclasses.yaml",
+			"cluster-scope/namespaces.yaml",
+			"cluster-scope/nodes.yaml",
+			"cluster-scope/persistentvolumes.yaml",
+			"cluster-scope/priorityclasses.yaml",
+			"cluster-scope/prioritylevelconfigurations.yaml",
+			"cluster-scope/runtimeclasses.yaml",
+			"cluster-scope/storageclasses.yaml",
+
+			fmt.Sprintf("%s/configmaps.yaml", s.Namespace),
+			fmt.Sprintf("%s/cronjobs.yaml", s.Namespace),
+			fmt.Sprintf("%s/deployments.yaml", s.Namespace),
+			fmt.Sprintf("%s/endpointslices.yaml", s.Namespace),
+			fmt.Sprintf("%s/events.yaml", s.Namespace),
+			fmt.Sprintf("%s/jobs.yaml", s.Namespace),
+			fmt.Sprintf("%s/persistentvolumeclaims.yaml", s.Namespace),
+			fmt.Sprintf("%s/pods.yaml", s.Namespace),
+			fmt.Sprintf("%s/replicasets.yaml", s.Namespace),
+			fmt.Sprintf("%s/replicationcontrollers.yaml", s.Namespace),
+			fmt.Sprintf("%s/rolebindings.yaml", s.Namespace),
+			fmt.Sprintf("%s/roles.yaml", s.Namespace),
+			fmt.Sprintf("%s/serviceaccounts.yaml", s.Namespace),
+			fmt.Sprintf("%s/services.yaml", s.Namespace),
+		},
+		"pxc": append([]string{
+			fmt.Sprintf("%s/perconaxtradbclusterbackups.yaml", s.Namespace),
+			fmt.Sprintf("%s/perconaxtradbclusterrestores.yaml", s.Namespace),
+			fmt.Sprintf("%s/perconaxtradbclusters.yaml", s.Namespace),
+		}, requiredNewFiles...),
+		"ps": append([]string{
+			fmt.Sprintf("%s/perconaservermysqlbackups.yaml", s.Namespace),
+			fmt.Sprintf("%s/perconaservermysqlrestores.yaml", s.Namespace),
+			fmt.Sprintf("%s/perconaservermysqls.yaml", s.Namespace),
+		}, requiredNewFiles...),
+		"psmdb": append([]string{
+			fmt.Sprintf("%s/perconaservermongodbbackups.yaml", s.Namespace),
+			fmt.Sprintf("%s/perconaservermongodbrestores.yaml", s.Namespace),
+			fmt.Sprintf("%s/perconaservermongodbs.yaml", s.Namespace),
+		}, requiredNewFiles...),
+		"pgo": {
+			fmt.Sprintf("%s/perconapgclusters.yaml", s.Namespace),
+			fmt.Sprintf("%s/pgclusters.yaml", s.Namespace),
+			fmt.Sprintf("%s/pgreplicas.yaml", s.Namespace),
+			fmt.Sprintf("%s/pgtasks.yaml", s.Namespace),
+		},
+		"pgv2": append([]string{
+			fmt.Sprintf("%s/perconapgbackups.yaml", s.Namespace),
+			fmt.Sprintf("%s/perconapgrestores.yaml", s.Namespace),
+			fmt.Sprintf("%s/perconapgclusters.yaml", s.Namespace),
+		}, requiredNewFiles...),
+	}
+
+	for ns, files := range requiredFiles {
+		if ns != "" && ns != s.Namespace {
+			continue
+		}
+
+		for _, file := range files {
+			s.Contains(output, file, "Expected file %s not found in archive", file)
+		}
 	}
 }
