@@ -17,7 +17,7 @@ require (
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/lib/pq v1.11.2
 	github.com/mattn/go-shellwords v1.0.12
-	github.com/montanaflynn/stats v0.7.1
+	github.com/montanaflynn/stats v0.8.2
 	github.com/pborman/getopt v1.1.0
 	github.com/percona/go-mysql v0.0.0-20251202083530-b3e1c16efc74
 	github.com/pkg/errors v0.9.1
