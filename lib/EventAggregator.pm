@@ -428,7 +428,7 @@ sub make_handler {
          'PLACE->{max} = $val if !defined PLACE->{max} || $val '
          . $gt . ' PLACE->{max};',
       );
-      # Num/bool sums must not use += on undef or '' (would warn or mis-sum).
+      # Num/bool sums must not use += on undef or '' (would warn or incorrectly sum).
       if ( $track{sum} ) {
          push @tmp, 'PLACE->{sum} += (defined $val && $val ne q{} ? $val : 0);';
       }
