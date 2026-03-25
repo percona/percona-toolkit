@@ -32,7 +32,6 @@ import (
 	"time"
 
 	version "github.com/hashicorp/go-version"
-	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
@@ -41,6 +40,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/term"
 
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
@@ -1036,7 +1036,7 @@ func parseFlags() (*cliOptions, error) {
 	if gop.IsSet("password") && opts.Password == "" {
 		print("Password: ")
 
-		pass, err := gopass.GetPasswd()
+		pass, err := term.ReadPassword(0)
 		if err != nil {
 			return opts, err
 		}
