@@ -56,8 +56,8 @@ func WaitForAllPodsReady(
 	client kubernetes.Interface,
 	namespace string,
 ) error {
+	log.Printf("Waiting for all pods to be Ready. Delete all pods that are Failed form the cluster")
 	return wait.PollUntilContextCancel(ctx, 15*time.Second, true, func(ctx context.Context) (bool, error) {
-		log.Printf("Waiting for all pods to be Ready. Delete all pods that are Failed form the cluster")
 		pods, err := client.CoreV1().
 			Pods(namespace).
 			List(ctx, metav1.ListOptions{})

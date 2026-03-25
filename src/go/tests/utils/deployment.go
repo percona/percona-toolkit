@@ -22,6 +22,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+const (
+	operatorDeploymentReadyTimeout = 10 * time.Minute
+	kubeClientQPS                  = 50
+	kubeClientBurst                = 100
+)
+
 type ClusterConfig struct {
 	Port        int
 	OperatorURL string
@@ -303,10 +309,18 @@ func waitForDeployments(ctx context.Context, clientset *kubernetes.Clientset, na
 		err := wait.PollUntilContextTimeout(ctx, 2*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
 			d, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploy.Name, metav1.GetOptions{})
 			if err != nil {
+				if strings.Contains(err.Error(), "rate: Wait(n=1) would exceed context deadline") {
+					return false, nil
+				}
 				return false, err
 			}
 
-			if d.Status.ReadyReplicas == *d.Spec.Replicas && d.Status.ReadyReplicas > 0 {
+			desiredReplicas := int32(1)
+			if d.Spec.Replicas != nil {
+				desiredReplicas = *d.Spec.Replicas
+			}
+
+			if d.Status.ReadyReplicas >= desiredReplicas && d.Status.AvailableReplicas >= desiredReplicas {
 				return true, nil
 			}
 			return false, nil
@@ -363,7 +377,7 @@ func DeployK3d(ctx context.Context, name string) (string, error) {
 		return "", fmt.Errorf("failed to deploy operator %s: %w", name, err)
 	}
 
-	if err := waitForDeployments(ctx, clientset, name, 240*time.Second); err != nil {
+	if err := waitForDeployments(ctx, clientset, name, operatorDeploymentReadyTimeout); err != nil {
 		return "", fmt.Errorf("failed to wait for deployments: %w", err)
 	}
 
@@ -427,6 +441,8 @@ func GetKubeClientFromRaw(rawConfig string, contextName string) (*kubernetes.Cli
 	if err != nil {
 		return nil, nil, err
 	}
+	config.QPS = kubeClientQPS
+	config.Burst = kubeClientBurst
 
 	cs, err := kubernetes.NewForConfig(config)
 	dc, err := dynamic.NewForConfig(config)
