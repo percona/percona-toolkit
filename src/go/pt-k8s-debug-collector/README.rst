@@ -129,6 +129,10 @@ Supported Flags
 
 List of Percona Toolkit configuration file(s) separated by a comma without an equal sign. Must be a first flag. Uses default config file locations if not specified.
 
+``--help``
+
+Show help and exit.
+
 ``--resource``
 
 Targeted custom resource name. Supported values:
@@ -164,6 +168,18 @@ Path to kubeconfig. Default configuration be used if none specified
 ``--forwardport``
 
 Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
+
+``--skip-pod-summary``
+
+Skip pod summary collection.
+
+``--version-check``
+
+Check for updates (enabled by default).
+
+``--no-version-check``
+
+Disable update checks.
 
 ``--version``
 
@@ -232,4 +248,3 @@ VERSION
 =======
 
 :program:`pt-k8s-debug-collector` 3.7.1
-

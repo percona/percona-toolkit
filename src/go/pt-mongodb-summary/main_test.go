@@ -14,17 +14,16 @@
 package main
 
 import (
+	"context"
+	"os"
 	"testing"
 	"time"
 
-	"context"
-	"os"
-	"reflect"
-
+	"github.com/alecthomas/kong"
+	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/pborman/getopt"
 	"github.com/stretchr/testify/require"
 
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
@@ -114,97 +113,82 @@ func TestClusterWideInfo(t *testing.T) {
 	}
 }
 
-func TestParseFlags(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    []string
-		want    *cliOptions
-		wantErr bool
-	}{
-		{
-			name: "Default values",
-			args: []string{toolname},
-			want: &cliOptions{
-				Host:               "",
-				LogLevel:           DefaultLogLevel,
-				AuthDB:             DefaultAuthDB,
-				RunningOpsSamples:  DefaultRunningOpsSamples,
-				RunningOpsInterval: DefaultRunningOpsInterval,
-				OutputFormat:       "text",
-			},
-		},
-		{
-			name: "URI only",
-			args: []string{toolname, "--uri", "mongodb://test:27017"},
-			want: &cliOptions{
-				URI:                "mongodb://test:27017",
-				LogLevel:           DefaultLogLevel,
-				AuthDB:             DefaultAuthDB,
-				RunningOpsSamples:  DefaultRunningOpsSamples,
-				RunningOpsInterval: DefaultRunningOpsInterval,
-				OutputFormat:       "text",
-			},
-		},
-		{
-			name: "Legacy positional host:port",
-			args: []string{toolname, "test.example.com:27019"},
-			want: &cliOptions{
-				Host:               "test.example.com",
-				Port:               "27019",
-				LogLevel:           DefaultLogLevel,
-				AuthDB:             DefaultAuthDB,
-				RunningOpsSamples:  DefaultRunningOpsSamples,
-				RunningOpsInterval: DefaultRunningOpsInterval,
-				OutputFormat:       "text",
-			},
-		},
-		{
-			name:    "Error: URI and Host together",
-			args:    []string{toolname, "--uri", "mongodb://test", "--host", "localhost"},
-			wantErr: true,
-		},
-		{
-			name:    "Error: Positional arg and Host flag together",
-			args:    []string{toolname, "--host", "newhost", "legacy:27017"},
-			wantErr: true,
-		},
-		{
-			name: "Help flag returns nil options",
-			args: []string{toolname, "--help"},
-			want: nil,
-		},
-	}
+// NOTE: legacy getopt-based parsing tests were removed after the CLI migration to Kong.
 
-	// Backup and silence stdout
-	oldStdout := os.Stdout
-	_, w, _ := os.Pipe()
-	os.Stdout = w
-	defer func() { os.Stdout = oldStdout }()
+func withArgs(args []string, fn func()) {
+	oldArgs := os.Args
+	os.Args = args
+	defer func() { os.Args = oldArgs }()
+	fn()
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			getopt.Reset()
-			os.Args = tt.args
-
-			got, err := parseFlags()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error but got none")
-				}
-				return
-			}
-
+func TestParseFlagsKong(t *testing.T) {
+	t.Run("default values", func(t *testing.T) {
+		withArgs([]string{toolname, "--no-version-check"}, func() {
+			var opts cliOptions
+			_, _, err := config.Setup(
+				toolname,
+				&opts,
+				kong.UsageOnError(),
+				kong.Vars{
+					"default_host": DefaultHost,
+					"default_port": DefaultPort,
+					"version":      "test-version",
+				},
+			)
 			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-				return
+				t.Fatalf("config.Setup() error = %v", err)
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("mismatch:\ngot:  %+v\nwant: %+v", got, tt.want)
+			if opts.Host != DefaultHost {
+				t.Fatalf("opts.Host = %q, want %q", opts.Host, DefaultHost)
+			}
+			if opts.Port != DefaultPort {
+				t.Fatalf("opts.Port = %q, want %q", opts.Port, DefaultPort)
+			}
+			if opts.AuthDB != "admin" {
+				t.Fatalf("opts.AuthDB = %q, want %q", opts.AuthDB, "admin")
+			}
+			if opts.LogLevel != "warn" {
+				t.Fatalf("opts.LogLevel = %q, want %q", opts.LogLevel, "warn")
+			}
+			if opts.OutputFormat != "text" {
+				t.Fatalf("opts.OutputFormat = %q, want %q", opts.OutputFormat, "text")
+			}
+			if opts.RunningOpsSamples != 5 {
+				t.Fatalf("opts.RunningOpsSamples = %d, want %d", opts.RunningOpsSamples, 5)
+			}
+			if opts.RunningOpsInterval != 1000 {
+				t.Fatalf("opts.RunningOpsInterval = %d, want %d", opts.RunningOpsInterval, 1000)
 			}
 		})
-	}
+	})
+
+	t.Run("explicit host and port flags", func(t *testing.T) {
+		withArgs([]string{toolname, "--host", "test.example.com", "--port", "27019", "--no-version-check"}, func() {
+			var opts cliOptions
+			_, _, err := config.Setup(
+				toolname,
+				&opts,
+				kong.UsageOnError(),
+				kong.Vars{
+					"default_host": DefaultHost,
+					"default_port": DefaultPort,
+					"version":      "test-version",
+				},
+			)
+			if err != nil {
+				t.Fatalf("config.Setup() error = %v", err)
+			}
+
+			if opts.Host != "test.example.com" {
+				t.Fatalf("opts.Host = %q, want %q", opts.Host, "test.example.com")
+			}
+			if opts.Port != "27019" {
+				t.Fatalf("opts.Port = %q, want %q", opts.Port, "27019")
+			}
+		})
+	})
 }
 
 func TestGetClientOptions(t *testing.T) {

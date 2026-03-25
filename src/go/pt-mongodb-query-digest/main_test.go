@@ -31,10 +31,11 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/alecthomas/kong"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/pborman/getopt"
+	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/profiling"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
@@ -59,12 +60,17 @@ var client *mongo.Client
 
 func TestMain(m *testing.M) {
 	var err error
+	mongoDSN := os.Getenv("PT_TEST_MONGODB_DSN")
 	if vars.RootPath, err = tutil.RootPath(); err != nil {
 		log.Printf("cannot get root path: %s", err.Error())
 		os.Exit(1)
 	}
 
-	client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(os.Getenv("PT_TEST_MONGODB_DSN")))
+	if mongoDSN == "" {
+		os.Exit(m.Run())
+	}
+
+	client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(mongoDSN))
 	if err != nil {
 		log.Printf("Cannot connect: %s", err.Error())
 		os.Exit(1)
@@ -113,54 +119,52 @@ func TestIsProfilerEnabled(t *testing.T) {
 	}
 }
 
-func TestParseArgs(t *testing.T) {
-	tests := []struct {
-		args []string
-		want *cliOptions
-	}{
-		{
-			args: []string{toolname}, // arg[0] is the command itself
-			want: &cliOptions{
-				Host:            "mongodb://" + DEFAULT_HOST,
-				LogLevel:        DEFAULT_LOGLEVEL,
-				OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
-				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
-				AuthDB:          DEFAULT_AUTHDB,
-				OutputFormat:    "text",
-			},
-		},
-		{
-			args: []string{toolname, "zapp.brannigan.net:27018/samples", "--help"},
-			want: nil,
-		},
-		{
-			args: []string{toolname, "zapp.brannigan.net:27018/samples"},
-			want: &cliOptions{
-				Host:            "mongodb://zapp.brannigan.net:27018/samples",
-				LogLevel:        DEFAULT_LOGLEVEL,
-				OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
-				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
-				AuthDB:          DEFAULT_AUTHDB,
-				Help:            false,
-				OutputFormat:    "text",
-			},
-		},
-	}
-	for i, test := range tests {
-		getopt.Reset()
-		os.Args = test.args
-		//disabling Stdout to avoid printing help message to the screen
-		sout := os.Stdout
-		os.Stdout = nil
-		got, err := getOptions()
-		os.Stdout = sout
-		if err != nil {
-			t.Errorf("error parsing command line arguments: %s", err.Error())
-		}
-		if !reflect.DeepEqual(got, test.want) {
-			t.Errorf("invalid command line options test %d\ngot %+v\nwant %+v\n", i, got, test.want)
-		}
-	}
+// NOTE: legacy getopt-based parsing tests were removed after the CLI migration to Kong.
+
+func withArgs(args []string, fn func()) {
+	oldArgs := os.Args
+	os.Args = args
+	defer func() { os.Args = oldArgs }()
+	fn()
+}
+
+func TestParseArgsKong(t *testing.T) {
+	t.Run("default host", func(t *testing.T) {
+		withArgs([]string{toolname, "--database=test", "--no-version-check"}, func() {
+			var opts cliOptions
+			_, _, err := config.Setup(toolname, &opts, kong.UsageOnError())
+			if err != nil {
+				t.Fatalf("config.Setup() error = %v", err)
+			}
+
+			if opts.Host != "mongodb://localhost:27017" {
+				t.Fatalf("opts.Host = %q, want %q", opts.Host, "mongodb://localhost:27017")
+			}
+			if opts.Database != "test" {
+				t.Fatalf("opts.Database = %q, want %q", opts.Database, "test")
+			}
+			if opts.AuthDB != "admin" {
+				t.Fatalf("opts.AuthDB = %q, want %q", opts.AuthDB, "admin")
+			}
+			if opts.OutputFormat != "text" {
+				t.Fatalf("opts.OutputFormat = %q, want %q", opts.OutputFormat, "text")
+			}
+		})
+	})
+
+	t.Run("positional host without scheme", func(t *testing.T) {
+		withArgs([]string{toolname, "example.org:27018", "--database=test", "--no-version-check"}, func() {
+			var opts cliOptions
+			_, _, err := config.Setup(toolname, &opts, kong.UsageOnError())
+			if err != nil {
+				t.Fatalf("config.Setup() error = %v", err)
+			}
+
+			if opts.Host != "mongodb://example.org:27018" {
+				t.Fatalf("opts.Host = %q, want %q", opts.Host, "mongodb://example.org:27018")
+			}
+		})
+	})
 }
 
 func TestPTMongoDBQueryDigest(t *testing.T) {
@@ -207,6 +211,9 @@ func TestPTMongoDBQueryDigest(t *testing.T) {
 		bin: bin,
 		url: os.Getenv("PT_TEST_MONGODB_DSN"),
 		db:  "test",
+	}
+	if data.url == "" {
+		t.Skip("Skipping integration test: PT_TEST_MONGODB_DSN is not set")
 	}
 	tests := []func(*testing.T, Data){
 		testVersion,

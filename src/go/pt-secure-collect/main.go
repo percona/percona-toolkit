@@ -35,8 +35,7 @@ import (
 
 type cliOptions struct {
 	config.ConfigFlag
-	Command string
-	Debug   bool `name:"debug" help:"Enable debug log level."`
+	Debug bool `name:"debug" help:"Enable debug log level."`
 
 	DecryptCommand DecryptCmd `name:"decrypt" cmd:"" help:"Decrypt an encrypted file. The password will be requested from the terminal."`
 

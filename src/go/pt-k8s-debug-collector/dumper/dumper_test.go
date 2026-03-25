@@ -24,7 +24,7 @@ Unit test for non-existing logs container name error handling
 */
 
 func TestGetIndividualFilesError(t *testing.T) {
-	d := New("", "", "psmdb", "", "")
+	d := New("", "", "psmdb", "", "", false)
 
 	err := d.getIndividualFiles("", "", "", "", nil)
 

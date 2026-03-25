@@ -156,7 +156,7 @@ func (c *CollectCmd) Run() error {
 		}
 	}
 
-	tarFile := fmt.Sprintf(path.Join(c.TempDir, path.Base(c.TempDir)+".tar.gz"))
+	tarFile := path.Join(c.TempDir, path.Base(c.TempDir)+".tar.gz")
 	log.Infof("Creating tar file %q", tarFile)
 	if err := tarit(tarFile, []string{c.TempDir}); err != nil {
 		return err

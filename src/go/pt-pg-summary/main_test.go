@@ -50,8 +50,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestConnection(t *testing.T) {
-	// use an "external" IP to simulate a remote host
-	tests := append(tests, Test{"remote_host", tu.PG9DockerIP, tu.DefaultPGPort, tu.Username, tu.Password})
+	tests := append([]Test{}, tests...)
+	// use an "external" IP to simulate a remote host when available.
+	if tu.PG9DockerIP != "" {
+		tests = append(tests, Test{"remote_host", tu.PG9DockerIP, tu.DefaultPGPort, tu.Username, tu.Password})
+	}
 	// use IPV6 for PostgreSQL 9
 	// tests := append(tests, Test{"IPV6", tu.IPv6Host, tu.IPv6PG9Port, tu.Username, tu.Password})
 	for _, test := range tests {

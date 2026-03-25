@@ -12,7 +12,7 @@ Usage
 
 .. code-block:: bash
 
-   pt-mongodb-query-digest [OPTIONS]
+   pt-mongodb-query-digest [OPTIONS] [host[:port]]
 
 It runs the following command::
 
@@ -27,7 +27,10 @@ By default, the results are sorted by ascending query count.
 Options
 -------
 
-``-?``, ``--help``
+``--config``
+List of Percona Toolkit configuration file(s) separated by a comma without an equal sign. Must be a first flag. Uses default config file locations if not specified.
+
+``--help``
   Show help and exit
 
 ``-a``, ``--authenticationDatabase``
@@ -35,11 +38,17 @@ Options
   with a MongoDB server.
   By default, the ``admin`` database is used.
 
-``-c``, ``--no-version-check``
-  Don't check for updates
+``--version-check``
+  Check for updates (enabled by default).
+
+``--no-version-check``
+  Disable update checks.
 
 ``-d``, ``--database``
   Specifies which database to profile
+
+``host[:port]``
+  Optional positional host. If no scheme is provided, ``mongodb://`` is prepended automatically.
 
 ``-f``, ``--output-format``
   Specifies the report output format. Valid options are: ``text``, ``json``.
@@ -47,14 +56,14 @@ Options
 
 ``-l``, ``--log-level``
   Specifies the log level:
-  ``panic``, ``fatal``, ``error``, ``warn``, ``info``, ``debug error``
+  ``panic``, ``fatal``, ``error``, ``warn``, ``info``, ``debug``
 
 ``-n``, ``--limit``
   Limits the number of queries to show
 
 ``-o``, ``--order-by``
   Specifies the sorting order using fields:
-  ``count``, ``ratio``, ``query-time``, ``docs-examined``, ``docs-returned``.
+  ``count``, ``ratio``, ``query-time``, ``docs-scanned``, ``docs-returned``.
 
   Adding a hyphen (``-``) in front of a field denotes reverse order.
   For example: ``--order-by="count,-ratio"``.
@@ -81,11 +90,11 @@ Options
 ``--sslPEMKeyFile``
   Specifies SSL client PEM file used for authentication.
 
-``-u``, ``--user``
+``-u``, ``--username``
   Specifies the user name for connecting to a server
   with authentication enabled.
 
-``-v``, ``--version``
+``--version``
   Show version and exit
 
 Output Example
@@ -147,4 +156,3 @@ VERSION
 =======
 
 :program:`pt-mongodb-query-digest` 3.7.1
-
