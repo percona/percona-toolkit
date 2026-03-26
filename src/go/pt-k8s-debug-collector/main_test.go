@@ -54,7 +54,7 @@ AUTOMATIC DEPLOYMENT (Optional):
     "pxc", "ps", "psmdb", "pgo", "pgv2"
 
   Example:
-    go test ./... -timeout 60m --args --deploy pxc,pgv2
+    go test ./... -timeout 60m --deploy-k3d pxc,pgv2
 
 ENVIRONMENT VARIABLES:
   - KUBECONFIG:  Custom path to your kubeconfig file.
