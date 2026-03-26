@@ -17,8 +17,6 @@ import (
 	"fmt"
 	"os"
 
-	flag "github.com/spf13/pflag"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/percona/percona-toolkit/src/go/lib/config"
@@ -40,98 +38,46 @@ var (
 )
 
 type cliOptions struct {
-	namespace               string
-	resource                string
-	clusterName             string
-	kubeconfig              string
-	forwardport             string
-	logLevelStr             string
-	concurrentExportWorkers int
-	version                 bool
-	noVersionCheck          bool
-	skipPodSummary          bool
+	config.ConfigFlag
+	Namespace               string `name:"namespace" help:"Namespace for collecting data. If empty data will be collected from all namespaces"`
+	Resource                string `name:"resource" help:"Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, ps, none, auto" default:"auto"`
+	ClusterName             string `name:"cluster" help:"Cluster name"`
+	Kubeconfig              string `name:"kubeconfig" help:"Path to kubeconfig"`
+	ForwardPort             string `name:"forwardport" help:"Port to use for  port forwarding"`
+	SkipPodSummary          bool   `name:"skip-pod-summary" help:"Skip pod summary collection"`
+	LogLevel                string `name:"log-level" help:"Logrus log level" default:"warn"`
+	ConcurrentExportWorkers int    `name:"concurrent-export-workers" help:"Number of concurrent workers to export data from pods. Warning: values above 20 may overwhelm the Kubernetes API server" default:"16"`
+	config.VersionCheckFlag
+	config.VersionFlag
 }
 
-func (opts *cliOptions) parseDefaultConfig() {
-	conf := config.DefaultConfig(toolname)
-	if val := conf.GetString("namespace"); val != "" && !flag.Lookup("namespace").Changed {
-		opts.namespace = val
-	}
-	if val := conf.GetString("resource"); val != "" && !flag.Lookup("resource").Changed {
-		opts.resource = val
-	}
-	if val := conf.GetString("cluster"); val != "" && !flag.Lookup("cluster").Changed {
-		opts.clusterName = val
-	}
-	if val := conf.GetString("kubeconfig"); val != "" && !flag.Lookup("kubeconfig").Changed {
-		opts.kubeconfig = val
-	}
-	if val := conf.GetString("forwardport"); val != "" && !flag.Lookup("forwardport").Changed {
-		opts.forwardport = val
-	}
-	if val := conf.GetString("log-level"); val != "" && !flag.Lookup("log-level").Changed {
-		opts.logLevelStr = val
-	}
-
-	if val := conf.GetBool("no-version-check"); !flag.Lookup("no-version-check").Changed {
-		opts.noVersionCheck = val
-	}
-
-	if val := conf.GetBool("skip-pod-summary"); !flag.Lookup("skip-pod-summary").Changed {
-		opts.skipPodSummary = val
-	}
-
-	if val := conf.GetInt64("concurrent-export-workers"); val > 0 && !flag.Lookup("concurrent-export-workers").Changed {
-		opts.concurrentExportWorkers = int(val)
-	}
-}
-
-func main() {
-	opts := cliOptions{}
-
-	flag.StringVar(&opts.namespace, "namespace", "", "Namespace for collecting data. If empty data will be collected from all namespaces")
-	flag.StringVar(&opts.resource, "resource", "auto", "Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, ps, none, auto")
-	flag.StringVar(&opts.clusterName, "cluster", "", "Cluster name")
-	flag.StringVar(&opts.kubeconfig, "kubeconfig", "", "Path to kubeconfig")
-	flag.StringVar(&opts.forwardport, "forwardport", "", "Port to use for  port forwarding")
-	flag.StringVar(&opts.logLevelStr, "log-level", log.WarnLevel.String(), "Log level (debug, info, warn, error, fatal, panic)")
-	flag.IntVar(&opts.concurrentExportWorkers, "concurrent-export-workers", 0, "Number of concurrent workers for exporting resources (0 = use default 16). Warning: values above 20 may overwhelm the Kubernetes API server")
-	flag.BoolVar(&opts.version, "version", false, "Print version")
-	flag.BoolVar(&opts.skipPodSummary, "skip-pod-summary", false, "Skip pod summary collection")
-	flag.BoolVar(&opts.noVersionCheck, "no-version-check", false, "Default: Don't check for updates")
-	flag.Parse()
-
-	opts.parseDefaultConfig()
-
-	if opts.version {
+func (c *cliOptions) AfterApply() error {
+	if c.Version {
 		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		fmt.Printf("Commit: %s\n", Commit)
-
-		return
+		return nil
 	}
 
-	if !opts.noVersionCheck {
+	if c.VersionCheck {
 		advice, err := versioncheck.CheckUpdates(toolname, Version)
 		if err != nil {
-			log.Infof("cannot check version updates: %s", err.Error())
+			log.Printf("cannot check version updates: %s", err.Error())
 		} else if advice != "" {
-			log.Warn(advice)
+			log.Printf("%s", advice)
 		}
 	}
 
-	if len(opts.clusterName) > 0 {
-		opts.resource += "/" + opts.clusterName
+	if len(c.ClusterName) > 0 {
+		c.Resource += "/" + c.ClusterName
 	}
 
-	level, err := log.ParseLevel(opts.logLevelStr)
+	ll, err := log.ParseLevel(c.LogLevel)
 	if err != nil {
-		fmt.Printf("Invalid log level: %v\n", err)
-		os.Exit(1)
+		return err
 	}
-
-	log.SetLevel(level)
+	log.SetLevel(ll)
 
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
@@ -139,17 +85,33 @@ func main() {
 		DisableQuote:  true,
 	})
 
-	if !flag.Lookup("kubeconfig").Changed {
+	return nil
+}
+
+func main() {
+	opts := &cliOptions{}
+	_, _, err := config.Setup(toolname, opts)
+	if err != nil {
+		log.Printf("cannot get parameters: %s", err.Error())
+		os.Exit(1)
+	}
+
+	if opts.Version {
+		return
+	}
+
+	if opts.Kubeconfig == "" {
+		// path is not required, if it fails, the default kubeconfig will be used by the Kubernetes client
 		path, err := utils.GetKubeConfigPath()
 		if err != nil {
 			log.Errorf("failed to get default kubeconfig: %s", err)
 		}
 
-		opts.kubeconfig = path
+		opts.Kubeconfig = path
 		log.Infof("loaded default kubeconfig: %s", path)
 	}
 
-	d, err := dumper.New("cluster-dump", opts.namespace, opts.kubeconfig, opts.forwardport, opts.resource, opts.skipPodSummary, opts.concurrentExportWorkers)
+	d, err := dumper.New("cluster-dump", opts.Namespace, opts.Kubeconfig, opts.ForwardPort, opts.Resource, opts.SkipPodSummary, opts.ConcurrentExportWorkers)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
