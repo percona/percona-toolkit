@@ -117,6 +117,7 @@ func New(location, namespace, resource string, kubeconfig string, forwardport st
 			"perconapgbackups.pgv2.percona.com",
 			"perconapgclusters.pgv2.percona.com",
 			"perconapgrestores.pgv2.percona.com",
+			"postgresclusters.postgres-operator.crunchydata.com",
 		)
 	case "pxc":
 		resources = append(resources,
