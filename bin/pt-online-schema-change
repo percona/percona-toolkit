@@ -9838,6 +9838,7 @@ sub main {
             Quoter           => $q,
             OptionParser     => $o,
             TableParser      => $tp,
+            server_version   => $server_version,
          );
       };
       if ( $EVAL_ERROR ) {
@@ -11372,6 +11373,7 @@ sub create_new_table {
    }
    my ($new_table_name, $orig_tbl, $cxn, $q, $o, $tp) = @args{@required_args};
    my $new_table_prefix = $args{new_table_prefix};
+   my $server_version = $args{server_version};
 
    # Get the original table struct.
    my $ddl = $tp->get_create_table(
@@ -11438,21 +11440,36 @@ sub create_new_table {
          $sql =~ s/\s+ENGINE=\S+//;
       }
       if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
-         # The directory must be in innodb_directories
+         # Starting from 8.0, the directory must be known to InnoDB.
+
+         my $innodb_dirs = '';
+
+         my (undef, $innodb_data_home_dir) = $cxn->dbh->selectrow_array("SHOW VARIABLES LIKE 'innodb_data_home_dir'");
+         if ( $innodb_data_home_dir ) {
+            _d("InnoDB data home dir: $innodb_data_home_dir");
+            $innodb_dirs .= $innodb_data_home_dir;
+         }
+
          my (undef, $innodb_directories) = $cxn->dbh->selectrow_array("SHOW VARIABLES LIKE 'innodb_directories'");
          if ( $innodb_directories ) {
-            my @dirs = split(/\s*;\s*/, $innodb_directories);
-            my %dirs_lookup = map { $_ => 1 } @dirs;
-            if ($dirs_lookup{$o->get('data-dir')}) {
-               $sql = insert_data_directory($sql, $o->get('data-dir'));
-               PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
-               PTDEBUG && _d("New query\n$sql\n");
-            } else {
-               die "Data directory " . $o->get('data-dir') . " is not in innodb_directories variable: " . $innodb_directories;
-            }
+            _d("InnoDB directories: $innodb_directories");
+            $innodb_dirs .= ';' . $innodb_directories;
+         }
+
+         my @dirs = map {
+            my $dir = $_;
+            $dir =~ s{(?<!^)/\z}{};
+            $dir;
+         } split(/\s*;\s*/, $innodb_dirs);
+         my %dirs_lookup = map { $_ => 1 } @dirs;
+         my $data_dir = $o->get('data-dir');
+         $data_dir =~ s{(?<!^)/\z}{};
+         if ($dirs_lookup{$data_dir} || $server_version < '8.0') {
+            $sql = insert_data_directory($sql, $data_dir);
+            PTDEBUG && _d("adding data dir " . $data_dir);
+            PTDEBUG && _d("New query\n$sql\n");
          } else {
-            # There is no innodb_directories variable or it is empty
-            die "Could not get innodb_directories variable from server or it is empty.";
+            die "Data directory " . $data_dir . " is not known to InnoDB.\nDirectories known to InnoDB are: " . $innodb_dirs . "\n";
          }
       }
       if ( $o->got('remove-data-dir') ) {
