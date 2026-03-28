@@ -21,20 +21,24 @@ jobs:
       uses: actions/setup-go@v6
       with:
         go-version-file: ${{ github.workspace }}/go.mod
+
     - name: Build
-      run: cd src/go; make linux-amd64; cd ../../
+      working-directory: src/go
+      run: make linux-amd64
 
     - name: Build the Docker image
-      run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "RUN microdnf -y update" >> Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
+      run: docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
+
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
       with:
-          image-ref: 'percona-toolkit:${{ github.sha }}'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+        image-ref: 'percona-toolkit:${{ github.sha }}'
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
+
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v7.0.0
       with:
