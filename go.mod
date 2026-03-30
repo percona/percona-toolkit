@@ -16,11 +16,11 @@ require (
 	github.com/hashicorp/go-version v1.8.0
 	github.com/lib/pq v1.12.0
 	github.com/mattn/go-shellwords v1.0.12
-	github.com/montanaflynn/stats v0.8.2
+	github.com/montanaflynn/stats v0.9.0
 	github.com/pborman/getopt v1.1.0
 	github.com/percona/go-mysql v0.0.0-20251202083530-b3e1c16efc74
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.34.0
+	github.com/rs/zerolog v1.35.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/pflag v1.0.9
