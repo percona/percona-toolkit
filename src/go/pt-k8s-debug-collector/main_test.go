@@ -572,7 +572,7 @@ var (
 	mockResources       = map[string][]string{
 		"": []string{
 			utils.REPL_CONTROLLER_MOCK_RESOURCE,
-			utils.JOB_MOCK_RESOURSE,
+			utils.JOB_MOCK_RECOURSE,
 			utils.CRON_JOB_MOCK_RESOURCE,
 		},
 		"pgv2": []string{

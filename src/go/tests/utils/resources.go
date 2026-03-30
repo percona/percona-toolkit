@@ -21,7 +21,7 @@ spec:
       - name: nginx
         image: nginx:latest`
 
-	JOB_MOCK_RESOURSE = `
+	JOB_MOCK_RECOURSE = `
 apiVersion: batch/v1
 kind: Job
 metadata:
