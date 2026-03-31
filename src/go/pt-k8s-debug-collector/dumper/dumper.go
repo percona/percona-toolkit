@@ -70,6 +70,7 @@ type individualFile struct {
 	resourceName  string
 	containerName string
 	filepaths     []string
+	dirpaths      map[string][]string // map[tarFolder][]dirPaths
 }
 
 // resourceMap struct is used to dump the resources from namespace scope or cluster scope
