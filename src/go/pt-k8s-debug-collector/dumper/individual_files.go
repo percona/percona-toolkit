@@ -43,8 +43,10 @@ func replaceEnvVars(input string, envMap map[string]string) string {
 }
 
 func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType string) {
+	normalizedCRType := resourceType(crType)
+
 	for _, indf := range d.individualFiles {
-		if indf.resourceName != crType {
+		if resourceType(indf.resourceName) != normalizedCRType {
 			continue
 		}
 

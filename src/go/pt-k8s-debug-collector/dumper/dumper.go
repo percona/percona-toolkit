@@ -505,15 +505,17 @@ func matchesCR(cr string, podLabels map[string]string) bool {
 
 func (d *Dumper) exportPodSummaryAndFiles(ctx context.Context, job exportJob) {
 	for _, cr := range d.crTypes {
-		if !matchesCR(cr, job.Pod.Labels) {
+		normalizedCR := resourceType(cr)
+
+		if !matchesCR(normalizedCR, job.Pod.Labels) {
 			continue
 		}
 
 		if !d.skipPodSummary {
-			d.getSummary(ctx, job, cr, d.PodSummaryPath(job.Pod.Namespace, job.Pod.Name))
+			d.getSummary(ctx, job, normalizedCR, d.PodSummaryPath(job.Pod.Namespace, job.Pod.Name))
 		}
 
-		d.getIndividualFiles(ctx, job, cr)
+		d.getIndividualFiles(ctx, job, normalizedCR)
 	}
 }
 
