@@ -21,10 +21,10 @@ import (
 	"text/template"
 
 	"github.com/alecthomas/kong"
-	"github.com/howeyc/gopass"
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/term"
 
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
@@ -69,7 +69,7 @@ type cliOptions struct {
 func (c *cliOptions) AfterApply() error {
 	err := c.connOpts.Password.Request(func() (string, error) {
 		print("Password: ")
-		pass, err := gopass.GetPasswd()
+		pass, err := term.ReadPassword(0)
 		return string(pass), err
 	})
 	if err != nil {

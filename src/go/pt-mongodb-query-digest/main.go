@@ -26,11 +26,11 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
-	"github.com/howeyc/gopass"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/term"
 
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
@@ -96,7 +96,7 @@ func (c *cliOptions) AfterApply() error {
 
 	err := c.Password.Request(func() (string, error) {
 		print("Password: ")
-		pass, err := gopass.GetPasswd()
+		pass, err := term.ReadPassword(0)
 		return string(pass), err
 	})
 	if err != nil {

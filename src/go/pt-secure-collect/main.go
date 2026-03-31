@@ -30,7 +30,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type cliOptions struct {
@@ -161,7 +161,7 @@ func removeTempFiles(tempDir string, removeTarFile bool) error {
 
 func askMysqlPassword(user string) (string, error) {
 	fmt.Printf("MySQL password for user %q:", user)
-	passb, err := terminal.ReadPassword(0)
+	passb, err := term.ReadPassword(0)
 	if err != nil {
 		return "", errors.Wrap(err, "Cannot read MySQL password from the terminal")
 	}
@@ -170,14 +170,14 @@ func askMysqlPassword(user string) (string, error) {
 
 func askEncryptionPassword(requireConfirmation bool) (string, error) {
 	fmt.Print("Encryption password: ")
-	passa, err := terminal.ReadPassword(0)
+	passa, err := term.ReadPassword(0)
 	if err != nil {
 		return "", errors.Wrap(err, "Cannot read encryption password from the terminal")
 	}
 	fmt.Println("")
 	if requireConfirmation {
 		fmt.Print("Re type password: ")
-		passb, err := terminal.ReadPassword(0)
+		passb, err := term.ReadPassword(0)
 		if err != nil {
 			return "", errors.Wrap(err, "Cannot read encryption password confirmation from the terminal")
 		}

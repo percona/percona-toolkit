@@ -154,20 +154,32 @@ Targeted custom resource name. Supported values:
 Default: ``auto``
 
 ``--namespace``
-
-Targeted namespace. By default data will be collected from all namespaces
+    Targeted namespace. By default data will be collected from all namespaces
 
 ``--cluster``
-
-Targeted cluster. By default data from all available clusters to be collected
+    Targeted cluster. By default data from all available clusters to be collected
 
 ``--kubeconfig``
-
-Path to kubeconfig. Default configuration be used if none specified
+    Path to kubeconfig. Default configuration be used if none specified
 
 ``--forwardport``
+    Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
 
-Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
+``--concurrent-export-workers``
+    Number of concurrent workers for exporting Kubernetes resources. Default: ``16``.
+    
+    Use this flag to control the level of parallelism when collecting cluster resources. Higher values may improve collection speed on large clusters but could potentially stress the Kubernetes API server. Recommended range: 8-20.
+    
+    Warning: values above 20 may overwhelm the Kubernetes API server rate limits. Start with the default value and increase gradually if needed.
+
+``--log-level``
+    Set the logging level. Supported values: ``debug``, ``info``, ``warn``, ``error``, ``fatal``, ``panic``. Default: ``warn``.
+
+``--no-version-check``
+    Do not check for tool updates on startup.
+
+``--skip-pod-summary``
+    Skip the collection of pod-specific summary data.
 
 ``--skip-pod-summary``
 
@@ -182,8 +194,8 @@ Check for updates (enabled by default).
 Disable update checks.
 
 ``--version``
+    Print version info.
 
-Print version info
 
 Requirements
 ============
