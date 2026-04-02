@@ -693,6 +693,7 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 			fmt.Sprintf("%s/perconapgbackups.yaml", s.Namespace),
 			fmt.Sprintf("%s/perconapgrestores.yaml", s.Namespace),
 			fmt.Sprintf("%s/perconapgclusters.yaml", s.Namespace),
+			fmt.Sprintf("%s/postgresclusters.yaml", s.Namespace), // PT-2396
 		}, requiredNewFiles...),
 	}
 
