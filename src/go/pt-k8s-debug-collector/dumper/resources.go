@@ -100,6 +100,20 @@ func (d *Dumper) autoCustomResource() ([]string, error) {
 	return result, nil
 }
 
+func parseResourceSpec(resource string) (string, string) {
+	resource = strings.TrimSpace(resource)
+	if resource == "" {
+		return "", ""
+	}
+
+	resourceName, clusterName, found := strings.Cut(resource, "/")
+	if !found {
+		return resourceName, ""
+	}
+
+	return resourceName, clusterName
+}
+
 // TODO: rewrite to use map or switch
 func resourceType(s string) string {
 	if s == "auto" {

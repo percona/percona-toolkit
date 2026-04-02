@@ -84,14 +84,17 @@ type exportJob struct {
 }
 
 // New return new Dumper object
-func New(location, namespace, kubeconfig, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
-	var config *rest.Config
-
+func New(location, namespace, kubeconfig, clusterName, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
 	safeLog := NewSafeLogger()
 
 	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	_, resourceClusterName := parseResourceSpec(resource)
+	if clusterName == "" {
+		clusterName = resourceClusterName
+	}
+
+	config, err := buildRestConfig(kubeconfig, clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build config from flags: %w", err)
 	}
@@ -179,6 +182,27 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 	}
 
 	return d, err
+}
+
+func buildRestConfig(kubeconfig, clusterName string) (*rest.Config, error) {
+	if clusterName == "" {
+		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+	}
+
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig}
+	overrides := &clientcmd.ConfigOverrides{CurrentContext: clusterName}
+	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
+
+	rawConfig, err := clientConfig.RawConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := rawConfig.Contexts[clusterName]; !ok {
+		return nil, fmt.Errorf("context %q not found in kubeconfig", clusterName)
+	}
+
+	return clientConfig.ClientConfig()
 }
 
 // DumpCluster create dump of a cluster in Dumper.location

@@ -69,10 +69,6 @@ func (c *cliOptions) AfterApply() error {
 		}
 	}
 
-	if len(c.ClusterName) > 0 {
-		c.Resource += "/" + c.ClusterName
-	}
-
 	ll, err := log.ParseLevel(c.LogLevel)
 	if err != nil {
 		return err
@@ -111,7 +107,7 @@ func main() {
 		log.Infof("loaded default kubeconfig: %s", path)
 	}
 
-	d, err := dumper.New("cluster-dump", opts.Namespace, opts.Kubeconfig, opts.ForwardPort, opts.Resource, opts.SkipPodSummary, opts.ConcurrentExportWorkers)
+	d, err := dumper.New("cluster-dump", opts.Namespace, opts.Kubeconfig, opts.ClusterName, opts.ForwardPort, opts.Resource, opts.SkipPodSummary, opts.ConcurrentExportWorkers)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
