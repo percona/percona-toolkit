@@ -57,6 +57,12 @@ like(
    "--statistics is FALSE by default"
 );
 
+like(
+   $output,
+   qr/--mysql_ssl_optional/,
+   "--mysql_ssl_optional option exists in help"
+);
+
 $output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox --alter-foreign-keys-method drop_swap --no-drop-new-table`;
 like(
    $output,
@@ -76,13 +82,6 @@ like(
    $output,
    qr/Invalid --critical-load/,
    "Validates --critical-load"
-);
-
-$output = `$cmd --help`;
-like(
-   $output,
-   qr/--mysql_ssl_optional/,
-   "--mysql_ssl_optional option exists in help"
 );
 
 # #############################################################################
