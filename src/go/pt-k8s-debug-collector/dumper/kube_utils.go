@@ -184,7 +184,7 @@ func (d DrainCloser) Close() error {
 	if d.ReadCloser == nil {
 		return nil
 	}
-	io.Copy(io.Discard, d.ReadCloser)
+	_, _ = io.Copy(io.Discard, d.ReadCloser)
 	err := d.ReadCloser.Close()
 	d.ReadCloser = nil
 	return err
@@ -219,8 +219,6 @@ func (d *Dumper) executeInPodStream(ctx context.Context, command []string, pod c
 	pr, pw := io.Pipe()
 
 	go func() {
-		defer pw.Close()
-
 		if err := exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 			Stdin:  stdin,
 			Stdout: pw,
@@ -229,10 +227,15 @@ func (d *Dumper) executeInPodStream(ctx context.Context, command []string, pod c
 		}); err != nil && !errors.Is(err, context.Canceled) {
 			if stderr.Len() > 0 {
 				log.Errorf("error while streaming files from pod: %s (stderr: %s)", err, stderr.String())
+				_ = pw.CloseWithError(fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String())))
 				return
 			}
 			log.Errorf("error while streaming files from pod: %s", err)
+			_ = pw.CloseWithError(err)
+			return
 		}
+
+		_ = pw.Close()
 	}()
 
 	return DrainCloser{pr}, nil
