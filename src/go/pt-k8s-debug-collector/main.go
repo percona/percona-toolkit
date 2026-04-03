@@ -54,7 +54,7 @@ type cliOptions struct {
 func (c *cliOptions) AfterApply() error {
 	if c.Version {
 		fmt.Println(toolname)
-		fmt.Printf("Version: %s\n", Version)
+		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		fmt.Printf("Commit: %s\n", Commit)
 		return nil

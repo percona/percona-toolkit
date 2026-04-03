@@ -103,7 +103,7 @@ func (d *Dumper) processSingleFile(
 		dst := d.PodIndividualFilesPath(
 			job.Pod.Namespace,
 			job.Pod.Name,
-			path.Join(tarFolder, path.Base(filePath)),
+			path.Join(tarFolder, path.Clean(strings.TrimPrefix(filePath, "/"))),
 		)
 
 		return d.archive.WriteFile(dst, tr, hdr.Size)
@@ -123,6 +123,8 @@ func (d *Dumper) processDir(
 		return err
 	}
 	defer rc.Close()
+
+	baseDir := path.Clean(strings.TrimPrefix(dir, "/"))
 
 	for {
 		hdr, err := tr.Next()
@@ -154,7 +156,7 @@ func (d *Dumper) processDir(
 		dst := d.PodIndividualFilesPath(
 			job.Pod.Namespace,
 			job.Pod.Name,
-			path.Join(tarFolder, path.Base(hdr.Name)),
+			path.Join(tarFolder, baseDir, relPath),
 		)
 
 		if err := d.archive.WriteFile(dst, tr, hdr.Size); err != nil {
