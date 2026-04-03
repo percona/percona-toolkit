@@ -83,9 +83,9 @@ func (d *Dumper) processSingleFile(
 	container, tarFolder, filePath string,
 ) error {
 
-	tr, rc, stderr, err := d.tarFromPod(ctx, job.Pod, container, filePath)
+	tr, rc, err := d.tarFromPod(ctx, job.Pod, container, filePath)
 	if err != nil {
-		return fmt.Errorf("exec tar: %w (stderr: %s)", err, stderr.String())
+		return fmt.Errorf("exec tar: %w", err)
 	}
 	defer rc.Close()
 
@@ -124,7 +124,7 @@ func (d *Dumper) processDir(
 	container, tarFolder, dir string,
 ) error {
 
-	tr, rc, _, err := d.tarFromPod(ctx, job.Pod, container, "-C", dir, ".")
+	tr, rc, err := d.tarFromPod(ctx, job.Pod, container, "-C", dir, ".")
 	if err != nil {
 		return err
 	}

@@ -157,21 +157,21 @@ func (d *Dumper) executeInPod(ctx context.Context, command []string, pod corev1.
 	return outb, errb, nil
 }
 
-// tarFromPod executes tar command in pod and returns tar reader, read closer, and stderr
+// tarFromPod executes tar command in pod and returns tar reader and read closer.
 func (d *Dumper) tarFromPod(
 	ctx context.Context,
 	pod corev1.Pod,
 	container string,
 	args ...string,
-) (*tar.Reader, io.ReadCloser, *bytes.Buffer, error) {
+) (*tar.Reader, io.ReadCloser, error) {
 	cmd := append([]string{"tar", "cf", "-"}, args...)
 
-	stdout, stderr, err := d.executeInPodStream(ctx, cmd, pod, container, nil)
+	stdout, err := d.executeInPodStream(ctx, cmd, pod, container, nil)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return tar.NewReader(stdout), stdout, &stderr, nil
+	return tar.NewReader(stdout), stdout, nil
 }
 
 // DrainCloser wraps an io.ReadCloser to ensure proper closure of pod exec streams.
@@ -190,8 +190,10 @@ func (d DrainCloser) Close() error {
 	return err
 }
 
-// executeInPodStream executes command in pod and streams the output
-func (d *Dumper) executeInPodStream(ctx context.Context, command []string, pod corev1.Pod, container string, stdin io.Reader) (io.ReadCloser, bytes.Buffer, error) {
+// executeInPodStream executes command in pod and streams the output.
+// Streaming errors are logged from the background goroutine because they can
+// happen after this function has already returned the stdout reader.
+func (d *Dumper) executeInPodStream(ctx context.Context, command []string, pod corev1.Pod, container string, stdin io.Reader) (io.ReadCloser, error) {
 	stdinFlag := stdin != nil
 	var stderr bytes.Buffer
 
@@ -211,7 +213,7 @@ func (d *Dumper) executeInPodStream(ctx context.Context, command []string, pod c
 
 	exec, err := remotecommand.NewSPDYExecutor(d.restConfig, "POST", req.URL())
 	if err != nil {
-		return nil, stderr, fmt.Errorf("error creating SPDY executor: %w", err)
+		return nil, fmt.Errorf("error creating SPDY executor: %w", err)
 	}
 
 	pr, pw := io.Pipe()
@@ -225,11 +227,15 @@ func (d *Dumper) executeInPodStream(ctx context.Context, command []string, pod c
 			Stderr: &stderr,
 			Tty:    false,
 		}); err != nil && !errors.Is(err, context.Canceled) {
-			log.Errorf("error while streaming files from pod: %s", err.Error())
+			if stderr.Len() > 0 {
+				log.Errorf("error while streaming files from pod: %s (stderr: %s)", err, stderr.String())
+				return
+			}
+			log.Errorf("error while streaming files from pod: %s", err)
 		}
 	}()
 
-	return DrainCloser{pr}, stderr, nil
+	return DrainCloser{pr}, nil
 }
 
 // ParseEnvsFromSpec parses environment variables in input string
