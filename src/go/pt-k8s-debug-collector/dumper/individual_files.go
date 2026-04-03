@@ -9,17 +9,11 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // getContainerEnvMap parses environment variables from pod container spec once
-func (d *Dumper) getContainerEnvMap(ctx context.Context, namespace, podName, containerName string) (map[string]string, error) {
-	pod, err := d.clientSet.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
+func (d *Dumper) getContainerEnvMap(pod corev1.Pod, containerName string) (map[string]string, error) {
 	envMap := make(map[string]string)
 	for _, c := range pod.Spec.Containers {
 		if c.Name == containerName {
@@ -30,7 +24,7 @@ func (d *Dumper) getContainerEnvMap(ctx context.Context, namespace, podName, con
 		}
 	}
 
-	return nil, fmt.Errorf("container %s not found in pod %s/%s", containerName, namespace, podName)
+	return nil, fmt.Errorf("container %s not found in pod %s/%s", containerName, pod.Namespace, pod.Name)
 }
 
 // replaceEnvVars replaces environment variables in input using provided env map
@@ -51,7 +45,7 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 		}
 
 		// Parse environment variables once for this container
-		envMap, err := d.getContainerEnvMap(ctx, job.Pod.Namespace, job.Pod.Name, indf.containerName)
+		envMap, err := d.getContainerEnvMap(job.Pod, indf.containerName)
 		if err != nil {
 			log.Warnf("Failed to get env for container %q: %v", indf.containerName, err)
 			continue
@@ -140,6 +134,20 @@ func (d *Dumper) processDir(
 		}
 
 		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		// Preserve the relative path from the tar header while ensuring it
+		// cannot escape the intended destination directory.
+		relPath := path.Clean(hdr.Name)
+		// Normalize common tar prefixes like "./"
+		relPath = strings.TrimPrefix(relPath, "./")
+		// Prevent path traversal outside tarFolder by stripping leading "../"
+		for strings.HasPrefix(relPath, "../") {
+			relPath = strings.TrimPrefix(relPath, "../")
+		}
+		// Skip entries that do not resolve to a meaningful relative path
+		if relPath == "" || relPath == "." {
 			continue
 		}
 
