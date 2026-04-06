@@ -7,7 +7,7 @@ require (
 	github.com/Ladicle/tabwriter v1.0.0
 	github.com/Masterminds/semver v1.5.0
 	github.com/alecthomas/kingpin v2.2.6+incompatible
-	github.com/alecthomas/kong v1.14.0
+	github.com/alecthomas/kong v1.15.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/go-ini/ini v1.67.0
 	github.com/golang/mock v1.6.0
