@@ -52,8 +52,8 @@ my $sample  = "t/pt-online-schema-change/samples/";
    stderr => 1,
 );
 
-if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+if ( $exit_code == 0 || $output !~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test requires DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
 
 $sb->do_as_root(
@@ -88,13 +88,13 @@ isnt(
 
 like(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
 ($output, $exit_code) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$source_dsn,D=test,t=t1,u=sha256_user,p=sha256_user%password,s=1",
+      "$source_dsn,D=test,t=t1,u=sha256_user,p=sha256_user%password,s=1,o=1",
       "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
       qw(--execute --no-check-alter)),
    },
@@ -124,7 +124,7 @@ $sb->load_file('source', "$sample/del-trg-bug-1103672.sql");
 ($output, $exit_code) = full_output(
    sub { pt_online_schema_change::main(@args,
       "$source_dsn,D=test,t=t1",
-      qw(--user sha256_user --password sha256_user%password --mysql_ssl 1),
+      qw(--user sha256_user --password sha256_user%password --mysql_ssl_optional 1 --mysql_ssl 1),
       "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
       qw(--execute --no-check-alter)),
    },
@@ -133,19 +133,19 @@ $sb->load_file('source', "$sample/del-trg-bug-1103672.sql");
 is(
    $exit_code,
    0,
-   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl_optional 1 --mysql_ssl"
 ) or diag($output);
 
 unlike(
    $output,
    qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl'
+   'No secure connection error with option --mysql_ssl_optional 1 --mysql_ssl'
 ) or diag($output);
 
 like(
    $output,
    qr/Successfully altered `test`.`t1`/,
-   "DROP PRIMARY KEY with option --mysql_ssl"
+   "DROP PRIMARY KEY with option --mysql_ssl_optional 1 --mysql_ssl"
 );
 
 # Restoring environment for the new test
@@ -153,10 +153,10 @@ $sb->load_file('source', "$sample/del-trg-bug-1103672.sql");
 
 ($output, $exit_code) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$source_dsn,F=t/pt-archiver/samples/pt-191.cnf,D=test,t=t1,u=sha256_user,p=sha256_user%password,s=1",
+      "$source_dsn,F=t/pt-archiver/samples/pt-191.cnf,D=test,t=t1,u=sha256_user,p=sha256_user%password,s=1,o=1",
       "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
       qw(--execute --no-check-alter),
-      "--recursion-method=dsn=F=t/pt-archiver/samples/pt-191.cnf,D=test_ssl,t=dsns,h=127.0.0.1,P=12345,u=sha256_user,p=sha256_user%password,s=1"),
+      "--recursion-method=dsn=F=t/pt-archiver/samples/pt-191.cnf,D=test_ssl,t=dsns,h=127.0.0.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1"),
    },
    stderr => 1,
 );
@@ -175,7 +175,7 @@ unlike(
 
 ($output, $exit_code) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "F=$trunk/t/pt-archiver/samples/pt-191-error.cnf,$source_dsn,D=test,t=t1,u=sha256_user,p=sha256_user%password,s=1",
+      "F=$trunk/t/pt-archiver/samples/pt-191-error.cnf,$source_dsn,D=test,t=t1,u=sha256_user,p=sha256_user%password,s=1,o=1",
       "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
       qw(--execute --no-check-alter)),
    },
@@ -190,60 +190,9 @@ isnt(
 
 like(
    $output,
-   qr/SSL connection error: Unable to get private key at/,
+   qr/SSL error: key values mismatch/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
-
-# #############################################################################
-# Test mysql_ssl_optional option
-# #############################################################################
-
-# Restoring environment for the new test
-$sb->load_file('source', "$sample/del-trg-bug-1103672.sql");
-
-($output, $exit_code) = full_output(
-   sub { pt_online_schema_change::main(@args,
-      "$source_dsn,D=test,t=t1,u=sha256_user,p=sha256_user%password,s=1,o=1",
-      "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
-      qw(--execute --no-check-alter)),
-   },
-);
-
-is(
-   $exit_code,
-   0,
-   "No error when using mysql_ssl_optional DSN parameter (o=1)"
-) or diag($output);
-
-like(
-   $output,
-   qr/Successfully altered `test`.`t1`/,
-   "DROP PRIMARY KEY with mysql_ssl_optional DSN parameter"
-);
-
-# Restoring environment for the new test
-$sb->load_file('source', "$sample/del-trg-bug-1103672.sql");
-
-($output, $exit_code) = full_output(
-   sub { pt_online_schema_change::main(@args,
-      "$source_dsn,D=test,t=t1",
-      qw(--user sha256_user --password sha256_user%password --mysql_ssl_optional 1 --mysql_ssl 1),
-      "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
-      qw(--execute --no-check-alter)),
-   },
-);
-
-is(
-   $exit_code,
-   0,
-   "No error when using --mysql_ssl_optional option"
-) or diag($output);
-
-like(
-   $output,
-   qr/Successfully altered `test`.`t1`/,
-   "DROP PRIMARY KEY with --mysql_ssl_optional option"
-);
 
 # #############################################################################
 # Done.

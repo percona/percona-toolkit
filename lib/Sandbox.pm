@@ -134,12 +134,7 @@ sub create_dbs {
 sub get_dbh_for {
    my ( $self, $server, $cxn_ops, $user ) = @_;
    _check_server($server);
-   if ($ENV{FORK} || "" eq 'mariadb') {
-      $cxn_ops ||= { AutoCommit => 1, mysql_enable_utf8 => 1, mysql_ssl => 0 };
-   }
-   else {
-      $cxn_ops ||= { AutoCommit => 1, mysql_enable_utf8 => 1, mysql_ssl => 1 };
-   }
+   $cxn_ops ||= { AutoCommit => 1, mysql_enable_utf8 => 1, mysql_ssl => 1, mysql_ssl_optional => 1 };
    $user    ||= 'msandbox';
    PTDEBUG && _d('dbh for', $server, 'on port', $port_for{$server});
    my $dp = $self->{DSNParser};
