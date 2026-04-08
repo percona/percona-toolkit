@@ -35,6 +35,17 @@ my $cnf  = '/tmp/12345/my.sandbox.cnf';
 my $cmd  = "$trunk/bin/pt-fk-error-logger -F $cnf ";
 my @args = qw(--iterations 1);
 
+# Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
+($output, $exit_code) = full_output(
+   sub { pt_fk_error_logger::main(@args, 'h=127.1,P=12345,u=msandbox,p=msandbox,s=1'),
+   },
+   stderr => 1,
+);
+
+if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+}
+
 $sb->do_as_root(
    'source',
    q/CREATE USER IF NOT EXISTS sha256_user@'%' IDENTIFIED WITH caching_sha2_password BY 'sha256_user%password' REQUIRE SSL/,
@@ -159,6 +170,62 @@ like(
    qr/SSL connection error: Unable to get private key at/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
+
+# #############################################################################
+# Test mysql_ssl_optional option
+# #############################################################################
+
+($output, $exit_code) = full_output(
+   sub {
+      pt_fk_error_logger::main(@args, 'h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1'),
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option mysql_ssl_optional"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option mysql_ssl_optional'
+) or diag($output);
+
+like(
+   $output,
+   qr/Foreign key constraint fails/,
+   "Prints fk error by default with option mysql_ssl_optional"
+);
+
+($output, $exit_code) = full_output(
+   sub {
+      pt_fk_error_logger::main(@args, 'h=127.1',
+         qw(--port 12345 --user sha256_user),
+         qw(--password sha256_user%password --mysql_ssl 1 --mysql_ssl_optional 1))
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option mysql_ssl and mysql_ssl_optional"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option mysql_ssl and mysql_ssl_optional'
+) or diag($output);
+
+like(
+   $output,
+   qr/Foreign key constraint fails/,
+   "Prints fk error by default with option mysql_ssl and mysql_ssl_optional"
+);
 
 # #############################################################################
 # Done.

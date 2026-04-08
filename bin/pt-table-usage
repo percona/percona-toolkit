@@ -8385,6 +8385,12 @@ short form: -s; type: int
 
 Create SSL MySQL connection.
 
+=item --mysql_ssl_optional
+
+short form: -o; type: int
+
+Disables strict SSL enforcement and makes SSL connection optional.
+
 =item --password
 
 short form: -p; type: string
@@ -8542,6 +8548,12 @@ User for login if not current user.
 dsn: mysql_ssl; copy: yes
 
 Create SSL connection
+
+=item * o
+
+dsn: mysql_ssl_optional; copy: yes
+
+Disables strict SSL enforcement and makes SSL connection optional
 
 =back
 
