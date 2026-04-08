@@ -305,7 +305,11 @@ func (s *CollectorSuite) TestIndividualFiles() {
 				var result []string
 				for _, f := range files {
 					b := path.Base(f)
-					if !slices.Contains(result, b) && b != "." && b != "" {
+					if b == "." || b == "" {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
 						result = append(result, b)
 					}
 				}
@@ -336,11 +340,11 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/*.log"},
 			want: []string{"logrotate.log", "logs.log", "pxc-init.log", "pxc.log"},
 			preprocessor: func(in string) string {
-				required := map[string]bool{
-					"logrotate.log": true,
-					"logs.log":      true,
-					"pxc-init.log":  true,
-					"pxc.log":       true,
+				required := map[string]struct{}{
+					"logrotate.log": {},
+					"logs.log":      {},
+					"pxc-init.log":  {},
+					"pxc.log":       {},
 				}
 
 				files := strings.Split(in, "\n")
@@ -353,11 +357,11 @@ func (s *CollectorSuite) TestIndividualFiles() {
 					}
 
 					b := parts[1]
-					if !required[b] {
+					if _, ok := required[b]; !ok {
 						continue
 					}
 
-					if !slices.Contains(result, b) && b != "." && b != "" {
+					if !slices.Contains(result, b) {
 						result = append(result, b)
 					}
 				}
