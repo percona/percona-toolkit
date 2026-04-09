@@ -349,6 +349,7 @@ func (d *Dumper) exportGeneric(ctx context.Context, gvr schema.GroupVersionResou
 			delete(meta, "selfLink")
 			delete(meta, "creationTimestamp")
 		}
+		redactPgbouncerVolumeRefs(obj)
 	}
 
 	data, err := yaml.Marshal(list.UnstructuredContent())
@@ -360,6 +361,109 @@ func (d *Dumper) exportGeneric(ctx context.Context, gvr schema.GroupVersionResou
 	d.archive.WriteVirtualFile(yamlPath, data)
 
 	return nil
+}
+
+// redactPgbouncerVolumeRefs removes volume and volumeMount entries that reference
+// pgbouncer secrets from a pod or pod template spec.
+func redactPgbouncerVolumeRefs(obj map[string]any) {
+	redactPodSpec(obj)
+
+	// Handle pod templates (Deployment, StatefulSet, etc.)
+	if spec, ok := obj["spec"].(map[string]any); ok {
+		if tmpl, ok := spec["template"].(map[string]any); ok {
+			redactPodSpec(tmpl)
+		}
+	}
+}
+
+func redactPodSpec(obj map[string]any) {
+	spec, ok := obj["spec"].(map[string]any)
+	if !ok {
+		return
+	}
+
+	volumes, ok := spec["volumes"].([]any)
+	if !ok {
+		return
+	}
+
+	pgbouncerVols := make(map[string]bool)
+	kept := make([]any, 0)
+	for _, v := range volumes {
+		vol, ok := v.(map[string]any)
+		if !ok {
+			kept = append(kept, v)
+			continue
+		}
+		if hasPgbouncerSecretRef(vol) {
+			name, _ := vol["name"].(string)
+			pgbouncerVols[name] = true
+		} else {
+			kept = append(kept, v)
+		}
+	}
+
+	if len(pgbouncerVols) == 0 {
+		return
+	}
+	spec["volumes"] = kept
+
+	for _, key := range []string{"containers", "initContainers", "ephemeralContainers"} {
+		containers, ok := spec[key].([]any)
+		if !ok {
+			continue
+		}
+		for j, c := range containers {
+			container, ok := c.(map[string]any)
+			if !ok {
+				continue
+			}
+			mounts, ok := container["volumeMounts"].([]any)
+			if !ok {
+				continue
+			}
+			var keptMounts []any
+			for _, m := range mounts {
+				mount, ok := m.(map[string]any)
+				if !ok {
+					keptMounts = append(keptMounts, m)
+					continue
+				}
+				mountName, _ := mount["name"].(string)
+				if !pgbouncerVols[mountName] {
+					keptMounts = append(keptMounts, mount)
+				}
+			}
+			container["volumeMounts"] = keptMounts
+			containers[j] = container
+		}
+	}
+}
+
+func hasPgbouncerSecretRef(vol map[string]any) bool {
+	if secret, ok := vol["secret"].(map[string]any); ok {
+		name, _ := secret["secretName"].(string)
+		if strings.Contains(name, "pgbouncer") {
+			return true
+		}
+	}
+	if projected, ok := vol["projected"].(map[string]any); ok {
+		if sources, ok := projected["sources"].([]any); ok {
+			for _, s := range sources {
+				src, ok := s.(map[string]any)
+				if !ok {
+					continue
+				}
+				if secret, ok := src["secret"].(map[string]any); ok {
+					name, _ := secret["name"].(string)
+					if strings.Contains(name, "pgbouncer") {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 var ignoredResources = map[string]bool{
