@@ -63,7 +63,7 @@ func TestVersionOption(t *testing.T) {
 		t.Errorf("error executing %s --version: %s", toolname, err.Error())
 	}
 	// We are using MustCompile here, because hard-coded RE should not fail
-	re := regexp.MustCompile(toolname + `\n.*Version v?\d+\.\d+\.\d+\n`)
+	re := regexp.MustCompile(toolname + `\n.*Version v?\d+\.\d+\.\d+(-\d+)?\n`)
 	if !re.Match(out) {
 		t.Errorf("%s --version returns wrong result:\n%s", toolname, out)
 	}
