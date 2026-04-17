@@ -1,14 +1,19 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Generator: Adobe Illustrator 30.0.0, SVG Export Plug-In . SVG Version: 9.03 Build 0)  -->
-<svg version="1.0" id="Percona_-_Logomark_-_One_color_white"
-	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 300 300"
-	 style="enable-background:new 0 0 300 300;" xml:space="preserve">
-<style type="text/css">
-	.st0{fill:#FFFFFF;}
-</style>
-<g>
-	<path class="st0" d="M108.9,139.5l63.5,110.1h-127L108.9,139.5z M178.8,82.2c10.3-4.9,21.8-6,33-3c12.3,3.3,22.6,11.2,29,22.3
-		c12.6,21.8,6,49.4-14.4,63.3L178.8,82.2z M119.3,121.4l30.6-53l0,0l104.5,181.2h-61.2L119.3,121.4z M108.9,103.4L14.2,267.6h271.5
-		l-50.3-87.2c29-18.9,38.4-57.6,20.9-88c-8.8-15.2-23-26.1-40-30.7c-15.7-4.2-32.2-2.5-46.6,4.8l-19.8-34.2L108.9,103.4z"/>
-</g>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_12" data-name="Layer 12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1123.51 1123.51">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #653df4;
+      }
+    </style>
+  </defs>
+  <g id="Background">
+    <g>
+      <path class="cls-1" d="M1080.68,1011.16H42.83L561.75,112.35l518.93,898.8ZM71.19,994.78h981.12L561.75,145.1,71.19,994.78Z"/>
+      <g>
+        <polygon class="cls-1" points="856.01 886.29 561.75 376.62 267.5 886.29 347.68 886.29 365.58 855.29 321.19 855.29 561.75 438.62 802.32 855.29 425.66 855.29 562.02 619.17 664.3 796.32 700.1 796.32 562.02 557.17 561.66 557.8 561.64 557.77 371.96 886.29 463.08 886.29 856.01 886.29"/>
+        <polygon class="cls-1" points="637.54 823.15 561.75 691.88 485.96 823.15 637.54 823.15"/>
+      </g>
+    </g>
+  </g>
 </svg>

@@ -202,12 +202,12 @@ htmlhelp_basename = 'PerconaToolkitdoc'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'PerconaToolkit.tex', u'Percona Toolkit Documentation',
-   u'2025, Percona LLC and/or its affiliates', 'manual'),
+   u'2026, Percona LLC and/or its affiliates', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = 'Percona_Logo_Color.png'
+latex_logo = 'Percona_Logo_Dark.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
@@ -236,5 +236,5 @@ latex_toplevel_sectioning = 'part'
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'perconatoolkit', u'Percona Toolkit Documentation',
-     [u'2025, Percona LLC and/or its affiliates'], 1)
+     [u'2026, Percona LLC and/or its affiliates'], 1)
 ]
