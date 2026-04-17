@@ -13,6 +13,10 @@ html_theme_options = {
     'repo_name': 'percona/percona-toolkit',
     'edit_uri': 'edit/3.x/docs/',
     'globaltoc_collapse': True,
+    "features": [
+        "navigation.top",
+        "navigation.footer",
+    ],
     "palette": [
         {
             "media": "(prefers-color-scheme)",
@@ -57,9 +61,7 @@ copybutton_prompt_text = '$'
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['../_static/_templates/theme']
 #html_last_updated_fmt = ''
-
 # Path to custom css files. These will override the default css attribute if they exist
 html_css_files = [
     '../_static/css/material.css',
 ]
-

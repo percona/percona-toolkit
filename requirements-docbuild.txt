@@ -1,4 +1,4 @@
-Sphinx==5.0
+Sphinx==5.3.0
 sphinx-immaterial
 sphinxcontrib-applehelp
 sphinxcontrib-contentui
