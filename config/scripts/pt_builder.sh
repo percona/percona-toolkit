@@ -430,16 +430,16 @@ build_source_deb(){
     cd ../
     mkdir -p $WORKDIR/source_deb
     mkdir -p $CURDIR/source_deb
-    #cp *.tar.xz* $WORKDIR/source_deb
+    cp *.tar.xz* $WORKDIR/source_deb
     cp *_source.changes $WORKDIR/source_deb
     cp *.dsc $WORKDIR/source_deb
     cp *.orig.tar.gz $WORKDIR/source_deb
-    cp *.diff.gz $WORKDIR/source_deb
-   # cp *.tar.xz* $CURDIR/source_deb
+    #cp *.diff.gz $WORKDIR/source_deb
+    cp *.tar.xz* $CURDIR/source_deb
     cp *_source.changes $CURDIR/source_deb
     cp *.dsc $CURDIR/source_deb
     cp *.orig.tar.gz $CURDIR/source_deb
-    cp *.diff.gz $CURDIR/source_deb
+    #cp *.diff.gz $CURDIR/source_deb
 }
 
 build_tarball(){
@@ -509,7 +509,6 @@ build_deb(){
     dpkg-source -x ${DSC}
     #
     cd ${PRODUCT}-${VERSION}
-    echo 9 > debian/compat
     if [ x"$ARCH" = "xaarch64" ]; then
         sed -i 's/@@ARCHITECTURE@@/arm64/' debian/control
     else

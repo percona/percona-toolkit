@@ -1847,6 +1847,10 @@ if    [ "${0##*/}" = "$TOOL" ] \
    MYSQL_ARGS="$(mysql_options)"
    EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
+   # Test if MySQL password provided on command line; warn if so.
+   if [ -n "$OPT_PASSWORD" ] || $(echo "$EXT_ARGV" | grep -qP "(\-\-password=)|((^|\s)+\-p[^\s]+)"); then
+      log 'Providing MySQL password on the command line interface is insecure. It will be visible in the operating system process list and stored in the collected output of the ps command. Consider using a configuration file or the --ask-pass option instead.';
+   fi
 
    if [ ! "$OPT_SYSTEM_ONLY" ]; then
       # Check that mysql and mysqladmin are in PATH.  If not, we're
@@ -1942,6 +1946,8 @@ server.  Before using this tool, please:
 =item * Test the tool on a non-production server
 
 =item * Backup your production server and verify the backups
+
+=item * Do NOT provide the MySQL password on the command line with the L<"--password"> option. MySQL passwords provided on the command line are visible to all users on the system and are stored in the collected output of the C<"ps"> command. Use a MySQL option file or the L<"--ask-pass"> option instead.
 
 =back
 
@@ -2268,6 +2274,10 @@ short form: -p; type: string
 
 Password to use when connecting.
 If password contains commas they must be escaped with a backslash: "exam\,ple"
+
+B<WARNING>: Providing the password on the command line is insecure. The password will
+be visible to all users on the system and will be stored in the collected output of
+the C<"ps"> command. Use a MySQL option file or the L<"--ask-pass"> option instead.
 
 =item --pid
 
@@ -2637,7 +2647,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2024 Percona LLC and/or its affiliates,
+This program is copyright 2011-2026 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -2650,9 +2660,8 @@ Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
 systems, you can issue `man perlgpl' or `man perlartistic' to read these
 licenses.
 
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA  02111-1307  USA.
+You should have received a copy of the GNU General Public License, version 2
+along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 

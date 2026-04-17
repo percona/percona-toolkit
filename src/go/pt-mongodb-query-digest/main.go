@@ -1,3 +1,16 @@
+// This program is copyright 2017-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
@@ -12,12 +25,12 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/term"
 
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
@@ -330,7 +343,7 @@ func getOptions() (*cliOptions, error) {
 
 	if gop.IsSet("password") && opts.Password == "" {
 		print("Password: ")
-		pass, err := gopass.GetPasswd()
+		pass, err := term.ReadPassword(0)
 		if err != nil {
 			return nil, err
 		}

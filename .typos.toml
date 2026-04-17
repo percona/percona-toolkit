@@ -62,6 +62,7 @@ extend-ignore-re = [
 "RegexISTReceiver" = "RegexISTReceiver"
 "RegexISTSender" = "RegexISTSender"
 "RegexXtrabackupISTReceived" = "RegexXtrabackupISTReceived"
+"SELECTs" = "SELECTs"
 "START_ND_SUMMARY" = "START_ND_SUMMARY"
 "START_ND_TOOLTIPS" = "START_ND_TOOLTIPS"
 "thr" = "thr" # common abbreviation
