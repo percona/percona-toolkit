@@ -1,7 +1,7 @@
 Release Notes
 ***************
 
-v3.7.3 released 2026-04-17
+v3.7.1-3 released 2026-04-17
 ==============================
 
 This release addresses multiple important security vulnerabilities affecting `libarchive` (CVE-2026-4424, CVE-2026-4111), `libnghttp2` (CVE-2026-27135), `gnupg2` (CVE-2025-68973), and `openssl-libs` (CVE-2025-15467).
