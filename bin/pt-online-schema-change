@@ -4503,7 +4503,7 @@ sub _find_replicas_by_hosts {
       $sql = 'SHOW SLAVE HOSTS';
       $source_name='master';
    }
-   
+
    PTDEBUG && _d($dbh, $sql);
    @replicas = @{$dbh->selectall_arrayref($sql, { Slice => {} })};
 
@@ -4538,9 +4538,9 @@ sub get_connected_replicas {
          m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
       } @{$dbh->selectcol_arrayref($sql)};
    };
-   
+
    die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
-   
+
    if ( !$proc ) {
       die "You do not have the PROCESS privilege";
    }
@@ -4810,7 +4810,7 @@ sub catchup_to_source {
       }
       if ( !defined $result->{result} ) {
          $replica_status = $self->get_replica_status($replica);
-            
+
          my $replica_name = get_replica_name($replica);
 
          if ( !$self->replica_is_running($replica_status, $replica_name) ) {
@@ -4876,7 +4876,7 @@ sub replica_is_running {
 
 sub has_replica_updates {
    my ( $self, $dbh ) = @_;
-   
+
    my $replica_name = get_replica_name($dbh);
 
    my $sql = qq{SHOW VARIABLES LIKE 'log_${replica_name}_updates'};
@@ -4909,7 +4909,7 @@ sub repl_posn {
 
 sub get_replica_lag {
    my ( $self, $dbh ) = @_;
-   
+
    my $source_name = get_source_name($dbh);
 
    my $stat = $self->get_replica_status($dbh);
@@ -5111,12 +5111,13 @@ sub get_cxn_from_dsn_table {
                }
                push @cxn, $lcxn;
             } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
+               push @cxn, $make_cxn->(dsn_string => $dsn_string);
             }
          }
       }
       $done = 1;
    } until $done;
+   $dsn_tbl_cxn->dbh()->disconnect();
    return \@cxn;
 }
 
@@ -5190,7 +5191,7 @@ sub wait {
    my $oktorun  = $self->{oktorun};
    my $get_lag  = $self->{get_lag};
    my $sleep    = $self->{sleep};
-   my $replicas = $self->{replicas}; 
+   my $replicas = $self->{replicas};
    my $max_lag  = $self->{max_lag};
 
    my $worst;  # most lagging replica
@@ -5208,6 +5209,10 @@ sub wait {
          $self->{replicas} = $replicas;
          printf STDERR "Replica set to watch has changed\n  Was: %s\n  Now: %s\n",
             $before, $after;
+      } else {
+         for my $cxn ( @$replicas ) {
+            eval { $cxn->dbh()->disconnect() if $cxn->dbh() };
+         }
       }
       return($self->{replicas});
    };
@@ -9646,7 +9651,7 @@ sub main {
          my $original_error_code;
          if ( $? ) {
             $original_error_code = $?;
-         } 
+         }
          else {
             $original_error_code = $!;
          }
@@ -9661,14 +9666,14 @@ sub main {
                warn "Error cleaning up: $EVAL_ERROR\n";
             }
          }
-         
+
          # rethrow original error
          # we do not call _die here, because it prints messages to STDOUT
          if ($original_error) {
             print STDERR $original_error;
             exit $original_error_code;
          }
-         
+
          return;
       }
    );
@@ -12987,7 +12992,7 @@ type: string
 Channel name used when connected to a server using replication channels.
 Suppose you have two replication sources, source_a at port 12345, source_b at port 1236 and
 a replica connected to both sources using channels chan_source_a and chan_source_b.
-You can use --channel=chan_source_a to specify the channel name to use in the 
+You can use --channel=chan_source_a to specify the channel name to use in the
 SHOW REPLICA STATUS command that pt-online-schema-change uses to calculate replication lag.
 
 =item --charset
@@ -13182,7 +13187,7 @@ it at the default, and omit the option L<"--chunk-time">.
 
 If both options L<"--chunk-size"> and L<"--chunk-time"> set explicitly, initial
 chunk size will be as specified by the option L<"--chunk-size">, but later it will
-be adjusted, so that the next query takes this amount of time (in seconds) 
+be adjusted, so that the next query takes this amount of time (in seconds)
 to execute. Use this option if the tool spends too much time copying the first chunk
 with default L<"--chunk-size">.
 
