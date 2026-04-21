@@ -452,39 +452,33 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	default:
 		buf = new(bytes.Buffer)
 
-		t := template.Must(template.New("mongos").Parse(templates.MongosInfo))
-		if err := t.Execute(buf, ci.MongosInfo); err != nil {
-			return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
-		}
-
-		t = template.Must(template.New("replicas").Parse(templates.Replicas))
-		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
-			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
-		}
-
-		t = template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
+		// 1. Host & OS
+		t := template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
 		if err := t.Execute(buf, ci.HostInfo); err != nil {
 			return nil, errors.Wrap(err, "cannot parse hosttemplateData section of the output template")
-		}
-
-		t = template.Must(template.New("cmdlineargsa").Parse(templates.CmdlineArgs))
-		if err := t.Execute(buf, ci.HostInfo); err != nil {
-			return nil, errors.Wrap(err, "cannot parse the command line args section of the output template")
-		}
-
-		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
-		if err := t.Execute(buf, ci.RunningOps); err != nil {
-			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
-		}
-
-		t = template.Must(template.New("ssl").Parse(templates.Security))
-		if err := t.Execute(buf, ci.SecuritySettings); err != nil {
-			return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
 		}
 
 		t = template.Must(template.New("oschecks").Parse(templates.OSChecks))
 		if err := t.Execute(buf, ci.OSChecks); err != nil {
 			return nil, errors.Wrap(err, "cannot parse oschecks section of the output template")
+		}
+
+		// 2. Configuration
+		t = template.Must(template.New("cmdlineargsa").Parse(templates.CmdlineArgs))
+		if err := t.Execute(buf, ci.HostInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse the command line args section of the output template")
+		}
+
+		// 3. Security
+		t = template.Must(template.New("ssl").Parse(templates.Security))
+		if err := t.Execute(buf, ci.SecuritySettings); err != nil {
+			return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
+		}
+
+		// 4. Replication
+		t = template.Must(template.New("replicas").Parse(templates.Replicas))
+		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
+			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
 		}
 
 		if len(ci.OplogInfo) > 0 {
@@ -499,9 +493,37 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 			}
 		}
 
+		// 5. Sharding
+		t = template.Must(template.New("mongos").Parse(templates.MongosInfo))
+		if err := t.Execute(buf, ci.MongosInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
+		}
+
+		t = template.Must(template.New("shardsinfo").Parse(templates.ShardsInfo))
+		if err := t.Execute(buf, ci.ShardsInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse shardsinfo section of the output template")
+		}
+
+		t = template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
+		if err := t.Execute(buf, ci.ClusterWideInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse clusterwide section of the output template")
+		}
+
+		t = template.Must(template.New("balancer").Parse(templates.BalancerStats))
+		if err := t.Execute(buf, ci.BalancerStats); err != nil {
+			return nil, errors.Wrap(err, "cannot parse balancer section of the output template")
+		}
+
+		// 6. Database Inventory
 		t = template.Must(template.New("dbinventory").Parse(templates.DBInventory))
 		if err := t.Execute(buf, ci.DBInventory); err != nil {
 			return nil, errors.Wrap(err, "cannot parse dbinventory section of the output template")
+		}
+
+		// 7. Performance & Storage
+		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
+		if err := t.Execute(buf, ci.RunningOps); err != nil {
+			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
 		}
 
 		t = template.Must(template.New("statusdelta").Parse(templates.StatusDelta))
@@ -512,21 +534,6 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 		t = template.Must(template.New("wiredtiger").Parse(templates.WiredTiger))
 		if err := t.Execute(buf, ci.WiredTiger); err != nil {
 			return nil, errors.Wrap(err, "cannot parse wiredtiger section of the output template")
-		}
-
-		t = template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
-		if err := t.Execute(buf, ci.ClusterWideInfo); err != nil {
-			return nil, errors.Wrap(err, "cannot parse clusterwide section of the output template")
-		}
-
-		t = template.Must(template.New("shardsinfo").Parse(templates.ShardsInfo))
-		if err := t.Execute(buf, ci.ShardsInfo); err != nil {
-			return nil, errors.Wrap(err, "cannot parse shardsinfo section of the output template")
-		}
-
-		t = template.Must(template.New("balancer").Parse(templates.BalancerStats))
-		if err := t.Execute(buf, ci.BalancerStats); err != nil {
-			return nil, errors.Wrap(err, "cannot parse balancer section of the output template")
 		}
 	}
 
