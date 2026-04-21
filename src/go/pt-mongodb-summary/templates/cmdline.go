@@ -14,8 +14,34 @@
 package templates
 
 const CmdlineArgs = `
-{{ if . }}
+{{ if . -}}
 # Command line arguments
 {{ range .CmdlineArgs -}} {{-  . }} {{ end }}
+{{- if .ParsedConfig }}
+# Active Configuration
+{{- with .ParsedConfig.Parsed }}
+{{- if .Net.Port }}
+                    Port | {{.Net.Port}}
+{{- end }}
+{{- if .Net.BindIP }}
+                 Bind IP | {{.Net.BindIP}}
+{{- end }}
+{{- if .Net.SSL.Mode }}
+                     SSL | {{.Net.SSL.Mode}}
+{{- end }}
+{{- if .Storage.DbPath }}
+              Data Path   | {{.Storage.DbPath}}
+{{- end }}
+{{- if .Storage.Engine }}
+          Storage Engine  | {{.Storage.Engine}}
+{{- end }}
+{{- if .Replication.ReplSet }}
+                 ReplSet  | {{.Replication.ReplSet}}
+{{- end }}
+{{- if .Security.Authorization }}
+           Authorization  | {{.Security.Authorization}}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 `

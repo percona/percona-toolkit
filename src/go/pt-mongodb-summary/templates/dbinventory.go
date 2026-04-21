@@ -13,11 +13,12 @@
 
 package templates
 
-const Oplog = `
-# Oplog ##################################################################################################
-{{- range .Nodes }}
-  {{printf "%-40s" .Hostname}}  {{printf "%8d" .UsedMB}} MB used / {{printf "%8d" .Size}} MB  Length: {{.Running}}  Election: {{.ElectionTime.Format "2006-01-02T15:04:05Z"}}
+const DBInventory = `
+{{ if . -}}
+# Database Inventory #####################################################################################
+  Database                           Size    Collections    Indexes
+{{- range . }}
+  {{printf "%-30s" .Name}}  {{printf "%8.2f %-3s" .SizeScaled .SizeUnit}}  {{printf "%11d" .Collections}}  {{printf "%9d" .Indexes}}
 {{- end }}
-  Min Oplog Host | {{.MinHost}}
-  Max Oplog Host | {{.MaxHost}}
+{{- end }}
 `

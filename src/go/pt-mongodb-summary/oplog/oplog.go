@@ -43,6 +43,17 @@ func GetOplogInfo(ctx context.Context, hostnames []string, co *options.ClientOpt
 			return nil, errors.Wrapf(err, "cannot connect to %s", hostname)
 		}
 
+		var helloResult struct {
+			ArbiterOnly bool   `bson:"arbiterOnly"`
+			Msg         string `bson:"msg"`
+		}
+		if imErr := client.Database("admin").RunCommand(ctx, bson.M{"isMaster": 1}).Decode(&helloResult); imErr == nil {
+			if helloResult.ArbiterOnly || helloResult.Msg == "isdbgrid" {
+				client.Disconnect(ctx) //nolint
+				continue
+			}
+		}
+
 		oplogCol, err := getOplogCollection(ctx, client)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot determine the oplog collection")

@@ -112,7 +112,8 @@ type hostInfo struct {
 	ProcCreateTime   time.Time
 	ProcProcessCount int
 
-	CmdlineArgs []string
+	CmdlineArgs  []string
+	ParsedConfig *proto.CommandLineOptions
 	// Server Status
 	ProcessName    string
 	ReplicasetName string
@@ -214,7 +215,65 @@ type collectedInfo struct {
 	SecuritySettings *security
 	HostInfo         *hostInfo
 	MongosInfo       *mongosInfo
+	OSChecks         *osProductionChecks
+	DBInventory      []dbInventoryEntry
+	StatusDelta      *statusDelta
+	WiredTiger       *wiredTigerInfo
+	ShardsInfo       *proto.ShardsInfo
 	Errors           []string
+}
+
+type osProductionChecks struct {
+	KernelVersion  string
+	MemSizeMB      float64
+	NumCores       float64
+	NUMAEnabled    bool
+	OpenFilesLimit float64
+	OpenFilesWarn  bool
+	VMMaxMapCount  int64
+	VMMaxMapWarn   bool
+	TasksMax       string
+}
+
+type oplogDisplay struct {
+	Nodes   []proto.OplogInfo
+	MinHost string
+	MaxHost string
+}
+
+type dbInventoryEntry struct {
+	Name        string
+	SizeScaled  float64
+	SizeUnit    string
+	Collections int64
+	Indexes     int64
+}
+
+type counterDelta struct {
+	PerSec float64
+	PerDay float64
+}
+
+type statusDelta struct {
+	Insert   counterDelta
+	Query    counterDelta
+	Update   counterDelta
+	Delete   counterDelta
+	GetMore  counterDelta
+	Command  counterDelta
+	Duration time.Duration
+}
+
+type wiredTigerInfo struct {
+	CacheUsedMB            float64
+	CacheMaxMB             float64
+	CacheUsedPct           float64
+	DirtyMB                float64
+	DirtyPct               float64
+	PagesEvictedUnmodified int64
+	PagesEvictedModified   int64
+	PagesReadIntoCache     int64
+	PagesWrittenFromCache  int64
 }
 
 func main() {
@@ -271,7 +330,11 @@ func main() {
 	}
 
 	if err := client.Connect(ctx); err != nil {
-		log.Errorf("Cannot connect to MongoDB: %s", err)
+		if strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "tls:") {
+			log.Errorf("Cannot connect to MongoDB (possible TLS mismatch or wrong port): %s", err)
+		} else {
+			log.Errorf("Cannot connect to MongoDB: %s", err)
+		}
 		os.Exit(cannotConnectToMongoDB)
 	}
 
@@ -301,7 +364,9 @@ func main() {
 
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
 
-	if opts.RunningOpsSamples > 0 && opts.RunningOpsInterval > 0 {
+	isArbiter := ci.HostInfo != nil && ci.HostInfo.NodeType == "arbiter"
+
+	if !isArbiter && opts.RunningOpsSamples > 0 && opts.RunningOpsInterval > 0 {
 		ci.RunningOps, err = getOpCountersStats(
 			ctx, client, opts.RunningOpsSamples,
 			time.Duration(opts.RunningOpsInterval)*time.Millisecond,
@@ -319,13 +384,31 @@ func main() {
 		log.Warn("Cannot check security settings since host info is not available (permissions?)")
 	}
 
-	if ci.OplogInfo, err = oplog.GetOplogInfo(ctx, hostnames, clientOptions); err != nil {
-		log.Infof("Cannot get Oplog info: %s\n", err)
-	} else {
-		if len(ci.OplogInfo) == 0 {
+	ci.OSChecks, err = getOSProductionChecks(ctx, client)
+	if err != nil {
+		log.Warnf("[Warning] cannot get OS production checks: %v\n", err)
+	}
+
+	ci.DBInventory, err = getDatabaseInventory(ctx, client)
+	if err != nil {
+		log.Warnf("[Warning] cannot get database inventory: %v\n", err)
+	}
+
+	if !isArbiter {
+		if ci.OplogInfo, err = oplog.GetOplogInfo(ctx, hostnames, clientOptions); err != nil {
+			log.Infof("Cannot get Oplog info: %s\n", err)
+		} else if len(ci.OplogInfo) == 0 {
 			log.Info("oplog info is empty. Skipping")
-		} else {
-			ci.OplogInfo = ci.OplogInfo[:1]
+		}
+
+		ci.StatusDelta, err = getStatusDelta(ctx, client, 10*time.Second)
+		if err != nil {
+			log.Warnf("[Warning] cannot get status delta: %v\n", err)
+		}
+
+		ci.WiredTiger, err = getWiredTigerInfo(ctx, client)
+		if err != nil {
+			log.Debugf("WiredTiger metrics not available: %v", err)
 		}
 	}
 
@@ -333,6 +416,10 @@ func main() {
 	if ci.HostInfo.NodeType == typeMongos {
 		if ci.ClusterWideInfo, err = getClusterwideInfo(ctx, client); err != nil {
 			log.Printf("[Error] cannot get cluster wide info: %v\n", err)
+		}
+
+		if ci.ShardsInfo, err = getShardsInfo(ctx, client); err != nil {
+			log.Warnf("[Warning] cannot get shards info: %v\n", err)
 		}
 	}
 
@@ -395,16 +482,46 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 			return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
 		}
 
-		if ci.OplogInfo != nil && len(ci.OplogInfo) > 0 {
+		t = template.Must(template.New("oschecks").Parse(templates.OSChecks))
+		if err := t.Execute(buf, ci.OSChecks); err != nil {
+			return nil, errors.Wrap(err, "cannot parse oschecks section of the output template")
+		}
+
+		if len(ci.OplogInfo) > 0 {
+			od := oplogDisplay{
+				Nodes:   ci.OplogInfo,
+				MinHost: ci.OplogInfo[0].Hostname,
+				MaxHost: ci.OplogInfo[len(ci.OplogInfo)-1].Hostname,
+			}
 			t = template.Must(template.New("oplogInfo").Parse(templates.Oplog))
-			if err := t.Execute(buf, ci.OplogInfo[0]); err != nil {
+			if err := t.Execute(buf, od); err != nil {
 				return nil, errors.Wrap(err, "cannot parse oplogInfo section of the output template")
 			}
+		}
+
+		t = template.Must(template.New("dbinventory").Parse(templates.DBInventory))
+		if err := t.Execute(buf, ci.DBInventory); err != nil {
+			return nil, errors.Wrap(err, "cannot parse dbinventory section of the output template")
+		}
+
+		t = template.Must(template.New("statusdelta").Parse(templates.StatusDelta))
+		if err := t.Execute(buf, ci.StatusDelta); err != nil {
+			return nil, errors.Wrap(err, "cannot parse statusdelta section of the output template")
+		}
+
+		t = template.Must(template.New("wiredtiger").Parse(templates.WiredTiger))
+		if err := t.Execute(buf, ci.WiredTiger); err != nil {
+			return nil, errors.Wrap(err, "cannot parse wiredtiger section of the output template")
 		}
 
 		t = template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
 		if err := t.Execute(buf, ci.ClusterWideInfo); err != nil {
 			return nil, errors.Wrap(err, "cannot parse clusterwide section of the output template")
+		}
+
+		t = template.Must(template.New("shardsinfo").Parse(templates.ShardsInfo))
+		if err := t.Execute(buf, ci.ShardsInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse shardsinfo section of the output template")
 		}
 
 		t = template.Must(template.New("balancer").Parse(templates.BalancerStats))
@@ -446,6 +563,7 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		if cmdOpts.Parsed.Storage.DbPath != "" {
 			i.DBPath = cmdOpts.Parsed.Storage.DbPath
 		}
+		i.ParsedConfig = &cmdOpts
 	}
 
 	var ss proto.ServerStatus
@@ -456,16 +574,16 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		i.Version = ss.Version
 		if ss.Repl != nil {
 			i.ReplicasetName = ss.Repl.SetName
+			if fmt.Sprintf("%v", ss.Repl.ArbiterOnly) == "true" {
+				i.NodeType = "arbiter"
+			}
 		}
 
 		pi := procInfo{}
-		if err := getProcInfo(int32(ss.Pid), &pi); err != nil {
-			pi.Error = err
-		} else {
-			i.ProcPath = pi.Path
-			i.ProcUserName = pi.UserName
-			i.ProcCreateTime = pi.CreateTime
-		}
+		getProcInfo(int32(ss.Pid), &pi)
+		i.ProcPath = pi.Path
+		i.ProcUserName = pi.UserName
+		i.ProcCreateTime = pi.CreateTime
 	}
 
 	return i, nil
@@ -474,7 +592,8 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 func countMongodProcesses() (int, error) {
 	pids, err := process.Pids()
 	if err != nil {
-		return 0, err
+		log.Debugf("cannot list processes (restricted environment): %s", err)
+		return 0, nil
 	}
 
 	count := 0
@@ -832,27 +951,20 @@ func getOpCountersStats(ctx context.Context, client *mongo.Client, count int,
 	return oc, nil
 }
 
-func getProcInfo(pid int32, templateData *procInfo) error {
-	// proc, err := process.NewProcess(templateData.ServerStatus.Pid)
+func getProcInfo(pid int32, pi *procInfo) error {
 	proc, err := process.NewProcess(pid)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot get process %d", pid))
+		log.Debugf("cannot get process %d (restricted environment): %s", pid, err)
+		return nil
 	}
-
-	ct, err := proc.CreateTime()
-	if err != nil {
-		return err
+	if ct, err := proc.CreateTime(); err == nil {
+		pi.CreateTime = time.Unix(ct/1000, 0)
 	}
-
-	templateData.CreateTime = time.Unix(ct/1000, 0)
-	templateData.Path, err = proc.Exe()
-	if err != nil {
-		return err
+	if path, err := proc.Exe(); err == nil {
+		pi.Path = path
 	}
-
-	templateData.UserName, err = proc.Username()
-	if err != nil {
-		return err
+	if name, err := proc.Username(); err == nil {
+		pi.UserName = name
 	}
 	return nil
 }
@@ -979,6 +1091,138 @@ func externalIP() (string, error) {
 	return "", errors.New("are you connected to the network?")
 }
 
+func getOSProductionChecks(ctx context.Context, client *mongo.Client) (*osProductionChecks, error) {
+	hi := proto.HostInfo{}
+	if err := client.Database("admin").RunCommand(ctx, primitive.M{"hostInfo": 1}).Decode(&hi); err != nil {
+		return nil, errors.Wrap(err, "getOSProductionChecks.hostInfo")
+	}
+	c := &osProductionChecks{
+		KernelVersion:  hi.Extra.KernelVersion,
+		MemSizeMB:      hi.System.MemSizeMB,
+		NumCores:       hi.System.NumCores,
+		NUMAEnabled:    hi.System.NumaEnabled,
+		OpenFilesLimit: hi.Extra.MaxOpenFiles,
+		OpenFilesWarn:  hi.Extra.MaxOpenFiles > 0 && hi.Extra.MaxOpenFiles < 65535,
+	}
+	if data, err := os.ReadFile("/proc/sys/vm/max_map_count"); err == nil {
+		fmt.Sscanf(strings.TrimSpace(string(data)), "%d", &c.VMMaxMapCount)
+		c.VMMaxMapWarn = c.VMMaxMapCount < 262144
+	}
+	if data, err := os.ReadFile("/proc/1/limits"); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			if strings.HasPrefix(line, "Max processes") {
+				fields := strings.Fields(line)
+				if len(fields) >= 4 {
+					c.TasksMax = fields[3]
+				}
+				break
+			}
+		}
+	}
+	return c, nil
+}
+
+func getShardsInfo(ctx context.Context, client *mongo.Client) (*proto.ShardsInfo, error) {
+	cursor, err := client.Database("config").Collection("shards").Find(ctx, primitive.M{})
+	if err != nil {
+		return nil, errors.Wrap(err, "getShardsInfo")
+	}
+	defer cursor.Close(ctx)
+	var si proto.ShardsInfo
+	if err := cursor.All(ctx, &si.Shards); err != nil {
+		return nil, errors.Wrap(err, "getShardsInfo.decode")
+	}
+	si.OK = 1
+	return &si, nil
+}
+
+func getDatabaseInventory(ctx context.Context, client *mongo.Client) ([]dbInventoryEntry, error) {
+	var dbs databases
+	if err := client.Database("admin").RunCommand(ctx, primitive.M{"listDatabases": 1}).Decode(&dbs); err != nil {
+		return nil, errors.Wrap(err, "getDatabaseInventory.listDatabases")
+	}
+	var result []dbInventoryEntry
+	for _, db := range dbs.Databases {
+		var stats struct {
+			Collections int64   `bson:"collections"`
+			Indexes     int64   `bson:"indexes"`
+			DataSize    float64 `bson:"dataSize"`
+		}
+		if err := client.Database(db.Name).RunCommand(ctx, primitive.M{"dbStats": 1}).Decode(&stats); err != nil {
+			log.Debugf("cannot get dbStats for %s: %s", db.Name, err)
+			continue
+		}
+		scaled, unit := sizeAndUnit(int64(stats.DataSize))
+		result = append(result, dbInventoryEntry{
+			Name:        db.Name,
+			SizeScaled:  scaled,
+			SizeUnit:    unit,
+			Collections: stats.Collections,
+			Indexes:     stats.Indexes,
+		})
+	}
+	return result, nil
+}
+
+func getStatusDelta(ctx context.Context, client *mongo.Client, d time.Duration) (*statusDelta, error) {
+	var s1, s2 proto.ServerStatus
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "serverStatus", Value: 1}}).Decode(&s1); err != nil {
+		return nil, errors.Wrap(err, "getStatusDelta.first")
+	}
+	time.Sleep(d)
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "serverStatus", Value: 1}}).Decode(&s2); err != nil {
+		return nil, errors.Wrap(err, "getStatusDelta.second")
+	}
+	if s1.Opcounters == nil || s2.Opcounters == nil {
+		return nil, errors.New("opcounters unavailable")
+	}
+	secs := d.Seconds()
+	perDayMult := 86400.0 / secs
+	calc := func(a, b int64) counterDelta {
+		diff := float64(b - a)
+		return counterDelta{PerSec: diff / secs, PerDay: diff * perDayMult}
+	}
+	return &statusDelta{
+		Insert:   calc(s1.Opcounters.Insert, s2.Opcounters.Insert),
+		Query:    calc(s1.Opcounters.Query, s2.Opcounters.Query),
+		Update:   calc(s1.Opcounters.Update, s2.Opcounters.Update),
+		Delete:   calc(s1.Opcounters.Delete, s2.Opcounters.Delete),
+		GetMore:  calc(s1.Opcounters.GetMore, s2.Opcounters.GetMore),
+		Command:  calc(s1.Opcounters.Command, s2.Opcounters.Command),
+		Duration: d,
+	}, nil
+}
+
+func getWiredTigerInfo(ctx context.Context, client *mongo.Client) (*wiredTigerInfo, error) {
+	var ss proto.ServerStatus
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "serverStatus", Value: 1}}).Decode(&ss); err != nil {
+		return nil, errors.Wrap(err, "getWiredTigerInfo.serverStatus")
+	}
+	if ss.WiredTiger == nil {
+		return nil, errors.New("WiredTiger not available on this node")
+	}
+	c := ss.WiredTiger.Cache
+	maxMB := float64(c.MaxBytesConfigured) / (1024 * 1024)
+	usedMB := float64(c.CurrentCachedBytes) / (1024 * 1024)
+	dirtyMB := float64(c.TrackedDirtyBytes) / (1024 * 1024)
+	usedPct, dirtyPct := 0.0, 0.0
+	if maxMB > 0 {
+		usedPct = usedMB / maxMB * 100
+		dirtyPct = dirtyMB / maxMB * 100
+	}
+	return &wiredTigerInfo{
+		CacheUsedMB:            usedMB,
+		CacheMaxMB:             maxMB,
+		CacheUsedPct:           usedPct,
+		DirtyMB:                dirtyMB,
+		DirtyPct:               dirtyPct,
+		PagesEvictedUnmodified: c.PagesEvictedUnmodified,
+		PagesEvictedModified:   c.PagesEvictedModified,
+		PagesReadIntoCache:     c.PagesReadIntoCache,
+		PagesWrittenFromCache:  c.PagesWrittenFromCache,
+	}, nil
+}
+
 func parseFlags() (*cliOptions, error) {
 	opts := &cliOptions{
 		LogLevel:           DefaultLogLevel,
@@ -1090,6 +1334,9 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 
 	if opts.URI != "" {
 		clientOptions = options.Client().ApplyURI(opts.URI)
+		if strings.HasPrefix(opts.URI, "mongodb+srv://") {
+			clientOptions.Direct = nil
+		}
 	} else {
 		host := opts.Host
 		if host == "" {
