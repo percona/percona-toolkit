@@ -16,7 +16,7 @@ package templates
 const Oplog = `
 # Oplog ##################################################################################################
 {{- range .Nodes }}
-  {{printf "%-40s" .Hostname}}  {{printf "%8d" .UsedMB}} MB used / {{printf "%8d" .Size}} MB  Length: {{.Running}}  Election: {{.ElectionTime.Format "2006-01-02T15:04:05Z"}}
+  {{printf "%-40s" .Hostname}}  {{printf "%8d" .UsedMB}} MB used / {{printf "%8d" .Size}} MB  Length: {{.Running}}{{if not .ElectionTime.IsZero}}  Election: {{.ElectionTime.Format "2006-01-02T15:04:05Z"}}{{end}}
 {{- end }}
   Min Oplog Host | {{.MinHost}}
   Max Oplog Host | {{.MaxHost}}
