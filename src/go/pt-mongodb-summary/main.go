@@ -32,7 +32,6 @@ import (
 	"time"
 
 	version "github.com/hashicorp/go-version"
-	"github.com/pborman/getopt"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
@@ -188,22 +187,77 @@ func (t mongosInfo) MaxNameLen() int {
 }
 
 type cliOptions struct {
-	Host               string
-	Port               string
-	User               string
-	Password           string
-	AuthDB             string
-	LogLevel           string
-	OutputFormat       string
-	SSLCAFile          string
-	SSLPEMKeyFile      string
-	RunningOpsSamples  int
-	RunningOpsInterval int
-	URI                string
-	Help               bool
-	Version            bool
-	NoVersionCheck     bool
-	NoRunningOps       bool
+	config.ConfigFlag
+	config.VersionFlag
+	config.VersionCheckFlag
+
+	URI           string                    `name:"uri"                    help:"MongoDB connection URI. Cannot be combined with --host or --port."`
+	Host          string                    `name:"host"                   help:"Host to connect to" default:""`
+	Port          string                    `name:"port"                   help:"Port to connect to" default:""`
+	User          string                    `name:"username"               short:"u" help:"Username for MongoDB authentication" default:""`
+	Password      config.StdinRequestString `name:"password"               short:"p" help:"Password for MongoDB authentication. Omit value to prompt." optional:""`
+	AuthDB        string                    `name:"authenticationDatabase" short:"a" help:"Authentication database" default:"admin"`
+	LogLevel      string                    `name:"log-level"              short:"l" help:"Log level: panic, fatal, error, warn, info, debug" default:"warn"`
+	OutputFormat  string                    `name:"output-format"          short:"f" help:"Output format: text or json" default:"text" enum:"text,json"`
+	SSLCAFile     string                    `name:"sslCAFile"              help:"SSL CA cert file used for authentication" default:""`
+	SSLPEMKeyFile string                    `name:"sslPEMKeyFile"          help:"SSL client PEM file used for authentication" default:""`
+	RunningOpsSamples  int                  `name:"running-ops-samples"    short:"s" help:"Number of samples to collect for running ops" default:"5"`
+	RunningOpsInterval int                  `name:"running-ops-interval"   short:"i" help:"Interval between running ops samples in milliseconds" default:"1000"`
+
+	HostPort string `arg:"" optional:"" name:"host[:port]" help:"Host and optional port (legacy positional syntax)" default:""`
+}
+
+func (o *cliOptions) AfterApply() error {
+	if o.Version {
+		fmt.Println(toolname)
+		fmt.Printf("Version %s\n", Version)
+		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
+		fmt.Printf("Commit: %s\n", Commit)
+		return nil
+	}
+
+	ll, err := log.ParseLevel(o.LogLevel)
+	if err != nil {
+		return fmt.Errorf("cannot set log level: %w", err)
+	}
+	log.SetLevel(ll)
+
+	if o.VersionCheck {
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
+		if err != nil {
+			log.Infof("cannot check version updates: %s", err)
+		} else if advice != "" {
+			log.Infof("%s", advice)
+		}
+	}
+
+	if err := o.Password.Request(func() (string, error) {
+		print("Password: ")
+		pass, err := term.ReadPassword(0)
+		return string(pass), err
+	}); err != nil {
+		return err
+	}
+
+	if o.HostPort != "" {
+		if o.URI != "" || o.Host != "" || o.Port != "" {
+			return fmt.Errorf("host[:port] positional arg cannot be combined with --uri, --host, or --port")
+		}
+		host, port, splitErr := net.SplitHostPort(o.HostPort)
+		if splitErr != nil {
+			o.Host = o.HostPort
+		} else {
+			o.Host = host
+			o.Port = port
+		}
+		o.HostPort = ""
+	}
+
+	if o.URI != "" && (o.Host != "" || o.Port != "") {
+		return fmt.Errorf("if a full URI is provided, you cannot also specify --host or --port")
+	}
+
+	return nil
 }
 
 type collectedInfo struct {
@@ -277,41 +331,14 @@ type wiredTigerInfo struct {
 }
 
 func main() {
-	opts, err := parseFlags()
-	if err != nil {
-		log.Errorf("cannot get parameters: %s", err.Error())
-
+	opts := &cliOptions{}
+	if _, _, err := config.Setup(toolname, opts); err != nil {
+		log.Errorf("cannot get parameters: %s", err)
 		os.Exit(cannotParseCommandLineParameters)
 	}
 
-	if opts == nil && err == nil {
-		return
-	}
-
-	logLevel, err := log.ParseLevel(opts.LogLevel)
-	if err != nil {
-		fmt.Printf("cannot set log level: %s", err.Error())
-	}
-
-	log.SetLevel(logLevel)
-
 	if opts.Version {
-		fmt.Println(toolname)
-		fmt.Printf("Version %s\n", Version)
-		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
-		fmt.Printf("Commit: %s\n", Commit)
-
 		return
-	}
-
-	conf := config.DefaultConfig(toolname)
-	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
-		advice, err := versioncheck.CheckUpdates(toolname, Version)
-		if err != nil {
-			log.Infof("cannot check version updates: %s", err.Error())
-		} else if advice != "" {
-			log.Infof("%s", advice)
-		}
 	}
 
 	ctx := context.Background()
@@ -1230,87 +1257,6 @@ func getWiredTigerInfo(ctx context.Context, client *mongo.Client) (*wiredTigerIn
 	}, nil
 }
 
-func parseFlags() (*cliOptions, error) {
-	opts := &cliOptions{
-		LogLevel:           DefaultLogLevel,
-		RunningOpsSamples:  DefaultRunningOpsSamples,
-		RunningOpsInterval: DefaultRunningOpsInterval, // milliseconds
-		AuthDB:             DefaultAuthDB,
-		OutputFormat:       DefaultOutputFormat,
-	}
-
-	gop := getopt.New()
-	gop.BoolVarLong(&opts.Help, "help", 'h', "Show help")
-	gop.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
-	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
-
-	gop.StringVarLong(&opts.URI, "uri", 0, `URI describes the hosts to be used and options. Flags has higher priority. If a full URI is provided, you cannot also specify "--host" or "--port".`)
-	gop.StringVarLong(&opts.Host, "host", 0, "Host")
-	gop.StringVarLong(&opts.Port, "port", 0, "Port")
-
-	gop.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
-	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").
-		SetOptional()
-	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
-		"Database to use for optional MongoDB authentication. Default: admin")
-	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "error",
-		"Log level: panic, fatal, error, warn, info, debug. Default: error")
-	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
-
-	gop.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
-		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples),
-	)
-
-	gop.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
-		fmt.Sprintf("Interval to wait between running ops samples in milliseconds. Default %d milliseconds",
-			opts.RunningOpsInterval),
-	)
-
-	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
-	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
-
-	gop.SetParameters("host[:port]")
-	gop.Parse(os.Args)
-
-	if gop.NArgs() > 0 {
-		if gop.IsSet("host") || gop.IsSet("port") || gop.IsSet("uri") {
-			return nil, fmt.Errorf(`parameter host[:port] is not compatible with "--uri", "--host" and "--port" flags set`)
-		}
-		var err error
-		opts.Host, opts.Port, err = net.SplitHostPort(gop.Arg(0))
-		if err != nil {
-			return nil, err
-		}
-		gop.Parse(gop.Args())
-	}
-
-	if gop.IsSet("password") && opts.Password == "" {
-		print("Password: ")
-
-		pass, err := term.ReadPassword(0)
-		if err != nil {
-			return opts, err
-		}
-
-		opts.Password = string(pass)
-	}
-
-	if gop.IsSet("uri") && (gop.IsSet("host") || gop.IsSet("port")) {
-		return nil, fmt.Errorf("If a full URI is provided, you cannot also specify --host or --port")
-	}
-
-	if opts.Help {
-		gop.PrintUsage(os.Stdout)
-
-		return nil, nil
-	}
-
-	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
-		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
-	}
-
-	return opts, nil
-}
 
 func getChunksCount(ctx context.Context, client *mongo.Client) ([]proto.ChunksByCollection, error) {
 	var result []proto.ChunksByCollection
@@ -1366,8 +1312,11 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 		auth.Username = opts.User
 	}
 	if opts.Password != "" {
-		auth.Password = opts.Password
+		auth.Password = string(opts.Password)
 		auth.PasswordSet = true
+	}
+	if opts.AuthDB != "" && auth.AuthSource == "" {
+		auth.AuthSource = opts.AuthDB
 	}
 
 	if auth.Username != "" {

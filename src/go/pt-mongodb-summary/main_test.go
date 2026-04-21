@@ -18,13 +18,12 @@ import (
 	"time"
 
 	"context"
-	"os"
-	"reflect"
 
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/pborman/getopt"
+	"github.com/percona/percona-toolkit/src/go/lib/config"
+
 	"github.com/stretchr/testify/require"
 
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
@@ -114,79 +113,53 @@ func TestClusterWideInfo(t *testing.T) {
 	}
 }
 
-func TestParseFlags(t *testing.T) {
+func TestAfterApply(t *testing.T) {
 	tests := []struct {
-		name    string
-		args    []string
-		want    *cliOptions
-		wantErr bool
+		name        string
+		input       *cliOptions
+		wantErr     bool
+		wantHost    string
+		wantPort    string
+		wantHostPort string
 	}{
 		{
-			name: "Default values",
-			args: []string{toolname},
-			want: &cliOptions{
-				Host:               "",
-				LogLevel:           DefaultLogLevel,
-				AuthDB:             DefaultAuthDB,
-				RunningOpsSamples:  DefaultRunningOpsSamples,
-				RunningOpsInterval: DefaultRunningOpsInterval,
-				OutputFormat:       "text",
-			},
+			name:  "Default values — no positional arg",
+			input: &cliOptions{LogLevel: "warn"},
 		},
 		{
-			name: "URI only",
-			args: []string{toolname, "--uri", "mongodb://test:27017"},
-			want: &cliOptions{
-				URI:                "mongodb://test:27017",
-				LogLevel:           DefaultLogLevel,
-				AuthDB:             DefaultAuthDB,
-				RunningOpsSamples:  DefaultRunningOpsSamples,
-				RunningOpsInterval: DefaultRunningOpsInterval,
-				OutputFormat:       "text",
-			},
+			name:         "Legacy positional host:port parsed",
+			input:        &cliOptions{LogLevel: "warn", HostPort: "test.example.com:27019"},
+			wantHost:     "test.example.com",
+			wantPort:     "27019",
+			wantHostPort: "",
 		},
 		{
-			name: "Legacy positional host:port",
-			args: []string{toolname, "test.example.com:27019"},
-			want: &cliOptions{
-				Host:               "test.example.com",
-				Port:               "27019",
-				LogLevel:           DefaultLogLevel,
-				AuthDB:             DefaultAuthDB,
-				RunningOpsSamples:  DefaultRunningOpsSamples,
-				RunningOpsInterval: DefaultRunningOpsInterval,
-				OutputFormat:       "text",
-			},
+			name:         "Legacy positional host only (no port)",
+			input:        &cliOptions{LogLevel: "warn", HostPort: "myhost"},
+			wantHost:     "myhost",
+			wantPort:     "",
+			wantHostPort: "",
 		},
 		{
 			name:    "Error: URI and Host together",
-			args:    []string{toolname, "--uri", "mongodb://test", "--host", "localhost"},
+			input:   &cliOptions{LogLevel: "warn", URI: "mongodb://test", Host: "localhost"},
 			wantErr: true,
 		},
 		{
 			name:    "Error: Positional arg and Host flag together",
-			args:    []string{toolname, "--host", "newhost", "legacy:27017"},
+			input:   &cliOptions{LogLevel: "warn", Host: "newhost", HostPort: "legacy:27017"},
 			wantErr: true,
 		},
 		{
-			name: "Help flag returns nil options",
-			args: []string{toolname, "--help"},
-			want: nil,
+			name:    "Error: Positional arg and URI together",
+			input:   &cliOptions{LogLevel: "warn", URI: "mongodb://test", HostPort: "legacy:27017"},
+			wantErr: true,
 		},
 	}
 
-	// Backup and silence stdout
-	oldStdout := os.Stdout
-	_, w, _ := os.Pipe()
-	os.Stdout = w
-	defer func() { os.Stdout = oldStdout }()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			getopt.Reset()
-			os.Args = tt.args
-
-			got, err := parseFlags()
+			err := tt.input.AfterApply()
 
 			if tt.wantErr {
 				if err == nil {
@@ -200,8 +173,16 @@ func TestParseFlags(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("mismatch:\ngot:  %+v\nwant: %+v", got, tt.want)
+			if tt.wantHost != "" || tt.wantPort != "" {
+				if tt.input.Host != tt.wantHost {
+					t.Errorf("Host: got %q want %q", tt.input.Host, tt.wantHost)
+				}
+				if tt.input.Port != tt.wantPort {
+					t.Errorf("Port: got %q want %q", tt.input.Port, tt.wantPort)
+				}
+				if tt.input.HostPort != tt.wantHostPort {
+					t.Errorf("HostPort: got %q want %q", tt.input.HostPort, tt.wantHostPort)
+				}
 			}
 		})
 	}
@@ -236,7 +217,7 @@ func TestGetClientOptions(t *testing.T) {
 			opts: &cliOptions{
 				URI:      "mongodb://old-user:old-pass@localhost:27017",
 				User:     "new-user",
-				Password: "new-password",
+				Password: config.StdinRequestString("new-password"),
 			},
 			validate: func(t *testing.T, co *options.ClientOptions) {
 				assert.Equal(t, "new-user", co.Auth.Username)
