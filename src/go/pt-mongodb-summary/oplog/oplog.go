@@ -65,8 +65,8 @@ func GetOplogInfo(ctx context.Context, hostnames []string, co *options.ClientOpt
 			return nil, errors.Wrapf(err, "cannot get collStats for collection %s", oplogCol)
 		}
 
-		result.Size = colStats.Size
 		result.UsedMB = colStats.Size / (1024 * 1024)
+		result.Size = colStats.MaxSize / (1024 * 1024)
 
 		var firstRow, lastRow proto.OplogRow
 		options := options.FindOne()
