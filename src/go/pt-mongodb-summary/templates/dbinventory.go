@@ -16,9 +16,9 @@ package templates
 const DBInventory = `
 {{ if . -}}
 # Database Inventory #####################################################################################
-  Database                           Size    Collections    Indexes
+  {{printf "%-30s  %8s %-5s  %11s  %9s" "Database" "Size" "" "Collections" "Indexes"}}
 {{- range . }}
-  {{printf "%-30s" .Name}}  {{printf "%8.2f %-3s" .SizeScaled .SizeUnit}}  {{printf "%11d" .Collections}}  {{printf "%9d" .Indexes}}
+  {{printf "%-30s  %8.2f %-5s  %11d  %9d" .Name .SizeScaled .SizeUnit .Collections .Indexes}}
 {{- end }}
 {{- end }}
 `
