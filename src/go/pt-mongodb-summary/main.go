@@ -21,7 +21,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"html/template"
+	"text/template"
 	"io/ioutil"
 	"net"
 	"os"
