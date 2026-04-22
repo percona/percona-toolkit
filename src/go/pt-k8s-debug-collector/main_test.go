@@ -305,7 +305,11 @@ func (s *CollectorSuite) TestIndividualFiles() {
 				var result []string
 				for _, f := range files {
 					b := path.Base(f)
-					if !slices.Contains(result, b) && b != "." && b != "" {
+					if b == "." || b == "" {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
 						result = append(result, b)
 					}
 				}
@@ -326,6 +330,43 @@ func (s *CollectorSuite) TestIndividualFiles() {
 					return ""
 				}
 				return in[:nl]
+			},
+		},
+		{
+			namespace: "pxc",
+			// If pod logs are exported as one file per container
+			name: "pxc_container_logs_split_by_container",
+			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/pxc/*/*.log'
+			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/*.log"},
+			want: []string{"logrotate.log", "logs.log", "pxc-init.log", "pxc.log"},
+			preprocessor: func(in string) string {
+				required := map[string]struct{}{
+					"logrotate.log": {},
+					"logs.log":      {},
+					"pxc-init.log":  {},
+					"pxc.log":       {},
+				}
+
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					rel := strings.TrimPrefix(f, "cluster-dump/pxc/")
+					parts := strings.Split(rel, "/")
+					if len(parts) != 2 {
+						continue
+					}
+
+					b := parts[1]
+					if _, ok := required[b]; !ok {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
+						result = append(result, b)
+					}
+				}
+				slices.Sort(result)
+				return strings.Join(result, "\n")
 			},
 		},
 	}
