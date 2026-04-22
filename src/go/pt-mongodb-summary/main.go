@@ -89,8 +89,9 @@ func ptDebugf(format string, args ...interface{}) {
 		return
 	}
 	_, file, line, _ := runtime.Caller(1)
-	fmt.Fprintf(os.Stderr, "# %s:%d %d %s\n",
+	fmt.Fprintf(os.Stderr, "# %s:%d %d %s %s\n",
 		filepath.Base(file), line, os.Getpid(),
+		time.Now().Format("2006-01-02T15:04:05.000Z07:00"),
 		fmt.Sprintf(format, args...))
 }
 
