@@ -118,6 +118,7 @@ type hostInfo struct {
 	ReplicasetName string
 	Version        string
 	NodeType       string
+	FCV            string
 }
 
 type procInfo struct {
@@ -274,7 +275,22 @@ type collectedInfo struct {
 	StatusDelta      *statusDelta
 	WiredTiger       *wiredTigerInfo
 	ShardsInfo       *proto.ShardsInfo
+	Connections      *connectionInfo
+	ChangeStream     *changeStreamInfo
 	Errors           []string
+}
+
+type connectionInfo struct {
+	Current         int64
+	Available       int64
+	TotalCreated    int64
+	MaxIncoming     int
+	SlowOpThresholdMs int64
+	ProfilingMode   string
+}
+
+type changeStreamInfo struct {
+	PreAndPostImagesExpire string
 }
 
 type osProductionChecks struct {
@@ -301,6 +317,7 @@ type dbInventoryEntry struct {
 	SizeUnit    string
 	Collections int64
 	Indexes     int64
+	TTLIndexes  int64
 }
 
 type counterDelta struct {
@@ -328,6 +345,13 @@ type wiredTigerInfo struct {
 	PagesEvictedModified   int64
 	PagesReadIntoCache     int64
 	PagesWrittenFromCache  int64
+	// tcmalloc
+	TcmallocAvailable      bool
+	TcmallocAllocMB        float64
+	TcmallocHeapMB         float64
+	TcmallocPageheapFreeMB float64
+	TcmallocPageheapUnmappedMB float64
+	TcmallocThreadCacheFreeMB  float64
 }
 
 func main() {
@@ -411,9 +435,21 @@ func main() {
 		log.Warn("Cannot check security settings since host info is not available (permissions?)")
 	}
 
+	ci.HostInfo.FCV = getFCV(ctx, client)
+
 	ci.OSChecks, err = getOSProductionChecks(ctx, client)
 	if err != nil {
 		log.Warnf("[Warning] cannot get OS production checks: %v\n", err)
+	}
+
+	ci.Connections, err = getConnectionInfo(ctx, client)
+	if err != nil {
+		log.Warnf("[Warning] cannot get connection info: %v\n", err)
+	}
+
+	ci.ChangeStream, err = getChangeStreamInfo(ctx, client)
+	if err != nil {
+		log.Debugf("change stream info not available: %v", err)
 	}
 
 	ci.DBInventory, err = getDatabaseInventory(ctx, client)
@@ -494,6 +530,16 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 		t = template.Must(template.New("cmdlineargsa").Parse(templates.CmdlineArgs))
 		if err := t.Execute(buf, ci.HostInfo); err != nil {
 			return nil, errors.Wrap(err, "cannot parse the command line args section of the output template")
+		}
+
+		t = template.Must(template.New("connections").Parse(templates.Connections))
+		if err := t.Execute(buf, ci.Connections); err != nil {
+			return nil, errors.Wrap(err, "cannot parse connections section of the output template")
+		}
+
+		t = template.Must(template.New("changestream").Parse(templates.ChangeStream))
+		if err := t.Execute(buf, ci.ChangeStream); err != nil {
+			return nil, errors.Wrap(err, "cannot parse changestream section of the output template")
 		}
 
 		// 3. Security
@@ -1186,6 +1232,7 @@ func getDatabaseInventory(ctx context.Context, client *mongo.Client) ([]dbInvent
 			log.Debugf("cannot get dbStats for %s: %s", db.Name, err)
 			continue
 		}
+		ttl := countTTLIndexes(ctx, client, db.Name)
 		scaled, unit := sizeAndUnit(int64(stats.DataSize))
 		result = append(result, dbInventoryEntry{
 			Name:        db.Name,
@@ -1193,9 +1240,36 @@ func getDatabaseInventory(ctx context.Context, client *mongo.Client) ([]dbInvent
 			SizeUnit:    unit,
 			Collections: stats.Collections,
 			Indexes:     stats.Indexes,
+			TTLIndexes:  ttl,
 		})
 	}
 	return result, nil
+}
+
+func countTTLIndexes(ctx context.Context, client *mongo.Client, dbName string) int64 {
+	colls, err := client.Database(dbName).ListCollectionNames(ctx, primitive.M{})
+	if err != nil {
+		return 0
+	}
+	var count int64
+	for _, coll := range colls {
+		cursor, err := client.Database(dbName).Collection(coll).Indexes().List(ctx)
+		if err != nil {
+			continue
+		}
+		var indexes []struct {
+			ExpireAfterSeconds *int32 `bson:"expireAfterSeconds"`
+		}
+		if err := cursor.All(ctx, &indexes); err != nil {
+			continue
+		}
+		for _, idx := range indexes {
+			if idx.ExpireAfterSeconds != nil {
+				count++
+			}
+		}
+	}
+	return count
 }
 
 func getStatusDelta(ctx context.Context, client *mongo.Client, d time.Duration) (*statusDelta, error) {
@@ -1244,7 +1318,7 @@ func getWiredTigerInfo(ctx context.Context, client *mongo.Client) (*wiredTigerIn
 		usedPct = usedMB / maxMB * 100
 		dirtyPct = dirtyMB / maxMB * 100
 	}
-	return &wiredTigerInfo{
+	wi := &wiredTigerInfo{
 		CacheUsedMB:            usedMB,
 		CacheMaxMB:             maxMB,
 		CacheUsedPct:           usedPct,
@@ -1254,7 +1328,72 @@ func getWiredTigerInfo(ctx context.Context, client *mongo.Client) (*wiredTigerIn
 		PagesEvictedModified:   c.PagesEvictedModified,
 		PagesReadIntoCache:     c.PagesReadIntoCache,
 		PagesWrittenFromCache:  c.PagesWrittenFromCache,
-	}, nil
+	}
+	if ss.Tcmalloc != nil {
+		wi.TcmallocAvailable = true
+		wi.TcmallocAllocMB = float64(ss.Tcmalloc.Generic.CurrentAllocatedBytes) / (1024 * 1024)
+		wi.TcmallocHeapMB = float64(ss.Tcmalloc.Generic.HeapSize) / (1024 * 1024)
+		wi.TcmallocPageheapFreeMB = float64(ss.Tcmalloc.Tcmalloc.PageheapFreeBytes) / (1024 * 1024)
+		wi.TcmallocPageheapUnmappedMB = float64(ss.Tcmalloc.Tcmalloc.PageheapUnmappedBytes) / (1024 * 1024)
+		wi.TcmallocThreadCacheFreeMB = float64(ss.Tcmalloc.Tcmalloc.ThreadCacheFreeBytes) / (1024 * 1024)
+	}
+	return wi, nil
+}
+
+func getConnectionInfo(ctx context.Context, client *mongo.Client) (*connectionInfo, error) {
+	var ss proto.ServerStatus
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "serverStatus", Value: 1}}).Decode(&ss); err != nil {
+		return nil, errors.Wrap(err, "getConnectionInfo.serverStatus")
+	}
+	ci := &connectionInfo{}
+	if ss.Connections != nil {
+		ci.Current = ss.Connections.Current
+		ci.Available = ss.Connections.Available
+		ci.TotalCreated = ss.Connections.TotalCreated
+	}
+	var cmdOpts proto.CommandLineOptions
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "getCmdLineOpts", Value: 1}}).Decode(&cmdOpts); err == nil {
+		ci.MaxIncoming = cmdOpts.Parsed.Net.MaxIncomingConnections
+		ci.SlowOpThresholdMs = cmdOpts.Parsed.OperationProfiling.SlowOpThresholdMs
+		ci.ProfilingMode = cmdOpts.Parsed.OperationProfiling.Mode
+	}
+	return ci, nil
+}
+
+func getFCV(ctx context.Context, client *mongo.Client) string {
+	var result struct {
+		FCV struct {
+			Version string `bson:"version"`
+		} `bson:"featureCompatibilityVersion"`
+	}
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{
+		{Key: "getParameter", Value: 1},
+		{Key: "featureCompatibilityVersion", Value: 1},
+	}).Decode(&result); err != nil {
+		return ""
+	}
+	return result.FCV.Version
+}
+
+func getChangeStreamInfo(ctx context.Context, client *mongo.Client) (*changeStreamInfo, error) {
+	var result struct {
+		ChangeStreamOptions struct {
+			PreAndPostImages struct {
+				ExpireAfterSeconds interface{} `bson:"expireAfterSeconds"`
+			} `bson:"preAndPostImages"`
+		} `bson:"changeStreamOptions"`
+	}
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{
+		{Key: "getParameter", Value: 1},
+		{Key: "changeStreamOptions", Value: 1},
+	}).Decode(&result); err != nil {
+		return nil, errors.Wrap(err, "getChangeStreamInfo.getParameter")
+	}
+	expire := "off"
+	if v := result.ChangeStreamOptions.PreAndPostImages.ExpireAfterSeconds; v != nil {
+		expire = fmt.Sprintf("%v", v)
+	}
+	return &changeStreamInfo{PreAndPostImagesExpire: expire}, nil
 }
 
 

@@ -13,12 +13,20 @@
 
 package templates
 
-const DBInventory = `
+const Connections = `
 {{ if . -}}
-# Database Inventory #####################################################################################
-  {{printf "%-30s  %8s %-5s  %11s  %9s  %10s" "Database" "Size" "" "Collections" "Indexes" "TTL Indexes"}}
-{{- range . }}
-  {{printf "%-30s  %8.2f %-5s  %11d  %9d  %11d" .Name .SizeScaled .SizeUnit .Collections .Indexes .TTLIndexes}}
+# Connections & Profiling #################################################################################
+             Current | {{.Current}}
+           Available | {{.Available}}
+       Total Created | {{.TotalCreated}}
+{{- if .MaxIncoming }}
+        Max Incoming | {{.MaxIncoming}}
+{{- end }}
+{{- if .ProfilingMode }}
+      Profiling Mode | {{.ProfilingMode}}
+{{- end }}
+{{- if .SlowOpThresholdMs }}
+  Slow Op Threshold  | {{.SlowOpThresholdMs}} ms
 {{- end }}
 {{- end }}
 `

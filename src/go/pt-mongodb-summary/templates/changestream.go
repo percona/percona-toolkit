@@ -13,12 +13,9 @@
 
 package templates
 
-const DBInventory = `
+const ChangeStream = `
 {{ if . -}}
-# Database Inventory #####################################################################################
-  {{printf "%-30s  %8s %-5s  %11s  %9s  %10s" "Database" "Size" "" "Collections" "Indexes" "TTL Indexes"}}
-{{- range . }}
-  {{printf "%-30s  %8.2f %-5s  %11d  %9d  %11d" .Name .SizeScaled .SizeUnit .Collections .Indexes .TTLIndexes}}
-{{- end }}
+# Change Stream ###########################################################################################
+  Pre/Post Images Expire | {{.PreAndPostImagesExpire}}
 {{- end }}
 `

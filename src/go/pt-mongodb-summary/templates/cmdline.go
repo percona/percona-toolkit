@@ -41,6 +41,15 @@ const CmdlineArgs = `
 {{- if .Security.Authorization }}
            Authorization  | {{.Security.Authorization}}
 {{- end }}
+{{- if .OperationProfiling.Mode }}
+        Profiling Mode    | {{.OperationProfiling.Mode}}
+{{- end }}
+{{- if .OperationProfiling.SlowOpThresholdMs }}
+    Slow Op Threshold     | {{.OperationProfiling.SlowOpThresholdMs}} ms
+{{- end }}
+{{- if .Net.MaxIncomingConnections }}
+  Max Incoming Conns      | {{.Net.MaxIncomingConnections}}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
