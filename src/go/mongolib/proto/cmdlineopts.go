@@ -35,14 +35,20 @@ type CloSystemLog struct {
 	Path        string `bson:"path"`
 }
 
+type OperationProfiling struct {
+	Mode              string `bson:"mode"`
+	SlowOpThresholdMs int64  `bson:"slowOpThresholdMs"`
+}
+
 type Parsed struct {
-	Sharding          Sharding          `bson:"sharding"`
-	Storage           CloStorage        `bson:"storage"`
-	SystemLog         CloSystemLog      `bson:"systemLog"`
-	Net               Net               `bson:"net"`
-	ProcessManagement ProcessManagement `bson:"processManagement"`
-	Replication       Replication       `bson:"replication"`
-	Security          Security          `bson:"security"`
+	Sharding            Sharding            `bson:"sharding"`
+	Storage             CloStorage          `bson:"storage"`
+	SystemLog           CloSystemLog        `bson:"systemLog"`
+	Net                 Net                 `bson:"net"`
+	ProcessManagement   ProcessManagement   `bson:"processManagement"`
+	Replication         Replication         `bson:"replication"`
+	Security            Security            `bson:"security"`
+	OperationProfiling  OperationProfiling  `bson:"operationProfiling"`
 }
 
 // Security is a struct to hold security related configs

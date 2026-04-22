@@ -22,5 +22,13 @@ const WiredTiger = `
     Evicted Modified | {{.PagesEvictedModified}}
     Read Into Cache  | {{.PagesReadIntoCache}}
    Written Fr Cache  | {{.PagesWrittenFromCache}}
+{{- if .TcmallocAvailable }}
+# TCMalloc ############################################################################################
+       Heap Size     | {{printf "%.2f" .TcmallocHeapMB}} MB
+   Allocated (RSS)   | {{printf "%.2f" .TcmallocAllocMB}} MB
+   Pageheap Free     | {{printf "%.2f" .TcmallocPageheapFreeMB}} MB
+ Pageheap Unmapped   | {{printf "%.2f" .TcmallocPageheapUnmappedMB}} MB
+  Thread Cache Free  | {{printf "%.2f" .TcmallocThreadCacheFreeMB}} MB
+{{- end }}
 {{- end }}
 `

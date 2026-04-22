@@ -40,6 +40,23 @@ type ServerStatus struct {
 	ShardCursorType    map[string]interface{} `bson:"shardCursorType"`
 	StorageEngine      StorageEngine          `bson:"storageEngine"`
 	WiredTiger         *WiredTiger            `bson:"wiredTiger"`
+	Tcmalloc           *TcmallocStats         `bson:"tcmalloc"`
+}
+
+type TcmallocStats struct {
+	Generic struct {
+		CurrentAllocatedBytes int64 `bson:"current_allocated_bytes"`
+		HeapSize              int64 `bson:"heap_size"`
+	} `bson:"generic"`
+	Tcmalloc struct {
+		PageheapFreeBytes            int64 `bson:"pageheap_free_bytes"`
+		PageheapUnmappedBytes        int64 `bson:"pageheap_unmapped_bytes"`
+		MaxTotalThreadCacheBytes     int64 `bson:"max_total_thread_cache_bytes"`
+		CurrentTotalThreadCacheBytes int64 `bson:"current_total_thread_cache_bytes"`
+		CentralCacheFreeBytes        int64 `bson:"central_cache_free_bytes"`
+		TransferCacheFreeBytes       int64 `bson:"transfer_cache_free_bytes"`
+		ThreadCacheFreeBytes         int64 `bson:"thread_cache_free_bytes"`
+	} `bson:"tcmalloc"`
 }
 
 type StorageEngine struct {

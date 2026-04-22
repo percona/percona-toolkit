@@ -25,6 +25,9 @@ const HostInfo = `# This host
                 PID Owner | {{.ProcessName}}
                  Hostname | {{.Hostname}}
                   Version | {{.Version}}
+{{- if .FCV }}
+                      FCV | {{.FCV}}
+{{- end }}
                  Built On | {{.HostOsType}} {{.HostSystemCPUArch}}
                   Started | {{.ProcCreateTime}}
 {{- if .DBPath }}
