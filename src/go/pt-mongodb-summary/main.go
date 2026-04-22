@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -80,6 +81,18 @@ var (
 	defaultConnectionTimeout = 3 * time.Second
 	directConnection         = true
 )
+
+var ptdebug = os.Getenv("PTDEBUG") != ""
+
+func ptDebugf(format string, args ...interface{}) {
+	if !ptdebug {
+		return
+	}
+	_, file, line, _ := runtime.Caller(1)
+	fmt.Fprintf(os.Stderr, "# %s:%d %d %s\n",
+		filepath.Base(file), line, os.Getpid(),
+		fmt.Sprintf(format, args...))
+}
 
 type TimedStats struct {
 	Min   int64
@@ -388,6 +401,7 @@ func main() {
 		}
 		os.Exit(cannotConnectToMongoDB)
 	}
+	ptDebugf("connected to MongoDB at %v", clientOptions.Hosts)
 
 	defer client.Disconnect(ctx) // nolint
 
@@ -395,29 +409,34 @@ func main() {
 	if err != nil && errors.Is(err, util.ShardingNotEnabledError) {
 		log.Errorf("Cannot get hostnames: %s", err)
 	}
+	ptDebugf("got hostnames: %v", hostnames)
 
 	ci := &collectedInfo{}
 
+	ptDebugf("collecting mongos info")
 	ci.MongosInfo, err = getMongosInfo(ctx, client)
 	if err != nil {
 		log.Warnf("[Warning] cannot get mongos info: %v\n", err)
 	}
-
+	ptDebugf("collecting host info")
 	ci.HostInfo, err = getHostInfo(ctx, client)
 	if err != nil {
 		log.Errorf("Cannot get host info for %q: %s", clientOptions.Hosts, err)
 		os.Exit(cannotGetHostInfo) //nolint:gocritic
 	}
+	ptDebugf("host info: version=%s nodeType=%s", ci.HostInfo.Version, ci.HostInfo.NodeType)
 
 	if ci.ReplicaMembers, err = util.GetReplicasetMembers(ctx, clientOptions); err != nil {
 		log.Warnf("[Warning] cannot get replicaset members: %v\n", err)
 	}
+	ptDebugf("got %d replica members", len(ci.ReplicaMembers))
 
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
 
 	isArbiter := ci.HostInfo != nil && ci.HostInfo.NodeType == "arbiter"
 
 	if !isArbiter && opts.RunningOpsSamples > 0 && opts.RunningOpsInterval > 0 {
+		ptDebugf("collecting op counters (%d samples, %dms interval)", opts.RunningOpsSamples, opts.RunningOpsInterval)
 		ci.RunningOps, err = getOpCountersStats(
 			ctx, client, opts.RunningOpsSamples,
 			time.Duration(opts.RunningOpsInterval)*time.Millisecond,
@@ -425,9 +444,11 @@ func main() {
 		if err != nil {
 			log.Printf("[Error] cannot get Opcounters stats: %v\n", err)
 		}
+		ptDebugf("op counters done")
 	}
 
 	if ci.HostInfo != nil {
+		ptDebugf("collecting security settings")
 		if ci.SecuritySettings, err = getSecuritySettings(ctx, client, ci.HostInfo.Version); err != nil {
 			log.Errorf("[Error] cannot get security settings: %v\n", err)
 		}
@@ -435,40 +456,52 @@ func main() {
 		log.Warn("Cannot check security settings since host info is not available (permissions?)")
 	}
 
+	ptDebugf("collecting FCV")
 	ci.HostInfo.FCV = getFCV(ctx, client)
+	ptDebugf("FCV: %s", ci.HostInfo.FCV)
 
+	ptDebugf("collecting OS production checks")
 	ci.OSChecks, err = getOSProductionChecks(ctx, client)
 	if err != nil {
 		log.Warnf("[Warning] cannot get OS production checks: %v\n", err)
 	}
 
+	ptDebugf("collecting connection info")
 	ci.Connections, err = getConnectionInfo(ctx, client)
 	if err != nil {
 		log.Warnf("[Warning] cannot get connection info: %v\n", err)
 	}
 
+	ptDebugf("collecting change stream info")
 	ci.ChangeStream, err = getChangeStreamInfo(ctx, client)
 	if err != nil {
 		log.Debugf("change stream info not available: %v", err)
 	}
 
+	ptDebugf("collecting database inventory")
 	ci.DBInventory, err = getDatabaseInventory(ctx, client)
 	if err != nil {
 		log.Warnf("[Warning] cannot get database inventory: %v\n", err)
 	}
+	ptDebugf("database inventory: %d entries", len(ci.DBInventory))
 
 	if !isArbiter {
+		ptDebugf("collecting oplog info")
 		if ci.OplogInfo, err = oplog.GetOplogInfo(ctx, hostnames, clientOptions); err != nil {
 			log.Infof("Cannot get Oplog info: %s\n", err)
 		} else if len(ci.OplogInfo) == 0 {
 			log.Info("oplog info is empty. Skipping")
 		}
+		ptDebugf("oplog info: %d entries", len(ci.OplogInfo))
 
+		ptDebugf("collecting status delta (10s window)")
 		ci.StatusDelta, err = getStatusDelta(ctx, client, 10*time.Second)
 		if err != nil {
 			log.Warnf("[Warning] cannot get status delta: %v\n", err)
 		}
+		ptDebugf("status delta done")
 
+		ptDebugf("collecting WiredTiger info")
 		ci.WiredTiger, err = getWiredTigerInfo(ctx, client)
 		if err != nil {
 			log.Debugf("WiredTiger metrics not available: %v", err)
@@ -477,21 +510,25 @@ func main() {
 
 	// individual servers won't know about this info
 	if ci.HostInfo.NodeType == typeMongos {
+		ptDebugf("collecting cluster-wide info (mongos)")
 		if ci.ClusterWideInfo, err = getClusterwideInfo(ctx, client); err != nil {
 			log.Printf("[Error] cannot get cluster wide info: %v\n", err)
 		}
 
+		ptDebugf("collecting shards info")
 		if ci.ShardsInfo, err = getShardsInfo(ctx, client); err != nil {
 			log.Warnf("[Warning] cannot get shards info: %v\n", err)
 		}
 	}
 
 	if ci.HostInfo.NodeType == typeMongos {
+		ptDebugf("collecting balancer stats")
 		if ci.BalancerStats, err = GetBalancerStats(ctx, client); err != nil {
 			log.Printf("[Error] cannot get balancer stats: %v\n", err)
 		}
 	}
 
+	ptDebugf("formatting results (format=%s)", opts.OutputFormat)
 	out, err := formatResults(ci, opts.OutputFormat)
 	if err != nil {
 		log.Errorf("Cannot format the results: %s", err)
