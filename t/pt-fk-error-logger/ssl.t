@@ -21,15 +21,6 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
-if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox source';
-}
-elsif ( $sandbox_version lt '8.0' ) {
-   plan skip_all => "Requires MySQL 8.0 or newer";
-}
-
-$sb->create_dbs($dbh, [qw(test)]);
-
 my ($output, $exit_code);
 my $cnf  = '/tmp/12345/my.sandbox.cnf';
 my $cmd  = "$trunk/bin/pt-fk-error-logger -F $cnf ";
@@ -45,6 +36,14 @@ my @args = qw(--iterations 1);
 if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
    plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
+elsif ( !$dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
+}
+elsif ( $sandbox_version lt '8.0' ) {
+   plan skip_all => "Requires MySQL 8.0 or newer";
+}
+
+$sb->create_dbs($dbh, [qw(test)]);
 
 $sb->do_as_root(
    'source',

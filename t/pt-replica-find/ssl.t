@@ -32,6 +32,15 @@ $output = `$trunk/bin/pt-replica-find h=127.1,P=12345,u=msandbox,p=msandbox,s=1 
 if ( $? != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
    plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
+elsif ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
+}
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
+}
+elsif ( !$replica2_dbh ) {
+   plan skip_all => 'Cannot connect to second sandbox replica';
+}
 
 # This test is sensitive to ghost/old replicas created/destroyed by other
 # tests.  So we stop the replicas, restart the source, and start everything
@@ -42,16 +51,6 @@ diag(`/tmp/12345/stop >/dev/null`);
 diag(`/tmp/12345/start >/dev/null`);
 $replica1_dbh->do("START ${replica_name}");
 $replica2_dbh->do("START ${replica_name}");
-
-if ( !$source_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox source';
-}
-elsif ( !$replica1_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox replica';
-}
-elsif ( !$replica2_dbh ) {
-   plan skip_all => 'Cannot connect to second sandbox replica';
-}
 
 $sb->do_as_root(
    'source',

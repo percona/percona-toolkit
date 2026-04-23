@@ -20,16 +20,6 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
-if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox source';
-}
-elsif ( $sandbox_version lt '8.0' ) {
-   plan skip_all => "Requires MySQL 8.0 or newer";
-}
-elsif ( !@{ $dbh->selectall_arrayref("show databases like 'sakila'") } ) {
-   plan skip_all => "Sakila database is not loaded";
-}
-
 my $cnf     = '/tmp/12345/my.sandbox.cnf';
 my @args    = ('-F', $cnf);
 my $samples = "t/pt-index-usage/samples/";
@@ -47,6 +37,15 @@ my ($output, $exit_code);
 
 if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
    plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+}
+elsif ( !$dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
+}
+elsif ( $sandbox_version lt '8.0' ) {
+   plan skip_all => "Requires MySQL 8.0 or newer";
+}
+elsif ( !@{ $dbh->selectall_arrayref("show databases like 'sakila'") } ) {
+   plan skip_all => "Sakila database is not loaded";
 }
 
 $sb->do_as_root(

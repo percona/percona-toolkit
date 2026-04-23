@@ -27,21 +27,20 @@ my ($output, $exit_code);
 my $cnf = '/tmp/12345/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-kill";
 
-if ( !$source_dbh ) {
+# Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
+$output = `$cmd F=$cnf,h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --busy-time 1s --print --run-time 1 2>&1`;
+
+if ( $? != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+}
+elsif ( !$source_dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
 }
 else {
-   # Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
-   $output = `$cmd F=$cnf,h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --busy-time 1s --print --run-time 1 2>&1`;
-
-   if ( $? != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-      plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
-   } else {
-      plan tests => 17;
-   }
+   plan tests => 17;
 }
 
 $sb->do_as_root(

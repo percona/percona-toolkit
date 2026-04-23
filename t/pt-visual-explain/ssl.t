@@ -23,7 +23,7 @@ my ($output, $exit_code);
 
 # Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
 ($output, $exit_code) = full_output(
-   sub { 
+   sub {
       pt_visual_explain::main(
          '--connect',
          't/pt-visual-explain/samples/query.sql',

@@ -20,13 +20,6 @@ my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh1 = $sb->get_dbh_for('source', { PrintError => 0, RaiseError => 1, AutoCommit => 0 });
 my $dbh2 = $sb->get_dbh_for('source', { PrintError => 0, RaiseError => 1, AutoCommit => 0 });
 
-if ( !$dbh1 || !$dbh2 ) {
-   plan skip_all => 'Cannot connect to sandbox source';
-}
-elsif ( $sandbox_version lt '8.0' ) {
-   plan skip_all => "Requires MySQL 8.0 or newer";
-}
-
 my ($output, $exit_code);
 my $dsn  = $sb->dsn_for('source');
 my @args = ($dsn, qw(--iterations 1));
@@ -42,6 +35,12 @@ my @args = ($dsn, qw(--iterations 1));
 
 if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
    plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+}
+elsif ( !$dbh1 || !$dbh2 ) {
+   plan skip_all => 'Cannot connect to sandbox source';
+}
+elsif ( $sandbox_version lt '8.0' ) {
+   plan skip_all => "Requires MySQL 8.0 or newer";
 }
 
 $dbh1->commit;

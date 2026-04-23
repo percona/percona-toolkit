@@ -20,13 +20,6 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
-if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox source';
-}
-elsif ( $sandbox_version lt '8.0' ) {
-   plan skip_all => "Requires MySQL 8.0 or newer";
-}
-
 my $output;
 my $sample = "t/pt-duplicate-key-checker/samples/";
 my $cnf    = "/tmp/12345/my.sandbox.cnf";
@@ -37,6 +30,12 @@ $output = `$cmd -d mysql -t columns_priv -v P=12345,u=msandbox,p=msandbox,s=1 2>
 
 if ( $? != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
    plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+}
+elsif ( !$dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
+}
+elsif ( $sandbox_version lt '8.0' ) {
+   plan skip_all => "Requires MySQL 8.0 or newer";
 }
 
 $sb->wipe_clean($dbh);

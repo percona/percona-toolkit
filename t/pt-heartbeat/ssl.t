@@ -20,25 +20,9 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
-if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox source';
-}
-elsif ( $sandbox_version lt '8.0' ) {
-   plan skip_all => "Requires MySQL 8.0 or newer";
-}
-
-$sb->create_dbs($dbh, ['test']);
-
 my ($output, $exit_code);
 my $cnf       = '/tmp/12345/my.sandbox.cnf';
 my $cmd       = "$trunk/bin/pt-heartbeat -F $cnf ";
-
-$dbh->do('drop table if exists test.heartbeat');
-$dbh->do(q{CREATE TABLE test.heartbeat (
-             id int NOT NULL PRIMARY KEY,
-             ts datetime NOT NULL
-          ) ENGINE=MEMORY});
-$sb->wait_for_replicas;
 
 # Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
 ($output, $exit_code) = full_output(
@@ -51,6 +35,21 @@ $sb->wait_for_replicas;
 if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
    plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
+elsif ( !$dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
+}
+elsif ( $sandbox_version lt '8.0' ) {
+   plan skip_all => "Requires MySQL 8.0 or newer";
+}
+
+$sb->create_dbs($dbh, ['test']);
+
+$dbh->do('drop table if exists test.heartbeat');
+$dbh->do(q{CREATE TABLE test.heartbeat (
+             id int NOT NULL PRIMARY KEY,
+             ts datetime NOT NULL
+          ) ENGINE=MEMORY});
+$sb->wait_for_replicas;
 
 $sb->do_as_root(
    'source',
