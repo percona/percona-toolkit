@@ -1,7 +1,5 @@
-Sphinx==5.0
-sphinx-copybutton
-sphinx-gitstamp
-sphinx-material
+Sphinx==5.3.0
+sphinx-immaterial
 sphinxcontrib-applehelp
 sphinxcontrib-contentui
 sphinxcontrib-devhelp
@@ -12,3 +10,4 @@ sphinxcontrib-qthelp
 sphinxcontrib-serializinghtml
 sphinxcontrib-srclinks
 sphinx-tabs
+
