@@ -14,10 +14,13 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -483,9 +486,76 @@ func (s *CollectorSuite) TestResourceOption() {
 				if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
 					s.Failf("Summary Check", "test %s\nresource %s\nnamespace %s\noutput is not as expected\nOutput: %s\nWanted: %s", test.name, resource, test.namespace, out, test.want)
 				}
+
+				if test.want != "0" {
+					err = validateSummaryByNamespace("cluster-dump.tar.gz", test.namespace)
+					s.NoErrorf(err, "summary validation failed for namespace %s, resource %s", test.namespace, resource)
+				}
 			}
 		})
 	}
+}
+
+func validateSummaryByNamespace(archivePath, namespace string) error {
+	switch namespace {
+	case "psmdb":
+		return validatePSMDBSummary(archivePath, namespace)
+	default:
+		return nil
+	}
+}
+
+func validatePSMDBSummary(archivePath, namespace string) error {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	tarReader := tar.NewReader(gzr)
+	validated := 0
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+		if !strings.HasSuffix(header.Name, "/summary.txt") {
+			continue
+		}
+		if !strings.Contains(header.Name, "/"+namespace+"/") {
+			continue
+		}
+
+		content, err := io.ReadAll(tarReader)
+		if err != nil {
+			return err
+		}
+		if !bytes.Contains(content, []byte("# Report On")) {
+			return fmt.Errorf("summary file %s does not contain # Report On", header.Name)
+		}
+
+		validated++
+	}
+
+	if validated == 0 {
+		return fmt.Errorf("no summary.txt files found for namespace %s", namespace)
+	}
+
+	return nil
 }
 
 func (s *CollectorSuite) TestPT_2453() {
