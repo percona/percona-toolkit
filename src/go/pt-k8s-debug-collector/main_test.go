@@ -333,6 +333,44 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			},
 		},
 		{
+			namespace: "pgo",
+			// If the tool collects PostgreSQL log files
+			name: "pgo_pg_logs_exist",
+			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/*/pg_log/*.log'
+			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
+			want: []string{".log"},
+			preprocessor: func(in string) string {
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					if strings.Contains(f, "pg_log") && strings.HasSuffix(f, ".log") {
+						result = append(result, ".log")
+						break // Just check if at least one .log file exists
+					}
+				}
+				return strings.Join(result, "")
+			},
+		},
+		{
+			namespace: "pgv2",
+			// If the tool collects PostgreSQL log files for pgv2
+			name: "pgv2_pg_logs_exist",
+			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/*/pg_log/*.log'
+			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
+			want: []string{".log"},
+			preprocessor: func(in string) string {
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					if strings.Contains(f, "pg_log") && strings.HasSuffix(f, ".log") {
+						result = append(result, ".log")
+						break // Just check if at least one .log file exists
+					}
+				}
+				return strings.Join(result, "")
+			},
+		},
+		{
 			namespace: "pxc",
 			// If pod logs are exported as one file per container
 			name: "pxc_container_logs_split_by_container",
@@ -371,8 +409,23 @@ func (s *CollectorSuite) TestIndividualFiles() {
 		},
 	}
 
-	if s.Namespace != "pxc" {
-		s.T().Skip("This test is specifically for pxc namespace")
+	// Filter tests for current namespace
+	nsTests := []struct {
+		namespace    string
+		name         string
+		cmd          []string
+		want         []string
+		preprocessor func(string) string
+	}{}
+
+	for _, test := range tests {
+		if test.namespace == s.Namespace {
+			nsTests = append(nsTests, test)
+		}
+	}
+
+	if len(nsTests) == 0 {
+		s.T().Skip("No tests configured for namespace " + s.Namespace)
 	}
 
 	for _, resource := range s.Resources {
@@ -381,7 +434,7 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			err := cmd.Run()
 			s.NoError(err)
 
-			for _, test := range tests {
+			for _, test := range nsTests {
 				out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
 				if err != nil && resource == "none" {
 					continue
