@@ -1,0 +1,172 @@
+pt-mongodb-stalk
+================
+
+Overview
+--------
+
+`pt-mongodb-stalk` is a Bash collector modeled after `pt-stalk`, adapted for
+MongoDB. It watches a MongoDB node for a trigger condition and collects a small
+runtime-focused sample set when the trigger fires, or collects immediately when
+run with `--no-stalk`.
+
+The tool is intended for Linux systems and stores its output in a destination
+directory as timestamped sample files plus a few fixed bookkeeping files.
+
+
+What It Watches
+---------------
+
+`pt-mongodb-stalk` currently supports two built-in trigger sources:
+
+- `--function status`
+  Watches a dot-separated field inside `db.adminCommand({serverStatus: 1})`.
+
+- `--function currentop`
+  Counts matching active operations from
+  `db.adminCommand({currentOp: 1, active: true, idleConnections: false})`.
+
+Examples:
+
+```bash
+pt-mongodb-stalk \
+  --host localhost --port 27017 \
+  --function status --variable connections.current --threshold 100
+```
+
+```bash
+pt-mongodb-stalk \
+  --host localhost --port 27017 \
+  --function currentop --variable ns --match '^app\.orders$' --threshold 10
+```
+
+
+How Collection Works
+--------------------
+
+When the trigger condition is met for the configured number of consecutive
+cycles, the tool collects into `--dest`.
+
+Snapshot commands run once per collection iteration and are stored as
+timestamped files. For example:
+
+- `2026_04_24_10_00_01-serverStatus.json`
+- `2026_04_24_10_00_01-currentOp.json`
+- `2026_04_24_10_00_01-ps.txt`
+
+Interval commands run once per collection iteration using `--sleep-collect` as
+their polling interval and a count derived from `--run-time`. For example,
+`--run-time 5 --sleep-collect 1` runs commands like `vmstat 1 5` and stores the
+result in one timestamped file.
+
+The collection window is capped by `--run-time`. After a collection finishes,
+the tool waits `--sleep` seconds before the next trigger check or collection
+iteration. Collections do not overlap.
+
+The collector also writes a few fixed files in the destination directory:
+
+- `heartbeat`
+- `log`
+- `trigger`
+
+
+MongoDB Data Collected
+----------------------
+
+Collected once per collection iteration:
+
+- `serverStatus`
+- `currentOp`
+
+Collected once per collection iteration, using `--sleep-collect` as the polling
+interval:
+
+- `mongostat`
+- `mongotop`
+
+MongoDB JSON output from shell commands is cleaned before writing:
+
+- `ok` is removed
+- `$clusterTime` is removed
+- `operationTime` is removed
+
+Topology is still detected internally so the tool can decide whether the
+process-specific `pidstat` file should be named `pidstat_mongod` or
+`pidstat_mongos`, but no topology summary file is written.
+
+
+System Data Collected
+---------------------
+
+Depending on tool availability, the collector also captures these snapshot
+samples once per collection iteration:
+
+- `ps` using `ps faux`
+- `pidstat_d`
+- `pidstat_u`
+- `pidstat_mongod` or `pidstat_mongos`
+
+These commands run once per collection iteration, using `--sleep-collect` as
+their polling interval:
+
+- `vmstat`
+- `iostat`
+- `mpstat`
+- `top`
+
+The tool may also copy one fixed file at the start of collection:
+
+- `messages.out` if `/var/log/messages` exists
+
+
+Output Cleanup
+--------------
+
+At the end of a run:
+
+- zero-byte `.err` files are removed
+- non-empty `.err` files are kept
+
+The collector still enforces disk-space safety checks, but it now uses internal
+temporary files instead of writing disk-space snapshots into `--dest`.
+
+
+Typical Test Runs
+-----------------
+
+Collect immediately from a replica set member:
+
+```bash
+pt-mongodb-stalk \
+  --host localhost --port 27000 --user admin --password admin --authenticationDatabase admin \
+  --no-stalk --iterations 1 --run-time 3 --sleep-collect 1 \
+  --dest /tmp/pt-mongodb-stalk-rs27000
+```
+
+Collect immediately from a `mongos` router:
+
+```bash
+pt-mongodb-stalk \
+  --host localhost --port 30000 --user admin --password admin --authenticationDatabase admin \
+  --no-stalk --iterations 1 --run-time 3 --sleep-collect 1 \
+  --dest /tmp/pt-mongodb-stalk-mongos30000
+```
+
+Stalk until a `serverStatus` metric crosses a threshold:
+
+```bash
+pt-mongodb-stalk \
+  --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
+  --function status --variable connections.current --threshold 50 --cycles 3 --interval 1 --iterations 1 \
+  --dest /tmp/pt-mongodb-stalk-shard30001 --pid /tmp/pt-mongodb-stalk.pid
+```
+
+
+Notes
+-----
+
+- The tool is being developed for Linux use.
+- Output directories can still grow quickly if `--run-time` is long and
+  `--sleep-collect` is short.
+- A separate summary-style tool is expected to collect broader one-time server
+  and MongoDB metadata; `pt-mongodb-stalk` is now intentionally narrower and
+  focused on runtime sampling.
