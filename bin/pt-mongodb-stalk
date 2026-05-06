@@ -810,7 +810,7 @@ mongo_currentop_count() {
    fi
    mongo_eval "
       const __pt = db.getSiblingDB('admin');
-      const __doc = __pt.runCommand({currentOp: 1, active: true, idleConnections: false});
+      const __doc = __pt.runCommand({currentOp: 1, active: true, idleConnections: false, allUsers: true});
       const __parts = '$field'.split('.');
       const __re = ${js_regex};
       let __count = 0;
@@ -833,6 +833,56 @@ mongo_currentop_count() {
          }
       });
       print(__count);
+   "
+}
+
+mongo_repl_lag_seconds() {
+   mongo_eval "
+      const __pt = db.getSiblingDB('admin');
+      let __doc = {};
+      try {
+         __doc = __pt.runCommand({replSetGetStatus: 1});
+      } catch (e) {
+         print('');
+         quit(0);
+      }
+      if (!__doc || !Array.isArray(__doc.members)) {
+         print('');
+         quit(0);
+      }
+
+      let __primary = null;
+      for (const __member of __doc.members) {
+         if (__member.stateStr === 'PRIMARY' && __member.optimeDate) {
+            __primary = __member;
+            break;
+         }
+      }
+      if (!__primary) {
+         print(0);
+         quit(0);
+      }
+
+      const __primaryMs = new Date(__primary.optimeDate).getTime();
+      let __maxLag = 0;
+      for (const __member of __doc.members) {
+         if (__member._id === __primary._id || !__member.optimeDate) {
+            continue;
+         }
+         const __state = __member.stateStr || '';
+         if (!/^(SECONDARY|STARTUP2|RECOVERING|ROLLBACK)$/.test(__state)) {
+            continue;
+         }
+         const __memberMs = new Date(__member.optimeDate).getTime();
+         if (isNaN(__memberMs)) {
+            continue;
+         }
+         const __lag = Math.max(0, Math.floor((__primaryMs - __memberMs) / 1000));
+         if (__lag > __maxLag) {
+            __maxLag = __lag;
+         }
+      }
+      print(__maxLag);
    "
 }
 
@@ -996,7 +1046,7 @@ collect_mongodb_data_one() {
 collect_mongodb_data_loop() {
    local d="$1"
    (mongo_admin_json "db.runCommand({serverStatus: 1})" > "$(sample_file "$d" "serverStatus" "json")") &
-   (mongo_admin_json "db.runCommand({currentOp: 1, active: true, idleConnections: false})" > "$(sample_file "$d" "currentOp" "json")") &
+   (mongo_admin_json "db.runCommand({currentOp: 1, active: true, idleConnections: false, allUsers: true})" > "$(sample_file "$d" "currentOp" "json")") &
 }
 
 collect_mongodb_data_two() {
@@ -1091,10 +1141,28 @@ set_trg_func() {
    fi
 
    func=$(echo "$func" | tr '[:upper:]' '[:lower:]')
-   if [ "$func" = "status" ] || [ "$func" = "currentop" ]; then
-      TRIGGER_FUNCTION="trg_$func"
-      return 0
-   fi
+   case "$func" in
+      status|currentop|cpu|memory|writewait|repllag)
+         TRIGGER_FUNCTION="trg_$func"
+         return 0
+         ;;
+      mem)
+         TRIGGER_FUNCTION="trg_memory"
+         return 0
+         ;;
+      processcpu|process-cpu|proc_cpu|proc-cpu)
+         TRIGGER_FUNCTION="trg_process_cpu"
+         return 0
+         ;;
+      processmemory|process-memory|proc_memory|proc-memory)
+         TRIGGER_FUNCTION="trg_process_memory"
+         return 0
+         ;;
+      replicationlag|replciationlag|waitforreplicationlag|waitforreplciationlag)
+         TRIGGER_FUNCTION="trg_repllag"
+         return 0
+         ;;
+   esac
 
    return 1
 }
@@ -1107,6 +1175,92 @@ trg_status() {
 trg_currentop() {
    local var="$1"
    mongo_currentop_count "$var"
+}
+
+trg_cpu() {
+   local cpu user nice system idle iowait irq softirq steal guest guest_nice
+   local idle_all non_idle total total_delta idle_delta value
+   local cpu_state last_total last_idle
+
+   read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat || return 1
+   iowait=${iowait:-0}
+   irq=${irq:-0}
+   softirq=${softirq:-0}
+   steal=${steal:-0}
+   idle_all=$((idle + iowait))
+   non_idle=$((user + nice + system + irq + softirq + steal))
+   total=$((idle_all + non_idle))
+   cpu_state="$PT_TMPDIR/cpu-trigger-state"
+
+   if [ ! -f "$cpu_state" ]; then
+      echo "$total $idle_all" > "$cpu_state"
+      echo 0
+      return 0
+   fi
+
+   read -r last_total last_idle < "$cpu_state" || {
+      echo "$total $idle_all" > "$cpu_state"
+      echo 0
+      return 0
+   }
+   total_delta=$((total - last_total))
+   idle_delta=$((idle_all - last_idle))
+   echo "$total $idle_all" > "$cpu_state"
+
+   if [ "$total_delta" -le 0 ]; then
+      echo 0
+      return 0
+   fi
+
+   value=$(awk -v total="$total_delta" -v idle="$idle_delta" 'BEGIN { printf "%.2f\n", ((total - idle) / total) * 100 }')
+   echo "$value"
+}
+
+trg_memory() {
+   awk '
+      /^MemTotal:/ { total = $2 }
+      /^MemAvailable:/ { available = $2 }
+      /^MemFree:/ { free = $2 }
+      /^Buffers:/ { buffers = $2 }
+      /^Cached:/ { cached = $2 }
+      END {
+         if (available == "" && free >= 0) {
+            available = free + buffers + cached
+         }
+         if (total > 0 && available >= 0) {
+            printf "%.2f\n", ((total - available) / total) * 100
+         }
+      }
+   ' /proc/meminfo
+}
+
+trg_process_cpu() {
+   local pid value
+   pid=$(get_mongo_pid)
+   [ -n "$pid" ] || return 1
+   value=$(ps -p "$pid" -o %cpu= 2>/dev/null | awk '{gsub(/,/, "."); printf "%.2f\n", $1 + 0; exit}')
+   [ -n "$value" ] && echo "$value"
+}
+
+trg_process_memory() {
+   local pid value
+   pid=$(get_mongo_pid)
+   [ -n "$pid" ] || return 1
+   value=$(ps -p "$pid" -o %mem= 2>/dev/null | awk '{gsub(/,/, "."); printf "%.2f\n", $1 + 0; exit}')
+   [ -n "$value" ] && echo "$value"
+}
+
+trg_writewait() {
+   local value
+   value=$(mongo_status_value "globalLock.currentQueue.writers")
+   if [ -z "$value" ]; then
+      value=0
+   fi
+   echo "$value"
+}
+
+trg_repllag() {
+   mongo_repl_lag_seconds
 }
 
 oktorun() {
@@ -1372,8 +1526,8 @@ model as C<pt-stalk>, but uses MongoDB administration commands instead of
 MySQL commands.
 
 The default trigger watches C<serverStatus.connections.current>. You can also
-watch C<currentOp> and count active operations whose field matches a regular
-expression.
+watch C<currentOp>, host CPU usage, host memory usage, queued writers, and
+replica set replication lag.
 
 =head1 OPTIONS
 
@@ -1435,7 +1589,8 @@ Do not collect if the disk has less than this percent free space.
 
 type: string; default: status
 
-Trigger source. Valid built-in values are C<status> and C<currentop>.
+Trigger source. Valid built-in values are C<status>, C<currentop>, C<cpu>,
+C<memory>, C<writewait>, and C<repllag>.
 
 With C<status>, L<"--variable"> is a dot-separated path inside
 C<serverStatus>. Example:
@@ -1446,7 +1601,25 @@ With C<currentop>, L<"--variable"> is a dot-separated field path inside each
 C<currentOp.inprog> document and L<"--match"> is a regex. The trigger value is
 the number of matching operations. Example:
 
-  --function currentop --variable ns --match '^app\.orders$' --threshold 10
+  --function currentop --variable command.aggregate --match '^orders$' --threshold 10
+
+With C<cpu>, the trigger value is host CPU busy percentage from C</proc/stat>.
+With C<memory>, the trigger value is host memory used percentage from
+C</proc/meminfo>. C<mem> is accepted as an alias for C<memory>. Example:
+
+  --function cpu --threshold 85
+  --function memory --threshold 90
+
+With C<writewait>, the trigger value is
+C<serverStatus.globalLock.currentQueue.writers>. Example:
+
+  --function writewait --threshold 5
+
+With C<repllag>, the trigger value is the maximum replica set member lag behind
+the primary, in seconds, from C<replSetGetStatus>. C<replicationlag> and
+C<waitForReplicationLag> are accepted as aliases. Example:
+
+  --function repllag --threshold 30
 
 You can also specify a file that defines C<trg_plugin>.
 
@@ -1554,7 +1727,7 @@ collect immediately.
 
 =item --threshold
 
-type: int; default: 100
+type: float; default: 100
 
 Collection is triggered when L<"--variable"> is greater than this value.
 
@@ -1592,7 +1765,8 @@ User for login.
 
 type: string; default: connections.current
 
-Variable to watch inside C<serverStatus> or C<currentOp>.
+Variable to watch inside C<serverStatus> or C<currentOp>. This option is ignored
+by C<cpu>, C<memory>, C<writewait>, and C<repllag>.
 
 =item --verbose
 
@@ -1641,7 +1815,28 @@ Run in stalking mode using currentOp matches instead of a serverStatus metric:
 
   pt-mongodb-stalk \
     --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
-    --function currentop --variable ns --match '^app\.orders$' --threshold 10 --cycles 2 --interval 1 --iterations 1 \
+    --function currentop --variable command.aggregate --match '^orders$' --threshold 10 --cycles 2 --interval 1 --iterations 1 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run in stalking mode when host CPU is above 85 percent:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
+    --function cpu --threshold 85 --cycles 3 --interval 1 --iterations 1 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run in stalking mode when host memory is above 90 percent:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
+    --function memory --threshold 90 --cycles 3 --interval 1 --iterations 1 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run in stalking mode when replica set lag is above 30 seconds:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
+    --function repllag --threshold 30 --cycles 2 --interval 1 --iterations 1 \
     --dest /tmp/pt-mongodb-stalk
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
