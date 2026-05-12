@@ -111,6 +111,7 @@ sub new {
       DSNParser       => $dp,
       is_cluster_node => undef,
       parent          => $args{parent},
+      preserve_dbh    => $args{preserve_dbh},
    };
 
    return bless $self, $class;
@@ -184,7 +185,7 @@ sub set_dbh {
       $self->{hostname} = $hostname;
    }
 
-   if ( $self->{parent} ) {
+   if ( $self->{preserve_dbh} ) {
       PTDEBUG && _d($dbh, 'Setting InactiveDestroy=1 in parent');
       $dbh->{InactiveDestroy} = 1;
    }
@@ -334,7 +335,7 @@ sub DESTROY {
 
    PTDEBUG && _d('Destroying cxn');
 
-   if ( $self->{parent} ) {
+   if ( $self->{preserve_dbh} ) {
       PTDEBUG && _d($self->{dbh}, 'Not disconnecting dbh in parent');
    }
    elsif ( $self->{dbh}

@@ -63,7 +63,7 @@ sub test_var_val {
    my ($dbh, $var, $val, %args) = @_;
 
    my @row;
-   if ( !$args{user_var} ) { 
+   if ( !$args{user_var} ) {
       my $sql = "SHOW " . ($args{global} ? "GLOBAL" : "SESSION " )
               . "VARIABLES LIKE '$var'";
       @row = $dbh->selectrow_array($sql);
@@ -271,7 +271,7 @@ is_deeply(
 $o->get_opts();
 
 # #############################################################################
-# The parent of a forked Cxn should not disconnect the dbh in DESTORY
+# The preserve_dbh of a forked Cxn should not disconnect the dbh in DESTORY
 # because the child still has access to it.
 # #############################################################################
 
@@ -281,8 +281,8 @@ my $outfile   = "/tmp/pt-cxn-outfile.$PID";
 my $pid;
 {
    my $parent_cxn = make_cxn(
-      dsn_string => 'h=127.1,P=12345,u=msandbox,p=msandbox',
-      parent     => 1,
+      dsn_string   => 'h=127.1,P=12345,u=msandbox,p=msandbox',
+      preserve_dbh => 1,
    );
    $parent_cxn->connect();
 
@@ -292,7 +292,7 @@ my $pid;
       # Wait for the parent to leave this code block which will cause
       # the $parent_cxn to be destroyed.
       PerconaTest::wait_for_files($sync_file);
-      $parent_cxn->{parent} = 0;
+      $parent_cxn->{preserve_dbh} = 0;
       eval {
          $parent_cxn->dbh->do("SELECT 123 INTO OUTFILE '$outfile'");
          $parent_cxn->dbh->disconnect();
@@ -325,6 +325,60 @@ is(
 
 unlink $sync_file if -f $sync_file;
 unlink $outfile if -f $outfile;
+
+# #############################################################################
+# Ensure connection is removed even if parent id is provided but not preserve_dbh
+# #############################################################################
+
+my $children_sync_file = "/tmp/pt-cxn-children-sync.$PID";
+my $children_ping_file = "/tmp/pt-cxn-children-ping.$PID";
+
+{
+
+   my $parent_cxn = make_cxn(
+      dsn_string   => 'h=127.1,P=12346,u=msandbox,p=msandbox',
+      parent => 'h=127.1,P=12345,u=msandbox,p=msandbox' # fake parent id
+   );
+   $parent_cxn->connect();
+   $pid = fork();
+
+   if ( defined($pid) && $pid == 0 ) {
+      # I am the child.
+      # Wait for the parent to leave this code block which will cause
+      # the $parent_cxn to be destroyed.
+      open(my $fh, '>', $children_ping_file);
+      print($fh "Children ping: " . ($parent_cxn->dbh->ping() ? "OK": "FAIL") . "\n");
+      diag(`touch $children_sync_file`);
+      # we wait parent exit this code-block so DESTROY actually disconnects the session
+      PerconaTest::wait_for_files($sync_file);
+      print($fh "Children ping after parent exited: " . ($parent_cxn->dbh->ping() ? "OK": "FAIL"));
+      close($fh);
+      exit;
+   }
+   PerconaTest::wait_for_files($children_sync_file); # wait confirmation that children conn was ok
+   ok($parent_cxn->dbh->ping(), 'Parent connection was fine');
+}
+# Let the child know that we (the parent) have left that ^ code block,
+# so our copy of $parent_cxn has been destroyed, but hopefully the child's
+# copy is still alive, i.e. has an active/not-disconnected dbh.
+diag(`touch $sync_file`);
+
+# Wait for the child.
+waitpid($pid, 0);
+
+my $children_output = `cat $children_ping_file 2>/dev/null`;
+
+is(
+   $children_output,
+   "Children ping: OK\nChildren ping after parent exited: FAIL",
+   'Expected children to succeed on first ping but fail when parent exited'
+);
+
+
+unlink $sync_file if -f $sync_file;
+unlink $children_sync_file if -f $children_sync_file;
+unlink $children_ping_file if -f $children_ping_file;
+
 
 # #############################################################################
 # Re-connect with new DSN.

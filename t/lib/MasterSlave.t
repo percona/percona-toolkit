@@ -56,7 +56,7 @@ PXC_SKIP: {
 
       local @ARGV = ();
       $o->get_opts();
-   
+
       my $slaves = $ms->get_replicas(
          dbh      => $master_dbh,
          dsn      => $master_dsn,
@@ -133,7 +133,7 @@ PXC_SKIP: {
       # Create percona.checksums to make the privs happy.
       diag(`/tmp/12345/use -e "create database if not exists percona"`);
       diag(`/tmp/12345/use -e "create table if not exists percona.checksums (id int)"`);
-   
+
       # Create a read-only checksum user that can't SHOW SLAVES HOSTS or much else.
       diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql`);
 
@@ -205,7 +205,135 @@ PXC_SKIP: {
       );
 
       $ro_dbh->disconnect();
-      diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`); 
+      diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
+
+      # ##########################################################################
+      # Test that get_replicas doesn't leak connections when called multiple times
+      # This verifies that Cxn objects without preserve_dbh properly clean up
+      # ##########################################################################
+
+      @ARGV = ('--recursion-method', 'hosts');
+      $o->get_opts();
+
+      # Track connection thread IDs we create so we can verify cleanup
+      my @disposable_thread_ids;
+      my $replicas = $ms->get_replicas(
+            dbh      => $master_dbh,
+            dsn      => $master_dsn,
+            make_cxn => sub {
+               my $cxn = new Cxn(
+                  @_,
+                  DSNParser    => $dp,
+                  OptionParser => $o,
+                  preserve_dbh => 1, # there will be a fork in this test, we need this persistent
+               );
+               $cxn->connect();
+               return $cxn;
+            },
+         );
+
+      # Call get_replicas multiple times in a loop
+      # Each iteration should create Cxn objects and then clean them up
+      # As soon as object loses reference, perl should DESTROY Cxn and related connections
+      for my $iteration (1..5) {
+         my $tmp_replicas = $ms->get_replicas(
+            dbh      => $master_dbh,
+            dsn      => $master_dsn,
+            make_cxn => sub {
+               my $cxn = new Cxn(
+                  @_,
+                  DSNParser    => $dp,
+                  OptionParser => $o,
+                  # NOT setting preserve_dbh, so connections should be cleaned up
+               );
+               $cxn->connect();
+               return $cxn;
+            },
+         );
+
+         # Verify we got replicas
+         ok(
+            scalar(@$tmp_replicas) > 0,
+            "get_replicas iteration $iteration returned replicas"
+         );
+
+         # Collect thread IDs from the replica connections
+         foreach my $cxn (@$tmp_replicas) {
+            if ($cxn && $cxn->dbh) {
+               my $thread_id = $cxn->dbh->{mysql_thread_id};
+               push @disposable_thread_ids, $thread_id;
+            }
+         }
+      }
+
+      my $placeholders = join(',', map { '?' } @disposable_thread_ids);
+      for my $cxn (@$replicas) {
+        my ($leaked_connections,) = $cxn->dbh->selectrow_array(
+            "SELECT COUNT(*)
+            FROM information_schema.processlist
+            WHERE id IN ($placeholders)",
+            { Slice => {} },
+            @disposable_thread_ids
+        );
+
+        ok($leaked_connections eq 0, 'No remaining connection from get_replicas');
+      }
+
+      # Test the opposite now: with preserve_dbh=1, read-replicas should not close connection when going out of scope
+      # like in a fork scenario
+      my @preserved_thread_ids;
+      {
+          my $replicas_preserved = $ms->get_replicas(
+              dbh      => $master_dbh,
+              dsn      => $master_dsn,
+              make_cxn => sub {
+                  my $cxn = new Cxn(
+                      @_,
+                      DSNParser    => $dp,
+                      OptionParser => $o,
+                      preserve_dbh => 1,
+                  );
+                  $cxn->connect();
+                  return $cxn;
+              },
+          );
+
+          my $pid = fork();
+          if ( defined($pid) && $pid == 0 ) {
+              # We are in the child process
+              # this would trigger destruction of read replicas in child process
+              # as preserve_dbh was set to 1, the connection will remain
+              exit;
+          }
+          for my $cxn (@$replicas_preserved) {
+              if ($cxn && $cxn->dbh) {
+                  push @preserved_thread_ids, $cxn->dbh->{mysql_thread_id};
+              }
+          }
+      }
+
+      $placeholders = join(',', map { '?' } @preserved_thread_ids);
+      for my $cxn (@$replicas) {
+        $cxn->{preserve_dbh} = 0; # enable deletion of our probe replica connection
+        my $leaked_connections = $cxn->dbh->selectall_arrayref(
+            "SELECT ID
+            FROM information_schema.processlist
+            WHERE id IN ($placeholders)",
+            { Slice => {} },
+            @preserved_thread_ids
+        );
+
+        my $count_leaked_conn = scalar @$leaked_connections;
+        ok($count_leaked_conn > 0, "Had $count_leaked_conn remaining connection from get_replicas");
+
+        # Test done, let's now kill connections to prevent a leak in the test database
+        for my $thread (@$leaked_connections) {
+            eval {
+                $cxn->dbh->do("KILL $thread->{id}");
+            };
+            warn "Failed to kill thread $thread->{id}: $@" if $@;
+        }
+      }
    }
 }
 # #############################################################################
