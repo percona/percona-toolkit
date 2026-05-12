@@ -305,7 +305,7 @@ my $pid;
 # Let the child know that we (the parent) have left that ^ code block,
 # so our copy of $parent_cxn has been destroyed, but hopefully the child's
 # copy is still alive, i.e. has an active/not-disconnected dbh.
-diag(`touch $sync_file`);
+PerconaTest::touch_file($sync_file);
 
 # Wait for the child.
 waitpid($pid, 0);
@@ -315,7 +315,7 @@ ok(
    "Child created outfile"
 );
 
-my $output = `cat $outfile 2>/dev/null`;
+my $output = PerconaTest::slurp_file($outfile);
 
 is(
    $output,
@@ -346,13 +346,15 @@ my $children_ping_file = "/tmp/pt-cxn-children-ping.$PID";
       # I am the child.
       # Wait for the parent to leave this code block which will cause
       # the $parent_cxn to be destroyed.
-      open(my $fh, '>', $children_ping_file);
+      open(my $fh, '>', $children_ping_file) or die "Cannot open $children_ping_file: $!";
       print($fh "Children ping: " . ($parent_cxn->dbh->ping() ? "OK": "FAIL") . "\n");
-      diag(`touch $children_sync_file`);
+
+      PerconaTest::touch_file($children_sync_file);
+
       # we wait parent exit this code-block so DESTROY actually disconnects the session
       PerconaTest::wait_for_files($sync_file);
-      print($fh "Children ping after parent exited: " . ($parent_cxn->dbh->ping() ? "OK": "FAIL"));
-      close($fh);
+      print($fh "Children ping after parent exited: " . ($parent_cxn->dbh->ping() ? "OK": "FAIL") . "\n");
+      close($fh) or die "Cannot close $children_ping_file: $!";
       exit;
    }
    PerconaTest::wait_for_files($children_sync_file); # wait confirmation that children conn was ok
@@ -361,16 +363,16 @@ my $children_ping_file = "/tmp/pt-cxn-children-ping.$PID";
 # Let the child know that we (the parent) have left that ^ code block,
 # so our copy of $parent_cxn has been destroyed, but hopefully the child's
 # copy is still alive, i.e. has an active/not-disconnected dbh.
-diag(`touch $sync_file`);
+PerconaTest::touch_file($sync_file);
 
 # Wait for the child.
 waitpid($pid, 0);
 
-my $children_output = `cat $children_ping_file 2>/dev/null`;
+my $children_output = PerconaTest::slurp_file($children_ping_file);
 
 is(
    $children_output,
-   "Children ping: OK\nChildren ping after parent exited: FAIL",
+   "Children ping: OK\nChildren ping after parent exited: FAIL\n",
    'Expected children to succeed on first ping but fail when parent exited'
 );
 
