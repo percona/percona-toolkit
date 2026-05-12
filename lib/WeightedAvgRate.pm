@@ -69,8 +69,8 @@ sub update {
    PTDEBUG && _d('Source op time:', $n, 'n /', $t, 's');
 
    if ( $self->{avg_n} && $self->{avg_t} ) {
-      $self->{avg_n}    = ($self->{avg_n} * $self->{weight}) + $n;
-      $self->{avg_t}    = ($self->{avg_t} * $self->{weight}) + $t;
+      $self->{avg_n}    = ($self->{avg_n} * $self->{weight}) + ($n * (1 - $self->{weight}));
+      $self->{avg_t}    = ($self->{avg_t} * $self->{weight}) + ($t * (1 - $self->{weight}));
       $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
       PTDEBUG && _d('Weighted avg rate:', $self->{avg_rate}, 'n/s');
    }
