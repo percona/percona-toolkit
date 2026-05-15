@@ -1839,6 +1839,82 @@ Run in stalking mode when replica set lag is above 30 seconds:
     --function repllag --threshold 30 --cycles 2 --interval 1 --iterations 1 \
     --dest /tmp/pt-mongodb-stalk
 
+=head1 OUTPUT
+
+When the trigger condition is met for the configured number of consecutive
+cycles, the tool collects into L<"--dest">.  Snapshot commands run once per
+collection iteration and are stored as timestamped files.  For example:
+
+  2026_04_24_10_00_01-serverStatus.json
+  2026_04_24_10_00_01-currentOp.json
+  2026_04_24_10_00_01-ps.txt
+
+Interval commands run once per collection iteration using L<"--sleep-collect">
+as their polling interval and a count derived from L<"--run-time">.  For
+example, C<--run-time 5 --sleep-collect 1> runs commands like C<vmstat 1 5>
+and stores the result in one timestamped file.
+
+The collection window is capped by L<"--run-time">.  After a collection
+finishes, the tool waits L<"--sleep"> seconds before the next trigger check or
+collection iteration.  Collections do not overlap.
+
+The collector also writes these fixed files in the destination directory:
+
+  heartbeat
+  log
+  trigger
+
+=head1 COLLECTED DATA
+
+MongoDB data collected once per collection iteration:
+
+  serverStatus
+  currentOp
+
+MongoDB interval tools collected once per collection iteration:
+
+  mongostat
+  mongotop
+
+MongoDB JSON output from shell commands is cleaned before writing: C<ok>,
+C<$clusterTime>, and C<operationTime> are removed.
+
+System data collected once per collection iteration, depending on tool
+availability:
+
+  ps faux
+  pidstat -d
+  pidstat -u
+  pidstat -urdwt for mongod or mongos
+
+System interval tools collected once per collection iteration, depending on
+tool availability:
+
+  vmstat
+  iostat
+  mpstat
+  top
+
+The process-specific C<pidstat> file is named C<pidstat_mongod.txt> or
+C<pidstat_mongos.txt> according to the detected MongoDB process type.  Topology
+is detected internally for this purpose, but no topology summary file is
+written.
+
+If C</var/log/messages> exists, the tool also copies it to C<messages.out>.
+
+=head1 OUTPUT CLEANUP
+
+At the end of a run, zero-byte C<.err> files are removed and non-empty C<.err>
+files are kept.  The collector enforces disk-space safety checks, but uses
+internal temporary files instead of writing disk-space snapshots into
+L<"--dest">.
+
+=head1 NOTES
+
+This tool is intended for Linux systems.  A separate summary-style tool should
+collect broader one-time server and MongoDB metadata; C<pt-mongodb-stalk> is
+focused on runtime sampling around a trigger event.
+
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
 This program is copyright 2011-2026 Percona LLC and/or its affiliates.
