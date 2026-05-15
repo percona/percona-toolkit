@@ -7,8 +7,8 @@
 set -u
 
 # ###########################################################################
-# log_warn_die package
-# This package is a copy without comments from the original.  The original
+# log_warn_die section
+# This section is adapted from the original.  The original
 # with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/log_warn_die.sh
 #   t/lib/bash/log_warn_die.sh
@@ -48,12 +48,12 @@ _d () {
 }
 
 # ###########################################################################
-# End log_warn_die package
+# End log_warn_die section
 # ###########################################################################
 
 # ###########################################################################
-# subshell package
-# This package is a copy without comments from the original.  The original
+# subshell section
+# This section is adapted from the original.  The original
 # with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/subshell.sh
 #   t/lib/bash/subshell.sh
@@ -96,12 +96,12 @@ kill_all_subshells() {
 }
 
 # ###########################################################################
-# End subshell package
+# End subshell section
 # ###########################################################################
 
 # ###########################################################################
-# parse_options package
-# This package is a copy without comments from the original.  The original
+# parse_options section
+# This section is adapted from the original.  The original
 # with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/parse_options.sh
 #   t/lib/bash/parse_options.sh
@@ -474,7 +474,7 @@ size_to_bytes() {
 }
 
 # ###########################################################################
-# tmpdir package
+# tmpdir section
 # ###########################################################################
 
 PT_TMPDIR=""
@@ -505,7 +505,7 @@ remove_empty_err_files() {
 }
 
 # ###########################################################################
-# alt_cmds package
+# alt_cmds section
 # ###########################################################################
 
 _which() {
@@ -526,7 +526,7 @@ _pidof() {
 }
 
 # ###########################################################################
-# safeguards package
+# safeguards section
 # ###########################################################################
 
 disk_space() {
@@ -568,7 +568,7 @@ check_disk_space() {
 }
 
 # ###########################################################################
-# daemon package
+# daemon section
 # ###########################################################################
 
 make_pid_file() {
@@ -1007,7 +1007,7 @@ collect_command_sample() {
 }
 
 # ###########################################################################
-# collection package
+# collection section
 # ###########################################################################
 
 collect() {
