@@ -2,38 +2,106 @@ package indexes
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type collectionIndex struct {
-	Name      string      `bson:"name"`
-	Namespace string      `bson:"ns"`
-	V         int         `bson:"v"`
-	Key       primitive.D `bson:"key"`
+	Name          string      `bson:"name"`
+	Namespace     string      `bson:"ns"`
+	V             int         `bson:"v"`
+	Key           primitive.D `bson:"key"`
+	PartialFilter primitive.M `bson:"partialFilterExpression,omitempty"`
+	Sparse        bool        `bson:"sparse,omitempty"`
+	Unique        bool        `bson:"unique,omitempty"`
+	Collation     primitive.M `bson:"collation,omitempty"`
 }
 
 func (di collectionIndex) ComparableKey() string {
 	str := ""
 	for _, elem := range di.Key {
-		str += sign(elem) + elem.Key
+		str += keyToken(elem)
 	}
 	return str
 }
 
+// keyToken produces a unique prefix token for an index key element.
+// Numeric directions map to "+" or "-", while string index types
+// (hashed, text, 2dsphere, 2d) use "type:" so they never collide
+// with B-tree directions.
+//
+// MongoDB 8.x may encode the "hashed" key value as BSON Symbol (type 0x0E)
+// rather than a plain BSON String (type 0x02). primitive.Symbol is a distinct
+// Go named type (type Symbol string) so it does not match case string and
+// requires its own branch.
+func keyToken(elem primitive.E) string {
+	log.Debugf("keyToken field=%q type=%T value=%v", elem.Key, elem.Value, elem.Value)
+	switch v := elem.Value.(type) {
+	case int32:
+		if v < 0 {
+			return "-" + elem.Key
+		}
+		return "+" + elem.Key
+	case int64:
+		if v < 0 {
+			return "-" + elem.Key
+		}
+		return "+" + elem.Key
+	case float64:
+		if v < 0 {
+			return "-" + elem.Key
+		}
+		return "+" + elem.Key
+	case string:
+		switch v {
+		case "hashed", "text", "2dsphere", "2d":
+			return v + ":" + elem.Key
+		default:
+			return "+" + elem.Key
+		}
+	case primitive.Symbol:
+		s := string(v)
+		switch s {
+		case "hashed", "text", "2dsphere", "2d":
+			return s + ":" + elem.Key
+		default:
+			return "+" + elem.Key
+		}
+	case []byte:
+		s := string(v)
+		switch s {
+		case "hashed", "text", "2dsphere", "2d":
+			return s + ":" + elem.Key
+		default:
+			return "+" + elem.Key
+		}
+	default:
+		s := fmt.Sprint(elem.Value)
+		switch s {
+		case "hashed", "text", "2dsphere", "2d":
+			return s + ":" + elem.Key
+		default:
+			return "+" + elem.Key
+		}
+	}
+}
+
 func sign(elem primitive.E) string {
 	sign := "+"
-	switch elem.Value.(type) {
-	case int32: // internal MongoDB indexes like _id_ or lastUsed have the sign field as int32.
-		if elem.Value.(int32) < 0 {
+	switch v := elem.Value.(type) {
+	case int32:
+		if v < 0 {
 			sign = "-"
 		}
-	case float64: // All other indexes have the sign field as float64.
-		if elem.Value.(float64) < 0 {
+	case float64:
+		if v < 0 {
 			sign = "-"
 		}
 	}
@@ -63,6 +131,37 @@ type Duplicate struct {
 	Key           IndexKey
 	ContainerName string
 	ContainerKey  IndexKey
+	Warning       string `json:",omitempty"`
+}
+
+// compatibleIndexProperties returns true if two indexes have compatible
+// properties for a prefix-duplicate relationship. Indexes with different
+// partialFilterExpression, sparse settings, or collation serve different
+// purposes and should not be considered duplicates.
+func compatibleIndexProperties(shorter, longer collectionIndex) bool {
+	hasPartialI := len(shorter.PartialFilter) > 0
+	hasPartialJ := len(longer.PartialFilter) > 0
+	if hasPartialI != hasPartialJ {
+		return false
+	}
+	if hasPartialI && hasPartialJ && !reflect.DeepEqual(shorter.PartialFilter, longer.PartialFilter) {
+		return false
+	}
+
+	if shorter.Sparse != longer.Sparse {
+		return false
+	}
+
+	hasCollI := len(shorter.Collation) > 0
+	hasCollJ := len(longer.Collation) > 0
+	if hasCollI != hasCollJ {
+		return false
+	}
+	if hasCollI && hasCollJ && !reflect.DeepEqual(shorter.Collation, longer.Collation) {
+		return false
+	}
+
+	return true
 }
 
 func FindDuplicated(ctx context.Context, client *mongo.Client, database, collection string) ([]Duplicate, error) {
@@ -74,8 +173,8 @@ func FindDuplicated(ctx context.Context, client *mongo.Client, database, collect
 	}
 
 	var results []collectionIndex
-	if err = cursor.All(context.TODO(), &results); err != nil {
-		log.Fatal(err)
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, errors.Wrap(err, "cannot decode index list")
 	}
 
 	sort.Slice(results, func(i, j int) bool {
@@ -83,19 +182,36 @@ func FindDuplicated(ctx context.Context, client *mongo.Client, database, collect
 	})
 
 	for i := 0; i < len(results)-1; i++ {
+		if results[i].Name == "_id_" {
+			continue
+		}
 		for j := i + 1; j < len(results); j++ {
-			if strings.HasPrefix(results[j].ComparableKey(), results[i].ComparableKey()) {
-				idx := Duplicate{
-					Namespace:     database + "." + collection,
-					Name:          results[i].Name,
-					Key:           make([]primitive.E, len(results[i].Key)),
-					ContainerName: results[j].Name,
-					ContainerKey:  make([]primitive.E, len(results[j].Key)),
-				}
-				copy(idx.Key, results[i].Key)
-				copy(idx.ContainerKey, results[j].Key)
-				di = append(di, idx)
+			ki, kj := results[i].ComparableKey(), results[j].ComparableKey()
+			if ki == kj {
+				continue
 			}
+			if !strings.HasPrefix(kj, ki) {
+				continue
+			}
+			if !compatibleIndexProperties(results[i], results[j]) {
+				continue
+			}
+
+			idx := Duplicate{
+				Namespace:     database + "." + collection,
+				Name:          results[i].Name,
+				Key:           make([]primitive.E, len(results[i].Key)),
+				ContainerName: results[j].Name,
+				ContainerKey:  make([]primitive.E, len(results[j].Key)),
+			}
+			copy(idx.Key, results[i].Key)
+			copy(idx.ContainerKey, results[j].Key)
+
+			if results[i].Unique && !results[j].Unique {
+				idx.Warning = "prefix index enforces unique constraint; dropping requires the container index to also be unique"
+			}
+
+			di = append(di, idx)
 		}
 	}
 

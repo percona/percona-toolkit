@@ -80,3 +80,17 @@ func TestUnusedIndexes(t *testing.T) {
 
 	assert.Equal(t, want, got)
 }
+
+func TestIsSystemDB(t *testing.T) {
+	assert.True(t, IsSystemDB("admin"))
+	assert.True(t, IsSystemDB("config"))
+	assert.True(t, IsSystemDB("local"))
+	assert.False(t, IsSystemDB("myapp"))
+}
+
+func TestIsSystemCollection(t *testing.T) {
+	assert.True(t, IsSystemCollection("system.profile"))
+	assert.True(t, IsSystemCollection("system.js"))
+	assert.False(t, IsSystemCollection("orders"))
+	assert.False(t, IsSystemCollection("users"))
+}
