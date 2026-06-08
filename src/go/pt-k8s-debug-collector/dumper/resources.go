@@ -12,10 +12,28 @@ import (
 var resourcesRe = regexp.MustCompile(`(\w+\.(\w+).percona\.com)`)
 
 func (d *Dumper) addPg1() error {
+	dirpaths := map[string][]string{
+		"pg_log": {"$PGBACKREST_DB_PATH/pg_log"},
+	}
+
+	d.individualFiles = append(d.individualFiles, individualFile{
+		resourceName:  "pgo",
+		containerName: "database",
+		dirpaths:      dirpaths,
+	})
 	return nil
 }
 
 func (d *Dumper) addPg2() error {
+	dirpaths := map[string][]string{
+		"pg_log": {"$PGDATA/log"},
+	}
+
+	d.individualFiles = append(d.individualFiles, individualFile{
+		resourceName:  "pgv2",
+		containerName: "database",
+		dirpaths:      dirpaths,
+	})
 	return nil
 }
 
