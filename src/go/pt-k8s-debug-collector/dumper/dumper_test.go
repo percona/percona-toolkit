@@ -15,6 +15,7 @@ package dumper
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -183,6 +184,97 @@ func TestResourceTypeParsing(t *testing.T) {
 				t.Errorf("resourceType(%q) = %q; want %q", tt.cr, result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestParseResourceSpec(t *testing.T) {
+	tests := []struct {
+		name            string
+		resource        string
+		wantResource    string
+		wantClusterName string
+	}{
+		{
+			name:            "plain resource",
+			resource:        "auto",
+			wantResource:    "auto",
+			wantClusterName: "",
+		},
+		{
+			name:            "resource with cluster suffix",
+			resource:        "auto/k3d-pgv2",
+			wantResource:    "auto",
+			wantClusterName: "k3d-pgv2",
+		},
+		{
+			name:            "resource is trimmed",
+			resource:        "  psmdb/k3d-psmdb  ",
+			wantResource:    "psmdb",
+			wantClusterName: "k3d-psmdb",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotResource, gotClusterName := parseResourceSpec(tt.resource)
+			if gotResource != tt.wantResource || gotClusterName != tt.wantClusterName {
+				t.Fatalf("parseResourceSpec(%q) = (%q, %q), want (%q, %q)", tt.resource, gotResource, gotClusterName, tt.wantResource, tt.wantClusterName)
+			}
+		})
+	}
+}
+
+func TestBuildRestConfigUsesSelectedContext(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "kubeconfig-*.yaml")
+	if err != nil {
+		t.Fatalf("create temp kubeconfig: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	kubeconfig := `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://default.example
+  name: default-cluster
+- cluster:
+    server: https://pgv2.example
+  name: pgv2-cluster
+contexts:
+- context:
+    cluster: default-cluster
+    user: default-user
+  name: default
+- context:
+    cluster: pgv2-cluster
+    user: pgv2-user
+  name: k3d-pgv2
+current-context: default
+users:
+- name: default-user
+  user:
+    token: default-token
+- name: pgv2-user
+  user:
+    token: pgv2-token
+`
+
+	if _, err := tmpFile.WriteString(kubeconfig); err != nil {
+		t.Fatalf("write temp kubeconfig: %v", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("close temp kubeconfig: %v", err)
+	}
+
+	cfg, err := buildRestConfig(tmpFile.Name(), "k3d-pgv2")
+	if err != nil {
+		t.Fatalf("buildRestConfig returned error: %v", err)
+	}
+
+	if cfg.Host != "https://pgv2.example" {
+		t.Fatalf("buildRestConfig selected host %q, want %q", cfg.Host, "https://pgv2.example")
 	}
 }
 
