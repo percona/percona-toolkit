@@ -24,8 +24,8 @@ my $output;
 # Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
 $output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 h=127.1,P=12346,u=msandbox,p=msandbox,s=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
 
-if ( $? != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+if ( $? == 0 || $output !~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test requires DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
 
 diag('Restarting the sandbox');
@@ -79,11 +79,11 @@ isnt(
 
 like(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
-$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 h=127.1,P=12346,u=sha256_user,p=sha256_user%password,s=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
+$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 h=127.1,P=12346,u=sha256_user,p=sha256_user%password,s=1,o=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
 
 is(
    $?,
@@ -93,7 +93,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error'
 ) or diag($output);
 
@@ -103,7 +103,7 @@ unlike(
    '--error-text works (issue 459)'
 );
 
-$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 --host=127.1 --port=12346 --user=sha256_user --password=sha256_user%password --mysql_ssl=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
+$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 --host=127.1 --port=12346 --user=sha256_user --password=sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
 
 is(
    $?,
@@ -113,7 +113,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with option --mysql_ssl'
 ) or diag($output);
 
@@ -123,7 +123,7 @@ unlike(
    '--error-text works (issue 459) with option --mysql_ssl'
 );
 
-$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 F=t/pt-archiver/samples/pt-191-replica1.cnf,h=127.1,P=12346,u=sha256_user,p=sha256_user%password,s=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
+$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 F=t/pt-archiver/samples/pt-191-replica1.cnf,h=127.1,P=12346,u=sha256_user,p=sha256_user%password,s=1,o=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
 
 is(
    $?,
@@ -133,11 +133,11 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with correct SSL options in the configuration file'
 ) or diag($output);
 
-$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12346,u=sha256_user,p=sha256_user%password,s=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
+$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12346,u=sha256_user,p=sha256_user%password,s=1,o=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
 
 isnt(
    $?,
@@ -147,53 +147,9 @@ isnt(
 
 like(
    $output,
-   qr/SSL connection error: Unable to get private key at/,
+   qr/SSL error: key values mismatch/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
-
-# #############################################################################
-# Test mysql_ssl_optional option
-# #############################################################################
-
-$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 h=127.1,P=12346,u=sha256_user,p=sha256_user%password,s=1,o=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
-
-is(
-   $?,
-   0,
-   "No error for user, identified with caching_sha2_password and option --mysql_ssl_optional (short version -o)"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl_optional (short version -o)'
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Error does not match/,
-   '--error-text works (issue 459) with option --mysql_ssl_optional (short version -o)'
-);
-
-$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 --host=127.1 --port=12346 --user=sha256_user --password=sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1 --error-text "doesn't exist" --run-time 1s 2>&1`;
-
-is(
-   $?,
-   0,
-   "No error for user, identified with caching_sha2_password with options --mysql_ssl and --mysql_ssl_optional"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with options --mysql_ssl and --mysql_ssl_optional'
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Error does not match/,
-   '--error-text works (issue 459) with options --mysql_ssl and --mysql_ssl_optional'
-);
 
 # #############################################################################
 # Done.

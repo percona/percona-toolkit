@@ -34,8 +34,8 @@ my $cnf = '/tmp/12345/my.sandbox.cnf';
    stderr => 1,
 );
 
-if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+if ( $exit_code == 0 || $output !~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test requires DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
 elsif ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
@@ -70,110 +70,9 @@ isnt(
 
 like(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
-
-($output, $exit_code) = full_output(
-   sub { pt_show_grants::main(
-         '-F', $cnf,
-         'h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1',
-         qw(--drop --flush --revoke --separate)
-      ); },
-   stderr => 1,
-);
-
-is(
-   $exit_code,
-   0,
-   "No error for user, identified with caching_sha2_password"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error'
-) or diag($output);
-
-like(
-   $output,
-   qr/Grants dumped by/,
-   'It lives',
-);
-
-($output, $exit_code) = full_output(
-   sub { pt_show_grants::main(
-         '-F', $cnf,
-         qw(--host 127.1 --port 12345 --user sha256_user),
-         qw(--password sha256_user%password --mysql_ssl 1),
-         qw(--drop --flush --revoke --separate)
-      ); },
-   stderr => 1,
-);
-
-is(
-   $exit_code,
-   0,
-   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl'
-) or diag($output);
-
-like(
-   $output,
-   qr/Grants dumped by/,
-   'It lives with option --mysql_ssl',
-) or diag($output);
-
-($output, $exit_code) = full_output(
-   sub { pt_show_grants::main(
-         '-F', 't/pt-archiver/samples/pt-191.cnf',
-         'h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1',
-         qw(--drop --flush --revoke --separate)
-      ); },
-   stderr => 1,
-);
-
-is(
-   $exit_code,
-   0,
-   "No error for SSL options in the configuration file"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with correct SSL options in the configuration file'
-) or diag($output);
-
-($output, $exit_code) = full_output(
-   sub { pt_show_grants::main(
-         '-F', 't/pt-archiver/samples/pt-191-error.cnf',
-         'h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1',
-         qw(--drop --flush --revoke --separate)
-      ); },
-   stderr => 1,
-);
-
-isnt(
-   $exit_code,
-   0,
-   "Error for invalid SSL options in the configuration file"
-) or diag($output);
-
-like(
-   $output,
-   qr/SSL connection error: Unable to get private key at/,
-   'SSL connection error with incorrect SSL options in the configuration file'
-) or diag($output);
-
-# #############################################################################
-# Test mysql_ssl_optional option
-# #############################################################################
 
 ($output, $exit_code) = full_output(
    sub { pt_show_grants::main(
@@ -187,26 +86,26 @@ like(
 is(
    $exit_code,
    0,
-   "No error for user, identified with caching_sha2_password with option mysql_ssl_optional (short version -o)"
+   "No error for user, identified with caching_sha2_password"
 ) or diag($output);
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option mysql_ssl_optional (short version -o)'
+   qr/Access denied/,
+   'No secure connection error'
 ) or diag($output);
 
 like(
    $output,
    qr/Grants dumped by/,
-   'It lives with option mysql_ssl_optional (short version -o)',
+   'It lives',
 );
 
 ($output, $exit_code) = full_output(
    sub { pt_show_grants::main(
          '-F', $cnf,
          qw(--host 127.1 --port 12345 --user sha256_user),
-         qw(--password sha256_user%password --mysql_ssl 1 --mysql_ssl_optional 1),
+         qw(--password sha256_user%password --mysql_ssl 1 --mysql_ssl_optional=1),
          qw(--drop --flush --revoke --separate)
       ); },
    stderr => 1,
@@ -215,19 +114,61 @@ like(
 is(
    $exit_code,
    0,
-   "No error for user, identified with caching_sha2_password with options --mysql_ssl and --mysql_ssl_optional"
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl"
 ) or diag($output);
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with options --mysql_ssl and --mysql_ssl_optional'
+   qr/Access denied/,
+   'No secure connection error with option --mysql_ssl'
 ) or diag($output);
 
 like(
    $output,
    qr/Grants dumped by/,
-   'It lives with options --mysql_ssl and --mysql_ssl_optional',
+   'It lives with option --mysql_ssl',
+) or diag($output);
+
+($output, $exit_code) = full_output(
+   sub { pt_show_grants::main(
+         '-F', 't/pt-archiver/samples/pt-191.cnf',
+         'h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1',
+         qw(--drop --flush --revoke --separate)
+      ); },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for SSL options in the configuration file"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Access denied/,
+   'No secure connection error with correct SSL options in the configuration file'
+) or diag($output);
+
+($output, $exit_code) = full_output(
+   sub { pt_show_grants::main(
+         '-F', 't/pt-archiver/samples/pt-191-error.cnf',
+         'h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1',
+         qw(--drop --flush --revoke --separate)
+      ); },
+   stderr => 1,
+);
+
+isnt(
+   $exit_code,
+   0,
+   "Error for invalid SSL options in the configuration file"
+) or diag($output);
+
+like(
+   $output,
+   qr/SSL error: key values mismatch/,
+   'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
 
 # #############################################################################

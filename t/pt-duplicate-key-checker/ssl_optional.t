@@ -28,8 +28,8 @@ my $cmd    = "$trunk/bin/pt-duplicate-key-checker -F $cnf -h 127.1";
 # Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
 $output = `$cmd -d mysql -t columns_priv -v P=12345,u=msandbox,p=msandbox,s=1 2>&1`;
 
-if ( $? != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+if ( $? == 0 || $output !~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test requires DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
 elsif ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
@@ -68,11 +68,11 @@ isnt(
 
 like(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
-$output = `$cmd -d mysql -t columns_priv -v P=12345,u=sha256_user,p=sha256_user%password,s=1`;
+$output = `$cmd -d mysql -t columns_priv -v P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1`;
 
 is(
    $?,
@@ -82,7 +82,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error'
 ) or diag($output);
 
@@ -99,34 +99,34 @@ if ($sandbox_version ge '8.0') {
    );
 }
 
-$output = `$cmd -d mysql -t columns_priv -v --host 127.1 --port 12345 --user sha256_user --password=sha256_user%password --mysql_ssl=1`;
+$output = `$cmd -d mysql -t columns_priv -v --host 127.1 --port 12345 --user sha256_user --password=sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1`;
 
 is(
    $?,
    0,
-   "No error for user, identified with caching_sha2_password with option --mysql_ssl=1"
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl=1 --mysql_ssl_optional=1"
 ) or diag($output);
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl=1'
+   qr/Access denied/,
+   'No secure connection error with option --mysql_ssl=1 --mysql_ssl_optional=1'
 ) or diag($output);
 
 # In version 8.0 order of columns in the index changed
 if ($sandbox_version ge '8.0') {
    like($output,
       qr/PRIMARY \(`Host`,`User`,`Db`,`Table_name`,`Column_name`\)/,
-      'Finds mysql.columns_priv PK with option --mysql_ssl=1'
+      'Finds mysql.columns_priv PK with option --mysql_ssl=1 --mysql_ssl_optional=1'
    );
 } else {
    like($output,
       qr/PRIMARY \(`Host`,`Db`,`User`,`Table_name`,`Column_name`\)/,
-      'Finds mysql.columns_priv PKi with option --mysql_ssl=1'
+      'Finds mysql.columns_priv PKi with option --mysql_ssl=1 --mysql_ssl_optional=1'
    );
 }
 
-$output = `$cmd -d mysql -t columns_priv -v F=t/pt-archiver/samples/pt-191.cnf,P=12345,u=sha256_user,p=sha256_user%password,s=1 2>&1`;
+$output = `$cmd -d mysql -t columns_priv -v F=t/pt-archiver/samples/pt-191.cnf,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 2>&1`;
 
 is(
    $?,
@@ -136,11 +136,11 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with correct SSL options in the configuration file'
 ) or diag($output);
 
-$output = `$cmd -d mysql -t columns_priv -v F=t/pt-archiver/samples/pt-191-error.cnf,P=12345,u=sha256_user,p=sha256_user%password,s=1 2>&1`;
+$output = `$cmd -d mysql -t columns_priv -v F=t/pt-archiver/samples/pt-191-error.cnf,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 2>&1`;
 
 isnt(
    $?,
@@ -150,67 +150,9 @@ isnt(
 
 like(
    $output,
-   qr/SSL connection error: Unable to get private key at/,
+   qr/SSL error: key values mismatch/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
-
-# #############################################################################
-# Test mysql_ssl_optional option
-# #############################################################################
-
-$output = `$cmd -d mysql -t columns_priv -v P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1`;
-
-is(
-   $?,
-   0,
-   "No error for user, identified with caching_sha2_password with option --mysql_ssl_optional 1"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl_optional 1'
-) or diag($output);
-
-# In version 8.0 order of columns in the index changed
-if ($sandbox_version ge '8.0') {
-   like($output,
-      qr/PRIMARY \(`Host`,`User`,`Db`,`Table_name`,`Column_name`\)/,
-      'Finds mysql.columns_priv PK with option --mysql_ssl_optional 1'
-   );
-} else {
-   like($output,
-      qr/PRIMARY \(`Host`,`Db`,`User`,`Table_name`,`Column_name`\)/,
-      'Finds mysql.columns_priv PK with option --mysql_ssl_optional 1'
-   );
-}
-
-$output = `$cmd -d mysql -t columns_priv -v --host 127.1 --port 12345 --user sha256_user --password=sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1`;
-
-is(
-   $?,
-   0,
-   "No error for user, identified with caching_sha2_password with option --mysql_ssl=1 and --mysql_ssl_optional=1"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl=1 and --mysql_ssl_optional=1'
-) or diag($output);
-
-# In version 8.0 order of columns in the index changed
-if ($sandbox_version ge '8.0') {
-   like($output,
-      qr/PRIMARY \(`Host`,`User`,`Db`,`Table_name`,`Column_name`\)/,
-      'Finds mysql.columns_priv PK with option --mysql_ssl=1 and --mysql_ssl_optional=1'
-   );
-} else {
-   like($output,
-      qr/PRIMARY \(`Host`,`Db`,`User`,`Table_name`,`Column_name`\)/,
-      'Finds mysql.columns_priv PKi with option --mysql_ssl=1 and --mysql_ssl_optional=1'
-   );
-}
 
 # #############################################################################
 # Done.

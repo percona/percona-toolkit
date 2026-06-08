@@ -32,8 +32,8 @@ my $cmd       = "$trunk/bin/pt-heartbeat -F $cnf ";
    stderr => 1,
 );
 
-if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+if ( $exit_code == 0 || $output !~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test requires DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
 elsif ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
@@ -71,12 +71,12 @@ isnt(
 
 like(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
 ($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main("F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
+   sub { pt_heartbeat::main("F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1",
       qw(-D test --check)) },
    stderr => 1,
 );
@@ -89,7 +89,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error'
 ) or diag($output);
 
@@ -103,7 +103,7 @@ is(
 ($output, $exit_code) = full_output(
    sub { pt_heartbeat::main(
          qw(--host 127.1 --port 12345 --user sha256_user),
-         qw(--password sha256_user%password --mysql_ssl=1),
+         qw(--password sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1),
       qw(-D test --check)) },
    stderr => 1,
 );
@@ -116,7 +116,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with option --mysql_ssl'
 ) or diag($output);
 
@@ -128,7 +128,7 @@ is(
 );
 
 ($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main("F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
+   sub { pt_heartbeat::main("F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1",
       qw(-D test --check)) },
    stderr => 1,
 );
@@ -141,12 +141,12 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with correct SSL options in the configuration file'
 ) or diag($output);
 
 ($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main("F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
+   sub { pt_heartbeat::main("F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1",
       qw(-D test --check)) },
    stderr => 1,
 );
@@ -159,65 +159,9 @@ isnt(
 
 like(
    $output,
-   qr/SSL connection error: Unable to get private key at/,
+   qr/SSL error: key values mismatch/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
-
-# #############################################################################
-# Test mysql_ssl_optional option
-# #############################################################################
-
-($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main("F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1",
-      qw(-D test --check)) },
-   stderr => 1,
-);
-
-is(
-   $exit_code,
-   0,
-   "No error for user, identified with caching_sha2_password with option mysql_ssl_optional"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option mysql_ssl_optional'
-) or diag($output);
-
-$row = $dbh->selectall_hashref('select * from test.heartbeat', 'id');
-is(
-   $row->{1}->{id},
-   1,
-   "Automatically inserts heartbeat row (issue 1292) with option mysql_ssl_optional"
-);
-
-($output, $exit_code) = full_output(
-   sub { pt_heartbeat::main(
-         qw(--host 127.1 --port 12345 --user sha256_user),
-         qw(--password sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1),
-      qw(-D test --check)) },
-   stderr => 1,
-);
-
-is(
-   $exit_code,
-   0,
-   "No error for user, identified with caching_sha2_password with option --mysql_ssl and --mysql_ssl_optional"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl and --mysql_ssl_optional'
-) or diag($output);
-
-$row = $dbh->selectall_hashref('select * from test.heartbeat', 'id');
-is(
-   $row->{1}->{id},
-   1,
-   "Automatically inserts heartbeat row (issue 1292) with option --mysql_ssl and --mysql_ssl_optional"
-);
 
 # #############################################################################
 # Done.

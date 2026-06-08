@@ -32,8 +32,8 @@ my $samples  = "$trunk/t/pt-query-digest/samples";
    stderr => 1,
 );
 
-if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+if ( $exit_code == 0 || $output !~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test requires DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
 elsif ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
@@ -64,13 +64,13 @@ isnt(
 
 like(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
 ($output, $exit_code) = full_output(
    sub {
-      pt_query_digest::main("--explain='F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1'",
+      pt_query_digest::main("--explain='F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1'",
          "$samples/slow028.txt")
    },
    stderr => 1,
@@ -84,7 +84,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error'
 ) or diag($output);
 
@@ -97,7 +97,7 @@ like(
 ($output, $exit_code) = full_output(
    sub {
       pt_query_digest::main("--explain=h=127.1,P=12345,u=sha256_user,p=sha256_user%password",
-         qw(--mysql_ssl 1),
+         qw(--mysql_ssl 1 --mysql_ssl_optional=1),
          "$samples/slow028.txt")
    },
    stderr => 1,
@@ -111,7 +111,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with option --mysql_ssl'
 ) or diag($output);
 
@@ -123,7 +123,7 @@ like(
 
 ($output, $exit_code) = full_output(
    sub {
-      pt_query_digest::main("--explain=F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
+      pt_query_digest::main("--explain=F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1",
          "$samples/slow028.txt")
    },
    stderr => 1,
@@ -137,13 +137,13 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with correct SSL options in the configuration file'
 ) or diag($output);
 
 ($output, $exit_code) = full_output(
    sub {
-      pt_query_digest::main("--explain=F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1",
+      pt_query_digest::main("--explain=F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1",
          "$samples/slow028.txt")
    },
    stderr => 1,
@@ -157,65 +157,8 @@ isnt(
 
 like(
    $output,
-   qr/SSL connection error: Unable to get private key at/,
+   qr/SSL error: key values mismatch/,
    'SSL connection error with incorrect SSL options in the configuration file'
-) or diag($output);
-
-# #############################################################################
-# Test mysql_ssl_optional option
-# #############################################################################
-
-($output, $exit_code) = full_output(
-   sub {
-      pt_query_digest::main("--explain='F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1'",
-         "$samples/slow028.txt")
-   },
-   stderr => 1,
-);
-
-is(
-   $exit_code,
-   0,
-   "No error for user, identified with caching_sha2_password with mysql_ssl_optional (short form -o)"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with mysql_ssl_optional (short form -o)'
-) or diag($output);
-
-like(
-   $output,
-   qr/Query size            24      24      24      24      24       0      24/,
-   'Analysis printed with mysql_ssl_optional (short form -o)'
-) or diag($output);
-
-($output, $exit_code) = full_output(
-   sub {
-      pt_query_digest::main("--explain=h=127.1,P=12345,u=sha256_user,p=sha256_user%password",
-         qw(--mysql_ssl 1 --mysql_ssl_optional 1),
-         "$samples/slow028.txt")
-   },
-   stderr => 1,
-);
-
-is(
-   $exit_code,
-   0,
-   "No error for user, identified with caching_sha2_password with options --mysql_ssl and --mysql_ssl_optional"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with options --mysql_ssl and --mysql_ssl_optional'
-) or diag($output);
-
-like(
-   $output,
-   qr/Query size            24      24      24      24      24       0      24/,
-   'Analysis printed with options --mysql_ssl and --mysql_ssl_optional'
 ) or diag($output);
 
 # #############################################################################

@@ -30,8 +30,8 @@ my $cmd = "$trunk/bin/pt-kill";
 # Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
 $output = `$cmd F=$cnf,h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --busy-time 1s --print --run-time 1 2>&1`;
 
-if ( $? != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+if ( $? == 0 || $output !~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test requires DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
 elsif ( !$source_dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
@@ -40,7 +40,7 @@ elsif ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
 }
 else {
-   plan tests => 17;
+   plan tests => 13;
 }
 
 $sb->do_as_root(
@@ -59,7 +59,7 @@ isnt(
 
 like(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
@@ -67,7 +67,7 @@ like(
 # Backticks don't work here.
 system("/tmp/12345/use -e 'select sleep(5)' >/dev/null &");
 
-$output = `$cmd F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1 --busy-time 1s --print --run-time 10 2>&1`;
+$output = `$cmd F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 --busy-time 1s --print --run-time 10 2>&1`;
 
 is(
    $?,
@@ -77,7 +77,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error'
 ) or diag($output);
 
@@ -101,7 +101,7 @@ ok(
 # Backticks don't work here.
 system("/tmp/12345/use -e 'select sleep(5)' >/dev/null &");
 
-$output = `$cmd --host 127.1 --port 12345 --user sha256_user --password=sha256_user%password --mysql_ssl 1 --busy-time 1s --print --run-time 10 2>&1`;
+$output = `$cmd --host 127.1 --port 12345 --user sha256_user --password=sha256_user%password --mysql_ssl 1 --mysql_ssl_optional=1 --busy-time 1s --print --run-time 10 2>&1`;
 
 is(
    $?,
@@ -111,7 +111,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with option --mysql_ssl'
 ) or diag($output);
 
@@ -131,7 +131,7 @@ ok(
    "There were 2 to 5 captures with option --mysql_ssl"
 ) or diag($output);
 
-$output = `$cmd F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1 --busy-time 1s --print --run-time 10 2>&1`;
+$output = `$cmd F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 --busy-time 1s --print --run-time 10 2>&1`;
 
 is(
    $?,
@@ -141,11 +141,11 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with correct SSL options in the configuration file'
 ) or diag($output);
 
-$output = `$cmd F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1 --busy-time 1s --print --run-time 10 2>&1`;
+$output = `$cmd F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 --busy-time 1s --print --run-time 10 2>&1`;
 
 isnt(
    $?,
@@ -155,42 +155,10 @@ isnt(
 
 like(
    $output,
-   qr/SSL connection error: Unable to get private key at/,
+   qr/SSL error: key values mismatch/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
 
-
-# #############################################################################
-# Test mysql_ssl_optional option
-# #############################################################################
-
-$output = `$cmd F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 --busy-time 1s --print --run-time 10 2>&1`;
-
-is(
-   $?,
-   0,
-   "No error for user, identified with caching_sha2_password with option --mysql_ssl_optional (short form -o)"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl_optional (short form -o)'
-) or diag($output);
-
-$output = `$cmd F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password --mysql_ssl=1 --busy-time 1s --print --run-time 10 --mysql_ssl_optional 1 2>&1`;
-
-is(
-   $?,
-   0,
-   "No error for user, identified with caching_sha2_password with option --mysql_ssl_optional"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl_optional'
-) or diag($output);
 
 # #############################################################################
 # Done.

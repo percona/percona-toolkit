@@ -29,8 +29,8 @@ my $output;
 # Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
 $output = `$trunk/bin/pt-replica-find h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --report-format hostname 2>&1`;
 
-if ( $? != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+if ( $? == 0 || $output !~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test requires DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
 elsif ( !$source_dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
@@ -69,11 +69,11 @@ isnt(
 
 like(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
-$output = `$trunk/bin/pt-replica-find h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1 --report-format hostname 2>&1`;
+$output = `$trunk/bin/pt-replica-find h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 --report-format hostname 2>&1`;
 
 is(
    $?,
@@ -83,7 +83,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error'
 ) or diag($output);
 
@@ -95,7 +95,7 @@ EOF
 
 is($output, $expected, 'Source with replica and replica of replica');
 
-$output = `$trunk/bin/pt-replica-find --host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1 --report-format hostname 2>&1`;
+$output = `$trunk/bin/pt-replica-find --host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1 --report-format hostname 2>&1`;
 
 is(
    $?,
@@ -105,7 +105,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with option --mysql_ssl'
 ) or diag($output);
 
@@ -121,7 +121,7 @@ is(
    'Source with replica and replica of replica with option --mysql_ssl'
 );
 
-$output = `$trunk/bin/pt-replica-find F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1 --report-format hostname  --recurse 0 2>&1`;
+$output = `$trunk/bin/pt-replica-find F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 --report-format hostname  --recurse 0 2>&1`;
 
 is(
    $?,
@@ -131,11 +131,11 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with correct SSL options in the configuration file'
 ) or diag($output);
 
-$output = `$trunk/bin/pt-replica-find F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1 --report-format hostname  --recurse 0 2>&1`;
+$output = `$trunk/bin/pt-replica-find F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 --report-format hostname  --recurse 0 2>&1`;
 
 isnt(
    $?,
@@ -145,61 +145,9 @@ isnt(
 
 like(
    $output,
-   qr/SSL connection error: Unable to get private key at/,
+   qr/SSL error: key values mismatch/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
-
-# #############################################################################
-# Test mysql_ssl_optional option
-# #############################################################################
-
-$output = `$trunk/bin/pt-replica-find h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 --report-format hostname 2>&1`;
-
-is(
-   $?,
-   0,
-   "No error for user, identified with caching_sha2_password with mysql_ssl_optional (short form -o)"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with mysql_ssl_optional (short form -o)'
-) or diag($output);
-
-$expected = <<EOF;
-127.1:12345
-+- 127.0.0.1:12346
-   +- 127.0.0.1:12347
-EOF
-
-is($output, $expected, 'Source with replica and replica of replica with mysql_ssl_optional (short form -o)');
-
-$output = `$trunk/bin/pt-replica-find --host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1 --report-format hostname 2>&1`;
-
-is(
-   $?,
-   0,
-   "No error for user, identified with caching_sha2_password with options --mysql_ssl and --mysql_ssl_optional"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with options --mysql_ssl and --mysql_ssl_optional'
-) or diag($output);
-
-$expected = <<EOF;
-127.1:12345
-+- 127.0.0.1:12346
-   +- 127.0.0.1:12347
-EOF
-
-is(
-   $output,
-   $expected,
-   'Source with replica and replica of replica with options --mysql_ssl and --mysql_ssl_optional'
-);
 
 # #############################################################################
 # Done.

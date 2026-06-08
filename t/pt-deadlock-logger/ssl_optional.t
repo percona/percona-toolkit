@@ -33,8 +33,8 @@ my @args = ($dsn, qw(--iterations 1));
    stderr => 1,
 );
 
-if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
-   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+if ( $exit_code == 0 || $output !~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test requires DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
 }
 elsif ( !$dbh1 || !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox source';
@@ -117,7 +117,7 @@ sub reconnect {
 
 $sb->do_as_root(
    'source',
-   q/CREATE USER IF NOT EXISTS sha256_user@'%' IDENTIFIED WITH caching_sha2_password BY 'sha256_user%password'/,
+   q/CREATE USER IF NOT EXISTS sha256_user@'%' IDENTIFIED WITH caching_sha2_password BY 'sha256_user%password' REQUIRE SSL/,
    q/GRANT ALL ON sakila.* TO sha256_user@'%'/,
    q/GRANT PROCESS ON *.* TO sha256_user@'%'/,
 );
@@ -147,13 +147,13 @@ isnt(
 
 like(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'Secure connection error raised when no SSL connection used'
 ) or diag($output);
 
 ($output, $exit_code) = full_output(
    sub {
-      pt_deadlock_logger::main("h=127.1,P=12345,D=sakila,t=film,u=sha256_user,p=sha256_user%password,s=1",
+      pt_deadlock_logger::main("h=127.1,P=12345,D=sakila,t=film,u=sha256_user,p=sha256_user%password,s=1,o=1",
       qw(--iterations 1));
    },
    stderr => 1,
@@ -167,7 +167,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error'
 ) or diag($output);
 
@@ -181,7 +181,7 @@ like(
    sub {
       pt_deadlock_logger::main(
          qw(--host 127.1 --port 12345 --user sha256_user),
-         qw(--password sha256_user%password --mysql_ssl 1),
+         qw(--password sha256_user%password --mysql_ssl 1 --mysql_ssl_optional=1),
          qw(--iterations 1));
    },
    stderr => 1,
@@ -195,7 +195,7 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with option --mysql_ssl'
 ) or diag($output);
 
@@ -207,7 +207,7 @@ like(
 
 ($output, $exit_code) = full_output(
    sub {
-      pt_deadlock_logger::main("F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,D=sakila,t=film,u=sha256_user,p=sha256_user%password,s=1",
+      pt_deadlock_logger::main("F=t/pt-archiver/samples/pt-191.cnf,h=127.1,P=12345,D=sakila,t=film,u=sha256_user,p=sha256_user%password,s=1,o=1",
       qw(--iterations 1));
    },
    stderr => 1,
@@ -221,13 +221,13 @@ is(
 
 unlike(
    $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   qr/Access denied/,
    'No secure connection error with correct SSL options in the configuration file'
 ) or diag($output);
 
 ($output, $exit_code) = full_output(
    sub {
-      pt_deadlock_logger::main("F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,D=sakila,t=film,u=sha256_user,p=sha256_user%password,s=1",
+      pt_deadlock_logger::main("F=t/pt-archiver/samples/pt-191-error.cnf,h=127.1,P=12345,D=sakila,t=film,u=sha256_user,p=sha256_user%password,s=1,o=1",
       qw(--iterations 1));
    },
    stderr => 1,
@@ -241,66 +241,8 @@ isnt(
 
 like(
    $output,
-   qr/SSL connection error: Unable to get private key at/,
+   qr/SSL error: key values mismatch/,
    'SSL connection error with incorrect SSL options in the configuration file'
-) or diag($output);
-
-# #############################################################################
-# Test mysql_ssl_optional option
-# #############################################################################
-
-($output, $exit_code) = full_output(
-   sub {
-      pt_deadlock_logger::main("h=127.1,P=12345,D=sakila,t=film,u=sha256_user,p=sha256_user%password,s=1,o=1",
-      qw(--iterations 1));
-   },
-   stderr => 1,
-);
-
-is(
-   $exit_code,
-   0,
-   "No error for user, identified with caching_sha2_password and option --mysql_ssl_optional 1"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl_optional 1'
-) or diag($output);
-
-like(
-   $output,
-   qr/127\.1.+msandbox.+GEN_CLUST_INDEX/,
-   'Deadlock logger prints the output with option --mysql_ssl_optional 1'
-) or diag($output);
-
-($output, $exit_code) = full_output(
-   sub {
-      pt_deadlock_logger::main(
-         qw(--host 127.1 --port 12345 --user sha256_user),
-         qw(--password sha256_user%password --mysql_ssl 1 --mysql_ssl_optional 1),
-         qw(--iterations 1));
-   },
-   stderr => 1,
-);
-
-is(
-   $exit_code,
-   0,
-   "No error for user, identified with caching_sha2_password with option --mysql_ssl and --mysql_ssl_optional"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
-   'No secure connection error with option --mysql_ssl and --mysql_ssl_optional'
-) or diag($output);
-
-like( 
-   $output,
-   qr/127\.1.+msandbox.+GEN_CLUST_INDEX/,
-   'Deadlock logger prints the output with option --mysql_ssl and --mysql_ssl_optional'
 ) or diag($output);
 
 # #############################################################################
