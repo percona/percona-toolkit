@@ -89,9 +89,8 @@ func New(location, namespace, kubeconfig, clusterName, forwardport, resource str
 
 	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
 
-	_, resourceClusterName := parseResourceSpec(resource)
 	if clusterName == "" {
-		clusterName = resourceClusterName
+		_,  clusterName = parseResourceSpec(resource)
 	}
 
 	config, err := buildRestConfig(kubeconfig, clusterName)
