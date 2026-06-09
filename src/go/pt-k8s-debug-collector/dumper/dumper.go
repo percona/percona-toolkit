@@ -70,6 +70,7 @@ type individualFile struct {
 	resourceName  string
 	containerName string
 	filepaths     []string
+	dirpaths      map[string][]string // map[tarFolder][]dirPaths
 }
 
 // resourceMap struct is used to dump the resources from namespace scope or cluster scope
@@ -84,14 +85,16 @@ type exportJob struct {
 }
 
 // New return new Dumper object
-func New(location, namespace, kubeconfig, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
-	var config *rest.Config
-
+func New(location, namespace, kubeconfig, clusterName, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
 	safeLog := NewSafeLogger()
 
 	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if clusterName == "" {
+		_,  clusterName = parseResourceSpec(resource)
+	}
+
+	config, err := buildRestConfig(kubeconfig, clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build config from flags: %w", err)
 	}
@@ -179,6 +182,27 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 	}
 
 	return d, err
+}
+
+func buildRestConfig(kubeconfig, clusterName string) (*rest.Config, error) {
+	if clusterName == "" {
+		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+	}
+
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig}
+	overrides := &clientcmd.ConfigOverrides{CurrentContext: clusterName}
+	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
+
+	rawConfig, err := clientConfig.RawConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := rawConfig.Contexts[clusterName]; !ok {
+		return nil, fmt.Errorf("context %q not found in kubeconfig", clusterName)
+	}
+
+	return clientConfig.ClientConfig()
 }
 
 // DumpCluster create dump of a cluster in Dumper.location
@@ -504,15 +528,17 @@ func matchesCR(cr string, podLabels map[string]string) bool {
 
 func (d *Dumper) exportPodSummaryAndFiles(ctx context.Context, job exportJob) {
 	for _, cr := range d.crTypes {
-		if !matchesCR(cr, job.Pod.Labels) {
+		normalizedCR := resourceType(cr)
+
+		if !matchesCR(normalizedCR, job.Pod.Labels) {
 			continue
 		}
 
 		if !d.skipPodSummary {
-			d.getSummary(ctx, job, cr, d.PodSummaryPath(job.Pod.Namespace, job.Pod.Name))
+			d.getSummary(ctx, job, normalizedCR, d.PodSummaryPath(job.Pod.Namespace, job.Pod.Name))
 		}
 
-		d.getIndividualFiles(ctx, job, cr)
+		d.getIndividualFiles(ctx, job, normalizedCR)
 	}
 }
 

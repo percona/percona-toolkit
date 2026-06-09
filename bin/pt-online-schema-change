@@ -2293,7 +2293,7 @@ sub get_cxn_params {
       $dsn = 'DBI:mysql:' . ( $info->{D} || '' ) . ';'
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
-                     qw(F h P S A s))
+                     qw(F h P S A s o))
          . ';mysql_read_default_group=client'
          . ($info->{L} ? ';mysql_local_infile=1' : '');
    }
@@ -13455,6 +13455,12 @@ short form: -s; type: int
 
 Create SSL MySQL connection.
 
+=item --mysql_ssl_optional
+
+short form: -o; type: int
+
+Disables strict SSL enforcement and makes SSL connection optional.
+
 =item --preserve-triggers
 
 Preserves old triggers when specified.
@@ -14176,6 +14182,12 @@ User for login if not current user.
 dsn: mysql_ssl; copy: yes
 
 Create SSL connection
+
+=item * o
+
+dsn: mysql_ssl_optional; copy: yes
+
+Disables strict SSL enforcement and makes SSL connection optional
 
 =back
 

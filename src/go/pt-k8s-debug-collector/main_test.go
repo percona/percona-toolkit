@@ -14,10 +14,13 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -311,7 +314,11 @@ func (s *CollectorSuite) TestIndividualFiles() {
 				var result []string
 				for _, f := range files {
 					b := path.Base(f)
-					if !slices.Contains(result, b) && b != "." && b != "" {
+					if b == "." || b == "" {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
 						result = append(result, b)
 					}
 				}
@@ -334,10 +341,100 @@ func (s *CollectorSuite) TestIndividualFiles() {
 				return in[:nl]
 			},
 		},
+		{
+			namespace: "pgo",
+			// If the tool collects PostgreSQL log files
+			name: "pgo_pg_logs_exist",
+			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/*/pg_log/*.log'
+			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
+			want: []string{".log"},
+			preprocessor: func(in string) string {
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					if strings.Contains(f, "pg_log") && strings.HasSuffix(f, ".log") {
+						result = append(result, ".log")
+						break // Just check if at least one .log file exists
+					}
+				}
+				return strings.Join(result, "")
+			},
+		},
+		{
+			namespace: "pgv2",
+			// If the tool collects PostgreSQL log files for pgv2
+			name: "pgv2_pg_logs_exist",
+			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/*/pg_log/*.log'
+			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
+			want: []string{".log"},
+			preprocessor: func(in string) string {
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					if strings.Contains(f, "pg_log") && strings.HasSuffix(f, ".log") {
+						result = append(result, ".log")
+						break // Just check if at least one .log file exists
+					}
+				}
+				return strings.Join(result, "")
+			},
+		},
+		{
+			namespace: "pxc",
+			// If pod logs are exported as one file per container
+			name: "pxc_container_logs_split_by_container",
+			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/pxc/*/*.log'
+			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/*.log"},
+			want: []string{"logrotate.log", "logs.log", "pxc-init.log", "pxc.log"},
+			preprocessor: func(in string) string {
+				required := map[string]struct{}{
+					"logrotate.log": {},
+					"logs.log":      {},
+					"pxc-init.log":  {},
+					"pxc.log":       {},
+				}
+
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					rel := strings.TrimPrefix(f, "cluster-dump/pxc/")
+					parts := strings.Split(rel, "/")
+					if len(parts) != 2 {
+						continue
+					}
+
+					b := parts[1]
+					if _, ok := required[b]; !ok {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
+						result = append(result, b)
+					}
+				}
+				slices.Sort(result)
+				return strings.Join(result, "\n")
+			},
+		},
 	}
 
-	if s.Namespace != "pxc" {
-		s.T().Skip("This test is specifically for pxc namespace")
+	// Filter tests for current namespace
+	nsTests := []struct {
+		namespace    string
+		name         string
+		cmd          []string
+		want         []string
+		preprocessor func(string) string
+	}{}
+
+	for _, test := range tests {
+		if test.namespace == s.Namespace {
+			nsTests = append(nsTests, test)
+		}
+	}
+
+	if len(nsTests) == 0 {
+		s.T().Skip("No tests configured for namespace " + s.Namespace)
 	}
 
 	for _, resource := range s.Resources {
@@ -346,7 +443,7 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			err := cmd.Run()
 			s.NoError(err)
 
-			for _, test := range tests {
+			for _, test := range nsTests {
 				out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
 				if err != nil && resource == "none" {
 					continue
@@ -395,9 +492,76 @@ func (s *CollectorSuite) TestResourceOption() {
 				if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
 					s.Failf("Summary Check", "test %s\nresource %s\nnamespace %s\noutput is not as expected\nOutput: %s\nWanted: %s", test.name, resource, test.namespace, out, test.want)
 				}
+
+				if test.want != "0" {
+					err = validateSummaryByNamespace("cluster-dump.tar.gz", test.namespace)
+					s.NoErrorf(err, "summary validation failed for namespace %s, resource %s", test.namespace, resource)
+				}
 			}
 		})
 	}
+}
+
+func validateSummaryByNamespace(archivePath, namespace string) error {
+	switch namespace {
+	case "psmdb":
+		return validatePSMDBSummary(archivePath, namespace)
+	default:
+		return nil
+	}
+}
+
+func validatePSMDBSummary(archivePath, namespace string) error {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	tarReader := tar.NewReader(gzr)
+	validated := 0
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+		if !strings.HasSuffix(header.Name, "/summary.txt") {
+			continue
+		}
+		if !strings.Contains(header.Name, "/"+namespace+"/") {
+			continue
+		}
+
+		content, err := io.ReadAll(tarReader)
+		if err != nil {
+			return err
+		}
+		if !bytes.Contains(content, []byte("# Report On")) {
+			return fmt.Errorf("summary file %s does not contain # Report On", header.Name)
+		}
+
+		validated++
+	}
+
+	if validated == 0 {
+		return fmt.Errorf("no summary.txt files found for namespace %s", namespace)
+	}
+
+	return nil
 }
 
 func (s *CollectorSuite) TestPT_2453() {
@@ -699,6 +863,7 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 			fmt.Sprintf("%s/perconapgbackups.yaml", s.Namespace),
 			fmt.Sprintf("%s/perconapgrestores.yaml", s.Namespace),
 			fmt.Sprintf("%s/perconapgclusters.yaml", s.Namespace),
+			fmt.Sprintf("%s/postgresclusters.yaml", s.Namespace), // PT-2396
 		}, requiredNewFiles...),
 	}
 

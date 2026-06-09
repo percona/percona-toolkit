@@ -12,10 +12,28 @@ import (
 var resourcesRe = regexp.MustCompile(`(\w+\.(\w+).percona\.com)`)
 
 func (d *Dumper) addPg1() error {
+	dirpaths := map[string][]string{
+		"pg_log": {"$PGBACKREST_DB_PATH/pg_log"},
+	}
+
+	d.individualFiles = append(d.individualFiles, individualFile{
+		resourceName:  "pgo",
+		containerName: "database",
+		dirpaths:      dirpaths,
+	})
 	return nil
 }
 
 func (d *Dumper) addPg2() error {
+	dirpaths := map[string][]string{
+		"pg_log": {"$PGDATA/log"},
+	}
+
+	d.individualFiles = append(d.individualFiles, individualFile{
+		resourceName:  "pgv2",
+		containerName: "database",
+		dirpaths:      dirpaths,
+	})
 	return nil
 }
 
@@ -98,6 +116,20 @@ func (d *Dumper) autoCustomResource() ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func parseResourceSpec(resource string) (string, string) {
+	resource = strings.TrimSpace(resource)
+	if resource == "" {
+		return "", ""
+	}
+
+	resourceName, clusterName, found := strings.Cut(resource, "/")
+	if !found {
+		return resourceName, ""
+	}
+
+	return resourceName, clusterName
 }
 
 // TODO: rewrite to use map or switch
