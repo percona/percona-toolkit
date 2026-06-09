@@ -54,7 +54,7 @@ func collectData(opts *cliOptions) error {
 		}
 	}
 
-	tarFile := fmt.Sprintf(path.Join(*opts.TempDir, path.Base(*opts.TempDir)+".tar.gz"))
+	tarFile := path.Join(*opts.TempDir, path.Base(*opts.TempDir)+".tar.gz")
 	log.Infof("Creating tar file %q", tarFile)
 	if err := tarit(tarFile, []string{*opts.TempDir}); err != nil {
 		return err
