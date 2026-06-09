@@ -48,7 +48,7 @@ type connOpts struct {
 	Host     string                    `name:"host" short:"h" help:"Host to connect to"`
 	Port     int                       `name:"port" short:"p" help:"Port number to use for connection"`
 	User     string                    `name:"username" short:"u" help:"User for login if not current user"`
-	Password config.StdinRequestString `name:"passwrord" short:"W" help:"Password to use when connecting"`
+	Password config.StdinRequestString `name:"password" short:"W" help:"Password to use when connecting"`
 	SSL      bool                      `name:"ssl" help:"Enable SSL for the connection" default:"false" negatable:""`
 }
 
