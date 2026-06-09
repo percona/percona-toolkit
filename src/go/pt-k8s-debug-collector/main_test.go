@@ -273,13 +273,19 @@ func TestCollectorRunner(t *testing.T) {
 	}
 }
 
+// semVerRE is the SemVer pattern from https://semver.org (RE2-compatible
+// variant), used to validate the version line printed by --version.
+const semVerRE = `(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)` +
+	`(?:-(?:(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?` +
+	`(?:\+(?:[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
+
 func TestVersionOption(t *testing.T) {
 	out, err := exec.Command(TOOL_PATH, "--version").Output()
 	if err != nil {
 		t.Errorf("error executing %s --version: %s", toolname, err.Error())
 	}
 	// We are using MustCompile here, because hard-coded RE should not fail
-	re := regexp.MustCompile(toolname + `\n.*Version v?\d+\.\d+\.\d+(-\d+)?\n`)
+	re := regexp.MustCompile(toolname + `\n.*Version v?` + semVerRE + `\n`)
 	if !re.Match(out) {
 		t.Errorf("%s --version returns wrong result:\n%s", toolname, out)
 	}
