@@ -707,9 +707,7 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 	}
 }
 
-/*
-PT-2448 - pt-k8s-debug-collector should not collect secret details of pgbouncer
-*/
+// PT-2448 - pt-k8s-debug-collector should not collect secret details of pgbouncer
 func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
 	if s.Namespace != "pgo" && s.Namespace != "pgv2" {
 		s.T().Skip("Only applicable to pgo and pgv2 namespaces")
@@ -722,9 +720,10 @@ func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
 				"--forwardport", s.ForwardPort,
 				"--resource", resource,
 				"--skip-pod-summary")
-			_ = cmd.Run()
+			err := cmd.Run()
+			s.NoError(err)
 
-			testcmd := "tar -xf cluster-dump.tar.gz --to-command 'grep \"pgbouncer-frontend.ca-roots\"' 2>/dev/null | wc -l"
+			testcmd := "tar -xf cluster-dump.tar.gz --to-command 'grep \"pgbouncer-frontend\"' 2>/dev/null | wc -l"
 			out, err := exec.Command("sh", "-c", testcmd).Output()
 			s.NoError(err)
 			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret details in archive files")
