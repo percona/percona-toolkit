@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"text/template"
 	"time"
@@ -29,30 +30,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
+	"github.com/percona/percona-toolkit/src/go/lib/config"
+	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/indexes"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/templates"
 )
-
-type cmdlineArgs struct {
-	CheckUnused     struct{} `cmd:"" name:"check-unused" help:"Check for unused indexes."`
-	CheckDuplicated struct{} `cmd:"" name:"check-duplicates" help:"Check for duplicated indexes."`
-	CheckAll        struct{} `cmd:"" name:"check-all" help:"Check for unused and duplicated indexes."`
-	ShowHelp        struct{} `cmd:"" default:"1"`
-	Version         kong.VersionFlag
-
-	AllDatabases bool     `name:"all-databases" xor:"db" help:"Check in all databases excluding system dbs"`
-	Databases    []string `name:"databases" xor:"db" help:"Comma separated list of databases to check"`
-
-	AllCollections bool     `name:"all-collections" xor:"colls" help:"Check in all collections in the selected databases."`
-	Collections    []string `name:"collections" xor:"colls" help:"Comma separated list of collections to check"`
-	URI            string   `name:"mongodb.uri" required:"" placeholder:"mongodb://host:port/admindb?options" help:"Connection URI"`
-	JSON           bool     `name:"json" help:"Show output as JSON"`
-}
-
-type response struct {
-	Unused     []indexes.IndexStat
-	Duplicated []indexes.Duplicate
-}
 
 const (
 	toolname = "pt-mongodb-index-check"
@@ -66,11 +48,63 @@ var (
 	Commit    string //nolint
 )
 
+type CmdlineArgs struct {
+	config.ConfigFlag
+	CheckUnused     struct{} `cmd:"" name:"check-unused" help:"Check for unused indexes."`
+	CheckDuplicated struct{} `cmd:"" name:"check-duplicates" help:"Check for duplicated indexes."`
+	CheckAll        struct{} `cmd:"" name:"check-all" help:"Check for unused and duplicated indexes."`
+
+	AllDatabases bool     `name:"all-databases" xor:"db" help:"Check in all databases excluding system dbs"`
+	Databases    []string `name:"databases" xor:"db" help:"Comma separated list of databases to check"`
+
+	AllCollections bool     `name:"all-collections" xor:"colls" help:"Check in all collections in the selected databases."`
+	Collections    []string `name:"collections" xor:"colls" help:"Comma separated list of collections to check"`
+	URI            string   `name:"mongodb.uri" required:"" placeholder:"mongodb://host:port/admindb?options" help:"Connection URI"`
+	JSON           bool     `name:"json" help:"Show output as JSON"`
+
+	config.VersionFlag
+	config.VersionCheckFlag
+}
+
+func (c *CmdlineArgs) AfterApply() error {
+	if c.VersionCheck {
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
+		if err != nil {
+			log.Errorf("cannot check version updates: %s", err.Error())
+		} else if advice != "" {
+			log.Infof("%s", advice)
+		}
+	}
+
+	return nil
+}
+
+type response struct {
+	Unused     []indexes.IndexStat
+	Duplicated []indexes.Duplicate
+}
+
 func main() {
-	var args cmdlineArgs
-	kongctx := kong.Parse(&args, kong.UsageOnError(),
-		kong.Vars{"version": fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
-			toolname, Version, Build, GoVersion, Commit)})
+	var args CmdlineArgs
+	kongctx, _, err := config.Setup(
+		toolname,
+		&args,
+		kong.UsageOnError(),
+		kong.Vars{
+			"version": fmt.Sprintf(
+				"%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
+				toolname, Version, Build, GoVersion, Commit,
+			),
+		},
+	)
+	if err != nil {
+		log.Errorf("cannot get parameters: %s", err.Error())
+		os.Exit(1)
+	}
+
+	if args.Version {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

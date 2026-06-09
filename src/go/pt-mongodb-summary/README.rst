@@ -37,8 +37,15 @@ Options
   with a MongoDB server.
   By default, the ``admin`` database is used.
 
-``-c``, ``--no-version-check``
-  Disables checking the version of MongoDB before running the report.
+``--config``
+  List of Percona Toolkit configuration file(s) separated by a comma without an equal sign.
+  Must be the first flag. Uses default config file locations if not specified.
+
+``--version-check``
+  Check for updates (enabled by default).
+
+``--no-version-check``
+  Disable update checks.
 
 ``-f``, ``--output-format``
   Specifies the report output format. Valid options are: ``text``, ``json``.
@@ -57,7 +64,7 @@ Options
 ``-l``, ``--log-level``
   Specifies the logging level. Valid options: ``panic``, ``fatal``, ``error``, 
   ``warn``, ``info``, ``debug``.
-  Default: ``error``.
+  Default: ``warn``.
 
 ``-p``, ``--password``
   Specifies the password to use when connecting to a server
@@ -91,7 +98,7 @@ Options
   Specifies the username to use when connecting to a server
   with authentication enabled.
 
-``-v``, ``--version``
+``--version``
   Show version information and exit.
 
 Output example
@@ -250,4 +257,3 @@ VERSION
 =======
 
 :program:`pt-mongodb-summary` 3.7.1
-

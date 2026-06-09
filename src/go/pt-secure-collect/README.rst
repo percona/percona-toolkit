@@ -26,20 +26,33 @@ By default, :program:`pt-secure-collect` will collect the output of:
 Global flags
 ------------
 
+.. option:: --config
+
+   List of Percona Toolkit configuration file(s) separated by a comma without an equal sign. Must be a first flag. Uses default config file locations if not specified.
+
 .. option:: --help
 
-   Show context-sensitive help (also try --help-long and --help-man).
+   Show help and exit.
 
 .. option:: --debug
 
    Enable debug log level.
 
+.. option:: --version
+
+   Show version and exit.
+
+.. option:: --version-check
+
+   Check for updates (enabled by default).
+
+.. option:: --no-version-check
+
+   Disable update checks.
+   
+
 COMMANDS
 ========
-
-* **Help command**
-
-  Show help
 
 * **Collect command**
 
@@ -82,10 +95,6 @@ COMMANDS
 
      MySQL password.
 
-  .. option:: --ask-mysql-pass
-
-     Ask MySQL password.
-
   .. option:: --extra-cmd
 
      Also run this command as part of the data collection. This parameter can
@@ -96,29 +105,29 @@ COMMANDS
      Encrypt the output file using this password. If omitted, it will be asked
      in the command line.
 
-  .. option:: --no-collect
+  .. option:: --collect / --no-collect
 
-     Do not collect data
+     Enable or disable archive encryption stage.
 
-  .. option:: --no-sanitize
+  .. option:: --sanitize / --no-sanitize
 
-     Do not sanitize data
+     Enable or disable sanitization stage.
 
-  .. option:: --no-encrypt
+  .. option:: --encrypt / --no-encrypt
 
-     Do not encrypt the output file.
+     Enable or disable hostname sanitization.
 
-  .. option:: --no-sanitize-hostnames
+  .. option:: --sanitize-hostnames / --no-sanitize-hostnames
 
-     Do not sanitize hostnames.
+     Enable or disable query fingerprint sanitization.
 
-  .. option:: --no-sanitize-queries
+  .. option:: --sanitize-queries / --no-sanitize-queries
 
-     Do not replace queries by their fingerprints.
+     Enable or disable command data collection.
 
-  .. option:: --no-remove-temp-files
+  .. option:: --remove-temp-files / --no-remove-temp-files
 
-     Do not remove temporary files.
+     Keep or remove temporary files.
 
 * **Decrypt command**
 
@@ -127,12 +136,20 @@ COMMANDS
 
   ::
 
-    pt-secure-collect decrypt [flags] <input file>
+    pt-secure-collect decrypt --infile=<encrypted-file> [flags]
+
+  .. option:: --infile
+
+     Encrypted input file (required).
 
   .. option:: --outfile
 
      Write the output to this file. If omitted, the output file
-     name will be the same as the input file, adding the ``.aes`` extension.
+     name is inferred from input file by removing ``.aes`` extension.
+
+  .. option:: --encrypt-password
+
+     Password used for decryption. If omitted, it will be requested interactively.
 
 * **Encrypt command**
 
@@ -140,12 +157,20 @@ COMMANDS
 
   ::
 
-    pt-secure-collect encrypt [flags] <input file>
+    pt-secure-collect encrypt --infile=<plain-file> [flags]
+
+  .. option:: --infile
+
+     Unencrypted input file (required).
 
   .. option:: --outfile
 
      Write the output to this file. If omitted, the output file
-     name will be the same as the input file, without the ``.aes`` extension.
+     name will be the same as the input file, adding the ``.aes`` extension.
+
+  .. option:: --encrypt-password
+
+     Password used for encryption. If omitted, it will be requested interactively.
 
 * **Sanitize command**
 
@@ -164,13 +189,13 @@ COMMANDS
 
      Output file. If not specified, the input will be Stdout.
 
-  .. option:: --no-sanitize-hostnames
+  .. option:: --sanitize-hostnames / --no-sanitize-hostnames
 
-     Do not sanitize host names.
+     Enable or disable hostname sanitization.
 
-  .. option:: --no-sanitize-queries
+  .. option:: --sanitize-queries / --no-sanitize-queries
 
-     Do not replace queries by their fingerprints.
+     Enable or disable query fingerprint sanitization.
 
 Authors
 =======
@@ -210,4 +235,3 @@ VERSION
 =======
 
 :program:`pt-secure-collect` 3.7.1
-

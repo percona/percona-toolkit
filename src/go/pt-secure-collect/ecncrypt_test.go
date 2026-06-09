@@ -17,7 +17,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,12 +38,12 @@ func TestEncrypt(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { os.Remove(encrypted.Name()) })
 
-	err = encryptorCmd(&cliOptions{
-		Command:         "encrypt",
-		EncryptPassword: pointer.ToString("password"),
-		EncryptInFile:   pointer.ToString(input.Name()),
-		EncryptOutFile:  pointer.ToString(encrypted.Name()),
-	})
+	encryptCmd := &EncryptCmd{
+		EncryptInFile:   input.Name(),
+		EncryptOutFile:  encrypted.Name(),
+		EncryptPassword: "password",
+	}
+	err = encryptCmd.Run()
 	require.NoError(t, err)
 
 	encryptedData, err := os.ReadFile(encrypted.Name())
@@ -53,12 +52,12 @@ func TestEncrypt(t *testing.T) {
 	// Check that the encrypted data is different from the original data
 	require.NotEqual(t, data, encryptedData)
 
-	err = encryptorCmd(&cliOptions{
-		Command:         "decrypt",
-		EncryptPassword: pointer.ToString("password"),
-		DecryptInFile:   pointer.ToString(encrypted.Name()),
-		DecryptOutFile:  pointer.ToString(output.Name()),
-	})
+	decryptCmd := &DecryptCmd{
+		DecryptInFile:   encrypted.Name(),
+		DecryptOutFile:  output.Name(),
+		EncryptPassword: "password",
+	}
+	err = decryptCmd.Run()
 	require.NoError(t, err)
 
 	decryptedData, err := os.ReadFile(output.Name())

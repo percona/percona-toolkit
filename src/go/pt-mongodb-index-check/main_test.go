@@ -37,13 +37,13 @@ func TestVersionOption(t *testing.T) {
 
 func TestNoCommand(t *testing.T) {
 	mockMongo := "mongodb://127.0.0.1:27017"
-	out, err := exec.Command("../../../bin/"+toolname, "--mongodb.uri", mockMongo).Output()
-	if err != nil {
-		t.Errorf("error executing %s with no command: %s", toolname, err.Error())
+	out, err := exec.Command("../../../bin/"+toolname, "--mongodb.uri", mockMongo).CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected non-zero exit code when no command is provided")
 	}
 
-	want := "Usage: pt-mongodb-index-check show-help"
+	want := "Usage: pt-mongodb-index-check --mongodb.uri="
 	if !strings.Contains(string(out), want) {
-		t.Errorf("Output missmatch. Output %q should contain %q", string(out), want)
+		t.Errorf("Output mismatch. Output %q should contain %q", string(out), want)
 	}
 }

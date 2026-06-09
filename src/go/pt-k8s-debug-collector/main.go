@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/alecthomas/kong"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/percona/percona-toolkit/src/go/lib/config"
@@ -52,14 +53,6 @@ type cliOptions struct {
 }
 
 func (c *cliOptions) AfterApply() error {
-	if c.Version {
-		fmt.Println(toolname)
-		fmt.Printf("Version %s\n", Version)
-		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
-		fmt.Printf("Commit: %s\n", Commit)
-		return nil
-	}
-
 	if c.VersionCheck {
 		advice, err := versioncheck.CheckUpdates(toolname, Version)
 		if err != nil {
@@ -86,7 +79,15 @@ func (c *cliOptions) AfterApply() error {
 
 func main() {
 	opts := &cliOptions{}
-	_, _, err := config.Setup(toolname, opts)
+	_, _, err := config.Setup(toolname, opts,
+		kong.Description("Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster"),
+		kong.Vars{
+			"version": fmt.Sprintf(
+				"%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
+				toolname, Version, Build, GoVersion, Commit,
+			),
+		},
+	)
 	if err != nil {
 		log.Printf("cannot get parameters: %s", err.Error())
 		os.Exit(1)

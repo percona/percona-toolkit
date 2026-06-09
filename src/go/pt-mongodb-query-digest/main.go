@@ -25,7 +25,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/pborman/getopt"
+	"github.com/alecthomas/kong"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -61,22 +61,77 @@ var (
 )
 
 type cliOptions struct {
-	AuthDB          string
-	Database        string
-	Debug           bool
-	Help            bool
-	Host            string
-	Limit           int
-	LogLevel        string
-	NoVersionCheck  bool
-	OrderBy         []string
-	OutputFormat    string
-	Password        string
-	SkipCollections []string
-	SSLCAFile       string
-	SSLPEMKeyFile   string
-	User            string
-	Version         bool
+	config.ConfigFlag
+	AuthDB          string                    `name:"authenticationDatabase" short:"a" help:"Database to use for optional MongoDB authentication" default:"admin"`
+	Database        string                    `name:"database" short:"d" help:"MongoDB database to profile"`
+	Host            string                    `arg:"" name:"host" help:"host[:port]" default:"localhost:27017"`
+	Limit           int                       `name:"limit" short:"n" help:"Show the first n queries"`
+	LogLevel        string                    `name:"log-level" short:"l" help:"panic, fatal, error, warn, info, debug" default:"error"`
+	OrderBy         []string                  `name:"order-by" short:"o" help:"Comma separated list of order by fields (count, ratio, query-time, docs-scanned, docs-returned). Prefix '-' for reverse order." default:"-count"`
+	SkipCollections []string                  `name:"skip-collections" short:"s" help:"A comma separated list of collections (namespaces) to skip." default:"system.profile"`
+	OutputFormat    string                    `name:"output-format" short:"f" help:"Output format: text, json." default:"text"`
+	User            string                    `name:"username" short:"u" help:"Username to use for optional MongoDB authentication"`
+	Password        config.StdinRequestString `name:"password" short:"p" help:"Password to use for optional MongoDB authentication"`
+	SSLCAFile       string                    `name:"sslCAFile" help:"SSL CA cert file used for authentication"`
+	SSLPEMKeyFile   string                    `name:"sslPEMKeyFile" help:"SSL client PEM file used for authentication"`
+	config.VersionFlag
+	config.VersionCheckFlag
+}
+
+func (c *cliOptions) AfterApply() error {
+	if len(c.OrderBy) > 0 {
+		validFields := []string{"count", "ratio", "query-time", "docs-scanned", "docs-returned"}
+		for _, field := range c.OrderBy {
+			valid := false
+			for _, vf := range validFields {
+				if field == vf || field == "-"+vf {
+					valid = true
+				}
+			}
+			if !valid {
+				return fmt.Errorf("invalid sort field '%q'", field)
+			}
+		}
+	}
+
+	err := c.Password.Request(func() (string, error) {
+		print("Password: ")
+		pass, err := term.ReadPassword(0)
+		return string(pass), err
+	})
+	if err != nil {
+		return err
+	}
+
+	if c.OutputFormat != "json" && c.OutputFormat != "text" {
+		log.Infof("Invalid output format '%s'. Using text format", c.OutputFormat)
+		c.OutputFormat = "text"
+	}
+
+	if !strings.HasPrefix(c.Host, "mongodb://") {
+		c.Host = "mongodb://" + c.Host
+	}
+
+	if c.Database == "" {
+		return fmt.Errorf("must indicate a database to profile with the --database parameter")
+	}
+
+	logLevel, err := log.ParseLevel(c.LogLevel)
+	if err != nil {
+		return fmt.Errorf("Cannot set log level: %w", err)
+	}
+	log.SetLevel(logLevel)
+
+	if c.VersionCheck {
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
+		if err != nil {
+			log.Errorf("cannot check version updates: %s", err.Error())
+		} else if advice != "" {
+			log.Infof("%s", advice)
+		}
+	}
+
+	return nil
 }
 
 type report struct {
@@ -86,51 +141,32 @@ type report struct {
 }
 
 func main() {
-	opts, err := getOptions()
+	var opts cliOptions
+	_, _, err := config.Setup(
+		toolname,
+		&opts,
+		kong.UsageOnError(),
+		kong.Vars{
+			"version": fmt.Sprintf(
+				"%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
+				toolname, Version, Build, GoVersion, Commit,
+			),
+		},
+	)
 	if err != nil {
-		log.Errorf("error processing command line arguments: %s", err)
+		log.Errorf("cannot get parameters: %s", err.Error())
 		os.Exit(1)
 	}
-	if opts == nil && err == nil {
-		return
-	}
-
-	logLevel, err := log.ParseLevel(opts.LogLevel)
-	if err != nil {
-		fmt.Printf("Cannot set log level: %s", err.Error())
-		os.Exit(1)
-	}
-	log.SetLevel(logLevel)
 
 	if opts.Version {
-		fmt.Println(toolname)
-		fmt.Printf("Version %s\n", Version)
-		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
-		fmt.Printf("Commit: %s\n", Commit)
 		return
-	}
-
-	conf := config.DefaultConfig(toolname)
-	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
-		advice, err := versioncheck.CheckUpdates(toolname, Version)
-		if err != nil {
-			log.Infof("cannot check version updates: %s", err.Error())
-		} else if advice != "" {
-			log.Warn(advice)
-		}
 	}
 
 	log.Debugf("Command line options:\n%+v\n", opts)
 
-	clientOptions, err := getClientOptions(opts)
+	clientOptions, err := getClientOptions(&opts)
 	if err != nil {
 		log.Errorf("Cannot get a MongoDB client: %s", err)
-		os.Exit(2)
-	}
-
-	if opts.Database == "" {
-		log.Errorln("must indicate a database to profile with the --database parameter")
-		getopt.PrintUsage(os.Stderr)
 		os.Exit(2)
 	}
 
@@ -196,7 +232,7 @@ func main() {
 		return
 	}
 	rep := report{
-		Headers:     getHeaders(opts),
+		Headers:     getHeaders(&opts),
 		QueryTotals: queries.CalcTotalQueriesStats(uptime),
 		QueryStats:  sortedQueryStats,
 	}
@@ -276,87 +312,6 @@ func uptime(ctx context.Context, client *mongo.Client) int64 {
 	return ss.Uptime
 }
 
-func getOptions() (*cliOptions, error) {
-	opts := &cliOptions{
-		Host:            DEFAULT_HOST,
-		LogLevel:        DEFAULT_LOGLEVEL,
-		OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
-		SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
-		AuthDB:          DEFAULT_AUTHDB,
-		OutputFormat:    "text",
-	}
-
-	gop := getopt.New()
-	gop.BoolVarLong(&opts.Help, "help", '?', "Show help")
-	gop.BoolVarLong(&opts.Version, "version", 'v', "Show version & exit")
-	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Default: Don't check for updates")
-
-	gop.IntVarLong(&opts.Limit, "limit", 'n', "Show the first n queries")
-
-	gop.ListVarLong(&opts.OrderBy, "order-by", 'o',
-		"Comma separated list of order by fields (max values): "+
-			"count,ratio,query-time,docs-scanned,docs-returned. "+
-			"- in front of the field name denotes reverse order. Default: "+DEFAULT_ORDERBY)
-	gop.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
-		"  Default: "+DEFAULT_SKIPCOLLECTIONS)
-
-	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
-	gop.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
-	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
-	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
-	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
-	gop.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
-	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
-	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
-
-	gop.SetParameters("host[:port]")
-
-	gop.Parse(os.Args)
-	if gop.NArgs() > 0 {
-		opts.Host = gop.Arg(0)
-		gop.Parse(gop.Args())
-	}
-	if opts.Help {
-		gop.PrintUsage(os.Stdout)
-		return nil, nil
-	}
-
-	if gop.IsSet("order-by") {
-		validFields := []string{"count", "ratio", "query-time", "docs-scanned", "docs-returned"}
-		for _, field := range opts.OrderBy {
-			valid := false
-			for _, vf := range validFields {
-				if field == vf || field == "-"+vf {
-					valid = true
-				}
-			}
-			if !valid {
-				return nil, fmt.Errorf("invalid sort field '%q'", field)
-			}
-		}
-	}
-
-	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
-		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
-		opts.OutputFormat = "text"
-	}
-
-	if gop.IsSet("password") && opts.Password == "" {
-		print("Password: ")
-		pass, err := term.ReadPassword(0)
-		if err != nil {
-			return nil, err
-		}
-		opts.Password = string(pass)
-	}
-
-	if !strings.HasPrefix(opts.Host, "mongodb://") {
-		opts.Host = "mongodb://" + opts.Host
-	}
-
-	return opts, nil
-}
-
 func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 	clientOptions := options.Client().ApplyURI(opts.Host)
 	credential := options.Credential{}
@@ -365,7 +320,7 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 		clientOptions.SetAuth(credential)
 	}
 	if opts.Password != "" {
-		credential.Password = opts.Password
+		credential.Password = string(opts.Password)
 		credential.PasswordSet = true
 		clientOptions.SetAuth(credential)
 	}

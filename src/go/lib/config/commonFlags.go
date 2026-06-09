@@ -13,6 +13,8 @@
 
 package config
 
+import "github.com/alecthomas/kong"
+
 // Config specifies a list of configuration files to read.
 // Following the Percona Toolkit specification:
 //  1. Position: The --config option must be the first argument on the command line.
@@ -31,7 +33,7 @@ type ConfigFlag struct {
 // VersionFlag adds a --version flag that prints the tool version and exits.
 // Embed this struct into the CLI struct to enable version reporting.
 type VersionFlag struct {
-	Version bool `name:"version"`
+	Version kong.VersionFlag `name:"version" help:"Show version and exit"`
 }
 
 // VersionCheckFlag adds a --version-check / --no-version-check flag that controls

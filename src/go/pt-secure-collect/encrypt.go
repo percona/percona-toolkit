@@ -17,11 +17,13 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/hkdf"
@@ -52,6 +54,68 @@ var (
 	}
 )
 
+type EncryptCmd struct {
+	EncryptInFile   string                    `name:"infile" help:"Unencrypted file." required:""`
+	EncryptOutFile  string                    `name:"outfile" help:"Encrypted file. Default: <input file>.aes"`
+	EncryptPassword config.StdinRequestString `name:"encrypt-password" help:"Encrypt the output file using this password. If omitted, the file won't be encrypted."` // if set, it will produce an encrypted .aes file
+}
+
+func (c *EncryptCmd) AfterApply(args ...any) error {
+	if c.EncryptOutFile == "" {
+		c.EncryptOutFile = filepath.Base(c.EncryptInFile) + ".aes"
+	}
+
+	err := c.EncryptPassword.Request(func() (string, error) {
+		return askEncryptionPassword(true)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *EncryptCmd) Run() error {
+	key, err := deriveKey(string(c.EncryptPassword))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	log.Infof("Encrypting file %q into %q", c.EncryptInFile, c.EncryptOutFile)
+	return encrypt(c.EncryptInFile, c.EncryptOutFile, key)
+}
+
+type DecryptCmd struct {
+	DecryptInFile   string                    `name:"infile" help:"Encrypted file." required:""`
+	DecryptOutFile  string                    `name:"outfile" help:"Unencrypted file. Default: same name without .aes extension"`
+	EncryptPassword config.StdinRequestString `name:"encrypt-password" help:"Encrypt the output file using this password. If omitted, the file won't be encrypted."` // if set, it will produce an encrypted .aes file
+}
+
+func (c *DecryptCmd) AfterApply(args ...any) error {
+	if c.DecryptOutFile == "" && strings.HasSuffix(c.DecryptInFile, ".aes") {
+		c.DecryptOutFile = strings.TrimSuffix(filepath.Base(c.DecryptInFile), ".aes")
+	} else if !strings.HasSuffix(c.DecryptInFile, ".aes") {
+		return fmt.Errorf("Input file does not have .aes extension. I cannot infer the output file")
+	}
+
+	err := c.EncryptPassword.Request(func() (string, error) {
+		return askEncryptionPassword(false)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *DecryptCmd) Run() error {
+	key, err := deriveKey(string(c.EncryptPassword))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	log.Infof("Decrypting file %q into %q", c.DecryptInFile, c.DecryptOutFile)
+	return decrypt(c.DecryptInFile, c.DecryptOutFile, key)
+}
+
 // deriveKey derives a cryptographically strong key from password.
 func deriveKey(password string) ([]byte, error) {
 	hkdf := hkdf.New(sha256.New, []byte(password), salt[:], hkdfInfo)
@@ -61,29 +125,6 @@ func deriveKey(password string) ([]byte, error) {
 	}
 
 	return key, nil
-}
-
-func encryptorCmd(opts *cliOptions) (err error) {
-	key, err := deriveKey(*opts.EncryptPassword)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	switch opts.Command {
-	case "decrypt":
-		if *opts.DecryptOutFile == "" && strings.HasSuffix(*opts.DecryptInFile, ".aes") {
-			*opts.DecryptOutFile = strings.TrimSuffix(filepath.Base(*opts.DecryptInFile), ".aes")
-		}
-		log.Infof("Decrypting file %q into %q", *opts.DecryptInFile, *opts.DecryptOutFile)
-		err = decrypt(*opts.DecryptInFile, *opts.DecryptOutFile, key)
-	case "encrypt":
-		if *opts.EncryptOutFile == "" {
-			*opts.EncryptOutFile = filepath.Base(*opts.EncryptInFile) + ".aes"
-		}
-		log.Infof("Encrypting file %q into %q", *opts.EncryptInFile, *opts.EncryptOutFile)
-		err = encrypt(*opts.EncryptInFile, *opts.EncryptOutFile, key)
-	}
-	return
 }
 
 func encrypt(infile, outfile string, key []byte) error {

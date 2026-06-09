@@ -37,38 +37,49 @@ Run the program as ``pt-mongodb-index-check <command> [flags]``
 Available commands
 ~~~~~~~~~~~~~~~~~~
 
-================ ==================================
+================ ==========================================
 Command          Description
-================ ==================================
-check-duplicated Run checks for duplicated indexes.
-check-unused     Run check for unused indexes.
-check-all        Run all checks
-================ ==================================
+================ ==========================================
+check-duplicates Run checks for duplicated indexes.
+check-unused     Run checks for unused indexes.
+check-all        Run checks for unused and duplicated indexes.
+================ ==========================================
 
 Available flags
 ~~~~~~~~~~~~~~~
 
-+----------------------------+----------------------------------------+
-| Flag                       | Description                            |
-+============================+========================================+
-| –all-databases             | Check in all databases excluding       |
-|                            | system dbs.                            |
-+----------------------------+----------------------------------------+
-| –databases=DATABASES,…     | Comma separated list of databases to   |
-|                            | check.                                 |
-+----------------------------+----------------------------------------+
-| –all-collections           | Check in all collections in the        |
-|                            | selected databases.                    |
-+----------------------------+----------------------------------------+
-| –collections=COLLECTIONS,… | Comma separated list of collections to |
-|                            | check.                                 |
-+----------------------------+----------------------------------------+
-| –mongodb.uri=              | Connection URI                         |
-+----------------------------+----------------------------------------+
-| –json                      | Show output as JSON                    |
-+----------------------------+----------------------------------------+
-| –version                   | Show version information               |
-+----------------------------+----------------------------------------+
+``--config=FILE[,FILE,...]``
+  List of Percona Toolkit config files. Must be the first flag.
+
+``--all-databases``
+  Check in all databases excluding system DBs.
+
+``--databases=DATABASES,...``
+  Comma-separated list of databases to check.
+
+``--all-collections``
+  Check in all collections in selected databases.
+
+``--collections=COLLECTIONS,...``
+  Comma-separated list of collections to check.
+
+``--mongodb.uri=...``
+  Connection URI.
+
+``--json``
+  Show output as JSON.
+
+``--version-check``
+  Check for updates (enabled by default).
+
+``--no-version-check``
+  Disable update checks.
+
+``--help``
+  Show help and exit.
+
+``--version``
+  Show version information and exit.
 
 Authors
 =======
@@ -108,4 +119,3 @@ VERSION
 =======
 
 :program:`pt-mongodb-index-check` 3.7.1
-

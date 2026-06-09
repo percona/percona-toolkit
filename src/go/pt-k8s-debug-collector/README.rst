@@ -129,6 +129,10 @@ Supported Flags
 
 List of Percona Toolkit configuration file(s) separated by a comma without an equal sign. Must be a first flag. Uses default config file locations if not specified.
 
+``--help``
+
+Show help and exit.
+
 ``--resource``
 
 Targeted custom resource name. Supported values:
@@ -177,7 +181,24 @@ Default: ``auto``
 ``--skip-pod-summary``
     Skip the collection of pod-specific summary data.
 
-``--version``
+``--skip-pod-summary``
+
+Skip pod summary collection.
+
+``--version-check``
+
+Check for updates (enabled by default).
+
+``--no-version-check``
+
+Disable update checks.
+
+``--version-check``
+    Check for updates (enabled by default).
+
+``--no-version-check``
+    Disable update checks.
+
     Print version info.
 
 
@@ -244,4 +265,3 @@ VERSION
 =======
 
 :program:`pt-k8s-debug-collector` 3.7.1
-

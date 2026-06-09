@@ -146,10 +146,28 @@ Available flags
 ``--version``
     Show version and exit.
 
+``--version-check``
+    Check for updates (enabled by default).
+
+``--no-version-check``
+    Disable update checks.
+
 ``--custom-regexes``
     Add custom regexes, printed in magenta. Format: (golang regex string)=[optional static message to display].
     If the static message is left empty, the captured string will be printed instead. Custom regexes are separated using semi-colon.
     Example: ``--custom-regexes="Page cleaner took [0-9]*ms to flush [0-9]* pages=;doesn't recommend.*pxc_strict_mode=unsafe query used"``
+
+Command flags
+~~~~~~~~~~~~~
+
+``list``
+    ``--skip-state-colored-column``, ``--all``, ``--states``, ``--views``, ``--events``, ``--sst``, ``--applicative``
+
+``whois``
+    ``--type {nodename|ip|uuid|auto}``, ``--json``
+
+``conflicts``
+    ``--yaml``, ``--json``
 
 
 Example outputs
@@ -286,4 +304,3 @@ VERSION
 =======
 
 :program:`pt-galera-log-explainer` 3.7.1
-

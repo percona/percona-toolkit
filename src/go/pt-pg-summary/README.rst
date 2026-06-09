@@ -11,16 +11,25 @@ Usage
 
 .. code-block:: bash
 
-   pt-pg-summary [OPTIONS] [HOST:[PORT]]
+   pt-pg-summary [OPTIONS]
 
 Options
 -------
 
-``--help``,  ``--help-long``, ``--help-man``
-  Shows context-sensitive help. ``--help-long`` and ``--help-man`` provide more verbose output.
+``--config``
+List of Percona Toolkit configuration file(s) separated by a comma without an equal sign. Must be a first flag. Uses default config file locations if not specified.
+
+``--help``
+  Show help message and exit.
 
 ``--version``
-  Show application version and exit.                                                  |
+  Show application version and exit.
+
+``--version-check``
+  Check for updates (enabled by default).
+
+``--no-version-check``
+  Disable update checks.
 
 ``--databases``
   Summarizes this comma-separated list of databases.
@@ -30,30 +39,27 @@ Options
 ``-h``, ``--host``
   Host or local Unix socket for connection.
 
-``-W``, ``--password``
-  Password to use when connecting.                                           |
+``-W``, ``--passwrord``
+  Password to use when connecting.
 
 ``-p``, ``--port``
-  Port number to use for connection.                                         |
+  Port number to use for connection.
 
 ``--sleep``
   Seconds to sleep when gathering status counters.
   
   Sleeps 10 seconds if not provided.
 
-``-U``, ``--username``
+``-u``, ``--username``
   User for login if not current user.
 
-``--disable-ssl``
-  Disable SSL for the connection.
+``--ssl`` / ``--no-ssl``
+  Enable or disable SSL for the connection.
+  Default: disabled.
 
-  Enabled by default.
-
-``--verbose``
-  Show verbose log.
-
-``--debug``
-  Show debug information in the logs.
+``-l``, ``--log-level``
+  Specifies the log level:
+  ``panic``, ``fatal``, ``error``, ``warn``, ``info``, ``debug``
 
 
 Experimental Options
@@ -61,12 +67,6 @@ Experimental Options
 
 ``--list-encrypted-tables``
   Include a list of the encrypted tables in all databases.
-
-``--ask-pass``
-  Prompt for a password when connecting to PostgreSQL.
-
-``--config``
-  Configuration file.
 
 ``--defaults-file``
   Only read PostgreSQL options from the given file.
@@ -547,4 +547,3 @@ VERSION
 =======
 
 :program:`pt-pg-summary` 3.7.1
-
