@@ -193,7 +193,12 @@ Check for updates (enabled by default).
 
 Disable update checks.
 
-``--version``
+``--version-check``
+    Check for updates (enabled by default).
+
+``--no-version-check``
+    Disable update checks.
+
     Print version info.
 
 
