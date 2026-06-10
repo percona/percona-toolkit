@@ -162,7 +162,7 @@ func TestMain(m *testing.M) {
 
 	if len(testNamespaces) == 0 && !selectedDeploymentNamesChanged {
 		log.Fatalf(`Target namespaces not found in the cluster.
-    
+
 Expected one of: %s
 Found in cluster: %s
 
@@ -875,5 +875,29 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 		for _, file := range files {
 			s.Contains(output, file, "Expected file %s not found in archive", file)
 		}
+	}
+}
+
+// PT-2448 - pt-k8s-debug-collector should not collect secret details of pgbouncer
+func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
+	if s.Namespace != "pgo" && s.Namespace != "pgv2" {
+		s.T().Skip("Only applicable to pgo and pgv2 namespaces")
+	}
+
+	for _, resource := range s.Resources {
+		s.Run("Resource_"+resource, func() {
+			cmd := exec.Command(TOOL_PATH,
+				"--kubeconfig", s.KubeConfig,
+				"--forwardport", s.ForwardPort,
+				"--resource", resource,
+				"--skip-pod-summary")
+			err := cmd.Run()
+			s.NoError(err)
+
+			testcmd := "tar -xf cluster-dump.tar.gz --to-command 'grep \"pgbouncer-frontend\"' 2>/dev/null | wc -l"
+			out, err := exec.Command("sh", "-c", testcmd).Output()
+			s.NoError(err)
+			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret details in archive files")
+		})
 	}
 }
