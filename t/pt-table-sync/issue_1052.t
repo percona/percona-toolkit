@@ -17,21 +17,21 @@ require "$trunk/bin/pt-table-sync";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1'); 
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1'); 
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 2;
 }
 
 my $output;
-my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
+my @args = ('--sync-to-source', 'h=127.1,P=12346,u=msandbox,p=msandbox',
             qw(-d issue_1052 --print));
 
 # #############################################################################
@@ -39,12 +39,12 @@ my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
 # #############################################################################
 
 # Re-using this table for this issue.  It has 100 pk rows.
-$sb->load_file('master', 't/pt-table-sync/samples/issue_1052.sql');
+$sb->load_file('source', 't/pt-table-sync/samples/issue_1052.sql');
 wait_until(
    sub {
       my $row;
       eval {
-         $row = $slave_dbh->selectrow_hashref("select * from issue_1052.t");
+         $row = $replica_dbh->selectrow_hashref("select * from issue_1052.t");
       };
       return 1 if $row;
    },
@@ -65,6 +65,6 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

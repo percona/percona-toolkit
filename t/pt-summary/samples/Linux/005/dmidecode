@@ -1,0 +1,447 @@
+# dmidecode 3.1
+Getting SMBIOS data from sysfs.
+SMBIOS 2.5 present.
+10 structures occupying 450 bytes.
+Table at 0x000E1000.
+
+Handle 0x0000, DMI type 0, 20 bytes
+BIOS Information
+	Vendor: innotek GmbH
+	Version: VirtualBox
+	Release Date: 12/01/2006
+	Address: 0xE0000
+	Runtime Size: 128 kB
+	ROM Size: 128 kB
+	Characteristics:
+		ISA is supported
+		PCI is supported
+		Boot from CD is supported
+		Selectable boot is supported
+		8042 keyboard services are supported (int 9h)
+		CGA/mono video services are supported (int 10h)
+		ACPI is supported
+
+Handle 0x0001, DMI type 1, 27 bytes
+System Information
+	Manufacturer: innotek GmbH
+	Product Name: VirtualBox
+	Version: 1.2
+	Serial Number: 0
+	UUID: 3df70c01-ba7f-3247-9949-e6f4fb0736e0
+	Wake-up Type: Power Switch
+	SKU Number: Not Specified
+	Family: Virtual Machine
+
+Handle 0x0008, DMI type 2, 15 bytes
+Base Board Information
+	Manufacturer: Oracle Corporation
+	Product Name: VirtualBox
+	Version: 1.2
+	Serial Number: 0
+	Asset Tag: Not Specified
+	Features:
+		Board is a hosting board
+	Location In Chassis: Not Specified
+	Chassis Handle: 0x0003
+	Type: Motherboard
+	Contained Object Handles: 0
+
+Handle 0x0003, DMI type 3, 13 bytes
+Chassis Information
+	Manufacturer: Oracle Corporation
+	Type: Other
+	Lock: Not Present
+	Version: Not Specified
+	Serial Number: Not Specified
+	Asset Tag: Not Specified
+	Boot-up State: Safe
+	Power Supply State: Safe
+	Thermal State: Safe
+	Security Status: None
+
+Handle 0x1100, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 8192 MB
+	Form Factor: DIMM
+	Set: 1
+	Locator: DIMM_A1 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 002C00B3002C
+	Serial Number: E76AAAAA
+	Asset Tag: 0F130763
+	Part Number: 36KSF1G72PZ-1G4M1 
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1101, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 8192 MB
+	Form Factor: DIMM
+	Set: 1
+	Locator: DIMM_A2 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 002C00B3002C
+	Serial Number: E76AAAAA
+	Asset Tag: 0F130763
+	Part Number: 36KSF1G72PZ-1G4M1 
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1102, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 1
+	Locator: DIMM_A3 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1103, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 1
+	Locator: DIMM_A4 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1104, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 2
+	Locator: DIMM_A5 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1105, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 2
+	Locator: DIMM_A6 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1106, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 2
+	Locator: DIMM_A7 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1107, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 2
+	Locator: DIMM_A8 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1108, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 3
+	Locator: DIMM_A9 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1109, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 3
+	Locator: DIMM_A10
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x110A, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 3
+	Locator: DIMM_A11
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x110B, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 3
+	Locator: DIMM_A12
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x110C, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 8192 MB
+	Form Factor: DIMM
+	Set: 4
+	Locator: DIMM_B1 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 002C00B3002C
+	Serial Number: E76AAAAA
+	Asset Tag: 0F130763
+	Part Number: 36KSF1G72PZ-1G4M1 
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x110D, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 8192 MB
+	Form Factor: DIMM
+	Set: 4
+	Locator: DIMM_B2 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 002C00B3002C
+	Serial Number: E76AAAAA
+	Asset Tag: 0F130763
+	Part Number: 36KSF1G72PZ-1G4M1 
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x110E, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 4
+	Locator: DIMM_B3 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x110F, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 4
+	Locator: DIMM_B4 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1110, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 5
+	Locator: DIMM_B5 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1111, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 5
+	Locator: DIMM_B6 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1112, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 5
+	Locator: DIMM_B7 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1113, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 5
+	Locator: DIMM_B8 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1114, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 6
+	Locator: DIMM_B9 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1115, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 6
+	Locator: DIMM_B10
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1116, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 6
+	Locator: DIMM_B11
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x1117, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: 6
+	Locator: DIMM_B12
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous
+
+Handle 0x0007, DMI type 126, 42 bytes
+Inactive
+
+Handle 0x0005, DMI type 126, 15 bytes
+Inactive
+
+Handle 0x0006, DMI type 126, 28 bytes
+Inactive
+
+Handle 0x0002, DMI type 11, 7 bytes
+OEM Strings
+	String 1: vboxVer_6.1.26
+	String 2: vboxRev_145957
+
+Handle 0x0008, DMI type 128, 8 bytes
+OEM-specific Type
+	Header and Data:
+		80 08 08 00 27 30 1F 00
+
+Handle 0xFEFF, DMI type 127, 4 bytes
+End Of Table
+

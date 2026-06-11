@@ -29,7 +29,7 @@
 --                  rows_fetched: 27087
 --                 fetch_latency: 442.72 ms
 --                 rows_inserted: 2
---                insert_latency: 185.04 us 
+--                insert_latency: 185.04 us
 --                  rows_updated: 5096
 --                update_latency: 1.39 s
 --                  rows_deleted: 0
@@ -49,11 +49,11 @@
 --      innodb_buffer_bytes_data: 1924
 --     innodb_buffer_rows_cached: 2
 --
- 
+
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW schema_table_statistics_with_buffer (
   table_schema,
   table_name,

@@ -1,0 +1,23 @@
+platform    Linux
+hostname    s76
+kernel    6.5.0-35-generic
+release    Ubuntu 22.04.4 LTS (jammy)
+CPU_ARCH    64-bit
+OS_ARCH    64-bit
+virt    No virtualization detected
+vendor    
+rss    39089426432
+raid_controller    No RAID controller detected
+threading    NPTL 2.35
+getenforce    No SELinux detected
+swappiness    60
+dirtypolicy    20, 10
+dirtystatus     0, 0
+numa-available    
+numa-policy    
+numa-preferred-node    
+internal::disks    dm-0 dm-1 dm-2 nvme0n1
+internal::nvme0n1    [none] 1023
+dentry-state    3355603	3159991	45	0	2250834	0
+file-nr    36032	0	9223372036854775807
+inode-nr    1419887	556339

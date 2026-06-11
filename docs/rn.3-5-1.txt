@@ -1,0 +1,33 @@
+.. _PT-3.5.1:
+
+================================================================================
+*Percona Toolkit* 3.5.1
+================================================================================
+
+:Date: January 23, 2023
+:Installation: `Installing Percona Toolkit <https://www.percona.com/doc/percona-toolkit/LATEST/installation.html>`_
+
+
+Improvements
+================================================================================
+
+* :jirabug:`PT-2138`: Fix tests for pt-table-checksum
+* :jirabug:`PT-2142`: Fix tests for pt-config-diff
+* :jirabug:`PT-2143`: Fix tests for pt-deadlock-logger
+* :jirabug:`PT-2144`: Fix tests for pt-fifo-split
+* :jirabug:`PT-2145`: Fix tests for pt-find
+* :jirabug:`PT-2146`: Fix tests for pt-fk-error-logger
+* :jirabug:`PT-2147`: Fix tests for pt-heartbeat
+* :jirabug:`PT-2148`: Fix tests for pt-kill
+* :jirabug:`PT-2153`: Fix tests for pt-slave-find
+
+
+Bugs Fixed
+================================================================================
+
+* :jirabug:`PT-2134`: pt-k8s-debug-collector prints errors when connects to PostgreSQL or MySQL (non-PXC) operators
+* :jirabug:`PT-2139`: CVEs in golang binaries
+* :jirabug:`PT-2140`: Update modules in the main branch
+
+
+

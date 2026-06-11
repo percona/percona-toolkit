@@ -31,7 +31,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW host_summary_by_statement_latency (
   host,
   total,

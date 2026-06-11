@@ -15,6 +15,7 @@ use Test::More;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
+require VersionParser;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -23,14 +24,14 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;
-my $dsn = $sb->dsn_for('master');
+my $dsn = $sb->dsn_for('source');
 my $cnf = '/tmp/12345/my.sandbox.cnf';
 
 # TODO:  These tests need something to match, so we background

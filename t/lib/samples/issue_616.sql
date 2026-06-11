@@ -7,15 +7,15 @@ CREATE TABLE `t` (
   PRIMARY KEY  (`id`)
 );
 INSERT INTO issue_616.t VALUES
-(1,  'from master'),
-(11, 'from master'),
-(21, 'from master'),
+(1,  'from source'),
+(11, 'from source'),
+(21, 'from source'),
 (22, 'from slave'),
 (32, 'from slave'),
 (42, 'from slave'),
-(31, 'from master'),
-(41, 'from master'),
-(51, 'from master');
+(31, 'from source'),
+(41, 'from source'),
+(51, 'from source');
 SET SQL_LOG_BIN=0;
 DELETE FROM issue_616.t WHERE id IN (22,32,42);
 SET SQL_LOG_BIN=1;

@@ -24,10 +24,10 @@ CREATE DEFINER='root'@'localhost' FUNCTION ps_thread_trx_info (
              Description
              -----------
 
-             Returns a JSON object with info on the given threads current transaction, 
+             Returns a JSON object with info on the given threads current transaction,
              and the statements it has already executed, derived from the
              performance_schema.events_transactions_current and
-             performance_schema.events_statements_history tables (so the consumers 
+             performance_schema.events_statements_history tables (so the consumers
              for these also have to be enabled within Performance Schema to get full
              data in the object).
 
@@ -167,7 +167,7 @@ BEGIN
 
     SET v_output = (
         SELECT CONCAT('[', IFNULL(GROUP_CONCAT(trx_info ORDER BY event_id), ''), '\n]') AS trx_info
-          FROM (SELECT trxi.thread_id, 
+          FROM (SELECT trxi.thread_id,
                        trxi.event_id,
                        GROUP_CONCAT(
                          IFNULL(
@@ -180,8 +180,8 @@ BEGIN
                                   '    "isolation": "', IFNULL(trxi.isolation_level, ''), '",\n',
                                   '    "statements_executed": [', IFNULL(s.stmts, ''), IF(s.stmts IS NULL, ' ]\n', '\n    ]\n'),
                                   '  }'
-                           ), 
-                           '') 
+                           ),
+                           '')
                          ORDER BY event_id) AS trx_info
 
                   FROM (
@@ -214,8 +214,8 @@ BEGIN
                               WHERE sql_text IS NOT NULL
                                 AND thread_id = in_thread_id
                               GROUP BY thread_id, nesting_event_id
-                            ) AS s 
-                    ON trxi.thread_id = s.thread_id 
+                            ) AS s
+                    ON trxi.thread_id = s.thread_id
                    AND trxi.event_id = s.nesting_event_id
                  WHERE trxi.thread_id = in_thread_id
                  GROUP BY trxi.thread_id, trxi.event_id

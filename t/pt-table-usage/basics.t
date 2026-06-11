@@ -22,30 +22,35 @@ my $output = '';
 # ############################################################################
 # Basic queries that parse without problems.
 # ############################################################################
+my $t;
+use Data::Dumper;
 ok(
    no_diff(
       sub { pt_table_usage::main(@args, "$in/slow001.txt") },
       "$out/slow001.txt",
+      keep_output => 1,
    ),
    'Analysis for slow001.txt'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 ok(
    no_diff(
       sub { pt_table_usage::main(@args, "$in/slow002.txt") },
       "$out/slow002.txt",
+      keep_output => 1,
    ),
    'Analysis for slow002.txt (issue 1237)'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 ok(
    no_diff(
       sub { pt_table_usage::main(@args, '--query',
          'DROP TABLE IF EXISTS t') },
       "$out/drop-table-if-exists.txt",
+      keep_output => 1,
    ),
    'DROP TABLE IF EXISTS'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 ok(
    no_diff(
@@ -58,9 +63,10 @@ ok(
          SELECT c FROM t WHERE id=1")
       },
       "$out/create001.txt",
+      keep_output => 1,
    ),
    'CREATE..SELECT'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 ok(
    no_diff(
@@ -70,9 +76,10 @@ ok(
             where b.type is null OR b.type=0")
       },
       "$out/query001.txt",
+      keep_output => 1,
    ),
    'Multi-column USING'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 ok(
    no_diff(
@@ -80,9 +87,10 @@ ok(
          "SELECT dt.datetime, MAX(re.pd) AS pd FROM d1.t1 t1a INNER JOIN d2.t2 t2a ON CONCAT(t1.a, ' ', t2.a) = t1.datetime INNER JOIN d3.t3 t3a ON t1a.c = t3a.c GROUP BY t1.datetime");
       },
       "$out/query002.txt",
+      keep_output => 1,
    ),
    'Function in JOIN clause'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 # ############################################################################
 # --id-attribute
@@ -92,9 +100,10 @@ ok(
       sub { pt_table_usage::main(@args, "$in/slow003.txt",
          qw(--id-attribute ts)) },
       "$out/slow003-003.txt",
+      keep_output => 1,
    ),
    'Analysis for slow003.txt with --id-attribute'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 # ############################################################################
 # --constant-data-value
@@ -128,9 +137,10 @@ ok(
    no_diff(
       sub { pt_table_usage::main(@args, "$in/slow003.txt") },
       "$out/slow003-001.txt",
+      keep_output => 1,
    ),
    'Analysis for slow003.txt'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 # #############################################################################
 # Process fingerprints.

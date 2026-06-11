@@ -11,8 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-plan skip_all => 'FIXME ReplicaLagWaiter.t';
-#plan tests => 7;
+plan tests => 7;
 
 use ReplicaLagWaiter;
 use OptionParser;
@@ -68,7 +67,7 @@ my $rll = new ReplicaLagWaiter(
    get_lag => \&get_lag,
    sleep   => \&sleep,
    max_lag => 1,
-   slaves  => [$r1, $r2],
+   replicas  => [$r1, $r2],
 );
 
 @lag = (0, 0);

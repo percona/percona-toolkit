@@ -1,4 +1,4 @@
-# This program is copyright 2008-2013 Percona Ireland Ltd.
+# This program is copyright 2008-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # Daemon package
 # ###########################################################################
@@ -37,6 +36,7 @@ sub new {
       force_log_file => $args{force_log_file},
       parent_exit    => $args{parent_exit},
       pid_file_owner => 0,
+      utf8           => $args{utf8} // 0,
    };
    return bless $self, $class;
 }
@@ -50,6 +50,7 @@ sub run {
    my $log_file       = $self->{log_file};
    my $force_log_file = $self->{force_log_file};
    my $parent_exit    = $self->{parent_exit};
+   my $utf8           = $self->{utf8};
 
    PTDEBUG && _d('Starting daemon');
 
@@ -84,8 +85,8 @@ sub run {
          $parent_exit->($child_pid) if $parent_exit;
          exit 0;
       }
- 
-      # I'm the child. 
+
+      # I'm the child.
       POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
       chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
 
@@ -116,6 +117,11 @@ sub run {
          close STDOUT;
          open  STDOUT, '>>', $log_file
             or die "Cannot open log file $log_file: $OS_ERROR";
+         if ( $utf8 ) {
+            binmode(STDOUT, ':utf8')
+               or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+         }
+
 
          # If we don't close STDERR explicitly, then prove Daemon.t fails
          # because STDERR gets written before STDOUT even though we print
@@ -123,7 +129,11 @@ sub run {
          # best that we just explicitly close all fds before reopening them.
          close STDERR;
          open  STDERR, ">&STDOUT"
-            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
+         if ( $utf8 ) {
+            binmode(STDERR, ':utf8')
+               or die "Can't binmode(STDERR, ':utf8'): $OS_ERROR";
+         }
       }
       else {
          if ( -t STDOUT ) {
@@ -167,7 +177,7 @@ sub _make_pid_file {
    eval {
       sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
       print PID_FH $PID, "\n";
-      close PID_FH; 
+      close PID_FH;
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( $e =~ m/file exists/i ) {

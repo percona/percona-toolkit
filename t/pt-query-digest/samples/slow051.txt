@@ -26,6 +26,6 @@
 LOAD DATA INFILE '/tmp/bar.txt' INTO TABLE db.tbl\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0xE248F647EF2C6F1414354E1D979884B4 0.0000 100.0%     2 0.0000  0.00 LOAD DATA db.tbl
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0xE248F647EF2C6F1414354E1D979884B4  0.0000 100.0%     2 0.0000  0.00 LOAD DATA db.tbl

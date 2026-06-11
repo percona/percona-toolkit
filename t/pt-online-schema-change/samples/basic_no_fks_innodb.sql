@@ -3,7 +3,7 @@ CREATE DATABASE pt_osc;
 USE pt_osc;
 CREATE TABLE t (
   id int auto_increment primary key,
-  c  char(32),
+  c  char(32) not null,
   d  date,
   unique index (c(32))
 ) ENGINE=InnoDB;

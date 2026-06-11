@@ -15,7 +15,7 @@
 
 --
 -- View: memory_global_total
--- 
+--
 -- Shows the total memory usage within the server globally.
 --
 -- mysql> select * from memory_global_total;
@@ -29,7 +29,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW memory_global_total (
   total_allocated
 ) AS

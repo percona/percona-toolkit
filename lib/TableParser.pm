@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
+# This program is copyright 2007-2011 Baron Schwartz, 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # TableParser package
 # ###########################################################################
@@ -94,14 +93,16 @@ sub get_create_table {
    if ( my $e = $EVAL_ERROR ) {
       # Restore old SQL mode.
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    # Restore old SQL mode.
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    # SHOW CREATE TABLE has at least 2 columns like:
    # mysql> show create table city\G
@@ -109,7 +110,7 @@ sub get_create_table {
    #        Table: city
    # Create Table: CREATE TABLE `city` (
    #   `city_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
-   #   ... 
+   #   ...
    # We want the second column.
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -149,7 +150,7 @@ sub parse {
 
    my $engine = $self->get_engine($ddl);
 
-   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @defs = $ddl =~ m/(?:(?<=,\n)|(?<=\(\n))(\s+`(?:.|\n)+?`.+?),?\n/g;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
    PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
@@ -218,9 +219,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
-   $string =~ s/[^\\]'[^']*[^\\]'//g; 
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -307,15 +309,11 @@ sub find_possible_keys {
 #   * dbh  dbh: active dbh
 #   * db   scalar: database name to check
 #   * tbl  scalar: table name to check
-# Optional args:
-#   * all_privs  bool: check for all privs (select,insert,update,delete)
 # Returns: bool
 # Can die: no
-# check_table() checks the given table for certain criteria and returns
-# true if all criteria are found, else it returns false.  The existence
-# of the table is always checked; if no optional args are given, then this
-# is the only check.  Any error causes a false return value (e.g. if the
-# table is crashed).
+# check_table() checks the given table for the existence and returns
+# true if the table is found, else it returns false.
+# Any error causes a false return value (e.g. if the table is crashed).
 sub check_table {
    my ( $self, %args ) = @_;
    my @required_args = qw(dbh db tbl);
@@ -324,10 +322,26 @@ sub check_table {
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
    my $q      = $self->{Quoter} || 'Quoter';
+   $self->{check_table_error} = undef;
+
+   # https://dev.mysql.com/doc/refman/8.0/en/identifier-case-sensitivity.html
+   # MySQL may use use case-insensitive table lookup, this is controller by
+   # @@lower_case_table_names. 0 means case sensitive search, 1 or 2 means
+   # case insensitive lookup.
+
+   my $lctn_sql = 'SELECT @@lower_case_table_names';
+   PTDEBUG && _d($lctn_sql);
+
+   my $lower_case_table_names;
+   eval { ($lower_case_table_names) = $dbh->selectrow_array($lctn_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      $self->{check_table_error} = $EVAL_ERROR;
+      return 0;
+   }
+
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
-
-   $self->{check_table_error} = undef;
 
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
@@ -341,7 +355,9 @@ sub check_table {
       $self->{check_table_error} = $e;
       return 0;
    }
-   if ( !$row->[0] || $row->[0] ne $tbl ) {
+   if ( !$row->[0]
+      || ( $lower_case_table_names == 0 && $row->[0] ne $tbl )
+      || ( $lower_case_table_names > 0 && lc $row->[0] ne lc $tbl ) ) {
       PTDEBUG && _d('Table does not exist');
       return 0;
    }
@@ -388,8 +404,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       # If you want foreign keys, use get_fks() below.
       next KEY if $key =~ m/FOREIGN/;
 
@@ -406,7 +421,7 @@ sub get_keys {
       }
 
       # Determine index type
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -437,7 +452,7 @@ sub get_keys {
       };
 
       # Find clustered key (issue 295).
-      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
+      if ( ($engine || '') =~ m/(InnoDB)|(TokuDB)|(RocksDB)/i && !$clustered_key ) {
          my $this_key = $keys->{$name};
          if ( $this_key->{name} eq 'PRIMARY' ) {
             $clustered_key = 'PRIMARY';

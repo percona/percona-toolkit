@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
+# This program is copyright 2007-2011 Baron Schwartz, 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # TableNibbler package
 # ###########################################################################
@@ -73,7 +72,7 @@ sub generate_asc_stmt {
    # a nonexistent index.
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);
 
    # These are the columns we'll ascend.
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
@@ -125,6 +124,7 @@ sub generate_asc_stmt {
             cols        => \@cols,
             quoter      => $q,
             is_nullable => $tbl_struct->{is_nullable},
+            type_for    => $tbl_struct->{type_for},
          );
          $asc_stmt->{boundaries}->{$cmp} = $cmp_where->{where};
       }
@@ -152,6 +152,7 @@ sub generate_cmp_where {
    my @slice       = @{$args{slice}};
    my @cols        = @{$args{cols}};
    my $is_nullable = $args{is_nullable};
+   my $type_for    = $args{type_for};
    my $type        = $args{type};
    my $q           = $self->{Quoter};
 
@@ -169,13 +170,14 @@ sub generate_cmp_where {
          my $ord = $slice[$j];
          my $col = $cols[$ord];
          my $quo = $q->quote($col);
+         my $val = ($col && ($type_for->{$col} || '')) eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
          if ( $is_nullable->{$col} ) {
-            push @clause, "((? IS NULL AND $quo IS NULL) OR ($quo = ?))";
+            push @clause, "(($val IS NULL AND $quo IS NULL) OR ($quo = $val))";
             push @r_slice, $ord, $ord;
             push @r_scols, $col, $col;
          }
          else {
-            push @clause, "$quo = ?";
+            push @clause, "$quo = $val";
             push @r_slice, $ord;
             push @r_scols, $col;
          }
@@ -188,15 +190,16 @@ sub generate_cmp_where {
       my $col = $cols[$ord];
       my $quo = $q->quote($col);
       my $end = $i == $#slice; # Last clause of the whole group.
+      my $val = ($col && ($type_for->{$col} || '')) eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
       if ( $is_nullable->{$col} ) {
          if ( $type =~ m/=/ && $end ) {
-            push @clause, "(? IS NULL OR $quo $type ?)";
+            push @clause, "($val IS NULL OR $quo $type $val)";
          }
          elsif ( $type =~ m/>/ ) {
-            push @clause, "((? IS NULL AND $quo IS NOT NULL) OR ($quo $cmp ?))";
+            push @clause, "(($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val))";
          }
          else { # If $type =~ m/</ ) {
-            push @clause, "((? IS NOT NULL AND $quo IS NULL) OR ($quo $cmp ?))";
+            push @clauses, "(($val IS NOT NULL AND $quo IS NULL) OR ($quo $cmp $val))";
          }
          push @r_slice, $ord, $ord;
          push @r_scols, $col, $col;
@@ -204,11 +207,11 @@ sub generate_cmp_where {
       else {
          push @r_slice, $ord;
          push @r_scols, $col;
-         push @clause, ($type =~ m/=/ && $end ? "$quo $type ?" : "$quo $cmp ?");
+         push @clause, ($type =~ m/=/ && $end ? "$quo $type $val" : "$quo $cmp $val");
       }
 
       # Add the clause to the larger WHERE clause.
-      push @clauses, '(' . join(' AND ', @clause) . ')';
+      push @clauses, '(' . join(' AND ', @clause) . ')' if @clause;
    }
    my $result = '(' . join(' OR ', @clauses) . ')';
    my $where = {

@@ -153,7 +153,7 @@ diag(`touch $pid_file`);
 $output = `$cmd --pid $pid_file 2>&1`;
 like(
    $output,
-   qr{PID file $pid_file already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists (issue 391)'
 );
 

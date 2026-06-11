@@ -13,14 +13,15 @@ use Test::More;
 
 use PerconaTest;
 require "$trunk/bin/pt-index-usage";
+require VersionParser;
 
 use Sandbox;
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 if ( !@{ $dbh->selectall_arrayref("show databases like 'sakila'") } ) {
    plan skip_all => "Sakila database is not loaded";

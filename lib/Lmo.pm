@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2012 Percona Ireland Ltd.
+# This program is copyright 2007-2011 Baron Schwartz, 2012-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # Lmo package
 # ###########################################################################
@@ -81,7 +80,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    # Try loading the class, but don't croak if we fail.
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
@@ -115,7 +114,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -132,19 +131,19 @@ sub has {
 
       $class_metadata->{$attribute} = ();
 
-      # isa => Constaint,
+      # isa => Constraint,
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -332,7 +331,7 @@ BEGIN {
    # mro is the method resolution order. The module itself is core in
    # recent Perls; In older Perls it's available from MRO::Compat from
    # CPAN, and in case that isn't available to us, we inline the barest
-   # funcionality.
+   # functionality.
    if ($] >= 5.010) {
       { local $@; require mro; }
    }

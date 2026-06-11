@@ -20,22 +20,22 @@ if ( $sandbox_version ge '5.6' ) {
 }
 
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
-diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox source 12348 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master1');
+my $source_dbh = $sb->get_dbh_for('source1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master 12348';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source 12348';
 }
 
-my $master_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
+my $source_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
 my @args       = (qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 
 my ($output, $retval) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=mysql,t=user", "--alter", "add column (foo int)",
+      "$source_dsn,D=mysql,t=user", "--alter", "add column (foo int)",
       qw(--dry-run)) },
 );
 

@@ -125,10 +125,10 @@ SELECT DISTINCT col FROM tbl WHERE foo=20061219\G
 administrator command: Init DB\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0xEDBC971AEC392917AA353644DE4C4CB4  0.0000  0.0%     2 0.0000  0.00 ADMIN QUIT
-#    2 0x7417646A9FE969365D51E5F01B88B79E  0.0000  0.0%     2 0.0000  0.00 ADMIN CONNECT
-#    3 0x373CEA028C0EA95444AAC79F41BCF692  0.0000  0.0%     1 0.0000  0.00 SELECT tbl
-#    4 0x30388146EA1DA5814D096479916B0F45  0.0000  0.0%     1 0.0000  0.00 SELECT tbl
-#    5 0x898255B1BE4F8C3044AE35A182869033  0.0000  0.0%     1 0.0000  0.00 ADMIN INIT DB
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0xEDBC971AEC392917AA353644DE4C4CB4   0.0000  0.0%     2 0.0000  0.00 ADMIN QUIT
+#    2 0x7417646A9FE969365D51E5F01B88B79E   0.0000  0.0%     2 0.0000  0.00 ADMIN CONNECT
+#    3 0x373CEA028C0EA95444AAC79F41BCF692   0.0000  0.0%     1 0.0000  0.00 SELECT tbl
+#    4 0x30388146EA1DA5814D096479916B0F45   0.0000  0.0%     1 0.0000  0.00 SELECT tbl
+#    5 0x898255B1BE4F8C3044AE35A182869033   0.0000  0.0%     1 0.0000  0.00 ADMIN INIT DB

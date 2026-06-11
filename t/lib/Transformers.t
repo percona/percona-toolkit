@@ -99,7 +99,7 @@ is(ts(1192412632.5, 1), '2007-10-15T01:43:52.500000', 'ts with microseconds');
 # #############################################################################
 # make_checksum() tests.
 # #############################################################################
-is(make_checksum('hello world'), '93CB22BB8F5ACDC3', 'make_checksum');
+is(make_checksum('hello world'), '5EB63BBBE01EEED093CB22BB8F5ACDC3', 'make_checksum');
 
 # #############################################################################
 # crc32() tests.
@@ -159,10 +159,11 @@ is(
 );
 
 use DSNParser;
+use VersionParser;
 use Sandbox;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 SKIP: {
    skip 'Cannot connect to sandbox master', 1 unless $dbh;
    my $now = $dbh->selectall_arrayref('SELECT NOW()')->[0]->[0];

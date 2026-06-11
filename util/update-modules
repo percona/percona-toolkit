@@ -72,19 +72,19 @@ replace_pkg_in_tool() {
    if [ "$tool_lang" = "perl" ]; then
       echo "# $pkg package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/$pkg_file_base.pm
 #   t/lib/$pkg_file_base.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {" >> $tmp_file
    else
       echo "# $pkg package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/$pkg.sh
 #   t/lib/bash/$pkg.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 " >> $tmp_file
    fi
@@ -99,9 +99,9 @@ echo "# ########################################################################
 # End $pkg package" >> $tmp_file
 
    tail -n +$pkg_end_line  $tool_file >> $tmp_file
- 
+
    mv $tmp_file $tool_file
-} 
+}
 
 update_tool_header() {
    local tool_file=$1
@@ -135,6 +135,10 @@ fi
 
 if [ ! -f $tool_file ]; then
    die "$tool_file does not exist"
+fi
+
+if [ -h $tool_file ]; then
+   die "$tool_file is a symbolic link"
 fi
 
 if [ -n "$(head -n 1 $tool_file | grep perl)" ]; then
@@ -182,6 +186,10 @@ for pkg in $pkgs; do
 done
 
 if [ $pkgs_updated -gt 0 ]; then
+   # Storing existing EXIT_STATUS, because tool should only fail copying resulting
+   # file if below code also fails. Previous errors should not affect copying.
+   es=$EXIT_STATUS
+   EXIT_STATUS=0
    if [ "$tool_lang" = "perl" ]; then
       update_tool_header $tmp_tool_file
       if [ $? -ne 0 ]; then
@@ -190,7 +198,7 @@ if [ $pkgs_updated -gt 0 ]; then
    fi
    if [ $EXIT_STATUS -eq 0 ]; then
       cp $tmp_tool_file $tool_file
-      EXIT_STATUS=$((EXIT_STATUS | $?))
+      EXIT_STATUS=$((es | $?))
       if [ $? -ne 0 ]; then
          warn "Failed to copy $tmp_tool_file to $tool_file"
       fi

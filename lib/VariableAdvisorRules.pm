@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Ireland Ltd.
+# This program is copyright 2010-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # VariableAdvisorRules package
 # ###########################################################################
@@ -130,6 +129,13 @@ sub get_rules {
       },
    },
    {
+      id   => 'init_replica',
+      code => sub {
+         my ( %args ) = @_;
+         return $args{variables}->{init_replica} ? 1 : 0;
+      },
+   },
+   {
       id   => 'innodb_additional_mem_pool_size',
       code => sub {
          my ( %args ) = @_;
@@ -142,7 +148,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return _var_eq($args{variables}->{innodb_buffer_pool_size},
-            10 * 1_048_576);  # 10M
+            128 * 1_048_576);  # 128M
       },
    },
    {
@@ -199,7 +205,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return _var_gt($args{variables}->{innodb_log_buffer_size},
-            16 * 1_048_576);  # 16M
+            64 * 1_048_576);  # 64M
       },
    },
    {
@@ -207,7 +213,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return _var_eq($args{variables}->{innodb_log_file_size},
-            5 * 1_048_576);  # 5M
+            48 * 1_048_576);  # 48M
       },
    },
    {
@@ -331,6 +337,13 @@ sub get_rules {
       },
    },
    {
+      id   => 'query_cache_size-3',
+      code => sub {
+         my ( %args ) = @_;
+         return _var_neq($args{variables}->{query_cache_size}, 0);
+      },
+   },
+   {
       id   => 'read_buffer_size-1',
       code => sub {
          my ( %args ) = @_;
@@ -367,7 +380,7 @@ sub get_rules {
          return _var_gt($args{variables}->{relay_log_space_limit}, 0);
       },
    },
-   
+
    {
       id   => 'slave_net_timeout',
       code => sub {
@@ -376,11 +389,26 @@ sub get_rules {
       },
    },
    {
+      id   => 'replica_net_timeout',
+      code => sub {
+         my ( %args ) = @_;
+         return _var_gt($args{variables}->{replica_net_timeout}, 60);
+      },
+   },
+   {
       id   => 'slave_skip_errors',
       code => sub {
          my ( %args ) = @_;
          return $args{variables}->{slave_skip_errors}
              && $args{variables}->{slave_skip_errors} ne 'OFF' ? 1 : 0;
+      },
+   },
+   {
+      id   => 'replica_skip_errors',
+      code => sub {
+         my ( %args ) = @_;
+         return $args{variables}->{replica_skip_errors}
+             && $args{variables}->{replica_skip_errors} ne 'OFF' ? 1 : 0;
       },
    },
    {
@@ -515,7 +543,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return 0 unless $args{variables}->{storage_engine};
-         return $args{variables}->{storage_engine} !~ m/InnoDB|MyISAM/i ? 1 : 0;
+         return $args{variables}->{storage_engine} !~ m/InnoDB/i ? 1 : 0;
       },
    },
    {
@@ -545,7 +573,12 @@ sub get_rules {
          return 1 if   ($mysql_version == '3'   && $mysql_version < '3.23'  )
                     || ($mysql_version == '4'   && $mysql_version < '4.1.20')
                     || ($mysql_version == '5.0' && $mysql_version < '5.0.37')
-                    || ($mysql_version == '5.1' && $mysql_version < '5.1.30');
+                    || ($mysql_version == '5.1' && $mysql_version < '5.1.30')
+                    || ($mysql_version == '5.5' && $mysql_version < '5.5.8')
+                    || ($mysql_version == '5.6' && $mysql_version < '5.6.10')
+                    || ($mysql_version == '5.7' && $mysql_version < '5.7.9')
+                    || ($mysql_version == '8.0' && $mysql_version < '8.0.11')
+                    ;
          return 0;
       },
    },
@@ -555,7 +588,7 @@ sub get_rules {
          my ( %args ) = @_;
          my $mysql_version = $args{mysql_version};
          return 0 unless $mysql_version;
-         return $mysql_version < '5.1' ? 1 : 0;  # 5.1.x
+         return $mysql_version < '8.0' ? 1 : 0;  # 8.x
       },
    },
 };

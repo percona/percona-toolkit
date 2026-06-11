@@ -15,12 +15,13 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-duplicate-key-checker";
 
+require VersionParser;
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 2;
@@ -33,16 +34,28 @@ my $cmd = "$trunk/bin/pt-duplicate-key-checker -F $cnf -h 127.1";
 $sb->wipe_clean($dbh);
 $sb->create_dbs($dbh, ['issue_1192']);
 
+my $transform_int = undef;
+# In version 8.0 integer display width is deprecated and not shown in the outputs.
+# So we need to transform our samples.
+if ($sandbox_version ge '8.0') {
+   $transform_int = sub {
+      my $txt = slurp_file(shift);
+      $txt =~ s/int\(\d{1,2}\)/int/g;
+      print $txt;
+   };
+}
+
 # #############################################################################
 # Issue 1192: DROP/ADD leaves structure unchanged
 # #############################################################################
-$sb->load_file('master', "t/lib/samples/dupekeys/issue-1192.sql", "issue_1192");
+$sb->load_file('source', "t/lib/samples/dupekeys/issue-1192.sql", "issue_1192");
 
 ok(
    no_diff(
       "$cmd -d issue_1192 --no-summary",
       "t/pt-duplicate-key-checker/samples/issue_1192.txt",
       sed => ["'s/  (/ (/g'"],
+      transform_sample => $transform_int
    ),
    "Keys are sorted lc so left-prefix magic works (issue 1192)"
 );

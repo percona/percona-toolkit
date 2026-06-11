@@ -30,7 +30,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_trace_thread (
              -----------
 
              Dumps all data within Performance Schema for an instrumented thread,
-             to create a DOT formatted graph file. 
+             to create a DOT formatted graph file.
 
              Each resultset returned from the procedure should be used for a complete graph
 
@@ -46,13 +46,13 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_trace_thread (
              in_max_runtime (DECIMAL(20,2)):
                The maximum time to keep collecting data.
                Use NULL to get the default which is 60 seconds.
-             in_interval (DECIMAL(20,2)): 
-               How long to sleep between data collections. 
+             in_interval (DECIMAL(20,2)):
+               How long to sleep between data collections.
                Use NULL to get the default which is 1 second.
              in_start_fresh (BOOLEAN):
                Whether to reset all Performance Schema data before tracing.
              in_auto_setup (BOOLEAN):
-               Whether to disable all other threads and enable all consumers/instruments. 
+               Whether to disable all other threads and enable all consumers/instruments.
                This will also reset the settings at the end of the run.
              in_debug (BOOLEAN):
                Whether you would like to include file:lineno in the graph
@@ -113,12 +113,12 @@ BEGIN
     DECLARE v_this_thread_enabed ENUM('YES', 'NO');
     DECLARE v_event longtext;
     DECLARE c_stack CURSOR FOR
-        SELECT CONCAT(IF(nesting_event_id IS NOT NULL, CONCAT(nesting_event_id, ' -> '), ''), 
+        SELECT CONCAT(IF(nesting_event_id IS NOT NULL, CONCAT(nesting_event_id, ' -> '), ''),
                     event_id, '; ', event_id, ' [label="',
                     -- Convert from picoseconds to microseconds
                     '(', sys.format_time(timer_wait), ') ',
-                    IF (event_name NOT LIKE 'wait/io%', 
-                        SUBSTRING_INDEX(event_name, '/', -2), 
+                    IF (event_name NOT LIKE 'wait/io%',
+                        SUBSTRING_INDEX(event_name, '/', -2),
                         IF (event_name NOT LIKE 'wait/io/file%' OR event_name NOT LIKE 'wait/io/socket%',
                             SUBSTRING_INDEX(event_name, '/', -4),
                             event_name)
@@ -128,11 +128,11 @@ BEGIN
                     IF (event_name LIKE 'statement/%', IFNULL(CONCAT('\\n', wait_info), ''), ''),
                     -- If debug is enabled, add the file:lineno information for waits
                     IF (in_debug AND event_name LIKE 'wait%', wait_info, ''),
-                    '", ', 
+                    '", ',
                     -- Depending on the type of event, style appropriately
-                    CASE WHEN event_name LIKE 'wait/io/file%' THEN 
+                    CASE WHEN event_name LIKE 'wait/io/file%' THEN
                            'shape=box, style=filled, color=red'
-                         WHEN event_name LIKE 'wait/io/table%' THEN 
+                         WHEN event_name LIKE 'wait/io/table%' THEN
                            'shape=box, style=filled, color=green'
                          WHEN event_name LIKE 'wait/io/socket%' THEN
                            'shape=box, style=filled, color=yellow'
@@ -143,7 +143,7 @@ BEGIN
                          WHEN event_name LIKE 'wait/synch/rwlock%' THEN
                            'style=filled, color=orchid'
                          WHEN event_name LIKE 'wait/synch/sxlock%' THEN
-                           'style=filled, color=palevioletred' 
+                           'style=filled, color=palevioletred'
                          WHEN event_name LIKE 'wait/lock%' THEN
                            'shape=box, style=filled, color=tan'
                          WHEN event_name LIKE 'statement/%' THEN
@@ -154,8 +154,8 @@ BEGIN
                                        ELSE
                                          -- Use long query time from the server to
                                          -- flag long running statements in red
-                                         IF((timer_wait/1000000000000) > @@long_query_time, 
-                                            ' style=filled, color=red', 
+                                         IF((timer_wait/1000000000000) > @@long_query_time,
+                                            ' style=filled, color=red',
                                             ' style=filled, color=lightblue')
                                   END
                            )
@@ -184,7 +184,7 @@ BEGIN
                WHERE thread_id = in_thread_id AND event_id > v_min_event_id)
              UNION
              -- Select all statements, with the extra tracing information available
-             (SELECT thread_id, event_id, event_name, timer_wait, timer_start, nesting_event_id, 
+             (SELECT thread_id, event_id, event_name, timer_wait, timer_start, nesting_event_id,
                      CONCAT('statement: ', sql_text, '\\n',
                             'errors: ', errors, '\\n',
                             'warnings: ', warnings, '\\n',
@@ -198,7 +198,7 @@ BEGIN
                             'select full join: ', select_full_join, '\\n',
                             'select full range join: ', select_full_range_join, '\\n',
                             'select range: ', select_range, '\\n',
-                            'select range check: ', select_range_check, '\\n', 
+                            'select range check: ', select_range_check, '\\n',
                             'sort merge passes: ', sort_merge_passes, '\\n',
                             'sort rows: ', sort_rows, '\\n',
                             'sort range: ', sort_range, '\\n',
@@ -211,17 +211,17 @@ BEGIN
              UNION
              -- Select all stages
              (SELECT thread_id, event_id, event_name, timer_wait, timer_start, nesting_event_id, null AS wait_info
-                FROM performance_schema.events_stages_history_long 
+                FROM performance_schema.events_stages_history_long
                WHERE thread_id = in_thread_id AND event_id > v_min_event_id)
-             UNION 
+             UNION
              -- Select all events, adding information appropriate to the event
-             (SELECT thread_id, event_id, 
-                     CONCAT(event_name, 
-                            IF(event_name NOT LIKE 'wait/synch/mutex%', IFNULL(CONCAT(' - ', operation), ''), ''), 
+             (SELECT thread_id, event_id,
+                     CONCAT(event_name,
+                            IF(event_name NOT LIKE 'wait/synch/mutex%', IFNULL(CONCAT(' - ', operation), ''), ''),
                             IF(number_of_bytes IS NOT NULL, CONCAT(' ', number_of_bytes, ' bytes'), ''),
                             IF(event_name LIKE 'wait/io/file%', '\\n', ''),
-                            IF(object_schema IS NOT NULL, CONCAT('\\nObject: ', object_schema, '.'), ''), 
-                            IF(object_name IS NOT NULL, 
+                            IF(object_schema IS NOT NULL, CONCAT('\\nObject: ', object_schema, '.'), ''),
+                            IF(object_name IS NOT NULL,
                                IF (event_name LIKE 'wait/io/socket%',
                                    -- Print the socket if used, else the IP:port as reported
                                    CONCAT('\\n', IF (object_name LIKE ':0%', @@socket, object_name)),
@@ -233,7 +233,7 @@ BEGIN
                      timer_wait, timer_start, nesting_event_id, source AS wait_info
                 FROM performance_schema.events_waits_history_long
                WHERE thread_id = in_thread_id AND event_id > v_min_event_id)
-           ) events 
+           ) events
        ORDER BY event_id;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
 
@@ -246,7 +246,7 @@ BEGIN
 
     IF (in_auto_setup) THEN
         CALL sys.ps_setup_save(0);
-        
+
         -- Ensure only the thread to create the stack trace for is instrumented and that we instrument everything.
         DELETE FROM performance_schema.setup_actors;
 
@@ -314,12 +314,12 @@ BEGIN
     END WHILE;
 
     INSERT INTO tmp_events VALUES (v_min_event_id+1, '}');
-   
+
     SET @query = CONCAT('SELECT event FROM tmp_events ORDER BY event_id INTO OUTFILE ''', in_outfile, ''' FIELDS ESCAPED BY '''' LINES TERMINATED BY ''''');
     PREPARE stmt_output FROM @query;
     EXECUTE stmt_output;
     DEALLOCATE PREPARE stmt_output;
-   
+
     SELECT CONCAT('Stack trace written to ', in_outfile) AS 'Info';
     SELECT CONCAT('dot -Tpdf -o /tmp/stack_', in_thread_id, '.pdf ', in_outfile) AS 'Convert to PDF';
     SELECT CONCAT('dot -Tpng -o /tmp/stack_', in_thread_id, '.png ', in_outfile) AS 'Convert to PNG';

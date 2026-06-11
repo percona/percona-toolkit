@@ -18,10 +18,10 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 2;
@@ -30,15 +30,15 @@ else {
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,D=bug_1592608';
-my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,D=bug_1592608';
+my @args       = ($source_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $output;
 
 # We test that checksum works with invalid dates, 
 # but for that we need to turn off MySQL's NO_ZERO_IN_DATE mode 
 my $modes = new SqlModes($dbh, global=>1);
 $modes->del('NO_ZERO_IN_DATE');
-$sb->load_file('master', 't/pt-table-checksum/samples/issue_1592608.sql');
+$sb->load_file('source', 't/pt-table-checksum/samples/issue_1592608.sql');
 # #############################################################################
 # Issue 602: mk-table-checksum issue with invalid dates
 # #############################################################################

@@ -17,11 +17,11 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
-my $slave_dbh = $sb->get_dbh_for('slave1');
+my $dbh = $sb->get_dbh_for('source');
+my $replica_dbh = $sb->get_dbh_for('replica1');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 19;
@@ -35,7 +35,7 @@ my $cmd = "perl -I $trunk/t/pt-archiver/samples $trunk/bin/pt-archiver";
 # ###########################################################################
 # Bulk delete with limit that results in 2 chunks.
 # ###########################################################################
-$sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
+$sb->load_file('source', "t/pt-archiver/samples/delete_more.sql");
 $dbh->do('use dm');
 
 #1
@@ -97,11 +97,11 @@ is_deeply(
 );
 
 SKIP: {
-   skip 'Cannot connect to slave sandbox', 6 unless $slave_dbh;
-   $slave_dbh->do('use dm');
+   skip 'Cannot connect to replica sandbox', 6 unless $replica_dbh;
+   $replica_dbh->do('use dm');
 #5
    is_deeply(
-      $slave_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
+      $replica_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
       [
          [1, '2010-02-16', 'a'],
          [2, '2010-02-15', 'b'],
@@ -109,11 +109,11 @@ SKIP: {
          [4, '2010-02-16', 'd'],
          [5, '2010-02-14', 'e'],
       ],
-      'Slave main_table-123 not changed'
+      'Replica main_table-123 not changed'
    );
 #6
    is_deeply(
-      $slave_dbh->selectall_arrayref('select * from `other_table-123` order by id'),
+      $replica_dbh->selectall_arrayref('select * from `other_table-123` order by id'),
       [
          [1, 'a'],
          [2, 'b'],
@@ -124,15 +124,15 @@ SKIP: {
          [5, 'e'],
          [6, 'ot1'],
       ],
-      'Slave other_table-123 not changed'
+      'Replica other_table-123 not changed'
    );
 
-   # Run it again without DSN b so changes should be made on slave.
-   $sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
+   # Run it again without DSN b so changes should be made on replica.
+   $sb->load_file('source', "t/pt-archiver/samples/delete_more.sql");
 
 #7
    is_deeply(
-      $slave_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
+      $replica_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
       [
          [1, '2010-02-16', 'a'],
          [2, '2010-02-15', 'b'],
@@ -140,11 +140,11 @@ SKIP: {
          [4, '2010-02-16', 'd'],
          [5, '2010-02-14', 'e'],
       ],
-      'Reset slave main_table-123'
+      'Reset replica main_table-123'
    );
 #8
    is_deeply(
-      $slave_dbh->selectall_arrayref('select * from `other_table-123` order by id'),
+      $replica_dbh->selectall_arrayref('select * from `other_table-123` order by id'),
       [
          [1, 'a'],
          [2, 'b'],
@@ -155,14 +155,14 @@ SKIP: {
          [5, 'e'],
          [6, 'ot1'],
       ],
-      'Reset slave other_table-123'
+      'Reset replica other_table-123'
    );
 
    `$cmd --purge --primary-key-only --source F=$cnf,D=dm,t=main_table-123,i=pub_date,m=delete_more --where "pub_date < '2010-02-16'" --bulk-delete --limit 2`;
    sleep 1;
 #9
    is_deeply(
-      $slave_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
+      $replica_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
       [
          [1, '2010-02-16', 'a'],
          # [2, '2010-02-15', 'b'],
@@ -170,26 +170,26 @@ SKIP: {
          [4, '2010-02-16', 'd'],
          [5, '2010-02-14', 'e'],
       ],
-      'Slave main_table-123 changed'
+      'Replica main_table-123 changed'
    );
 
 #10
    is_deeply(
-      $slave_dbh->selectall_arrayref('select * from `other_table-123` order by id'),
+      $replica_dbh->selectall_arrayref('select * from `other_table-123` order by id'),
       [
          [1, 'a'],
          [4, 'd'],
          [5, 'e'],
          [6, 'ot1'],
       ],
-      'Slave other_table-123 changed'
+      'Replica other_table-123 changed'
    );
 }
 
 # ###########################################################################
 # Bulk delete in single chunk.
 # ###########################################################################
-$sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
+$sb->load_file('source', "t/pt-archiver/samples/delete_more.sql");
 $dbh->do('use dm');
 #11
 is_deeply(
@@ -247,7 +247,7 @@ is_deeply(
 # ###########################################################################
 # Single delete.
 # ###########################################################################
-$sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
+$sb->load_file('source', "t/pt-archiver/samples/delete_more.sql");
 $dbh->do('use dm');
 #15
 is_deeply(

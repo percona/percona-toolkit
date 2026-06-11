@@ -1,0 +1,39 @@
+platform    Linux
+hostname    bm-support01.bm.int.percona.com
+kernel    5.1.7-1.el7.elrepo.x86_64
+release    CentOS Linux release 7.9.2009 (Core)
+CPU_ARCH    64-bit
+OS_ARCH    64-bit
+virt    No virtualization detected
+vendor    Dell Inc.
+system    Dell Inc.; PowerEdge R520; vNot Specified (Rack Mount Chassis)
+servicetag    6J6X9Y1
+compiler    GNU CC version 4.8.5 20150623 (Red Hat 4.8.5-44).
+rss    24584511488
+raid_controller     Broadcom / LSI MegaRAID SAS 2208 [Thunderbolt] (rev 05)  
+threading    NPTL 2.17
+getenforce    Enforcing
+swappiness    1
+dirtypolicy    20, 10
+dirtystatus     0, 0
+numa-available    2
+numa-policy    default
+numa-preferred-node    current
+internal::disks    dm-0 dm-1 dm-2 dm-3 dm-4 dm-5 dm-6 dm-7 nvme0n1 nvme1n1 sda sdb sdc sr0
+internal::dm-0     128
+internal::dm-1     128
+internal::dm-2     128
+internal::dm-3     128
+internal::dm-4     128
+internal::dm-5     128
+internal::dm-6     128
+internal::dm-7     128
+internal::nvme0n1    [none] 1023
+internal::nvme1n1    [none] 1023
+internal::sda    [mq-deadline] 256
+internal::sdb    [mq-deadline] 256
+internal::sdc    [mq-deadline] 256
+internal::sr0    [mq-deadline] 64
+dentry-state    10194137	9907146	45	0	2973650	0
+file-nr    27248	0	19768804
+inode-nr    8232199	1009287

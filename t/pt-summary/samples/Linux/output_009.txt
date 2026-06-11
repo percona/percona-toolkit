@@ -1,0 +1,212 @@
+    Hostname | s76
+      Uptime | 95 days,  5:49,  1 user,  load average: 6,32, 6,92, 6,94
+    Platform | Linux
+     Release | Ubuntu 22.04.4 LTS (jammy)
+      Kernel | 6.5.0-35-generic
+Architecture | CPU = 64-bit, OS = 64-bit
+   Threading | NPTL 2.35
+     SELinux | No SELinux detected
+ Virtualized | No virtualization detected
+# Processor ##################################################
+  Processors | physical = 1, cores = 12, virtual = 16, hyperthreading = yes
+      Speeds | 1x2361.788, 1x2361.790, 1x2372.925, 1x2381.090, 1x2387.139, 1x2388.023, 1x2392.435, 1x2393.328, 1x2778.914, 1x2783.569, 1x2788.137, 1x2788.142, 1x2788.144, 1x2788.149, 1x2788.156, 1x2789.364
+      Models | 16x12th Gen Intel(R) Core(TM) i7-1260P
+      Caches | 16x18432 KB
+  Designation               Configuration                  Size     Associativity
+  ========================= ============================== ======== ======================
+# Memory #####################################################
+         Total | 62.6G
+          Free | 1.4G
+          Used | physical = 26.0G, swap allocated = 1.9G, swap used = 1.9G, virtual = 27.9G
+        Shared | 2.7G
+       Buffers | 35.3G
+        Caches | 33.6G
+         Dirty | 16096 kB
+       UsedRSS | 36.4G
+    Swappiness | 60
+   DirtyPolicy | 20, 10
+   DirtyStatus | 0, 0
+  Locator   Size     Speed             Form Factor   Type          Type Detail
+  ========= ======== ================= ============= ============= ===========
+# Mounted Filesystems ########################################
+  Filesystem                 Size Used Type     Opts                                                                                                 Mountpoint
+  /dev/fuse                  250G   0% fuse     rw,nosuid,nodev,relatime,user_id=1000,group_id=1000                                                  /run/user/1000/keybase/kbfs
+  /dev/mapper/vgubuntu-root  3,6T  43% ext4     rw,relatime,errors=remount-ro                                                                        /
+  /dev/nvme0n1p1             511M  57% vfat     rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro /boot/efi
+  /dev/nvme0n1p2             1,7G  20% ext4     rw,relatime                                                                                          /boot
+  efivarfs                    64K  45% efivarfs rw,nosuid,nodev,noexec,relatime                                                                      /sys/firmware/efi/efivars
+  tmpfs                       32G   3% tmpfs    rw,nosuid,nodev,inode64                                                                              /dev/shm
+  tmpfs                       32G   3% tmpfs    rw,nosuid,nodev,noexec,relatime,size=5120k,inode64                                                   /dev/shm
+  tmpfs                       32G   3% tmpfs    rw,nosuid,nodev,noexec,relatime,size=6567948k,mode=755,inode64                                       /dev/shm
+  tmpfs                       32G   3% tmpfs    rw,nosuid,nodev,noexec,relatime,size=6567948k,mode=755,inode64                                       /dev/shm
+  tmpfs                       32G   3% tmpfs    rw,nosuid,nodev,relatime,size=6567944k,nr_inodes=1641986,mode=700,uid=1000,gid=1000,inode64          /dev/shm
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,inode64                                                                              /run/lock
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=5120k,inode64                                                   /run/lock
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=6567948k,mode=755,inode64                                       /run/lock
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=6567948k,mode=755,inode64                                       /run/lock
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,relatime,size=6567944k,nr_inodes=1641986,mode=700,uid=1000,gid=1000,inode64          /run/lock
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,inode64                                                                              /run/user/1000
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=5120k,inode64                                                   /run/user/1000
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=6567948k,mode=755,inode64                                       /run/user/1000
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=6567948k,mode=755,inode64                                       /run/user/1000
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,relatime,size=6567944k,nr_inodes=1641986,mode=700,uid=1000,gid=1000,inode64          /run/user/1000
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,inode64                                                                              /run
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=5120k,inode64                                                   /run
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=6567948k,mode=755,inode64                                       /run
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=6567948k,mode=755,inode64                                       /run
+  tmpfs                      6,3G   1% tmpfs    rw,nosuid,nodev,relatime,size=6567944k,nr_inodes=1641986,mode=700,uid=1000,gid=1000,inode64          /run
+# Disk Schedulers And Queue Size #############################
+        dm-0 | UNREADABLE
+        dm-1 | UNREADABLE
+        dm-2 | UNREADABLE
+     nvme0n1 | [none] 1023
+# Disk Partitioning ##########################################
+Device       Type      Start        End               Size
+============ ==== ========== ========== ==================
+/dev/nvme0n1 Disk                            4000787030016
+/dev/nvme0n1p1 Part       2048    1050623                  0
+/dev/nvme0n1p2 Part    1050624    4550655                  0
+/dev/nvme0n1p3 Part    4550656 7814035455                  0
+# Kernel Inode State #########################################
+dentry-state | 3355603	3159991	45	0	2250834	0
+     file-nr | 36032	0	9223372036854775807
+    inode-nr | 1419887	556339
+# LVM Volumes ################################################
+Unable to collect information
+# LVM Volume Groups ##########################################
+Unable to collect information
+# RAID Controller ############################################
+  Controller | No RAID controller detected
+# Network Config #############################################
+  Controller | Realtek Semiconductor Co., Ltd. RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller (rev 15)
+ FIN Timeout | 60
+  Port Range | 60999
+# Interface Statistics #######################################
+  interface  rx_bytes rx_packets  rx_errors   tx_bytes tx_packets  tx_errors
+  ========= ========= ========== ========== ========== ========== ==========
+  lo       125000000000  175000000          0 125000000000  175000000          0
+  enp46s0           0          0          0          0          0          0
+  wlp0s20f3 150000000000  150000000          0 30000000000   80000000          0
+  docker0  12500000000   12500000          0 30000000000   15000000          0
+  br-a7c7f1777df1          0          0          0          0          0          0
+  veth0655c9f@if604 1250000000    1000000          0 2500000000    1250000          0
+  vethd189986@if606   50000000     250000          0  600000000     300000          0
+  veth2655c84@if608  500000000     250000          0   50000000     250000          0
+  wg0        17500000      35000          0    7000000      35000          0
+  br-79118f7d5a92   15000000     225000          0  800000000     350000          0
+# Network Connections ########################################
+  Connections from remote IP addresses
+    3.68.61.181         3
+    3.160.57.75         1
+    3.164.240.62        2
+    10.0.0.1            1
+    10.0.0.5            4
+    18.190.135.240      1
+    18.205.222.128      1
+    23.20.17.147        1
+    34.107.243.93       1
+    34.110.207.168      1
+    34.117.188.166      2
+    34.120.208.123      1
+    34.202.253.140      1
+    35.74.138.212       2
+    35.75.32.93         6
+    38.111.114.11       1
+    52.35.150.14        2
+    52.57.79.4          1
+    52.73.62.51         1
+    52.73.238.236       1
+    52.84.151.38        1
+    52.193.110.50       1
+    54.86.147.85        1
+    54.147.17.17        1
+    54.158.119.218      1
+    54.159.113.253      1
+    54.159.239.26       1
+    64.233.162.188      1
+    64.233.165.104      1
+    74.125.205.188      1
+    77.223.96.250       1
+    89.253.240.17       2
+    91.105.192.100      7
+    108.157.52.95       1
+    108.157.214.47      1
+    108.157.214.111     1
+    108.177.14.94       2
+    127.0.0.1          80
+    140.82.114.25       1
+    142.250.150.154     1
+    142.251.1.138       1
+    142.251.140.14      1
+    149.154.167.51      1
+    157.240.205.60      1
+    157.240.205.174     2
+    162.125.21.2        1
+    162.125.21.3        8
+    170.114.4.224       1
+    170.114.15.227      1
+    170.114.52.2        2
+    170.114.52.66       1
+    172.17.0.2          4
+    172.64.152.233      1
+    173.194.73.94       1
+    173.194.220.108     5
+    173.194.222.94      1
+    185.166.143.36      1
+    188.114.98.233      2
+    188.114.99.233      2
+    194.85.125.1        1
+    206.247.115.239     1
+    213.180.204.148     3
+    216.58.213.113      1
+  Connections to local IP addresses
+    10.0.0.5           15
+    127.0.0.1          80
+    172.17.0.1          4
+    192.168.55.2       80
+    192.168.255.22      1
+  Connections to top 10 local ports
+    12345               3
+    12347               4
+    3306               15
+    42001               3
+    42002               3
+    42003               3
+    4647                2
+    60442               1
+    60592               2
+    60740               1
+  States of connections
+    CLOSE_WAIT          9
+    ESTABLISHED       125
+    LISTEN             45
+    SYN_SENT            4
+    TIME_WAIT          40
+# Top Processes ##############################################
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+ 783789 sveta     20   0 2822620 506824  42752 S 100,0   0,8   5795:02 mysqld
+2407273 sveta     20   0   64144  46012  13824 R 100,0   0,1   5069:41 perl
+2410420 sveta     20   0   64140  46184  13952 R 100,0   0,1   5067:44 perl
+2419768 sveta     20   0   64140  46088  13952 R 100,0   0,1   5063:21 perl
+2408748 sveta     20   0   64136  46068  14080 R  94,1   0,1   5068:45 perl
+3396104 sveta     20   0   16768   5248   3968 R  11,8   0,0   0:00.03 top
+2147236 sveta     20   0   32,8g 450796 225184 S   5,9   0,7  52:26.29 chrome
+2147423 sveta     20   0 1158,3g 556292 148372 S   5,9   0,8  83:11.29 chrome
+2738171 sveta     20   0  499860  52224  13312 S   5,9   0,1  19:40.27 aomhost
+# Notable Processes ##########################################
+  PID    OOM    COMMAND
+    ?      ?    sshd doesn't appear to be running
+1499134    -17    multipathd
+2849628    -17    nomad
+3202899    -17    sshd
+# Simplified and fuzzy rounded vmstat (wait please) ##########
+  procs  ---swap-- -----io---- ---system---- --------cpu--------
+   r  b    si   so    bi    bo     ir     cs  us  sy  il  wa  st
+   8  0     0    0    30   200      1      1  12   2  86   0   0
+   5  0     0    0     0   100  15000  50000  40   3  57   0   0
+   6  0     0    0     4  1750  15000  20000  34   1  65   0   0
+   6  0     0    0     0     8  17500  20000  35   2  63   0   0
+   5  0     0    0     0   900  17500  25000  35   1  63   0   0
+# Memory management ##########################################
+Transparent huge pages are enabled.
+# The End ####################################################

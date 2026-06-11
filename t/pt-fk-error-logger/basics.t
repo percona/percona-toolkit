@@ -16,12 +16,13 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-fk-error-logger";
 
+require VersionParser;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 $sb->create_dbs($dbh, [qw(test)]);
@@ -31,7 +32,7 @@ my $cnf  = '/tmp/12345/my.sandbox.cnf';
 my $cmd  = "$trunk/bin/pt-fk-error-logger -F $cnf ";
 my @args = qw(--iterations 1);
 
-$sb->load_file('master', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
+$sb->load_file('source', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
 
 # #########################################################################
 # Test saving foreign key errors to --dest.
@@ -162,9 +163,9 @@ $dbh->do('DROP TABLE test.parent');
 # https://bugs.launchpad.net/percona-toolkit/+bug/1075773
 # #############################################################################
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox source 12348 >/dev/null`);
 diag(`/tmp/12348/use -e "create database test"`);
-$sb->load_file('master1', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
+$sb->load_file('source1', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
 
 $output = output(
    sub {
@@ -193,7 +194,7 @@ $output = `$trunk/bin/pt-fk-error-logger h=127.1,P=12345,u=msandbox,p=msandbox -
 
 like(
    $output,
-   qr{PID file $pid_file already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 

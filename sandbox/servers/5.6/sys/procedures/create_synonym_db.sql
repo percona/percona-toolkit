@@ -18,14 +18,14 @@ DROP PROCEDURE IF EXISTS create_synonym_db;
 DELIMITER $$
 
 CREATE DEFINER='root'@'localhost' PROCEDURE create_synonym_db (
-        IN in_db_name VARCHAR(64), 
+        IN in_db_name VARCHAR(64),
         IN in_synonym VARCHAR(64)
     )
     COMMENT '
              Description
              -----------
 
-             Takes a source database name and synonym name, and then creates the 
+             Takes a source database name and synonym name, and then creates the
              synonym database with views that point to all of the tables within
              the source database.
 
@@ -101,9 +101,9 @@ BEGIN
     DECLARE db_doesnt_exist CONDITION FOR SQLSTATE '42000';
     DECLARE db_name_exists CONDITION FOR SQLSTATE 'HY000';
 
-    DECLARE c_table_names CURSOR FOR 
-        SELECT TABLE_NAME 
-          FROM INFORMATION_SCHEMA.TABLES 
+    DECLARE c_table_names CURSOR FOR
+        SELECT TABLE_NAME
+          FROM INFORMATION_SCHEMA.TABLES
          WHERE TABLE_SCHEMA = in_db_name;
 
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;

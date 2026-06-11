@@ -22,24 +22,24 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;
-my $master_dsn = $sb->dsn_for('master');
+my $source_dsn = $sb->dsn_for('source');
 my $sample     = "t/pt-table-checksum/samples";
 my $plugin     = "$trunk/$sample/plugins";
 my $exit;
 my $rows;
 
-$master_dbh->prepare("drop database if exists percona")->execute();
-$master_dbh->prepare("create database percona")->execute();
-$master_dbh->prepare("create table if not exists percona.t ( a int primary key);")->execute();
-$master_dbh->prepare("insert into percona.t values (0),(1),(2),(3),(4),(5),(6),(7),(8),(9)")->execute();
-$master_dbh->prepare("analyze table percona.t;")->execute();
+$source_dbh->prepare("drop database if exists percona")->execute();
+$source_dbh->prepare("create database percona")->execute();
+$source_dbh->prepare("create table if not exists percona.t ( a int primary key);")->execute();
+$source_dbh->prepare("insert into percona.t values (0),(1),(2),(3),(4),(5),(6),(7),(8),(9)")->execute();
+$source_dbh->prepare("analyze table percona.t;")->execute();
 
 # #############################################################################
 # all_hooks.pm
@@ -47,7 +47,7 @@ $master_dbh->prepare("analyze table percona.t;")->execute();
 
 ($output) = full_output(
    sub { pt_table_checksum::main(
-      "$master_dsn",
+      "$source_dsn",
       '--databases', 'percona',
       '--plugin', "$plugin/all_hooks.pm",
    )},
@@ -59,7 +59,7 @@ my @called = $output =~ m/^PLUGIN \S+$/gm;
 is_deeply(
    \@called,
    [
-      'PLUGIN get_slave_lag',
+      'PLUGIN get_replica_lag',
       'PLUGIN init',
       'PLUGIN before_checksum_table',
       'PLUGIN after_checksum_table',
@@ -70,7 +70,7 @@ is_deeply(
 
 ($output) = full_output(
    sub { pt_table_checksum::main(
-      "$master_dsn",
+      "$source_dsn",
       '--replicate-check', '--replicate-check-only',
       '--databases', 'percona',
       '--plugin', "$plugin/all_hooks.pm",
@@ -93,6 +93,6 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

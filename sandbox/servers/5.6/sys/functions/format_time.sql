@@ -28,15 +28,15 @@ CREATE DEFINER='root'@'localhost' FUNCTION format_time (
              -----------
 
              Takes a raw picoseconds value, and converts it to a human readable form.
-             
-             Picoseconds are the precision that all latency values are printed in 
+
+             Picoseconds are the precision that all latency values are printed in
              within Performance Schema, however are not user friendly when wanting
              to scan output from the command line.
 
              Parameters
              -----------
 
-             picoseconds (TEXT): 
+             picoseconds (TEXT):
                The raw picoseconds value to convert.
 
              Returns

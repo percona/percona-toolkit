@@ -18,25 +18,25 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 4;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
+$sb->wipe_clean($source_dbh);
+$sb->create_dbs($source_dbh, [qw(test)]);
 
 # #############################################################################
 # Issue 22: mk-table-sync fails with uninitialized value at line 2330
 # #############################################################################
-$sb->use('master', "-D test < $trunk/t/pt-table-sync/samples/issue_22.sql");
-$sb->use('master', "-D test -e \"SET SQL_LOG_BIN=0; INSERT INTO test.messages VALUES (1,2,'author','2008-09-12 00:00:00','1','0','headers','msg');\"");
-$sb->create_dbs($master_dbh, [qw(test2)]);
-$sb->use('master', "-D test2 < $trunk/t/pt-table-sync/samples/issue_22.sql");
+$sb->use('source', "-D test < $trunk/t/pt-table-sync/samples/issue_22.sql");
+$sb->use('source', "-D test -e \"SET SQL_LOG_BIN=0; INSERT INTO test.messages VALUES (1,2,'author','2008-09-12 00:00:00','1','0','headers','msg');\"");
+$sb->create_dbs($source_dbh, [qw(test2)]);
+$sb->use('source', "-D test2 < $trunk/t/pt-table-sync/samples/issue_22.sql");
 
 $output = 'foo'; # To make explicitly sure that the following command
                  # returns blank because there are no rows and not just that
@@ -44,7 +44,7 @@ $output = 'foo'; # To make explicitly sure that the following command
 $output = `/tmp/12345/use -D test2 -e 'SELECT * FROM messages'`;
 ok(!$output, 'test2.messages is empty before sync (issue 22)');
 
-$output = `$trunk/bin/pt-table-sync --no-check-slave --execute u=msandbox,p=msandbox,P=12345,h=127.1,D=test,t=messages u=msandbox,p=msandbox,P=12345,h=127.1,D=test2,t=messages 2>&1`;
+$output = `$trunk/bin/pt-table-sync --no-check-replica --execute u=msandbox,p=msandbox,P=12345,h=127.1,D=test,t=messages u=msandbox,p=msandbox,P=12345,h=127.1,D=test2,t=messages 2>&1`;
 ok(!$output, 'Synced test.messages to test2.messages on same host (issue 22)');
 
 $output     = `/tmp/12345/use -D test  -e 'SELECT * FROM messages'`;
@@ -54,6 +54,6 @@ is($output, $output2, 'test2.messages matches test.messages (issue 22)');
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

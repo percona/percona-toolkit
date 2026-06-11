@@ -24,25 +24,28 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh1 = $sb->get_dbh_for('master');
-my $dbh2 = $sb->get_dbh_for('master');
+my $dbh1 = $sb->get_dbh_for('source');
+my $dbh2 = $sb->get_dbh_for('source');
 
 if ( !$dbh1 || !$dbh2 ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( $sandbox_version lt '5.5' ) {
    plan skip_all => "Metadata locks require MySQL 5.5 and newer";
 }
+elsif ($sb->is_cluster_mode) {
+    plan skip_all => 'Not for PXC';
+}
 
 my $output;
-my $master_dsn = $sb->dsn_for('master');
+my $source_dsn = $sb->dsn_for('source');
 my $sample     = "t/pt-online-schema-change/samples";
 my $plugin     = "$trunk/$sample/plugins";
 my $exit;
 my $rows;
 
 # Loads pt_osc.t with cols id (pk), c (unique index),, d.
-$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+$sb->load_file('source', "$sample/basic_no_fks_innodb.sql");
 
 # #############################################################################
 # Meta-block on create_triggers.
@@ -50,7 +53,7 @@ $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 
 ($output) = full_output(
    sub { pt_online_schema_change::main(
-      "$master_dsn,D=pt_osc,t=t",
+      "$source_dsn,D=pt_osc,t=t",
       qw(--statistics --execute --tries create_triggers:2:0.1),
       qw(--set-vars lock_wait_timeout=1),
       '--plugin', "$plugin/block_create_triggers.pm",
@@ -76,7 +79,7 @@ like(
 
 ($output) = full_output(
    sub { pt_online_schema_change::main(
-      "$master_dsn,D=pt_osc,t=t",
+      "$source_dsn,D=pt_osc,t=t",
       qw(--statistics --execute --tries swap_tables:2:0.1),
       qw(--set-vars lock_wait_timeout=1),
       '--plugin', "$plugin/block_swap_tables.pm",

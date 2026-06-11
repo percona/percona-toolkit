@@ -20,7 +20,7 @@ use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
 # This runs immediately if the server is already running, else it starts it.
-diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox source 12348 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -60,7 +60,7 @@ my $t = time - $t0;
 
 ok(
    $t >= 3 && $t <= ($ENV{PERCONA_SLOW_BOX} ? 8 : 6),
-   "Exec queries: ran for roughly --run-time seconds"
+   "Exec queries: ran for roughly 3 seconds"
 ) or diag($output, 'Actual run time:', $t);
 
 # Exit status 8 = --run-time expired (an no other errors/problems)

@@ -25,6 +25,7 @@ use Quoter;
 use ReportFormatter;
 use OptionParser;
 use DSNParser;
+use VersionParser;
 use ReportFormatter;
 use ExplainAnalyzer;
 use Sandbox;
@@ -32,7 +33,7 @@ use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master', {no_lc=>1});  # for explain sparkline
+my $dbh = $sb->get_dbh_for('source', {no_lc=>1});  # for explain sparkline
 
 my ($result, $events, $expected);
 
@@ -1052,15 +1053,7 @@ $qrf = new QueryReportFormatter(
    Quoter          => $q, 
    ExplainAnalyzer => $ex,
 );
-# Normally, the report subs will make their own ReportFormatter but
-# that package isn't visible to QueryReportFormatter right now so we
-# make ReportFormatters and pass them in.  Since ReporFormatters can't
-# be shared, we can only test one subreport at a time, else the
-# prepared statements subreport will reuse/reprint stuff from the
-# profile subreport.  And the line width is 82 because that's the new
-# default to accommodate the EXPLAIN sparkline (issue 1141).
-my $report = new ReportFormatter(line_width=>82);
-$qrf->{formatter} = $report;
+
 ok(
    no_diff(
       sub { $qrf->print_reports(
@@ -1194,7 +1187,7 @@ ok(
 # #############################################################################
 SKIP: {
    skip 'Cannot connect to sandbox master', 3 unless $dbh;
-   $sb->load_file('master', "t/lib/samples/QueryReportFormatter/table.sql");
+   $sb->load_file('source', "t/lib/samples/QueryReportFormatter/table.sql");
 
    @ARGV = qw(--explain F=/tmp/12345/my.sandbox.cnf);
    $o->get_opts();

@@ -3,7 +3,7 @@
 TMP_DIR=${TMP_DIR:-/tmp}
 
 # This script controls the Percona Toolkit test environment.  The basic
-# environment is a master on port 12345 in ${TMP_DIR}/12345 and a slave on port
+# environment is a source on port 12345 in ${TMP_DIR}/12345 and a replica on port
 # 12346 in ${TMP_DIR}/12346.  This script attempts to ensure that all environment
 # vars like PERCONA_TOOLKIT_BRANCH and PERCONA_TOOLKIT_SANDBOX are correct.
 # Exist 0 on success/no errors, or 1 on any warnings or errors.
@@ -13,7 +13,7 @@ err() {
         echo "$msg" >&2
     done
 
-    if [ "$DEBUG_SANDBOXES" ]; then 
+    if [ "$DEBUG_SANDBOXES" ]; then
         echo
         echo "MySQL processes:" >&2
         ps x | grep mysql >&2
@@ -35,17 +35,16 @@ err() {
 }
 
 usage() {
-    err "Usage: test-env start|stop|restart|status|checkconfig|reset|kill" \
+    err "Usage: test-env start|stop|restart|status|checkconfig|kill" \
         ""                                                          \
         "  start       Start test servers in ${TMP_DIR}/PORT"             \
-        "  stop        Stop test servers and remvoe all ${TMP_DIR}/PORT"  \
+        "  stop        Stop test servers and remove all ${TMP_DIR}/PORT"  \
         "  kill        Kill test servers (use if stop fails)"       \
         "  restart     Stop and start test servers"                 \
         "  status      Print status of test servers"                \
         "  checkconfig Check test env and test servers"             \
-        "  reset       Reset test server binary logs"               \
         "  version     Print MySQL version of running test servers" \
-        "" 
+        ""
 }
 
 mysql_basedir_ok() {
@@ -115,7 +114,7 @@ checkconfig() {
 sandbox_status() {
     local type=$1
     local port=$2
-    local master_port=$3
+    local source_port=$3
     local status=0  # sandbox is ok, no problems
 
     echo "MySQL $type test server on port $port:"
@@ -148,6 +147,8 @@ sandbox_status() {
     $PERCONA_TOOLKIT_SANDBOX/bin/mysqladmin --defaults-file="${TMP_DIR}/$port/my.sandbox.cnf" ping >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         echo "yes"
+        set_mysql_version
+        set_source_replica_names
 
         if [ "$MYSQL_VERSION" '>' "4.1" ]; then
             echo -n "  sakila db is loaded - "
@@ -160,23 +161,23 @@ sandbox_status() {
             fi
         fi
 
-        if [ "$type" = "slave" ]; then
-            echo -n "  slave is running - "
-            # Slave status should show:
-            #   Slave_IO_Running: Yes
-            #   Slave_SQL_Running: Yes
-            local slave_running=`${TMP_DIR}/$port/use -e 'show slave status\G' 2>/dev/null | grep Running | grep -c Yes`
-            if [ $slave_running -eq 2 ]; then
+        if [ "$type" = "replica" ]; then
+            echo -n "  replica is running - "
+            # Replica status should show:
+            #   Replica_IO_Running: Yes
+            #   Replica_SQL_Running: Yes
+            local replica_running=`${TMP_DIR}/$port/use -e "show ${REPLICA_NAME} status\G" 2>/dev/null | grep Running | grep -c Yes`
+            if [ $replica_running -eq 2 ]; then
                 echo "yes"
             else
                 echo "NO"
                 status=1
             fi
 
-            if [ -n "$master_port" ]; then
-                echo -n "  slave to master $master_port - "
-                local mp=`${TMP_DIR}/$port/use -e 'show slave status\G' 2>/dev/null | grep Master_Port | awk '{print $2}'`
-                if [ "$mp" = "$master_port" ]; then
+            if [ -n "$source_port" ]; then
+                echo -n "  replica to source $source_port - "
+                local mp=`${TMP_DIR}/$port/use -e "show ${REPLICA_NAME} status\G" 2>/dev/null | grep ${SOURCE_NAME^}_Port | awk '{print $2}'`
+                if [ "$mp" = "$source_port" ]; then
                     echo "yes"
                 else
                     echo "NO"
@@ -210,7 +211,7 @@ kill_sandbox() {
         sleep 2
 
         # See if the sandbox server is still running.
-        sandbox_is_running $p 
+        sandbox_is_running $p
         if [ $? -eq 0 ]; then
             # Kill both mysqld_safe and mysqld.
             pid1=`ps xw | grep -v grep | grep mysqld_safe | grep ${TMP_DIR}/$p | awk '{print $1}'`
@@ -219,12 +220,12 @@ kill_sandbox() {
             [ "$pid2" ] && kill -9 $pid2
             sleep 2
 
-            # Third and finaly check if the sandbox server is running.
+            # Third and finally check if the sandbox server is running.
             sandbox_is_running $p
             if [ $? -eq 0 ]; then
                 err "Failed to kill MySQL test server on port $p (PID $pid1, $pid2)"
                 return 1
-            else 
+            else
                 echo "Killed MySQL test server on port $p (PID $pid1, $pid2)"
             fi
         else
@@ -246,6 +247,17 @@ set_mysql_version() {
         MYSQL_VERSION=$(${TMP_DIR}/12345/use -ss -e "SELECT VERSION()" \
             | cut -d'.' -f1,2)
     fi
+}
+
+SOURCE_NAME="master"
+CHANGE_SOURCE_NAME="master"
+REPLICA_NAME="slave"
+set_source_replica_names() {
+   if [ "$MYSQL_VERSION" '>' "8.1" ] && [ "$APP" '!=' "mariadb" ]; then
+      SOURCE_NAME="source"
+      CHANGE_SOURCE_NAME="replication source"
+      REPLICA_NAME="replica"
+   fi
 }
 
 _seq() {
@@ -288,32 +300,43 @@ else
     if [ $conf_err -eq 1 ]; then
         err "The Percona Toolkit test environment config is invalid." \
             "Run '$0 checkconfig' to see the current configuration."
-        exit 1      
+        exit 1
     fi
 fi
 
 case $opt in
     start)
         cd $PERCONA_TOOLKIT_BRANCH/sandbox
-        ./start-sandbox "${2:-"master"}" 12345
+        echo "${2:-"source"}" 12345
+        ./start-sandbox "${2:-"source"}" 12345
         exit_status=$((exit_status | $?))
         set_mysql_version
+        set_source_replica_names
         if [ $exit_status -eq 0 ]; then
             if [ "${2:-""}" = "channels" ] && [ "$MYSQL_VERSION" '>' "5.6" ]; then
-                ./start-sandbox master 12346 
+                ./start-sandbox source 12346
                 exit_status=$((exit_status | $?))
-                ./start-sandbox master 12347 
+                ./start-sandbox source 12347
                 exit_status=$((exit_status | $?))
-                ${TMP_DIR}/12345/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
-                exit_status=$?
-                ${TMP_DIR}/12346/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
-                exit_status=$?
-                ${TMP_DIR}/12347/use < $PERCONA_TOOLKIT_BRANCH/sandbox/slave_channels.sql
-                exit_status=$?
+                if [ "$MYSQL_VERSION" '>' "8.1" ] && [ "$APP" '!=' "mariadb" ]; then
+                  ${TMP_DIR}/12345/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
+                  exit_status=$?
+                  ${TMP_DIR}/12346/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
+                  exit_status=$?
+                  ${TMP_DIR}/12347/use < $PERCONA_TOOLKIT_BRANCH/sandbox/replica_channels.sql
+                  exit_status=$?
+               else
+                  ${TMP_DIR}/12345/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on-legacy.sql
+                  exit_status=$?
+                  ${TMP_DIR}/12346/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on-legacy.sql
+                  exit_status=$?
+                  ${TMP_DIR}/12347/use < $PERCONA_TOOLKIT_BRANCH/sandbox/replica_channels-legacy.sql
+                  exit_status=$?
+               fi
             else
-                ./start-sandbox "${2:-"slave"}" 12346 12345
+                ./start-sandbox "${2:-"replica"}" 12346 12345
                 exit_status=$((exit_status | $?))
-                ./start-sandbox "${2:-"slave"}" 12347 12346
+                ./start-sandbox "${2:-"replica"}" 12347 12346
                 exit_status=$((exit_status | $?))
             fi
 
@@ -338,7 +361,7 @@ case $opt in
                 if [ $SAKILA -eq 1 ]; then
                     echo -n "Loading sakila database... "
                     ./load-sakila-db 12345 "${2:-""}"
-                    exit_status=$((exit_status | $?)) 
+                    exit_status=$((exit_status | $?))
                     if [ $exit_status -ne 0 ]; then
                         echo "FAILED"
                     else
@@ -381,7 +404,7 @@ case $opt in
         ;;
     stop)
         cd $PERCONA_TOOLKIT_BRANCH/sandbox
-        ./stop-sandbox 12349 12348 12347 12346 12345 
+        ./stop-sandbox 12349 12348 12347 12346 12345
         exit_status=$((exit_status | $?))
         ./stop-sandbox 2903 2902 2901 2900
         exit_status=$((exit_status | $?))
@@ -406,12 +429,12 @@ case $opt in
         $0 start "$@"
         ;;
     status)
-        sandbox_status 'master' '12345'
-        master_status=$?
-        sandbox_status 'slave' '12346' '12345'
-        slave_status=$?
+        sandbox_status 'source' '12345'
+        source_status=$?
+        sandbox_status 'replica' '12346' '12345'
+        replica_status=$?
         echo -n "Percona Test test environment is "
-        if [ $master_status -eq 0 ] && [ $slave_status -eq 0 ]; then
+        if [ $source_status -eq 0 ] && [ $replica_status -eq 0 ]; then
             echo "ok!"
         else
             echo "invalid."

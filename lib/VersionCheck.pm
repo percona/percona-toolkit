@@ -1,4 +1,4 @@
-# This program is copyright 2012-2014 Percona Ireland Ltd.
+# This program is copyright 2012-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # VersionCheck package
 # ###########################################################################
@@ -73,7 +72,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 # Return time limit between checks.
@@ -112,11 +111,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -145,7 +144,7 @@ sub version_check {
       return unless @$instances_to_check;
 
       # Skip Version Check altogether if SSL not available
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -181,7 +180,7 @@ sub version_check {
    }
 
    # Always update the vc file, even if the version check fails.
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          # Update the check time for things we checked.  I.e. if we
          # didn't check it, do _not_ update its time.
@@ -234,7 +233,7 @@ sub get_instances_to_check {
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
-      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+      PTDEBUG && _d('Instance', $instance->{id}, 'last checked',
          $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
          'hours until next check',
          sprintf '%.2f',
@@ -330,7 +329,7 @@ sub get_instance_id {
 }
 
 
-# This function has been implemented solely to be able to count individual 
+# This function has been implemented solely to be able to count individual
 # Toolkit users for statistics. It uses a random UUID, no client info is
 # being gathered nor stored
 sub get_uuid {
@@ -354,7 +353,7 @@ sub get_uuid {
     }
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -385,7 +384,7 @@ sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -421,7 +420,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    # Get the versions for those items in another hashref also keyed on
    # the items like:
    #    "MySQL" => "MySQL Community Server 5.1.49-log",
@@ -460,7 +459,7 @@ sub pingback {
 
    # If the server has suggestions for items, it sends them back in
    # the same format: ITEM:TYPE:SUGGESTION\n.  ITEM:TYPE is mostly for
-   # debugging; the tool just repports the suggestions.
+   # debugging; the tool just reports the suggestions.
    $items = parse_server_response(
       response   => $response->{content},
       split_vars => 0,
@@ -478,7 +477,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -509,7 +508,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -553,7 +552,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -678,7 +677,7 @@ sub get_perl_module_version {
    return unless $item;
 
    # If there's a var, then its an explicit Perl variable name to get,
-   # else the item name is an implicity Perl module name to which we
+   # else the item name is an implicitly Perl module name to which we
    # append ::VERSION to get the module's version.
    my $var     = '$' . $item->{item} . '::VERSION';
    my $version = eval "use $item->{item}; $var;";
@@ -706,12 +705,12 @@ sub get_from_mysql {
       return;
    }
 
-   # Only allow version variables to be reported 
+   # Only allow version variables to be reported
    # So in case of MITM attack, we don't report sensitive data
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;

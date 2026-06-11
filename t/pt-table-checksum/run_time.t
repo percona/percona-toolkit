@@ -22,17 +22,17 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,s=1';
+my @args       = ($source_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $output;
 my $exit_status;
 
@@ -48,7 +48,7 @@ ok(
    "Ran in roughly --run-time 1 second"
 ) or diag("Actual run time: $t");
 
-my $rows = $master_dbh->selectall_arrayref("SELECT DISTINCT CONCAT(db, '.', tbl) FROM percona.checksums ORDER by CONCAT(db, '.', tbl)");
+my $rows = $source_dbh->selectall_arrayref("SELECT DISTINCT CONCAT(db, '.', tbl) FROM percona.checksums ORDER by CONCAT(db, '.', tbl)");
 my $sakila_finished = grep { $_->[0] eq 'sakila.store' } @$rows;
 ok(
    !$sakila_finished,
@@ -59,7 +59,7 @@ ok(
 $exit_status = pt_table_checksum::main(@args,
    qw(--resume --quiet --quiet -d sakila --chunk-size 100));
 
-$rows = $master_dbh->selectall_arrayref("SELECT DISTINCT CONCAT(db, '.', tbl) FROM percona.checksums ORDER by CONCAT(db, '.', tbl)");
+$rows = $source_dbh->selectall_arrayref("SELECT DISTINCT CONCAT(db, '.', tbl) FROM percona.checksums ORDER by CONCAT(db, '.', tbl)");
 $sakila_finished = grep { $_->[0] eq 'sakila.store' } @$rows;
 ok(
    $sakila_finished,
@@ -69,6 +69,6 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

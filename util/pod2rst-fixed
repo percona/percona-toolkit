@@ -93,7 +93,7 @@ while (my $para = <$in>) {
 }
 
 close $in;
- 
+
 if ($nofix) {
    print $fixed_output;
 }

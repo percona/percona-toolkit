@@ -47,15 +47,15 @@ BEGIN {
 # ###########################################################################
 # Percona::Toolkit package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Percona/Toolkit.pm
 #   t/lib/Percona/Toolkit.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.13';
+our $VERSION = '3.7.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -110,10 +110,10 @@ sub _d {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -171,7 +171,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -334,7 +334,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -409,7 +409,9 @@ sub _parse_specs {
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
-            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            $def = defined $def ? $def : 1;
+            $def = $def eq 'yes' ? 1 : $def eq 'no' ? 0 : $def;
+            $self->{defaults}->{$long} = $def;
             PTDEBUG && _d($long, 'default:', $def);
          }
 
@@ -425,7 +427,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -470,7 +472,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -557,7 +559,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -614,6 +616,10 @@ sub get_opts {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
          exit 1;
       }
+   }
+
+   if ( exists $self->{opts}->{'buffer-stdout'} && $self->{opts}->{'buffer-stdout'}->{got} ) {
+      STDOUT->autoflush(1 - $self->{opts}->{'buffer-stdout'}->{value});
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -688,7 +694,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -698,7 +704,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1082,7 +1088,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1221,10 +1227,10 @@ if ( PTDEBUG ) {
 # ###########################################################################
 # Lmo::Utils package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Utils.pm
 #   t/lib/Lmo/Utils.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Utils;
@@ -1281,10 +1287,10 @@ sub _unimport_coderefs {
 # ###########################################################################
 # Lmo::Meta package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Meta.pm
 #   t/lib/Lmo/Meta.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Meta;
@@ -1338,10 +1344,10 @@ sub attributes_for_new {
 # ###########################################################################
 # Lmo::Object package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Object.pm
 #   t/lib/Lmo/Object.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Object;
@@ -1434,10 +1440,10 @@ sub meta {
 # ###########################################################################
 # Lmo::Types package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Types.pm
 #   t/lib/Lmo/Types.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Types;
@@ -1463,7 +1469,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)
@@ -1535,10 +1541,10 @@ sub _nested_constraints {
 # ###########################################################################
 # Lmo package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo.pm
 #   t/lib/Lmo.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 BEGIN {
@@ -1596,7 +1602,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -1627,7 +1633,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -1646,16 +1652,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -1870,10 +1876,10 @@ sub override {
 # ###########################################################################
 # Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Quoter.pm
 #   t/lib/Quoter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Quoter;
@@ -1909,7 +1915,10 @@ sub quote_val {
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
 
-   return $val if $args{is_float};
+   if ( $args{is_float} ) {
+      return sprintf("%.17g", $val) if $val - "$val" != 0;
+      return $val;
+   }
 
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
@@ -1928,7 +1937,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -2023,10 +2032,10 @@ sub _d {
 # ###########################################################################
 # DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/DSNParser.pm
 #   t/lib/DSNParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package DSNParser;
@@ -2110,7 +2119,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2137,7 +2146,6 @@ sub parse {
       }
    }
 
-   $self->{dsn_props} = \%final_props;
    return \%final_props;
 }
 
@@ -2199,7 +2207,7 @@ sub get_cxn_params {
       $dsn = 'DBI:mysql:' . ( $info->{D} || '' ) . ';'
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
-                     qw(F h P S A))
+                     qw(F h P S A s o))
          . ';mysql_read_default_group=client'
          . ($info->{L} ? ';mysql_local_infile=1' : '');
    }
@@ -2251,7 +2259,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2264,7 +2272,7 @@ sub get_dbh {
                . "DBD::mysql is not installed, try:\n"
                . "  Debian/Ubuntu  apt-get install libdbd-mysql-perl\n"
                . "  RHEL/CentOS    yum install perl-DBD-MySQL\n"
-               . "  OpenSolaris    pgk install pkg:/SUNWapu13dbd-mysql\n";
+               . "  OpenSolaris    pkg install pkg:/SUNWapu13dbd-mysql\n";
          }
          elsif ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
             PTDEBUG && _d('Going to try again without utf8 support');
@@ -2279,21 +2287,48 @@ sub get_dbh {
    if ( $cxn_string =~ m/mysql/i ) {
       my $sql;
 
-      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
+      my ($charset) = $cxn_string =~ m/charset=([\w]+)/;
+      if ( $charset ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
             die "Error setting NAMES to $charset: $EVAL_ERROR";
          }
-         PTDEBUG && _d('Enabling charset for STDOUT');
-         if ( $charset eq 'utf8' ) {
-            binmode(STDOUT, ':utf8')
-               or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+      }
+      else {
+         my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+         if ( $EVAL_ERROR ) {
+            die "Cannot get MySQL version: $EVAL_ERROR";
          }
-         else {
-            binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
+         my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+         if ( $EVAL_ERROR ) {
+            die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
          }
+
+         if ( $mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/ ) {
+            if ( $1 >= 8 && $character_set_server =~ m/^utf8/ ) {
+               $dbh->{mysql_enable_utf8} = 1;
+               $charset = $character_set_server;
+               my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                        "Setting: SET NAMES $character_set_server";
+               PTDEBUG && _d($msg);
+               eval { $dbh->do("SET NAMES '$character_set_server'") };
+               if ( $EVAL_ERROR ) {
+                  die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+               }
+            }
+         }
+      }
+      PTDEBUG && _d('Enabling charset for STDOUT');
+      if ( $charset && $charset =~ m/^utf8/ ) {
+         binmode(STDOUT, ':utf8')
+            or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+         binmode(STDERR, ':utf8')
+            or die "Can't binmode(STDERR, ':utf8'): $OS_ERROR";
+      }
+      else {
+         binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
       }
 
       if ( my $vars = $self->prop('set-vars') ) {
@@ -2318,20 +2353,6 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
-   }
-
-   if ($self->{dsn_props}->{D} && $self->{dsn_props}->{t}) {
-       PTDEBUG && _d("DSN has a schema and table: $self->{dsn_props}->{D}.$self->{dsn_props}->{t}");
-       PTDEBUG && _d("Trying to set the default charset for the connection");
-       my (undef, $create_table) = eval { $dbh->selectrow_array("SHOW CREATE TABLE $self->{dsn_props}->{D}.$self->{dsn_props}->{t}") };
-
-       if ($create_table && $create_table =~ m/DEFAULT CHARSET=(\S+)\s*/) {
-           PTDEBUG && _d("Detected table's character set: $1");
-           PTDEBUG && _d("Executing: SET NAMES '$1'");
-           $dbh->do("SET NAMES '$1'");
-       } else {
-           PTDEBUG && _d("Cannot get the default character set for the table");
-       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -2441,7 +2462,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2461,10 +2482,10 @@ sub _d {
 # ###########################################################################
 # VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionParser.pm
 #   t/lib/VersionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionParser;
@@ -2482,8 +2503,6 @@ use overload (
 );
 
 use Carp ();
-
-our $VERSION = 0.01;
 
 has major => (
     is       => 'ro',
@@ -2655,10 +2674,10 @@ no Lmo;
 # ###########################################################################
 # TableSyncStream package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableSyncStream.pm
 #   t/lib/TableSyncStream.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableSyncStream;
@@ -2774,10 +2793,10 @@ sub _d {
 # ###########################################################################
 # TableParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableParser.pm
 #   t/lib/TableParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableParser;
@@ -2837,13 +2856,15 @@ sub get_create_table {
    eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -2872,7 +2893,7 @@ sub parse {
 
    my $engine = $self->get_engine($ddl);
 
-   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @defs = $ddl =~ m/(?:(?<=,\n)|(?<=\(\n))(\s+`(?:.|\n)+?`.+?),?\n/g;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
    PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
@@ -2932,9 +2953,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
-   $string =~ s/[^\\]'[^']*[^\\]'//g; 
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -3011,10 +3033,22 @@ sub check_table {
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
    my $q      = $self->{Quoter} || 'Quoter';
+   $self->{check_table_error} = undef;
+
+
+   my $lctn_sql = 'SELECT @@lower_case_table_names';
+   PTDEBUG && _d($lctn_sql);
+
+   my $lower_case_table_names;
+   eval { ($lower_case_table_names) = $dbh->selectrow_array($lctn_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      $self->{check_table_error} = $EVAL_ERROR;
+      return 0;
+   }
+
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
-
-   $self->{check_table_error} = undef;
 
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
@@ -3028,7 +3062,9 @@ sub check_table {
       $self->{check_table_error} = $e;
       return 0;
    }
-   if ( !$row->[0] || $row->[0] ne $tbl ) {
+   if ( !$row->[0]
+      || ( $lower_case_table_names == 0 && $row->[0] ne $tbl )
+      || ( $lower_case_table_names > 0 && lc $row->[0] ne lc $tbl ) ) {
       PTDEBUG && _d('Table does not exist');
       return 0;
    }
@@ -3052,8 +3088,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
@@ -3063,7 +3098,7 @@ sub get_keys {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -3091,7 +3126,7 @@ sub get_keys {
          ddl          => $key_ddl,
       };
 
-      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
+      if ( ($engine || '') =~ m/(InnoDB)|(TokuDB)|(RocksDB)/i && !$clustered_key ) {
          my $this_key = $keys->{$name};
          if ( $this_key->{name} eq 'PRIMARY' ) {
             $clustered_key = 'PRIMARY';
@@ -3206,10 +3241,10 @@ sub _d {
 # ###########################################################################
 # RowDiff package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/RowDiff.pm
 #   t/lib/RowDiff.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package RowDiff;
@@ -3392,10 +3427,10 @@ sub _d {
 # ###########################################################################
 # ChangeHandler package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/ChangeHandler.pm
 #   t/lib/ChangeHandler.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package ChangeHandler;
@@ -3448,7 +3483,7 @@ sub set_src {
    }
    elsif ( lc $src eq 'right' ) {
       $self->{src_db_tbl} = $self->{right_db_tbl};
-      $self->{dst_db_tbl} = $self->{left_db_tbl}; 
+      $self->{dst_db_tbl} = $self->{left_db_tbl};
    }
    else {
       die "src argument must be either 'left' or 'right'"
@@ -3582,15 +3617,24 @@ sub make_UPDATE {
       @cols = $self->sort_cols($row);
    }
    my $types = $self->{tbl_struct}->{type_for};
+
+   foreach my $col ( @cols ) {
+      my $is_json = ($types->{$col} || '') =~ m/json/i;
+      if ( $is_json && defined $row->{$col} ) {
+         utf8::decode($row->{$col});
+      }
+   }
+
    return "UPDATE $self->{dst_db_tbl} SET "
       . join(', ', map {
+            my $is_hex = ($types->{$_} || '') =~ m/^0x[0-9a-fA-F]+$/i;
             my $is_char  = ($types->{$_} || '') =~ m/char|text|enum/i;
             my $is_float = ($types->{$_} || '') =~ m/float|double/i;
             $self->{Quoter}->quote($_)
             . '='
             .  $self->{Quoter}->quote_val(
                   $row->{$_},
-                  is_char  => $is_char,
+                  is_char  => $is_char && !$is_hex,
                   is_float => $is_float,
             );
          } grep { !$in_where{$_} } @cols)
@@ -3614,7 +3658,7 @@ sub make_REPLACE {
 
 sub make_row {
    my ( $self, $verb, $row, $cols ) = @_;
-   my @cols; 
+   my @cols;
    if ( my $dbh = $self->{fetch_back} ) {
       my $where = $self->make_where_clause($row, $cols);
       my $sql   = $self->make_fetch_back_query($where);
@@ -3628,36 +3672,50 @@ sub make_row {
    }
    my $q     = $self->{Quoter};
    my $type_for = $self->{tbl_struct}->{type_for};
+
+   foreach my $col ( @cols ) {
+      my $is_json = ($type_for->{$col} || '') =~ m/json/i;
+      if ( $is_json && defined $row->{$col} ) {
+         utf8::decode($row->{$col});
+      }
+   }
+
    return "$verb INTO $self->{dst_db_tbl}("
       . join(', ', map { $q->quote($_) } @cols)
       . ') VALUES ('
       . join(', ',
             map {
+               my $is_hex = ($type_for->{$_} || '') =~ m/^0x[0-9a-fA-F]+$/i;
                my $is_char  = ($type_for->{$_} || '') =~ m/char|text|enum/i;
                my $is_float = ($type_for->{$_} || '') =~ m/float|double/i;
                $q->quote_val(
                      $row->{$_},
-                     is_char  => $is_char,
+                     is_char  => $is_char && !$is_hex,
                      is_float => $is_float,
                )
             } @cols)
       . ')';
+
 }
 
 sub make_where_clause {
    my ( $self, $row, $cols ) = @_;
    my @clauses = map {
+      my $col = $_;
+      $col = $self->{Quoter}->quote($col);
+
       my $val = $row->{$_};
       my $sep = defined $val ? '=' : ' IS ';
       my $is_char  = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/char|text|enum/i;
       my $is_float = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/float|double/i;
-      $self->{Quoter}->quote($_) . $sep . $self->{Quoter}->quote_val($val,
+      my $is_crc32 = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/binary|text|blob/i;
+      $col = "CRC32($col)" if ($is_crc32);
+      $col . $sep . $self->{Quoter}->quote_val($val,
                                               is_char  => $is_char,
                                               is_float => $is_float);
    } @$cols;
    return join(' AND ', @clauses);
 }
-
 
 sub get_changes {
    my ( $self ) = @_;
@@ -3668,8 +3726,9 @@ sub get_changes {
 sub sort_cols {
    my ( $self, $row ) = @_;
    my @cols;
-   if ( $self->{tbl_struct} ) { 
+   if ( $self->{tbl_struct} ) {
       my $pos = $self->{tbl_struct}->{col_posn};
+      my $is_generated = $self->{tbl_struct}->{is_generated};
       my @not_in_tbl;
       @cols = sort {
             $pos->{$a} <=> $pos->{$b}
@@ -3683,7 +3742,10 @@ sub sort_cols {
                1;
             }
          }
-         keys %$row;
+         grep {
+            !$is_generated->{$_}
+         }
+         sort keys %$row;
       push @cols, @not_in_tbl if @not_in_tbl;
    }
    else {
@@ -3737,15 +3799,16 @@ sub _d {
 # ###########################################################################
 # TableChunker package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableChunker.pm
 #   t/lib/TableChunker.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableChunker;
 
 use strict;
+use utf8;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
@@ -3801,7 +3864,7 @@ sub find_chunk_columns {
 
    my $can_chunk_exact = 0;
    my @candidate_cols;
-   foreach my $index ( @possible_indexes ) { 
+   foreach my $index ( @possible_indexes ) {
       my $col = $index->{cols}->[0];
 
       my $col_type = $tbl_struct->{type_for}->{$col};
@@ -4091,7 +4154,7 @@ sub _chunk_char {
       $dbh->do($sql);
       my $col_def = $args{tbl_struct}->{defs}->{$chunk_col};
       $sql        = "CREATE TEMPORARY TABLE $tmp_db_tbl ($col_def) "
-                  . "ENGINE=MEMORY";
+                  . "ENGINE=MEMORY DEFAULT CHARSET = utf8";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
 
@@ -4099,7 +4162,7 @@ sub _chunk_char {
       PTDEBUG && _d($dbh, $sql);
       my $ins_char_sth = $dbh->prepare($sql);  # avoid quoting issues
       for my $char_code ( $min_col_ord..$max_col_ord ) {
-         $ins_char_sth->execute($char_code);
+         eval { $ins_char_sth->execute($char_code) };
       }
 
       $sql = "SELECT $qchunk_col FROM $tmp_db_tbl "
@@ -4126,7 +4189,7 @@ sub _chunk_char {
 
 
    $sql = "SELECT MAX(LENGTH($qchunk_col)) FROM $db_tbl "
-        . ($args{where} ? "WHERE $args{where} " : "") 
+        . ($args{where} ? "WHERE $args{where} " : "")
         . "ORDER BY $qchunk_col";
    PTDEBUG && _d($dbh, $sql);
    $row = $dbh->selectrow_arrayref($sql);
@@ -4644,7 +4707,7 @@ sub base_count {
 
    my @base_powers;
    for my $power ( 0..$highest_power ) {
-      push @base_powers, ($base**$power) || 1;  
+      push @base_powers, ($base**$power) || 1;
    }
 
    my @base_multiples;
@@ -4673,10 +4736,10 @@ sub _d {
 # ###########################################################################
 # TableChecksum package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableChecksum.pm
 #   t/lib/TableChecksum.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableChecksum;
@@ -4740,7 +4803,10 @@ sub get_crc_type {
       $type   = $sth->{mysql_type_name}->[0];
       $length = $sth->{mysql_length}->[0];
       PTDEBUG && _d($sql, $type, $length);
-      if ( $type eq 'bigint' && $length < 20 ) {
+      if ( $type eq 'integer' && $length < 11 ) {
+         $type = 'int';
+      }
+      elsif ( $type eq 'bigint' && $length < 20 ) {
          $type = 'int';
       }
    };
@@ -4922,7 +4988,7 @@ sub make_row_checksum {
    my $query;
    if ( !$args{no_cols} ) {
       $query = join(', ',
-                  map { 
+                  map {
                      my $col = $_;
                      if ( $col =~ m/\+ 0/ ) {
                         my ($real_col) = /^(\S+)/;
@@ -4930,6 +4996,10 @@ sub make_row_checksum {
                      }
                      elsif ( $col =~ m/TRIM/ ) {
                         my ($real_col) = m/TRIM\(([^\)]+)\)/;
+                        $col .= " AS $real_col";
+                     }
+                     elsif ( $col =~ m/CRC32/ ) {
+                        my ($real_col) = m/CRC32\(([^\)]+)\)/;
                         $col .= " AS $real_col";
                      }
                      $col;
@@ -5021,13 +5091,13 @@ sub find_replication_differences {
    my $sql
       = "SELECT db, tbl, CONCAT(db, '.', tbl) AS `table`, "
       . "chunk, chunk_index, lower_boundary, upper_boundary, "
-      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+      . "COALESCE(this_cnt-source_cnt, 0) AS cnt_diff, "
       . "COALESCE("
-      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
-      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+      .   "this_crc <> source_crc OR ISNULL(source_crc) <> ISNULL(this_crc), 0"
+      . ") AS crc_diff, this_cnt, source_cnt, this_crc, source_crc "
       . "FROM $table "
-      . "WHERE master_cnt <> this_cnt OR master_crc <> this_crc "
-      . "OR ISNULL(master_crc) <> ISNULL(this_crc)";
+      . "WHERE source_cnt <> this_cnt OR source_crc <> this_crc "
+      . "OR ISNULL(source_crc) <> ISNULL(this_crc)";
    PTDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
    return $diffs;
@@ -5050,10 +5120,10 @@ sub _d {
 # ###########################################################################
 # TableSyncChunk package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableSyncChunk.pm
 #   t/lib/TableSyncChunk.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableSyncChunk;
@@ -5354,10 +5424,10 @@ sub _d {
 # ###########################################################################
 # TableSyncNibble package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableSyncNibble.pm
 #   t/lib/TableSyncNibble.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableSyncNibble;
@@ -5620,7 +5690,7 @@ sub __get_explain_index {
       PTDEBUG && _d($EVAL_ERROR);
       return;
    }
-   PTDEBUG && _d('EXPLAIN key:', $explain->[0]->{key}); 
+   PTDEBUG && _d('EXPLAIN key:', $explain->[0]->{key});
    return $explain->[0]->{key};
 }
 
@@ -5715,10 +5785,10 @@ sub _d {
 # ###########################################################################
 # TableSyncGroupBy package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableSyncGroupBy.pm
 #   t/lib/TableSyncGroupBy.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableSyncGroupBy;
@@ -5870,10 +5940,10 @@ sub _d {
 # ###########################################################################
 # TableSyncer package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableSyncer.pm
 #   t/lib/TableSyncer.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableSyncer;
@@ -5988,7 +6058,7 @@ sub sync_table {
       if ( $EVAL_ERROR ) {
          die "Failed to make checksum queries: $EVAL_ERROR";
       }
-   } 
+   }
 
    if ( $args{dry_run} ) {
       return $ch->get_changes(), ALGORITHM => $plugin->name;
@@ -6262,19 +6332,16 @@ sub lock_and_wait {
                my ( %args ) = @_;
 
                if ( $args{tryno} > 1 ) {
-                  warn "Retrying MASTER_POS_WAIT() for --wait $timeout...";
+                  warn "Retrying SOURCE_POS_WAIT() for --wait $timeout...";
                }
 
-               $wait = $ms->wait_for_master(
-                  master_status => $ms->get_master_status($src->{misc_dbh}),
-                  slave_dbh     => $dst->{dbh},
+               $wait = $ms->wait_for_source(
+                  source_status => $ms->get_source_status($src->{misc_dbh}),
+                  replica_dbh     => $dst->{dbh},
                   timeout       => $timeout,
                );
-               if ($wait->{error}) {
-                   die $result->{error};
-               }
                if ( defined $wait->{result} && $wait->{result} != -1 ) {
-                  return;  # slave caught up
+                  return;  # replica caught up
                }
                die; # call fail
             },
@@ -6283,12 +6350,12 @@ sub lock_and_wait {
                if ( !defined $wait->{result} ) {
                   my $msg;
                   if ( $wait->{waited}  ) {
-                     $msg = "The slave was stopped while waiting with "
-                          . "MASTER_POS_WAIT().";
+                     $msg = "The replica was stopped while waiting with "
+                          . "SOURCE_POS_WAIT().";
                   }
                   else {
-                     $msg = "MASTER_POS_WAIT() returned NULL.  Verify that "
-                          . "the slave is running.";
+                     $msg = "SOURCE_POS_WAIT() returned NULL.  Verify that "
+                          . "the replica is running.";
                   }
                   if ( $tries - $args{tryno} ) {
                      $msg .= "  Sleeping $sleep seconds then retrying "
@@ -6302,17 +6369,17 @@ sub lock_and_wait {
                }
             },
             final_fail => sub {
-               die "Slave did not catch up to its master after $tries attempts "
-                  . "of waiting $timeout seconds with MASTER_POS_WAIT.  "
-                  . "Check that the slave is running, increase the --wait "
+               die "Replica did not catch up to its source after $tries attempts "
+                  . "of waiting $timeout seconds with SOURCE_POS_WAIT.  "
+                  . "Check that the replica is running, increase the --wait "
                   . "time, or disable this feature by specifying --wait 0.";
             },
-         );  # retry MasterSlave::wait_for_master()
+         );  # retry MasterSlave::wait_for_source()
       }
 
       if ( $args{changing_src} ) {
          PTDEBUG && _d('Not locking destination because changing source ',
-            '(syncing via replication or sync-to-master)');
+            '(syncing via replication or sync-to-source)');
       }
       else {
          if ( $args{lock} == 3 ) {
@@ -6360,10 +6427,10 @@ sub _d {
 # ###########################################################################
 # TableNibbler package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableNibbler.pm
 #   t/lib/TableNibbler.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableNibbler;
@@ -6395,7 +6462,7 @@ sub generate_asc_stmt {
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
@@ -6437,6 +6504,7 @@ sub generate_asc_stmt {
             cols        => \@cols,
             quoter      => $q,
             is_nullable => $tbl_struct->{is_nullable},
+            type_for    => $tbl_struct->{type_for},
          );
          $asc_stmt->{boundaries}->{$cmp} = $cmp_where->{where};
       }
@@ -6457,6 +6525,7 @@ sub generate_cmp_where {
    my @slice       = @{$args{slice}};
    my @cols        = @{$args{cols}};
    my $is_nullable = $args{is_nullable};
+   my $type_for    = $args{type_for};
    my $type        = $args{type};
    my $q           = $self->{Quoter};
 
@@ -6473,13 +6542,14 @@ sub generate_cmp_where {
          my $ord = $slice[$j];
          my $col = $cols[$ord];
          my $quo = $q->quote($col);
+         my $val = ($col && ($type_for->{$col} || '')) eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
          if ( $is_nullable->{$col} ) {
-            push @clause, "((? IS NULL AND $quo IS NULL) OR ($quo = ?))";
+            push @clause, "(($val IS NULL AND $quo IS NULL) OR ($quo = $val))";
             push @r_slice, $ord, $ord;
             push @r_scols, $col, $col;
          }
          else {
-            push @clause, "$quo = ?";
+            push @clause, "$quo = $val";
             push @r_slice, $ord;
             push @r_scols, $col;
          }
@@ -6489,15 +6559,16 @@ sub generate_cmp_where {
       my $col = $cols[$ord];
       my $quo = $q->quote($col);
       my $end = $i == $#slice; # Last clause of the whole group.
+      my $val = ($col && ($type_for->{$col} || '')) eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
       if ( $is_nullable->{$col} ) {
          if ( $type =~ m/=/ && $end ) {
-            push @clause, "(? IS NULL OR $quo $type ?)";
+            push @clause, "($val IS NULL OR $quo $type $val)";
          }
          elsif ( $type =~ m/>/ ) {
-            push @clause, "((? IS NULL AND $quo IS NOT NULL) OR ($quo $cmp ?))";
+            push @clause, "(($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val))";
          }
          else { # If $type =~ m/</ ) {
-            push @clause, "((? IS NOT NULL AND $quo IS NULL) OR ($quo $cmp ?))";
+            push @clauses, "(($val IS NOT NULL AND $quo IS NULL) OR ($quo $cmp $val))";
          }
          push @r_slice, $ord, $ord;
          push @r_scols, $col, $col;
@@ -6505,10 +6576,10 @@ sub generate_cmp_where {
       else {
          push @r_slice, $ord;
          push @r_scols, $col;
-         push @clause, ($type =~ m/=/ && $end ? "$quo $type ?" : "$quo $cmp ?");
+         push @clause, ($type =~ m/=/ && $end ? "$quo $type $val" : "$quo $cmp $val");
       }
 
-      push @clauses, '(' . join(' AND ', @clause) . ')';
+      push @clauses, '(' . join(' AND ', @clause) . ')' if @clause;
    }
    my $result = '(' . join(' OR ', @clauses) . ')';
    my $where = {
@@ -6622,10 +6693,10 @@ sub _d {
 # ###########################################################################
 # MasterSlave package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/MasterSlave.pm
 #   t/lib/MasterSlave.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package MasterSlave;
@@ -6635,22 +6706,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -6666,7 +6737,7 @@ sub new {
    return bless $self, $class;
 }
 
-sub get_slaves {
+sub get_replicas {
    my ($self, %args) = @_;
    my @required_args = qw(make_cxn);
    foreach my $arg ( @required_args ) {
@@ -6674,12 +6745,12 @@ sub get_slaves {
    }
    my ($make_cxn) = @args{@required_args};
 
-   my $slaves  = [];
+   my $replicas  = [];
    my $dp      = $self->{DSNParser};
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
-   return $slaves unless @$methods;
-   
+   return $replicas unless @$methods;
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -6688,44 +6759,53 @@ sub get_slaves {
       my ($dbh, $dsn) = @args{@required_args};
       my $o = $self->{OptionParser};
 
-      $self->recurse_to_slaves(
-         {  dbh            => $dbh,
-            dsn            => $dsn,
-            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
-            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
+      $self->recurse_to_replicas(
+         {  dbh              => $dbh,
+            dsn              => $dsn,
+            replica_user     => ( $o->got('replica-user') or $o->got('slave-user') ) ? $o->get('replica-user') : '',
+            replica_password => ( $o->got('replica-password') or $o->got('slave-password') ) ? $o->get('replica-password') : '',
+            replicas         => $args{replicas},
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
-               PTDEBUG && _d('Found slave:', $dp->as_string($dsn));
-               my $slave_dsn = $dsn;
-               if ($o->got('slave-user')) {
-                  $slave_dsn->{u} = $o->get('slave-user');
-                  PTDEBUG && _d("Using slave user ".$o->get('slave-user')." on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+               PTDEBUG && _d('Found replica:', $dp->as_string($dsn));
+               my $replica_dsn = $dsn;
+               if ( $o->got('replica-user') or $o->got('slave-user') ) {
+                  $replica_dsn->{u} = $o->get('replica-user');
+                  PTDEBUG && _d("Using replica user ".$o->get('replica-user')." on ".$replica_dsn->{h}.":".$replica_dsn->{P});
                }
-               if ($o->got('slave-password')) {
-                  $slave_dsn->{p} = $o->get('slave-password');
-                  PTDEBUG && _d("Slave password set");
+               if ( $o->got('replica-password') or $o->got('slave-password') ) {
+                  $replica_dsn->{p} = $o->get('replica-password');
+                  PTDEBUG && _d("Replica password set");
                }
-               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
+               push @$replicas, $make_cxn->(dsn => $replica_dsn, dbh => $dbh, parent => $parent);
                return;
             },
+            wait_no_die => $args{'wait_no_die'},
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
+      my @required_args = qw(dsn);
+      foreach my $arg ( @required_args ) {
+         die "I need a $arg argument" unless $args{$arg};
+      }
+      my ($dsn) = @args{@required_args};
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
-      $slaves = $self->get_cxn_from_dsn_table(
+      $replicas = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
+         wait_no_die => $args{'wait_no_die'},
+         parent => $dsn,
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
-      PTDEBUG && _d('Not getting to slaves');
+      PTDEBUG && _d('Not getting to replicas');
    }
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
-   return $slaves;
+
+   return $replicas;
 }
 
 sub _resolve_recursion_methods {
@@ -6743,54 +6823,88 @@ sub _resolve_recursion_methods {
    }
 }
 
-sub recurse_to_slaves {
+sub recurse_to_replicas {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
    my $dp = $self->{DSNParser};
    my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
    my $dsn = $args->{dsn};
-   my $slave_user = $args->{slave_user} || '';
-   my $slave_password = $args->{slave_password} || '';
+   my $replica_user = $args->{replica_user} || '';
+   my $replica_password = $args->{replica_password} || '';
 
    my $methods = $self->_resolve_recursion_methods($dsn);
    PTDEBUG && _d('Recursion methods:', @$methods);
    if ( lc($methods->[0]) eq 'none' ) {
-      PTDEBUG && _d('Not recursing to slaves');
+      PTDEBUG && _d('Not recursing to replicas');
       return;
    }
 
-   my $slave_dsn = $dsn;
-   if ($slave_user) {
-      $slave_dsn->{u} = $slave_user;
-      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+   my $replica_dsn = $dsn;
+   if ($replica_user) {
+      $replica_dsn->{u} = $replica_user;
+      PTDEBUG && _d("Using replica user $replica_user on "
+         . $replica_dsn->{h} . ":" . ( $replica_dsn->{P} ? $replica_dsn->{P} : ""));
    }
-   if ($slave_password) {
-      $slave_dsn->{p} = $slave_password;
-      PTDEBUG && _d("Slave password set");
+   if ($replica_password) {
+      $replica_dsn->{p} = $replica_password;
+      PTDEBUG && _d("Replica password set");
    }
 
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+   my $dbh = $args->{dbh};
+
+   my $get_dbh = sub {
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($replica_dsn), { AutoCommit => 1 }
+            );
+            PTDEBUG && _d('Connected to', $dp->as_string($replica_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($replica_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
    };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
+
+   DBH: {
+      if ( !defined $dbh ) {
+         foreach my $known_replica ( @{$args->{replicas}} ) {
+            if ($known_replica->{dsn}->{h} eq $replica_dsn->{h} and
+                $known_replica->{dsn}->{P} eq $replica_dsn->{P} ) {
+               $dbh = $known_replica->{dbh};
+               last DBH;
+            }
+         }
+         $get_dbh->();
+      }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
-   my ($id) = $dbh->selectrow_array($sql);
+   my $id = undef;
+   do {
+      eval {
+         ($id) = $dbh->selectrow_array($sql);
+      };
+	   if ( $EVAL_ERROR ) {
+		   if ( $args->{wait_no_die} ) {
+			   print STDERR "Error getting server id: ", $EVAL_ERROR,
+               "\nRetrying query for server ", $replica_dsn->{h}, ":", $replica_dsn->{P}, "\n";
+            sleep 1;
+            $dbh->disconnect();
+            $get_dbh->();
+         } else {
+            die $EVAL_ERROR;
+         }
+      }
+   } until (defined $id);
    PTDEBUG && _d('Working on server ID', $id);
-   my $master_thinks_i_am = $dsn->{server_id};
+   my $source_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
-       || ( defined $master_thinks_i_am && $master_thinks_i_am != $id )
+       || ( defined $source_thinks_i_am && $source_thinks_i_am != $id )
        || $args->{server_ids_seen}->{$id}++
    ) {
-      PTDEBUG && _d('Server ID seen, or not what master said');
+      PTDEBUG && _d('Server ID seen, or not what source said');
       if ( $args->{skip_callback} ) {
          $args->{skip_callback}->($dsn, $dbh, $level, $args->{parent});
       }
@@ -6801,69 +6915,86 @@ sub recurse_to_slaves {
 
    if ( !defined $recurse || $level < $recurse ) {
 
-      my @slaves =
-         grep { !$_->{master_id} || $_->{master_id} == $id } # Only my slaves.
-         $self->find_slave_hosts($dp, $dbh, $dsn, $methods);
+      my @replicas =
+         grep { !$_->{source_id} || $_->{source_id} == $id } # Only my replicas.
+         $self->find_replica_hosts($dp, $dbh, $dsn, $methods);
 
-      foreach my $slave ( @slaves ) {
+      foreach my $replica ( @replicas ) {
          PTDEBUG && _d('Recursing from',
-            $dp->as_string($dsn), 'to', $dp->as_string($slave));
-         $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, $slave_password => $slave_password }, $level + 1 );
+            $dp->as_string($dsn), 'to', $dp->as_string($replica));
+         $self->recurse_to_replicas(
+            { %$args, dsn => $replica, dbh => undef, parent => $dsn, replica_user => $replica_user, $replica_password => $replica_password }, $level + 1 );
       }
    }
 }
 
-sub find_slave_hosts {
+sub find_replica_hosts {
    my ( $self, $dsn_parser, $dbh, $dsn, $methods ) = @_;
 
-   PTDEBUG && _d('Looking for slaves on', $dsn_parser->as_string($dsn),
+   PTDEBUG && _d('Looking for replicas on', $dsn_parser->as_string($dsn),
       'using methods', @$methods);
 
-   my @slaves;
+   my @replicas;
    METHOD:
    foreach my $method ( @$methods ) {
-      my $find_slaves = "_find_slaves_by_$method";
-      PTDEBUG && _d('Finding slaves with', $find_slaves);
-      @slaves = $self->$find_slaves($dsn_parser, $dbh, $dsn);
-      last METHOD if @slaves;
+      my $find_replicas = "_find_replicas_by_$method";
+      PTDEBUG && _d('Finding replicas with', $find_replicas);
+      @replicas = $self->$find_replicas($dsn_parser, $dbh, $dsn);
+      last METHOD if @replicas;
    }
 
-   PTDEBUG && _d('Found', scalar(@slaves), 'slaves');
-   return @slaves;
+   PTDEBUG && _d('Found', scalar(@replicas), 'replicas');
+   return @replicas;
 }
 
-sub _find_slaves_by_processlist {
+sub _find_replicas_by_processlist {
    my ( $self, $dsn_parser, $dbh, $dsn ) = @_;
+   my @connected_replicas = $self->get_connected_replicas($dbh);
+   my @replicas = $self->_process_replicas_list($dsn_parser, $dsn, \@connected_replicas);
+   return @replicas;
+}
 
-   my @slaves = map  {
-      my $slave        = $dsn_parser->parse("h=$_", $dsn);
-      $slave->{source} = 'processlist';
-      $slave;
+sub _process_replicas_list {
+   my ($self, $dsn_parser, $dsn, $connected_replicas) = @_;
+   my @replicas = map  {
+      my $replica        = $dsn_parser->parse("h=$_", $dsn);
+      $replica->{source} = 'processlist';
+      $replica;
    }
    grep { $_ }
    map  {
-      my ( $host ) = $_->{host} =~ m/^([^:]+):/;
+      my ( $host ) = $_->{host} =~ m/^(.*):\d+$/;
       if ( $host eq 'localhost' ) {
          $host = '127.0.0.1'; # Replication never uses sockets.
       }
+      if ($host =~ m/::/) {
+          $host = '['.$host.']';
+      }
       $host;
-   } $self->get_connected_slaves($dbh);
+   } @$connected_replicas;
 
-   return @slaves;
+   return @replicas;
 }
 
-sub _find_slaves_by_hosts {
+sub _find_replicas_by_hosts {
    my ( $self, $dsn_parser, $dbh, $dsn ) = @_;
 
-   my @slaves;
-   my $sql = 'SHOW SLAVE HOSTS';
-   PTDEBUG && _d($dbh, $sql);
-   @slaves = @{$dbh->selectall_arrayref($sql, { Slice => {} })};
+   my @replicas;
 
-   if ( @slaves ) {
-      PTDEBUG && _d('Found some SHOW SLAVE HOSTS info');
-      @slaves = map {
+   my $vp = VersionParser->new($dbh);
+   my $sql = 'SHOW REPLICAS';
+   my $source_name = 'source';
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
+      $sql = 'SHOW SLAVE HOSTS';
+      $source_name='master';
+   }
+   
+   PTDEBUG && _d($dbh, $sql);
+   @replicas = @{$dbh->selectall_arrayref($sql, { Slice => {} })};
+
+   if ( @replicas ) {
+      PTDEBUG && _d('Found some SHOW REPLICAS info');
+      @replicas = map {
          my %hash;
          @hash{ map { lc $_ } keys %$_ } = values %$_;
          my $spec = "h=$hash{host},P=$hash{port}"
@@ -6871,21 +7002,19 @@ sub _find_slaves_by_hosts {
             . ( $hash{password} ? ",p=$hash{password}" : '');
          my $dsn           = $dsn_parser->parse($spec, $dsn);
          $dsn->{server_id} = $hash{server_id};
-         $dsn->{master_id} = $hash{master_id};
+         $dsn->{source_id} = $hash{"${source_name}_id"};
          $dsn->{source}    = 'hosts';
          $dsn;
-      } @slaves;
+      } @replicas;
    }
 
-   return @slaves;
+   return @replicas;
 }
 
-sub get_connected_slaves {
+sub get_connected_replicas {
    my ( $self, $dbh ) = @_;
 
-   my $show = "SHOW GRANTS FOR ";
-   my $user = 'CURRENT_USER()';
-   my $sql = $show . $user;
+   my $sql = "SHOW GRANTS";
    PTDEBUG && _d($dbh, $sql);
 
    my $proc;
@@ -6894,23 +7023,9 @@ sub get_connected_slaves {
          m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
       } @{$dbh->selectcol_arrayref($sql)};
    };
-   if ( $EVAL_ERROR ) {
-
-      if ( $EVAL_ERROR =~ m/no such grant defined for user/ ) {
-         PTDEBUG && _d('Retrying SHOW GRANTS without host; error:',
-            $EVAL_ERROR);
-         ($user) = split('@', $user);
-         $sql    = $show . $user;
-         PTDEBUG && _d($sql);
-         eval {
-            $proc = grep {
-               m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
-            } @{$dbh->selectcol_arrayref($sql)};
-         };
-      }
-
-      die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
-   }
+   
+   die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
+   
    if ( !$proc ) {
       die "You do not have the PROCESS privilege";
    }
@@ -6926,73 +7041,97 @@ sub get_connected_slaves {
    @{$dbh->selectall_arrayref($sql, { Slice => {} })};
 }
 
-sub is_master_of {
-   my ( $self, $master, $slave ) = @_;
-   my $master_status = $self->get_master_status($master)
-      or die "The server specified as a master is not a master";
-   my $slave_status  = $self->get_slave_status($slave)
-      or die "The server specified as a slave is not a slave";
-   my @connected     = $self->get_connected_slaves($master)
-      or die "The server specified as a master has no connected slaves";
-   my (undef, $port) = $master->selectrow_array("SHOW VARIABLES LIKE 'port'");
+sub is_source_of {
+   my ( $self, $source, $replica ) = @_;
 
-   if ( $port != $slave_status->{master_port} ) {
-      die "The slave is connected to $slave_status->{master_port} "
-         . "but the master's port is $port";
+   my $source_name = get_source_name($replica);
+   my $source_port = "${source_name}_port";
+
+   my $source_status = $self->get_source_status($source)
+      or die "The server specified as a source is not a source";
+   my $replica_status  = $self->get_replica_status($replica)
+      or die "The server specified as a replica is not a replica";
+   my @connected     = $self->get_connected_replicas($source)
+      or die "The server specified as a source has no connected replicas";
+   my (undef, $port) = $source->selectrow_array("SHOW VARIABLES LIKE 'port'");
+
+   if ( $port != $replica_status->{$source_port} ) {
+      die "The replica is connected to $replica_status->{$source_port} "
+         . "but the source's port is $port";
    }
 
-   if ( !grep { $slave_status->{master_user} eq $_->{user} } @connected ) {
-      die "I don't see any slave I/O thread connected with user "
-         . $slave_status->{master_user};
+   if ( !grep { $replica_status->{"${source_name}_user"} eq $_->{user} } @connected ) {
+      die "I don't see any replica I/O thread connected with user "
+         . $replica_status->{"${source_name}_user"};
    }
 
-   if ( ($slave_status->{slave_io_state} || '')
-      eq 'Waiting for master to send event' )
+   if ( ( ($replica_status->{replica_io_state} || '')
+         eq 'Waiting for source to send event' )
+      || ( ($replica_status->{replica_io_state} || '')
+         eq 'Waiting for master to send event' ) )
    {
-      my ( $master_log_name, $master_log_num )
-         = $master_status->{file} =~ m/^(.*?)\.0*([1-9][0-9]*)$/;
-      my ( $slave_log_name, $slave_log_num )
-         = $slave_status->{master_log_file} =~ m/^(.*?)\.0*([1-9][0-9]*)$/;
-      if ( $master_log_name ne $slave_log_name
-         || abs($master_log_num - $slave_log_num) > 1 )
+      my ( $source_log_name, $source_log_num )
+         = $source_status->{file} =~ m/^(.*?)\.0*([1-9][0-9]*)$/;
+      my ( $replica_log_name, $replica_log_num )
+         = $replica_status->{source_log_file} =~ m/^(.*?)\.0*([1-9][0-9]*)$/;
+      if ( $source_log_name ne $replica_log_name
+         || abs($source_log_num - $replica_log_num) > 1 )
       {
-         die "The slave thinks it is reading from "
-            . "$slave_status->{master_log_file},  but the "
-            . "master is writing to $master_status->{file}";
+         die "The replica thinks it is reading from "
+            . "$replica_status->{source_log_file},  but the "
+            . "source is writing to $source_status->{file}";
       }
    }
    return 1;
 }
 
-sub get_master_dsn {
+sub get_source_dsn {
    my ( $self, $dbh, $dsn, $dsn_parser ) = @_;
-   my $master = $self->get_slave_status($dbh) or return undef;
-   my $spec   = "h=$master->{master_host},P=$master->{master_port}";
+
+   my $vp = VersionParser->new($dbh);
+   my $source_host = 'source_host';
+   my $source_port = 'source_port';
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
+      $source_host = 'master_host';
+      $source_port = 'master_port';
+   }
+
+   my $source = $self->get_replica_status($dbh) or return undef;
+   my $spec   = "h=$source->{${source_host}},P=$source->{${source_port}}";
    return       $dsn_parser->parse($spec, $dsn);
 }
 
-sub get_slave_status {
+sub get_replica_status {
    my ( $self, $dbh ) = @_;
 
-   if ( !$self->{not_a_slave}->{$dbh} ) {
-      my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
-            ||= $dbh->prepare('SHOW SLAVE STATUS');
-      PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
+   my $replica_name = get_replica_name($dbh);
+
+   if ( !$self->{not_a_replica}->{$dbh} ) {
+      my $sth = $self->{sths}->{$dbh}->{REPLICA_STATUS}
+            ||= $dbh->prepare("SHOW ${replica_name} STATUS");
+      PTDEBUG && _d($dbh, "SHOW ${replica_name} STATUS");
       $sth->execute();
-      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Replica Status rows
 
       my $ss;
       if ( $sss_rows && @$sss_rows ) {
           if (scalar @$sss_rows > 1) {
               if (!$self->{channel}) {
-                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+                  die 'This server returned more than one row for SHOW REPLICA STATUS but "channel" was not specified on the command line';
               }
+              my $replica_use_channels;
               for my $row (@$sss_rows) {
                   $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name}) {
+                      $replica_use_channels = 1;
+                  }
                   if ($row->{channel_name} eq $self->{channel}) {
                       $ss = $row;
                       last;
                   }
+              }
+              if (!$ss && $replica_use_channels) {
+                 die 'This server is using replication channels but "channel" was not specified on the command line';
               }
           } else {
               if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
@@ -7006,24 +7145,39 @@ sub get_slave_status {
              $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
              return $ss;
           }
+          if (!$ss && $self->{channel}) {
+              die "Specified channel name is invalid";
+          }
       }
 
-      PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
-      $self->{not_a_slave}->{$dbh}++;
+      PTDEBUG && _d('This server returns nothing for SHOW REPLICA STATUS');
+      $self->{not_a_replica}->{$dbh}++;
   }
 }
 
-sub get_master_status {
+sub get_source_status {
    my ( $self, $dbh ) = @_;
 
-   if ( $self->{not_a_master}->{$dbh} ) {
-      PTDEBUG && _d('Server on dbh', $dbh, 'is not a master');
+   if ( $self->{not_a_source}->{$dbh} ) {
+      PTDEBUG && _d('Server on dbh', $dbh, 'is not a source');
       return;
    }
 
-   my $sth = $self->{sths}->{$dbh}->{MASTER_STATUS}
-         ||= $dbh->prepare('SHOW MASTER STATUS');
-   PTDEBUG && _d($dbh, 'SHOW MASTER STATUS');
+   my $vp = VersionParser->new($dbh);
+   my $source_name = 'binary log';
+   if ( $vp lt '8.1' || $vp->flavor() =~ m/maria/i ) {
+      $source_name = 'master';
+   }
+
+   my $sth;
+   if ( $self->{sths}->{$dbh} && $dbh && $self->{sths}->{$dbh} == $dbh ) {
+      $sth = $self->{sths}->{$dbh}->{SOURCE_STATUS}
+         ||= $dbh->prepare("SHOW ${source_name} STATUS");
+   }
+   else {
+      $sth = $dbh->prepare("SHOW ${source_name} STATUS");
+   }
+   PTDEBUG && _d($dbh, "SHOW ${source_name} STATUS");
    $sth->execute();
    my ($ms) = @{$sth->fetchall_arrayref({})};
    PTDEBUG && _d(
@@ -7031,42 +7185,43 @@ sub get_master_status {
           : '');
 
    if ( !$ms || scalar keys %$ms < 2 ) {
-      PTDEBUG && _d('Server on dbh', $dbh, 'does not seem to be a master');
-      $self->{not_a_master}->{$dbh}++;
+      PTDEBUG && _d('Server on dbh', $dbh, 'does not seem to be a source');
+      $self->{not_a_source}->{$dbh}++;
    }
 
   return { map { lc($_) => $ms->{$_} } keys %$ms }; # lowercase the keys
 }
 
-sub wait_for_master {
+sub wait_for_source {
    my ( $self, %args ) = @_;
-   my @required_args = qw(master_status slave_dbh);
+   my @required_args = qw(source_status replica_dbh);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($master_status, $slave_dbh) = @args{@required_args};
+   my ($source_status, $replica_dbh) = @args{@required_args};
    my $timeout       = $args{timeout} || 60;
 
    my $result;
    my $waited;
-   if ( $master_status ) {
-      my $slave_status;
+   if ( $source_status ) {
+      my $replica_status;
       eval {
-          $slave_status = $self->get_slave_status($slave_dbh);
+          $replica_status = $self->get_replica_status($replica_dbh);
       };
       if ($EVAL_ERROR) {
           return {
               result => undef,
               waited => 0,
-              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
+              error  =>'Wait for source: this is a multi-source replica but "channel" was not specified on the command line',
           };
       }
-      my $server_version = VersionParser->new($slave_dbh);
-      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
-      PTDEBUG && _d($slave_dbh, $sql);
+      my $source_name = get_source_name($replica_dbh);
+      my $vp = VersionParser->new($replica_dbh);
+      my $channel_sql = $vp > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT ${source_name}_POS_WAIT('$source_status->{file}', $source_status->{position}, $timeout $channel_sql)";
+      PTDEBUG && _d($replica_dbh, $sql);
       my $start = time;
-      ($result) = $slave_dbh->selectrow_array($sql);
+      ($result) = $replica_dbh->selectrow_array($sql);
 
       $waited = time - $start;
 
@@ -7074,7 +7229,7 @@ sub wait_for_master {
       PTDEBUG && _d("Waited", $waited, "seconds");
    }
    else {
-      PTDEBUG && _d('Not waiting: this server is not a master');
+      PTDEBUG && _d('Not waiting: this server is not a source');
    }
 
    return {
@@ -7083,75 +7238,84 @@ sub wait_for_master {
    };
 }
 
-sub stop_slave {
+sub stop_replica {
    my ( $self, $dbh ) = @_;
-   my $sth = $self->{sths}->{$dbh}->{STOP_SLAVE}
-         ||= $dbh->prepare('STOP SLAVE');
+   my $replica_name = get_replica_name($dbh);
+
+   my $sth = $self->{sths}->{$dbh}->{STOP_REPLICA}
+         ||= $dbh->prepare("STOP ${replica_name}");
    PTDEBUG && _d($dbh, $sth->{Statement});
    $sth->execute();
 }
 
-sub start_slave {
+sub start_replica {
    my ( $self, $dbh, $pos ) = @_;
+
+   my $source_name = get_source_name($dbh);
+   my $replica_name = get_replica_name($dbh);
+
    if ( $pos ) {
-      my $sql = "START SLAVE UNTIL MASTER_LOG_FILE='$pos->{file}', "
-              . "MASTER_LOG_POS=$pos->{position}";
+      my $sql = "START ${replica_name} UNTIL ${source_name}_LOG_FILE='$pos->{file}', "
+              . "${source_name}_LOG_POS=$pos->{position}";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
    else {
-      my $sth = $self->{sths}->{$dbh}->{START_SLAVE}
-            ||= $dbh->prepare('START SLAVE');
+      my $sth = $self->{sths}->{$dbh}->{START_REPLICA}
+            ||= $dbh->prepare("START ${replica_name}");
       PTDEBUG && _d($dbh, $sth->{Statement});
       $sth->execute();
    }
 }
 
-sub catchup_to_master {
-   my ( $self, $slave, $master, $timeout ) = @_;
-   $self->stop_slave($master);
-   $self->stop_slave($slave);
-   my $slave_status  = $self->get_slave_status($slave);
-   my $slave_pos     = $self->repl_posn($slave_status);
-   my $master_status = $self->get_master_status($master);
-   my $master_pos    = $self->repl_posn($master_status);
-   PTDEBUG && _d('Master position:', $self->pos_to_string($master_pos),
-      'Slave position:', $self->pos_to_string($slave_pos));
+sub catchup_to_source {
+   my ( $self, $replica, $source, $timeout ) = @_;
+   $self->stop_replica($source);
+   $self->stop_replica($replica);
+   my $replica_status  = $self->get_replica_status($replica);
+   my $replica_pos     = $self->repl_posn($replica_status);
+   my $source_status = $self->get_source_status($source);
+   my $source_pos    = $self->repl_posn($source_status);
+   PTDEBUG && _d('Source position:', $self->pos_to_string($source_pos),
+      'Replica position:', $self->pos_to_string($replica_pos));
 
    my $result;
-   if ( $self->pos_cmp($slave_pos, $master_pos) < 0 ) {
-      PTDEBUG && _d('Waiting for slave to catch up to master');
-      $self->start_slave($slave, $master_pos);
+   if ( $self->pos_cmp($replica_pos, $source_pos) < 0 ) {
+      PTDEBUG && _d('Waiting for replica to catch up to source');
+      $self->start_replica($replica, $source_pos);
 
-      $result = $self->wait_for_master(
-            master_status => $master_status,
-            slave_dbh     => $slave,
+      $result = $self->wait_for_source(
+            source_status => $source_status,
+            replica_dbh   => $replica,
             timeout       => $timeout,
-            master_status => $master_status
+            source_status => $source_status
       );
       if ($result->{error}) {
           die $result->{error};
       }
       if ( !defined $result->{result} ) {
-         $slave_status = $self->get_slave_status($slave);
-         if ( !$self->slave_is_running($slave_status) ) {
-            PTDEBUG && _d('Master position:',
-               $self->pos_to_string($master_pos),
-               'Slave position:', $self->pos_to_string($slave_pos));
-            $slave_pos = $self->repl_posn($slave_status);
-            if ( $self->pos_cmp($slave_pos, $master_pos) != 0 ) {
-               die "MASTER_POS_WAIT() returned NULL but slave has not "
-                  . "caught up to master";
+         $replica_status = $self->get_replica_status($replica);
+            
+         my $replica_name = get_replica_name($replica);
+
+         if ( !$self->replica_is_running($replica_status, $replica_name) ) {
+            PTDEBUG && _d('Source position:',
+               $self->pos_to_string($source_pos),
+               'Replica position:', $self->pos_to_string($replica_pos));
+            $replica_pos = $self->repl_posn($replica_status);
+            if ( $self->pos_cmp($replica_pos, $source_pos) != 0 ) {
+               die "SOURCE_POS_WAIT() returned NULL but replica has not "
+                  . "caught up to source";
             }
-            PTDEBUG && _d('Slave is caught up to master and stopped');
+            PTDEBUG && _d('Replica is caught up to source and stopped');
          }
          else {
-            die "Slave has not caught up to master and it is still running";
+            die "Replica has not caught up to source and it is still running";
          }
       }
    }
    else {
-      PTDEBUG && _d("Slave is already caught up to master");
+      PTDEBUG && _d("Replica is already caught up to source");
    }
 
    return $result;
@@ -7159,26 +7323,30 @@ sub catchup_to_master {
 
 sub catchup_to_same_pos {
    my ( $self, $s1_dbh, $s2_dbh ) = @_;
-   $self->stop_slave($s1_dbh);
-   $self->stop_slave($s2_dbh);
-   my $s1_status = $self->get_slave_status($s1_dbh);
-   my $s2_status = $self->get_slave_status($s2_dbh);
+   $self->stop_replica($s1_dbh);
+   $self->stop_replica($s2_dbh);
+   my $s1_status = $self->get_replica_status($s1_dbh);
+   my $s2_status = $self->get_replica_status($s2_dbh);
    my $s1_pos    = $self->repl_posn($s1_status);
    my $s2_pos    = $self->repl_posn($s2_status);
    if ( $self->pos_cmp($s1_pos, $s2_pos) < 0 ) {
-      $self->start_slave($s1_dbh, $s2_pos);
+      $self->start_replica($s1_dbh, $s2_pos);
    }
    elsif ( $self->pos_cmp($s2_pos, $s1_pos) < 0 ) {
-      $self->start_slave($s2_dbh, $s1_pos);
+      $self->start_replica($s2_dbh, $s1_pos);
    }
 
-   $s1_status = $self->get_slave_status($s1_dbh);
-   $s2_status = $self->get_slave_status($s2_dbh);
+   $s1_status = $self->get_replica_status($s1_dbh);
+   $s2_status = $self->get_replica_status($s2_dbh);
    $s1_pos    = $self->repl_posn($s1_status);
    $s2_pos    = $self->repl_posn($s2_status);
 
-   if ( $self->slave_is_running($s1_status)
-     || $self->slave_is_running($s2_status)
+   my $replica1_name = get_replica_name($s1_dbh);
+
+   my $replica2_name = get_replica_name($s2_dbh);
+
+   if ( $self->replica_is_running($s1_status, $replica1_name)
+     || $self->replica_is_running($s2_status, $replica2_name)
      || $self->pos_cmp($s1_pos, $s2_pos) != 0)
    {
       die "The servers aren't both stopped at the same position";
@@ -7186,14 +7354,17 @@ sub catchup_to_same_pos {
 
 }
 
-sub slave_is_running {
-   my ( $self, $slave_status ) = @_;
-   return ($slave_status->{slave_sql_running} || 'No') eq 'Yes';
+sub replica_is_running {
+   my ( $self, $replica_status, $replica_name ) = @_;
+   return ($replica_status->{"${replica_name}_sql_running"} || 'No') eq 'Yes';
 }
 
-sub has_slave_updates {
+sub has_replica_updates {
    my ( $self, $dbh ) = @_;
-   my $sql = q{SHOW VARIABLES LIKE 'log_slave_updates'};
+   
+   my $replica_name = get_replica_name($dbh);
+
+   my $sql = qq{SHOW VARIABLES LIKE 'log_${replica_name}_updates'};
    PTDEBUG && _d($dbh, $sql);
    my ($name, $value) = $dbh->selectrow_array($sql);
    return $value && $value =~ m/^(1|ON)$/;
@@ -7207,6 +7378,12 @@ sub repl_posn {
          position => $status->{position},
       };
    }
+   elsif ( exists $status->{relay_source_log_file} && exists $status->{exec_source_log_pos} ) {
+      return {
+         file     => $status->{relay_source_log_file},
+         position => $status->{exec_source_log_pos},
+      };
+   }
    else {
       return {
          file     => $status->{relay_master_log_file},
@@ -7215,11 +7392,14 @@ sub repl_posn {
    }
 }
 
-sub get_slave_lag {
+sub get_replica_lag {
    my ( $self, $dbh ) = @_;
-   my $stat = $self->get_slave_status($dbh);
-   return unless $stat;  # server is not a slave
-   return $stat->{seconds_behind_master};
+   
+   my $source_name = get_source_name($dbh);
+
+   my $stat = $self->get_replica_status($dbh);
+   return unless $stat;  # server is not a replica
+   return $stat->{"seconds_behind_${source_name}"};
 }
 
 sub pos_cmp {
@@ -7230,9 +7410,9 @@ sub pos_cmp {
 sub short_host {
    my ( $self, $dsn ) = @_;
    my ($host, $port);
-   if ( $dsn->{master_host} ) {
-      $host = $dsn->{master_host};
-      $port = $dsn->{master_port};
+   if ( $dsn->{source_host} ) {
+      $host = $dsn->{source_host};
+      $port = $dsn->{source_port};
    }
    else {
       $host = $dsn->{h};
@@ -7242,12 +7422,12 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
    die "Invalid type: $type"
-      unless $type =~ m/^binlog_dump|slave_io|slave_sql|all$/i;
+      unless $type =~ m/^binlog_dump|slave_io|slave_sql|replica_io|replica_sql|all$/i;
 
    my $match = 0;
    if ( $type =~ m/binlog_dump|all/i ) {
@@ -7256,8 +7436,8 @@ sub is_replication_thread {
    }
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
-         PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         PTDEBUG && _d("Replica replication thread");
+         if ( $type ne 'all' ) {
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -7265,15 +7445,16 @@ sub is_replication_thread {
                $match = 1;
             }
             else {
-               my ($slave_sql) = $state =~ m/
+               my ($replica_sql) = $state =~ m/
                   ^(Waiting\sfor\sthe\snext\sevent
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit
+                   |Waiting\sfor\sreplica\smutex\son\sexit)/xi;
 
-               $match = $type eq 'slave_sql' &&  $slave_sql ? 1
-                      : $type eq 'slave_io'  && !$slave_sql ? 1
+               $match = $type eq 'replica_sql' &&  $replica_sql ? 1
+                      : $type eq 'replica_io'  && !$replica_sql ? 1
                       :                                       0;
             }
          }
@@ -7314,9 +7495,11 @@ sub get_replication_filters {
    }
    my ($dbh) = @args{@required_args};
 
+   my $replica_name = get_replica_name($dbh);
+
    my %filters = ();
 
-   my $status = $self->get_master_status($dbh);
+   my $status = $self->get_source_status($dbh);
    if ( $status ) {
       map { $filters{$_} = $status->{$_} }
       grep { defined $status->{$_} && $status->{$_} ne '' }
@@ -7326,7 +7509,7 @@ sub get_replication_filters {
       );
    }
 
-   $status = $self->get_slave_status($dbh);
+   $status = $self->get_replica_status($dbh);
    if ( $status ) {
       map { $filters{$_} = $status->{$_} }
       grep { defined $status->{$_} && $status->{$_} ne '' }
@@ -7334,18 +7517,18 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
 
-      my $sql = "SHOW VARIABLES LIKE 'slave_skip_errors'";
+      my $sql = "SHOW VARIABLES LIKE '${replica_name}_skip_errors'";
       PTDEBUG && _d($dbh, $sql);
       my $row = $dbh->selectrow_arrayref($sql);
-      $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
+      $filters{replica_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -7363,11 +7546,11 @@ sub reset_known_replication_threads {
 
 sub get_cxn_from_dsn_table {
    my ($self, %args) = @_;
-   my @required_args = qw(dsn_table_dsn make_cxn);
+   my @required_args = qw(dsn_table_dsn make_cxn parent);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dsn_table_dsn, $make_cxn) = @args{@required_args};
+   my ($dsn_table_dsn, $make_cxn, $parent) = @args{@required_args};
    PTDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
 
    my $dp = $self->{DSNParser};
@@ -7386,19 +7569,52 @@ sub get_cxn_from_dsn_table {
         . "or a database-qualified table (t)";
    }
 
+   my $done = 0;
    my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
-   my $dsn_strings = $dbh->selectcol_arrayref($sql);
    my @cxn;
-   if ( $dsn_strings ) {
-      foreach my $dsn_string ( @$dsn_strings ) {
-         PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-         push @cxn, $make_cxn->(dsn_string => $dsn_string);
+   use Data::Dumper;
+   DSN:
+   do {
+      @cxn = ();
+      my $dsn_strings = $dbh->selectcol_arrayref($sql);
+      if ( $dsn_strings ) {
+         foreach my $dsn_string ( @$dsn_strings ) {
+            PTDEBUG && _d('DSN from DSN table:', $dsn_string);
+            if ($args{wait_no_die}) {
+               my $lcxn;
+               eval {
+                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
+               };
+               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+                  PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+                  sleep(1);
+                  goto DSN;
+               }
+               push @cxn, $lcxn;
+            } else {
+               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
+            }
+         }
       }
-   }
+      $done = 1;
+   } until $done;
    return \@cxn;
+}
+
+sub get_source_name {
+   my ($dbh) = @_;
+   my $vp = VersionParser->new($dbh);
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'master' : 'source';
+}
+
+sub get_replica_name {
+   my ($dbh) = @_;
+   my $vp = VersionParser->new($dbh);
+   return ($vp lt '8.1' || $vp->flavor() =~ m/maria/i) ? 'slave' : 'replica';
 }
 
 sub _d {
@@ -7418,10 +7634,10 @@ sub _d {
 # ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Daemon.pm
 #   t/lib/Daemon.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Daemon;
@@ -7429,157 +7645,225 @@ package Daemon;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
+use Fcntl qw(:DEFAULT);
 
 sub new {
-   my ( $class, %args ) = @_;
-   foreach my $arg ( qw(o) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $o = $args{o};
+   my ($class, %args) = @_;
    my $self = {
-      o        => $o,
-      log_file => $o->has('log') ? $o->get('log') : undef,
-      PID_file => $o->has('pid') ? $o->get('pid') : undef,
+      log_file       => $args{log_file},
+      pid_file       => $args{pid_file},
+      daemonize      => $args{daemonize},
+      force_log_file => $args{force_log_file},
+      parent_exit    => $args{parent_exit},
+      pid_file_owner => 0,
+      utf8           => $args{utf8} // 0,
    };
-
-   check_PID_file(undef, $self->{PID_file});
-
-   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
-sub daemonize {
-   my ( $self ) = @_;
+sub run {
+   my ($self) = @_;
 
-   PTDEBUG && _d('About to fork and daemonize');
-   defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
-   if ( $pid ) {
-      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
-      exit;
-   }
+   my $daemonize      = $self->{daemonize};
+   my $pid_file       = $self->{pid_file};
+   my $log_file       = $self->{log_file};
+   my $force_log_file = $self->{force_log_file};
+   my $parent_exit    = $self->{parent_exit};
+   my $utf8           = $self->{utf8};
 
-   PTDEBUG && _d('Daemonizing child PID', $PID);
-   $self->{PID_owner} = $PID;
-   $self->{child}     = 1;
+   PTDEBUG && _d('Starting daemon');
 
-   POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
-   chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
-
-   $self->_make_PID_file();
-
-   $OUTPUT_AUTOFLUSH = 1;
-
-   PTDEBUG && _d('Redirecting STDIN to /dev/null');
-   close STDIN;
-   open  STDIN, '/dev/null'
-      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-
-   if ( $self->{log_file} ) {
-      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
-      close STDOUT;
-      open  STDOUT, '>>', $self->{log_file}
-         or die "Cannot open log file $self->{log_file}: $OS_ERROR";
-
-      close STDERR;
-      open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
-   }
-   else {
-      if ( -t STDOUT ) {
-         PTDEBUG && _d('No log file and STDOUT is a terminal;',
-            'redirecting to /dev/null');
-         close STDOUT;
-         open  STDOUT, '>', '/dev/null'
-            or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
-      }
-      if ( -t STDERR ) {
-         PTDEBUG && _d('No log file and STDERR is a terminal;',
-            'redirecting to /dev/null');
-         close STDERR;
-         open  STDERR, '>', '/dev/null'
-            or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
-      }
-   }
-
-   return;
-}
-
-sub check_PID_file {
-   my ( $self, $file ) = @_;
-   my $PID_file = $self ? $self->{PID_file} : $file;
-   PTDEBUG && _d('Checking PID file', $PID_file);
-   if ( $PID_file && -f $PID_file ) {
-      my $pid;
+   if ( $pid_file ) {
       eval {
-         chomp($pid = (slurp_file($PID_file) || ''));
+         $self->_make_pid_file(
+            pid      => $PID,  # parent's pid
+            pid_file => $pid_file,
+         );
       };
-      if ( $EVAL_ERROR ) {
-         die "The PID file $PID_file already exists but it cannot be read: "
-            . $EVAL_ERROR;
+      die "$EVAL_ERROR\n" if $EVAL_ERROR;
+      if ( !$daemonize ) {
+         $self->{pid_file_owner} = $PID;  # parent's pid
       }
-      PTDEBUG && _d('PID file exists; it contains PID', $pid);
-      if ( $pid ) {
-         my $pid_is_alive = kill 0, $pid;
-         if ( $pid_is_alive ) {
-            die "The PID file $PID_file already exists "
-               . " and the PID that it contains, $pid, is running";
+   }
+
+   if ( $daemonize ) {
+      defined (my $child_pid = fork()) or die "Cannot fork: $OS_ERROR";
+      if ( $child_pid ) {
+         PTDEBUG && _d('Forked child', $child_pid);
+         $parent_exit->($child_pid) if $parent_exit;
+         exit 0;
+      }
+
+      POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
+      chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
+
+      if ( $pid_file ) {
+         $self->_update_pid_file(
+            pid      => $PID,  # child's pid
+            pid_file => $pid_file,
+         );
+         $self->{pid_file_owner} = $PID;
+      }
+   }
+
+   if ( $daemonize || $force_log_file ) {
+      PTDEBUG && _d('Redirecting STDIN to /dev/null');
+      close STDIN;
+      open  STDIN, '/dev/null'
+         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
+      if ( $log_file ) {
+         PTDEBUG && _d('Redirecting STDOUT and STDERR to', $log_file);
+         close STDOUT;
+         open  STDOUT, '>>', $log_file
+            or die "Cannot open log file $log_file: $OS_ERROR";
+         if ( $utf8 ) {
+            binmode(STDOUT, ':utf8')
+               or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
          }
-         else {
-            warn "Overwriting PID file $PID_file because the PID that it "
-               . "contains, $pid, is not running";
+
+
+         close STDERR;
+         open  STDERR, ">&STDOUT"
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
+         if ( $utf8 ) {
+            binmode(STDERR, ':utf8')
+               or die "Can't binmode(STDERR, ':utf8'): $OS_ERROR";
          }
       }
       else {
-         die "The PID file $PID_file already exists but it does not "
-            . "contain a PID";
+         if ( -t STDOUT ) {
+            PTDEBUG && _d('No log file and STDOUT is a terminal;',
+               'redirecting to /dev/null');
+            close STDOUT;
+            open  STDOUT, '>', '/dev/null'
+               or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
+         }
+         if ( -t STDERR ) {
+            PTDEBUG && _d('No log file and STDERR is a terminal;',
+               'redirecting to /dev/null');
+            close STDERR;
+            open  STDERR, '>', '/dev/null'
+               or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
+         }
+      }
+
+      $OUTPUT_AUTOFLUSH = 1;
+   }
+
+   PTDEBUG && _d('Daemon running');
+   return;
+}
+
+sub _make_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   eval {
+      sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
+      print PID_FH $PID, "\n";
+      close PID_FH;
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( $e =~ m/file exists/i ) {
+         my $old_pid = $self->_check_pid_file(
+            pid_file => $pid_file,
+            pid      => $PID,
+         );
+         if ( $old_pid ) {
+            warn "Overwriting PID file $pid_file because PID $old_pid "
+               . "is not running.\n";
+         }
+         $self->_update_pid_file(
+            pid      => $PID,
+            pid_file => $pid_file
+         );
+      }
+      else {
+         die "Error creating PID file $pid_file: $e\n";
       }
    }
-   else {
-      PTDEBUG && _d('No PID file');
-   }
+
    return;
 }
 
-sub make_PID_file {
-   my ( $self ) = @_;
-   if ( exists $self->{child} ) {
-      die "Do not call Daemon::make_PID_file() for daemonized scripts";
-   }
-   $self->_make_PID_file();
-   $self->{PID_owner} = $PID;
-   return;
-}
+sub _check_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid_file pid);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
 
-sub _make_PID_file {
-   my ( $self ) = @_;
+   PTDEBUG && _d('Checking if PID in', $pid_file, 'is running');
 
-   my $PID_file = $self->{PID_file};
-   if ( !$PID_file ) {
-      PTDEBUG && _d('No PID file to create');
+   if ( ! -f $pid_file ) {
+      PTDEBUG && _d('PID file', $pid_file, 'does not exist');
       return;
    }
 
-   $self->check_PID_file();
+   open my $fh, '<', $pid_file
+      or die "Error opening $pid_file: $OS_ERROR";
+   my $existing_pid = do { local $/; <$fh> };
+   chomp($existing_pid) if $existing_pid;
+   close $fh
+      or die "Error closing $pid_file: $OS_ERROR";
 
-   open my $PID_FH, '>', $PID_file
-      or die "Cannot open PID file $PID_file: $OS_ERROR";
-   print $PID_FH $PID
-      or die "Cannot print to PID file $PID_file: $OS_ERROR";
-   close $PID_FH
-      or die "Cannot close PID file $PID_file: $OS_ERROR";
+   if ( $existing_pid ) {
+      if ( $existing_pid == $pid ) {
+         warn "The current PID $pid already holds the PID file $pid_file\n";
+         return;
+      }
+      else {
+         PTDEBUG && _d('Checking if PID', $existing_pid, 'is running');
+         my $pid_is_alive = kill 0, $existing_pid;
+         if ( $pid_is_alive ) {
+            die "PID file $pid_file exists and PID $existing_pid is running\n";
+         }
+      }
+   }
+   else {
+      die "PID file $pid_file exists but it is empty.  Remove the file "
+         . "if the process is no longer running.\n";
+   }
 
-   PTDEBUG && _d('Created PID file:', $self->{PID_file});
+   return $existing_pid;
+}
+
+sub _update_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   open my $fh, '>', $pid_file
+      or die "Cannot open $pid_file: $OS_ERROR";
+   print { $fh } $pid, "\n"
+      or die "Cannot print to $pid_file: $OS_ERROR";
+   close $fh
+      or warn "Cannot close $pid_file: $OS_ERROR";
+
    return;
 }
 
-sub _remove_PID_file {
-   my ( $self ) = @_;
-   if ( $self->{PID_file} && -f $self->{PID_file} ) {
-      unlink $self->{PID_file}
-         or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
+sub remove_pid_file {
+   my ($self, $pid_file) = @_;
+   $pid_file ||= $self->{pid_file};
+   if ( $pid_file && -f $pid_file ) {
+      unlink $self->{pid_file}
+         or warn "Cannot remove PID file $pid_file: $OS_ERROR";
       PTDEBUG && _d('Removed PID file');
    }
    else {
@@ -7589,18 +7873,13 @@ sub _remove_PID_file {
 }
 
 sub DESTROY {
-   my ( $self ) = @_;
+   my ($self) = @_;
 
-   $self->_remove_PID_file() if ($self->{PID_owner} || 0) == $PID;
+   if ( $self->{pid_file_owner} == $PID ) {
+      $self->remove_pid_file();
+   }
 
    return;
-}
-
-sub slurp_file {
-   my ($file) = @_;
-   return unless $file;
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
-   return do { local $/; <$fh> };
 }
 
 sub _d {
@@ -7620,10 +7899,10 @@ sub _d {
 # ###########################################################################
 # SchemaIterator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/SchemaIterator.pm
 #   t/lib/SchemaIterator.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package SchemaIterator;
@@ -7976,10 +8255,10 @@ sub table_is_allowed {
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
-      |slow_log    
+      |slow_log
    )$/x;
 
-   if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
+   if ( $filter->{'ignore-tables'}->{'*'}->{$tbl}
          || $filter->{'ignore-tables'}->{$db}->{$tbl}) {
       PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
       return 0;
@@ -7992,7 +8271,7 @@ sub table_is_allowed {
    }
 
    if ( $filter->{'tables'}
-        && (!$filter->{'tables'}->{'*'}->{$tbl} && !$filter->{'tables'}->{$db}->{$tbl}) ) { 
+        && (!$filter->{'tables'}->{'*'}->{$tbl} && !$filter->{'tables'}->{$db}->{$tbl}) ) {
       PTDEBUG && _d('Table', $tbl, 'is not in --tables list, ignoring');
       return 0;
    }
@@ -8028,7 +8307,7 @@ sub engine_is_allowed {
    my $filter = $self->{filters};
 
    if ( $filter->{'ignore-engines'}->{$engine} ) {
-      PTDEBUG && _d('Engine', $engine, 'is in --ignore-databases list');
+      PTDEBUG && _d('Engine', $engine, 'is in --ignore-engines list');
       return 0;
    }
 
@@ -8098,10 +8377,10 @@ sub _d {
 # ###########################################################################
 # Transformers package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Transformers.pm
 #   t/lib/Transformers.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Transformers;
@@ -8324,7 +8603,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -8396,7 +8675,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -8451,10 +8730,10 @@ sub _d {
 # ###########################################################################
 # Retry package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Retry.pm
 #   t/lib/Retry.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Retry;
@@ -8531,10 +8810,10 @@ sub _d {
 # ###########################################################################
 # HTTP::Micro package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/HTTP/Micro.pm
 #   t/lib/HTTP/Micro.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package HTTP::Micro;
@@ -8747,7 +9026,10 @@ sub _split_url {
          or croak(qq/Could not binmode() socket: '$!'/);
 
        if ( $scheme eq 'https') {
-           IO::Socket::SSL->start_SSL($self->{fh});
+           IO::Socket::SSL->start_SSL(
+              $self->{fh},
+              SSL_verifycn_name => $host,
+           );
            ref($self->{fh}) eq 'IO::Socket::SSL'
                or die(qq/SSL connection failed for $host\n/);
            if ( $self->{fh}->can("verify_hostname") ) {
@@ -8760,7 +9042,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -8926,7 +9208,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }
@@ -9184,10 +9466,10 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 # ###########################################################################
 # VersionCheck package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionCheck.pm
 #   t/lib/VersionCheck.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionCheck;
@@ -9235,7 +9517,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -9252,11 +9534,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -9280,7 +9562,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -9288,13 +9570,15 @@ sub version_check {
          return;
       }
       PTDEBUG && _d('Using', $protocol);
+      my $url = $args{url}                       # testing
+                || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                || "$protocol://v.percona.com";
+      PTDEBUG && _d('API URL:', $url);
 
       my $advice = pingback(
          instances => $instances_to_check,
          protocol  => $protocol,
-         url       => $args{url}                       # testing
-                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
-                   || "$protocol://v.percona.com",
+         url       => $url,
       );
       if ( $advice ) {
          PTDEBUG && _d('Advice:', Dumper($advice));
@@ -9312,7 +9596,7 @@ sub version_check {
       PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
 
-   if ( @$instances_to_check ) {
+   if ( $instances_to_check and @$instances_to_check ) {
       eval {
          update_check_times(
             instances => $instances_to_check,
@@ -9357,7 +9641,7 @@ sub get_instances_to_check {
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
-      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+      PTDEBUG && _d('Instance', $instance->{id}, 'last checked',
          $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
          'hours until next check',
          sprintf '%.2f',
@@ -9452,12 +9736,17 @@ sub get_uuid {
     my $filename = $ENV{"HOME"} . $uuid_file;
     my $uuid = _generate_uuid();
 
-    open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
-    print $fh $uuid;
-    close $fh;
+    my $fh;
+    eval {
+        open($fh, '>', $filename);
+    };
+    if (!$EVAL_ERROR) {
+        print $fh $uuid;
+        close $fh;
+    }
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -9485,7 +9774,7 @@ sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -9506,7 +9795,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -9520,8 +9809,9 @@ sub pingback {
       general_id => get_uuid(),
    );
 
+   my $tool_name = $ENV{XTRABACKUP_VERSION} ? "Percona XtraBackup" : File::Basename::basename($0);
    my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      headers => { "X-Percona-Toolkit-Tool" => $tool_name },
       content => $client_content,
    };
    PTDEBUG && _d('Client response:', Dumper($client_response));
@@ -9552,7 +9842,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -9578,7 +9868,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -9604,6 +9894,7 @@ my %sub_for_type = (
    perl_version        => \&get_perl_version,
    perl_module_version => \&get_perl_module_version,
    mysql_variable      => \&get_mysql_variable,
+   xtrabackup          => \&get_xtrabackup_version,
 );
 
 sub valid_item {
@@ -9620,7 +9911,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -9731,6 +10022,10 @@ sub get_perl_version {
    return $version;
 }
 
+sub get_xtrabackup_version {
+    return $ENV{XTRABACKUP_VERSION};
+}
+
 sub get_perl_module_version {
    my (%args) = @_;
    my $item = $args{item};
@@ -9765,7 +10060,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -9843,10 +10138,46 @@ sub main {
    $o->get_specs();
    $o->get_opts();
 
+   # Deprecated options
+   if ( $o->got('check-master') ) {
+      warn "Option --[no]check-master is deprecated and will be removed in future versions. Use --check-source instead.";
+      if ( !$o->got('check-source') ) {
+         $o->set('check-source', $o->get('check-master'));
+      }
+   }
+   
+   if ( $o->got('check-slave') ) {
+      warn "Option --[no]check-slave is deprecated and will be removed in future versions. Use --check-replica instead.";
+      if ( !$o->got('check-replica') ) {
+         $o->set('check-replica', $o->get('check-slave'));
+      }
+   }
+
+   if ( $o->got('sync-to-master') ) {
+      warn "Option --sync-to-master is deprecated and will be removed in future versions. Use --sync-to-source instead.";
+      if ( !$o->got('sync-to-source') ) {
+         $o->set('sync-to-source', $o->get('sync-to-master'));
+      }
+   }
+
+   if ( $o->got('slave-user') ) {
+      warn "Option --slave-user is deprecated and will be removed in future versions. Use --replica-user instead.";
+      if ( !$o->got('replica-user') ) {
+         $o->set('replica-user', $o->get('slave-user'));
+      }
+   }
+
+   if ( $o->got('slave-password') ) {
+      warn "Option --slave-password is deprecated and will be removed in future versions. Use --replica-password instead.";
+      if ( !$o->got('replica-password') ) {
+         $o->set('replica-password', $o->get('slave-password'));
+      }
+   }
+
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->set_vars());
 
-   if ( $o->get('replicate') || $o->get('sync-to-master') ) {
+   if ( $o->get('replicate') || $o->get('sync-to-source') ) {
       $o->set('wait', 60) unless $o->got('wait');
    }
    if ( $o->get('wait') ) {
@@ -9879,13 +10210,13 @@ sub main {
    }
 
    if ( !@dsns
-        || (@dsns ==1 && !$o->get('replicate') && !$o->get('sync-to-master'))) {
+        || (@dsns ==1 && !$o->get('replicate') && !$o->get('sync-to-source'))) {
       $o->save_error('At least one DSN is required, and at least two are '
-         . 'required unless --sync-to-master or --replicate is specified');
+         . 'required unless --sync-to-source or --replicate is specified');
    }
 
-   if ( @dsns > 1 && $o->get('sync-to-master') && $o->get('replicate') ) {
-      $o->save_error('--sync-to-master and --replicate require only one DSN ',
+   if ( @dsns > 1 && $o->get('sync-to-source') && $o->get('replicate') ) {
+      $o->save_error('--sync-to-source and --replicate require only one DSN ',
          ' but ', scalar @dsns, ' where given');
    }
 
@@ -9897,9 +10228,9 @@ sub main {
    }
 
    if ( $o->get('bidirectional') ) {
-      if ( $o->get('replicate') || $o->get('sync-to-master') ) {
+      if ( $o->get('replicate') || $o->get('sync-to-source') ) {
          $o->save_error('--bidirectional does not work with '
-            . '--replicate or --sync-to-master');
+            . '--replicate or --sync-to-source');
       }
       if ( @dsns < 2 ) {
          $o->save_error('--bidirectional requires at least two DSNs');
@@ -9918,7 +10249,7 @@ sub main {
          $o->save_error("--conflict-comparison $cc requires --conflict-value")
       }
 
-      # Override --algorithms becuase only TableSyncChunk works with
+      # Override --algorithms because only TableSyncChunk works with
       # bidirectional syncing.
       $o->set('algorithms', 'Chunk');
       $o->set('buffer-to-client', 0);
@@ -9948,8 +10279,11 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
+      $daemon = new Daemon(
+         daemonize => 0, # not daemoninzing, just PID file
+         pid_file => $o->get('pid'),
+      );
+      $daemon->run();
    }
 
    # ########################################################################
@@ -10001,7 +10335,7 @@ sub main {
 
    # Create callbacks for bidirectional syncing.  Currently, this only
    # works with TableSyncChunk, so that should be the only plugin because
-   # --algorithms was overriden earlier.
+   # --algorithms was overridden earlier.
    if ( $o->get('bidirectional') ) {
       set_bidirectional_callbacks(
          plugin => $plugins->[0],
@@ -10011,18 +10345,32 @@ sub main {
 
    my $exit_status = 0; # 1: internal error, 2: tables differed, 3: both
 
-   # dsn[0] is expected to be the master (i.e. the source).  So if
-   # --sync-to-master, then dsn[0] is a slave.  Find its master and
-   # make the master dsn[0] and the slave dsn[1].
-   if ( $o->get('sync-to-master') ) {
-      PTDEBUG && _d('Getting master of', $dp->as_string($dsns[0]));
+   # dsn[0] is expected to be the source (i.e. the source).  So if
+   # --sync-to-source, then dsn[0] is a replica.  Find its source and
+   # make the source dsn[0] and the replica dsn[1].
+   if ( $o->get('sync-to-source') ) {
+      PTDEBUG && _d('Getting source of', $dp->as_string($dsns[0]));
       $dsns[0]->{dbh} = get_cxn($dsns[0], %modules);
-      my $master = $ms->get_master_dsn($dsns[0]->{dbh}, $dsns[0], $dp)
-         or die "Can't determine master of " . $dp->as_string($dsns[0]);
-      unshift @dsns, $master;  # dsn[0]=master, dsn[1]=slave
+      my $source = $ms->get_source_dsn($dsns[0]->{dbh}, $dsns[0], $dp)
+         or die "Can't determine source of " . $dp->as_string($dsns[0]);
+      unshift @dsns, $source;  # dsn[0]=source, dsn[1]=replica
       $dsns[0]->{dbh} = get_cxn($dsns[0], %modules);
-      if ( $o->get('check-master') ) {
-         $ms->is_master_of($dsns[0]->{dbh}, $dsns[1]->{dbh});
+        
+      my $source_name = MasterSlave::get_source_name($dsns[1]->{dbh});
+      my $replica_name = MasterSlave::get_replica_name($dsns[1]->{dbh});
+
+      if ( $o->get('check-source') ) {
+         my $is_source_of = eval {
+            $ms->is_source_of($dsns[0]->{dbh}, $dsns[1]->{dbh});
+         };
+
+         # We should not die if replica connected via tunnel or port redirection
+         if ( $EVAL_ERROR ) {
+            $EVAL_ERROR =~ m/The replica is connected to (\d+) but the source's port is \d+/;
+            if ( !$1 || $1 != $dsns[0]->{P} ) {
+               die $EVAL_ERROR;
+            }
+         }
       }
    }
 
@@ -10143,7 +10491,7 @@ sub lock_and_rename {
    }
 
    # We don't use lock_server() here because it does the usual stuff wrt
-   # waiting for slaves to catch up to master, etc, etc.
+   # waiting for replicas to catch up to source, etc, etc.
    my $src_db_tbl = $q->quote($src->{db}, $src->{tbl});
    my $dst_db_tbl = $q->quote($dst->{db}, $dst->{tbl});
    my $tmp_db_tbl = $q->quote($src->{db}, $src->{tbl} . "_tmp_$PID");
@@ -10255,10 +10603,10 @@ sub sync_one_table {
 # Sub: sync_via_replication
 #   Sync multiple destination hosts to one source host via replication.
 #   The first DSN in $args{dsns} specifies the source host.
-#   If --sync-to-master is specified, then the source host is a master
-#   and there is only one destination host which is its slave.
+#   If --sync-to-source is specified, then the source host is a source
+#   and there is only one destination host which is its replica.
 #   Else, destination hosts are auto-discovered with
-#   <MasterSlave::recurse_to_slaves()>.
+#   <MasterSlave::recurse_to_replicas()>.
 #
 # Parameters:
 #   %args - Arguments
@@ -10312,9 +10660,9 @@ sub sync_via_replication {
    my %skip_table;
    my $exit_status = 0;
 
-   # Connect to the master and treat it as the source, then find
-   # differences on the slave and sync them.
-   if ( $o->get('sync-to-master') ) {
+   # Connect to the source and treat it as the source, then find
+   # differences on the replica and sync them.
+   if ( $o->get('sync-to-source') ) {
       my $dst = {
          dsn      => $dsns->[1],
          dbh      => $dsns->[1]->{dbh} || get_cxn($dsns->[1], %args),
@@ -10323,13 +10671,13 @@ sub sync_via_replication {
          tbl      => undef,  # set later
       };
 
-      # First, check that the master (source) has no discrepancies itself,
+      # First, check that the source (source) has no discrepancies itself,
       # and ignore tables that do.
       my $src_diffs = $checksum->find_replication_differences(
          $src->{dbh}, $o->get('replicate'));
       map { $skip_table{lc $_->{db}}->{lc $_->{tbl}}++ } @$src_diffs;
 
-      # Now check the slave for differences and sync them if necessary.
+      # Now check the replica for differences and sync them if necessary.
       my $dst_diffs = $checksum->find_replication_differences(
          $dst->{dbh}, $o->get('replicate'));
       my $diffs = filter_diffs(
@@ -10377,12 +10725,12 @@ sub sync_via_replication {
       }
 
       disconnect($dst);
-   } # sync-to-master
+   } # sync-to-source
 
-   # The DSN is the master.  Connect to each slave, find differences,
+   # The DSN is the source.  Connect to each replica, find differences,
    # then sync them.
    else {
-      $ms->recurse_to_slaves(
+      $ms->recurse_to_replicas(
          {  dbh      => $src->{dbh},
             dsn      => $src->{dsn},
             recurse  => 1,
@@ -10391,13 +10739,13 @@ sub sync_via_replication {
                my $all_diffs = $checksum->find_replication_differences(
                   $dbh, $o->get('replicate'));
                if ( !$level ) {
-                  # This is the master; don't sync any tables that are wrong
+                  # This is the source; don't sync any tables that are wrong
                   # here, for obvious reasons.
                   map { $skip_table{lc $_->{db}}->{lc $_->{tbl}}++ }
                      @$all_diffs;
                }
                else {
-                  # This is a slave.
+                  # This is a replica.
                   my $diffs = filter_diffs(
                      diffs          => $all_diffs,
                      SchemaIterator => $schema_iter,
@@ -10443,7 +10791,7 @@ sub sync_via_replication {
                            diff  => $diff,
                            %args,
                         );
-                     } 
+                     }
 
                      unlock_server(src => $src, dst => $dst, %args);
                      disconnect($dst);
@@ -10451,13 +10799,13 @@ sub sync_via_replication {
                   else {
                      PTDEBUG && _d('No checksum differences');
                   }
-               }  # this is a slave
+               }  # this is a replica
 
                return;
-            },  # recurse_to_slaves() callback
+            },  # recurse_to_replicas() callback
          },
       );
-   } # DSN is master
+   } # DSN is source
 
    disconnect($src);
    return $exit_status;
@@ -10677,7 +11025,7 @@ sub sync_a_table {
    my ($src, $dst, undef, $o, $q, $tp, $syncer) = @args{@required_args};
 
    my ($start_ts, $end_ts);
-   my $exit_status = 0; 
+   my $exit_status = 0;
    my %status;
    eval {
       $start_ts = get_server_time($src->{dbh}) if $o->get('verbose');
@@ -10737,7 +11085,7 @@ sub sync_a_table {
       }
 
       # get_change_dbh() may die if, for example, the destination is
-      # not a slave.  Perhaps its work should be part of can_sync()?
+      # not a replica.  Perhaps its work should be part of can_sync()?
       my $change_dbh = get_change_dbh(tbl_struct => $tbl_struct, %args);
       my $actions    = make_action_subs(change_dbh => $change_dbh, %args);
 
@@ -10746,13 +11094,13 @@ sub sync_a_table {
          left_db    => $src->{db},
          left_tbl   => $src->{tbl},
          right_db   => $dst->{db},
-         right_tbl  => $dst->{tbl}, 
+         right_tbl  => $dst->{tbl},
          tbl_struct => $tbl_struct,
          hex_blob   => $o->get('hex-blob'),
          queue      => $o->get('buffer-to-client') ? 1 : 0,
          replace    => $o->get('replace')
                        || $o->get('replicate')
-                       || $o->get('sync-to-master')
+                       || $o->get('sync-to-source')
                        || 0,
          actions    => $actions,
          Quoter     => $args{Quoter},
@@ -10772,7 +11120,7 @@ sub sync_a_table {
          buffer_in_mysql   => $o->get('buffer-in-mysql'),
          buffer_to_client  => $o->get('buffer-to-client'),
          changing_src      => $o->get('replicate')
-                              || $o->get('sync-to-master')
+                              || $o->get('sync-to-source')
                               || $o->get('bidirectional')
                               || 0,
          float_precision   => $o->get('float-precision'),
@@ -10815,12 +11163,12 @@ sub sync_a_table {
 
 # Sub: get_change_dbh
 #   Return the dbh to write to for syncing changes.  Write statements
-#   are executed on the "change dbh".  If --sync-to-master or --replicate
-#   is specified, the source (master) dbh is the "change dbh".  This means
-#   changes replicate to all slaves.  Else, the destination dbh is the
+#   are executed on the "change dbh".  If --sync-to-source or --replicate
+#   is specified, the source (source) dbh is the "change dbh".  This means
+#   changes replicate to all replicas.  Else, the destination dbh is the
 #   change dbh.  This is the case when two independent servers (or perhaps
 #   one table on the same server) are synced.  This sub implements
-#   --[no]check-slave because writing to a slave is generally a bad thing.
+#   --[no]check-replica because writing to a replica is generally a bad thing.
 #
 # Parameters:
 #   %args - Arguments
@@ -10849,24 +11197,24 @@ sub get_change_dbh {
 
    my $change_dbh = $dst->{dbh};  # The default case: making changes on dst.
 
-   if ( $o->get('sync-to-master') || $o->get('replicate') ) {
-      # Is it possible to make changes on the master (i.e. the source)?
+   if ( $o->get('sync-to-source') || $o->get('replicate') ) {
+      # Is it possible to make changes on the source (i.e. the source)?
       # Only if REPLACE will work.
       my $can_replace = grep { $_->{is_unique} } values %{$tbl_struct->{keys}};
       PTDEBUG && _d("This table's replace-ability:", $can_replace);
-      die "Can't make changes on the master because no unique index exists"
+      die "Can't make changes on the source because no unique index exists"
          unless $can_replace;
       $change_dbh = $src->{dbh};  # The alternate case.
       PTDEBUG && _d('Will make changes on source', $change_dbh);
    }
-   elsif ( $o->get('check-slave') ) {
+   elsif ( $o->get('check-replica') ) {
       # Is it safe to change data on the destination?  Only if it's *not*
-      # a slave.  We don't change tables on slaves directly.  If we are
-      # forced to change data on a slave, we require either that 1) binary
+      # a replica.  We don't change tables on replicas directly.  If we are
+      # forced to change data on a replica, we require either that 1) binary
       # logging is disabled, or 2) the check is bypassed.  By the way, just
-      # because the server is a slave doesn't mean it's not also the master
-      # of the master (master-master replication).
-      my $slave_status = $ms->get_slave_status($dst->{dbh});
+      # because the server is a replica doesn't mean it's not also the source
+      # of the source (source-source replication).
+      my $replica_status = $ms->get_replica_status($dst->{dbh});
       my (undef, $log_bin) = $dst->{dbh}->selectrow_array(
          q{SHOW VARIABLES LIKE 'log_bin'});
       my ($sql_log_bin) = $dst->{dbh}->selectrow_array(
@@ -10874,9 +11222,9 @@ sub get_change_dbh {
       PTDEBUG && _d('Variables on destination:',
          'log_bin=', (defined $log_bin ? $log_bin : 'NULL'),
          ' @@SQL_LOG_BIN=', (defined $sql_log_bin ? $sql_log_bin : 'NULL'));
-      if ( $slave_status && $sql_log_bin && ($log_bin || 'OFF') eq 'ON' ) {
+      if ( $replica_status && $sql_log_bin && ($log_bin || 'OFF') eq 'ON' ) {
          die "Can't make changes on ", $dp->as_string($dst->{dsn}),
-            " because it's a slave.  See the documentation section",
+            " because it's a replica.  See the documentation section",
             " 'REPLICATION SAFETY' for solutions to this problem.";
       }
       PTDEBUG && _d('Will make changes on destination', $change_dbh);
@@ -10919,7 +11267,7 @@ sub make_action_subs {
    if ( $o->get('print') ) {
       # Print AFTER executing, so the print isn't misleading in case of an
       # index violation etc that doesn't actually get executed.
-      push @actions, sub { 
+      push @actions, sub {
          my ( $sql, $dbh ) = @_;
          # Append /*host:port*/ to the sql, if possible, so the user
          # can see on which host it was/would be ran.
@@ -10967,7 +11315,7 @@ sub print_err {
 #   %args - Arguments
 #
 # Required Arguments:
-#   OptionaParser - <OptionParser> object
+#   OptionParser - <OptionParser> object
 #   DSNParser     - <DSNParser> object
 #
 # Returns:
@@ -11015,16 +11363,16 @@ sub get_cxn {
         . "',NO_AUTO_VALUE_ON_ZERO')*/";
    PTDEBUG && _d($dbh, $sql);
    $dbh->do($sql);
-   
+
    # Ensure statement-based replication.
    # http://code.google.com/p/maatkit/issues/detail?id=95
    # https://bugs.launchpad.net/percona-toolkit/+bug/919352
    # The tool shouldn't blindly attempt to change binlog_format;
    # instead, it should check if it's already set to STATEMENT.
-   # This is becase starting with MySQL 5.1.29, changing the format
+   # This is because starting with MySQL 5.1.29, changing the format
    # requires a SUPER user.
    if ( VersionParser->new($dbh) >= '5.1.29'
-        && ($o->get('replicate') || $o->get('sync-to-master'))) {
+        && ($o->get('replicate') || $o->get('sync-to-source'))) {
       $sql = 'SELECT @@binlog_format';
       PTDEBUG && _d($dbh, $sql);
       my ($original_binlog_format) = $dbh->selectrow_array($sql);
@@ -11115,8 +11463,8 @@ sub ok_to_sync {
       tbl => $dst->{tbl},
    );
 
-   if ( lc($src->{tbl_struct}->{engine}) eq 'rocksdb' && ($o->get('sync-to-master')) ) {
-       print STDERR "Cannot sync using --sync-to-master with $dst->{db}.$dst->{tbl} ".
+   if ( lc($src->{tbl_struct}->{engine}) eq 'rocksdb' && ($o->get('sync-to-source')) ) {
+       print STDERR "Cannot sync using --sync-to-source with $dst->{db}.$dst->{tbl} ".
              "due to the limitations of the RocksDB engine.\n\n".
              "More information: https://www.percona.com/doc/percona-server/LATEST/myrocks/limitations.html\n\n";
        die "Process aborted.\n";
@@ -11145,7 +11493,7 @@ sub ok_to_sync {
 
    my $replace = $o->get('replace')
               || $o->get('replicate')
-              || $o->get('sync-to-master');
+              || $o->get('sync-to-source');
    if ( $replace && $o->get('execute') && $o->get('check-child-tables') ) {
       my $child_tables = find_child_tables(
          tbl    => $src,
@@ -11208,12 +11556,12 @@ sub get_triggers {
 }
 
 # Sub: filter_diffs
-#   Filter different slave tables according to the various schema object
+#   Filter different replica tables according to the various schema object
 #   filters.  This sub is called in <sync_via_replication()> to implement
 #   schema object filters like --databases and --tables.
 #
 # Returns:
-#   Arrayref of different slave tables that pass the filters
+#   Arrayref of different replica tables that pass the filters
 sub filter_diffs {
    my ( %args ) = @_;
    my @required_args = qw(diffs SchemaIterator skip_table);
@@ -11242,7 +11590,7 @@ sub filter_diffs {
 #   sub helps keep track of the dbh that are closed.
 #
 # Parameters:
-#   @hosts - Array of hashrefs with host information, one for each host 
+#   @hosts - Array of hashrefs with host information, one for each host
 sub disconnect {
    my ( @hosts ) = @_;
    foreach my $host ( @hosts ) {
@@ -11251,10 +11599,10 @@ sub disconnect {
          next unless $dbh;
          delete $dsn_for{$dbh};
          # The following is for when misc_dbh loses
-         # connection due to timeout. Since it has nothing 
+         # connection due to timeout. Since it has nothing
          # to commit we avoid reporting an error.
          if ( $thing eq 'misc_dbh' &&  !$dbh->ping() ) {
-           next; 
+           next;
          }
          $dbh->commit() unless $dbh->{AutoCommit};
          $dbh->disconnect();
@@ -11413,7 +11761,7 @@ sub set_bidirectional_callbacks {
          }
       }
       elsif ( $res == FAILED_THRESHOLD ) {
-         $err = "`$col` values do not differ by the threhold, $thr."
+         $err = "`$col` values do not differ by the threshold, $thr."
       }
       else {
          # Shouldn't happen.
@@ -11452,11 +11800,11 @@ sub set_bidirectional_callbacks {
 #   Get internal TableSync* plugins.
 #
 # Returns:
-#   Hash of available algoritms and the plugin/module names that
+#   Hash of available algorithms and the plugin/module names that
 #   implement them, like "chunk => TableSyncChunk".
 sub get_plugins {
    my ( %args ) = @_;
-   
+
    my $file = __FILE__;
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
@@ -11566,19 +11914,17 @@ sub diff_where {
    my ($lb_sql, $ub_sql);
 
    if ( defined $diff->{lower_boundary} ) {
+      my $i = 0;
+      my @deserialized = $q->deserialize_list($diff->{lower_boundary});
       $lb_sql = $asc->{boundaries}->{'>='};
-      foreach my $val ( $q->deserialize_list($diff->{lower_boundary}) ) {
-         my $quoted_val = $q->quote_val($val);
-         $lb_sql =~ s/\?/$quoted_val/;
-      }
+      $lb_sql =~ s/\?/$q->quote_val($deserialized[$i++])/eg;
    }
 
    if ( defined $diff->{upper_boundary} ) {
+      my $i = 0;
+      my @deserialized = $q->deserialize_list($diff->{upper_boundary});
       $ub_sql = $asc->{boundaries}->{'<='};
-      foreach my $val ( $q->deserialize_list($diff->{upper_boundary}) ) {
-         my $quoted_val = $q->quote_val($val);
-         $ub_sql =~ s/\?/$quoted_val/;
-      }
+      $ub_sql =~ s/\?/$q->quote_val($deserialized[$i++])/eg;
    }
 
    die "Invalid checksum diff: " . Dumper($diff)
@@ -11661,12 +12007,12 @@ Usage: pt-table-sync [OPTIONS] DSN [DSN]
 pt-table-sync synchronizes data efficiently between MySQL tables.
 
 This tool changes data, so for maximum safety, you should back up your data
-before using it.  When synchronizing a server that is a replication slave
-with the L<"--replicate"> or L<"--sync-to-master"> methods, it B<always>
-makes the changes on the replication master, B<never> the replication slave
+before using it.  When synchronizing a server that is a replication replica
+with the L<"--replicate"> or L<"--sync-to-source"> methods, it B<always>
+makes the changes on the replication source, B<never> the replication replica
 directly.  This is in general the only safe way to bring a replica back in
-sync with its master; changes to the replica are usually the source of the
-problems in the first place.  However, the changes it makes on the master
+sync with its source; changes to the replica are usually the source of the
+problems in the first place.  However, the changes it makes on the source
 should be no-op changes that set the data to their current values, and
 actually affect only the replica.
 
@@ -11678,30 +12024,30 @@ Sync all tables on host1 to host2 and host3:
 
   pt-table-sync --execute host1 host2 host3
 
-Make slave1 have the same data as its replication master:
+Make replica1 have the same data as its replication source:
 
-  pt-table-sync --execute --sync-to-master slave1
+  pt-table-sync --execute --sync-to-source replica1
 
-Resolve differences that L<pt-table-checksum> found on all slaves of master1:
+Resolve differences that L<pt-table-checksum> found on all replicas of source1:
 
-  pt-table-sync --execute --replicate test.checksum master1
+  pt-table-sync --execute --replicate percona.checksum source1
 
-Same as above but only resolve differences on slave1:
+Same as above but only resolve differences on replica1:
 
-  pt-table-sync --execute --replicate test.checksum \
-    --sync-to-master slave1
+  pt-table-sync --execute --replicate percona.checksum \
+    --sync-to-source replica1
 
-Sync master2 in a master-master replication configuration, where master2's copy
+Sync source2 in a source-source replication configuration, where source2's copy
 of db.tbl is known or suspected to be incorrect:
 
-  pt-table-sync --execute --sync-to-master h=master2,D=db,t=tbl
+  pt-table-sync --execute --sync-to-source h=source2,D=db,t=tbl
 
-Note that in the master-master configuration, the following will NOT do what you
-want, because it will make changes directly on master2, which will then flow
-through replication and change master1's data:
+Note that in the source-source configuration, the following will NOT do what you
+want, because it will make changes directly on source2, which will then flow
+through replication and change source1's data:
 
-  # Don't do this in a master-master setup!
-  pt-table-sync --execute h=master1,D=db,t=tbl master2
+  # Don't do this in a source-source setup!
+  pt-table-sync --execute h=source1,D=db,t=tbl source2
 
 =head1 RISKS
 
@@ -11733,26 +12079,26 @@ L<"BIDIRECTIONAL SYNCING"> is described later.
 This tool is complex and functions in several different ways.  To use it
 safely and effectively, you should understand three things: the purpose
 of L<"--replicate">, finding differences, and specifying hosts.  These
-three concepts are closely related and determine how the tool will run. 
+three concepts are closely related and determine how the tool will run.
 The following is the abbreviated logic:
 
    if DSN has a t part, sync only that table:
       if 1 DSN:
-         if --sync-to-master:
-            The DSN is a slave.  Connect to its master and sync.
+         if --sync-to-source:
+            The DSN is a replica.  Connect to its source and sync.
       if more than 1 DSN:
          The first DSN is the source.  Sync each DSN in turn.
    else if --replicate:
-      if --sync-to-master:
-         The DSN is a slave.  Connect to its master, find records
+      if --sync-to-source:
+         The DSN is a replica.  Connect to its source, find records
          of differences, and fix.
       else:
-         The DSN is the master.  Find slaves and connect to each,
+         The DSN is the source.  Find replicas and connect to each,
          find records of differences, and fix.
    else:
-      if only 1 DSN and --sync-to-master:
-         The DSN is a slave.  Connect to its master, find tables and
-         filter with --databases etc, and sync each table to the master.
+      if only 1 DSN and --sync-to-source:
+         The DSN is a replica.  Connect to its source, find tables and
+         filter with --databases etc, and sync each table to the source.
       else:
          find tables, filtering with --databases etc, and sync each
          DSN to the first.
@@ -11771,34 +12117,34 @@ If you're unsure, read each tool's documentation carefully and decide for
 yourself, or consult with an expert.
 
 Regardless of whether L<"--replicate"> is used or not, you need to specify
-which hosts to sync.  There are two ways: with L<"--sync-to-master"> or
-without.  Specifying L<"--sync-to-master"> makes pt-table-sync expect
-one and only slave DSN on the command line.  The tool will automatically
-discover the slave's master and sync it so that its data is the same as
-its master.  This is accomplished by making changes on the master which
-then flow through replication and update the slave to resolve its differences.
+which hosts to sync.  There are two ways: with L<"--sync-to-source"> or
+without.  Specifying L<"--sync-to-source"> makes pt-table-sync expect
+one and only replica DSN on the command line.  The tool will automatically
+discover the replica's source and sync it so that its data is the same as
+its source.  This is accomplished by making changes on the source which
+then flow through replication and update the replica to resolve its differences.
 B<Be careful though>: although this option specifies and syncs a single
-slave, if there are other slaves on the same master, they will receive
-via replication the changes intended for the slave that you're trying to
+replica, if there are other replicas on the same source, they will receive
+via replication the changes intended for the replica that you're trying to
 sync.
 
-Alternatively, if you do not specify L<"--sync-to-master">, the first
+Alternatively, if you do not specify L<"--sync-to-source">, the first
 DSN given on the command line is the source host.  There is only ever
 one source host.  If you do not also specify L<"--replicate">, then you
 must specify at least one other DSN as the destination host.  There
 can be one or more destination hosts.  Source and destination hosts
 must be independent; they cannot be in the same replication topology.
 pt-table-sync will die with an error if it detects that a destination
-host is a slave because changes are written directly to destination hosts
-(and it's not safe to write directly to slaves).  Or, if you specify
-L<"--replicate"> (but not L<"--sync-to-master">) then pt-table-sync expects
-one and only one master DSN on the command line.  The tool will automatically
-discover all the master's slaves and sync them to the master.  This is
-the only way to sync several (all) slaves at once (because
-L<"--sync-to-master"> only specifies one slave).
+host is a replica because changes are written directly to destination hosts
+(and it's not safe to write directly to replicas).  Or, if you specify
+L<"--replicate"> (but not L<"--sync-to-source">) then pt-table-sync expects
+one and only one source DSN on the command line.  The tool will automatically
+discover all the source's replicas and sync them to the source.  This is
+the only way to sync several (all) replicas at once (because
+L<"--sync-to-source"> only specifies one replica).
 
 Each host on the command line is specified as a DSN.  The first DSN
-(or only DSN for cases like L<"--sync-to-master">) provides default values
+(or only DSN for cases like L<"--sync-to-source">) provides default values
 for other DSNs, whether those other DSNs are specified on the command line
 or auto-discovered by the tool.  So in this example,
 
@@ -11815,8 +12161,8 @@ the DSNs given on the command line.
 =item Replicas using row-based replication
 
 pt-table-sync requires statement-based replication when used with
-the L<"--sync-to-master"> or L<"--replicate"> option. 
-Therefore it will set C<binlog_format=STATEMENT> on the master
+the L<"--sync-to-source"> or L<"--replicate"> option.
+Therefore it will set C<binlog_format=STATEMENT> on the source
 for its session if required.
 To do this user must have C<SUPER> privilege.
 
@@ -11824,7 +12170,7 @@ To do this user must have C<SUPER> privilege.
 
 =head1 OUTPUT
 
-If you specify the L<"--verbose"> option, you'll see information about the 
+If you specify the L<"--verbose"> option, you'll see information about the
 differences between the tables.  There is one row per table.  Each server is
 printed separately.  For example,
 
@@ -11863,9 +12209,9 @@ The tool rewrites queries to C<DELETE> and C<REPLACE> in this case.  This is
 automatically handled after the first index violation, so you don't have to
 worry about it.
 
-Be careful when using pt-table-sync in any master-master setup.  Master-master
+Be careful when using pt-table-sync in any source-source setup.  Source-source
 replication is inherently tricky, and it's easy to make mistakes.  You need to
-be sure you're using the tool correctly for master-master replication.  See the
+be sure you're using the tool correctly for source-source replication.  See the
 L<"SYNOPSIS"> for the overview of the correct usage.
 
 Also be careful with tables that have foreign key constraints with C<ON DELETE>
@@ -11878,34 +12224,34 @@ or unique index, it might be best to synchronize that data by another means.
 
 =head1 REPLICATION SAFETY
 
-Synchronizing a replication master and slave safely is a non-trivial problem, in
+Synchronizing a replication source and replica safely is a non-trivial problem, in
 general.  There are all sorts of issues to think about, such as other processes
-changing data, trying to change data on the slave, whether the destination and
-source are a master-master pair, and much more.
+changing data, trying to change data on the replica, whether the destination and
+source are a source-source pair, and much more.
 
-In general, the safe way to do it is to change the data on the master, and let
-the changes flow through replication to the slave like any other changes.
+In general, the safe way to do it is to change the data on the source, and let
+the changes flow through replication to the replica like any other changes.
 However, this works only if it's possible to REPLACE into the table on the
-master.  REPLACE works only if there's a unique index on the table (otherwise it
+source.  REPLACE works only if there's a unique index on the table (otherwise it
 just acts like an ordinary INSERT).
 
-If your table has unique keys, you should use the L<"--sync-to-master"> and/or
-L<"--replicate"> options to sync a slave to its master.  This will generally do
+If your table has unique keys, you should use the L<"--sync-to-source"> and/or
+L<"--replicate"> options to sync a replica to its source.  This will generally do
 the right thing.  When there is no unique key on the table, there is no choice
-but to change the data on the slave, and pt-table-sync will detect that you're
+but to change the data on the replica, and pt-table-sync will detect that you're
 trying to do so.  It will complain and die unless you specify
-C<--no-check-slave> (see L<"--[no]check-slave">).
+C<--no-check-replica> (see L<"--[no]check-replica">).
 
-If you're syncing a table without a primary or unique key on a master-master
+If you're syncing a table without a primary or unique key on a source-source
 pair, you must change the data on the destination server.  Therefore, you need
 to specify C<--no-bin-log> for safety (see L<"--[no]bin-log">).  If you don't,
 the changes you make on the destination server will replicate back to the
 source server and change the data there!
 
-The generally safe thing to do on a master-master pair is to use the
-L<"--sync-to-master"> option so you don't change the data on the destination
-server.  You will also need to specify C<--no-check-slave> to keep
-pt-table-sync from complaining that it is changing data on a slave.
+The generally safe thing to do on a source-source pair is to use the
+L<"--sync-to-source"> option so you don't change the data on the destination
+server.  You will also need to specify C<--no-check-replica> to keep
+pt-table-sync from complaining that it is changing data on a replica.
 
 =head1 ALGORITHMS
 
@@ -11965,21 +12311,11 @@ Selects the entire table in one big stream and compares all columns.  Selects
 all columns.  Much less efficient than the other algorithms, but works when
 there is no suitable index for them to use.
 
-=item Future Plans
-
-Possibilities for future algorithms are TempTable (what I originally called
-bottom-up in earlier versions of this tool), DrillDown (what I originally
-called top-down), and GroupByPrefix (similar to how SqlYOG Job Agent works).
-Each algorithm has strengths and weaknesses.  If you'd like to implement your
-favorite technique for finding differences between two sources of data on
-possibly different servers, I'm willing to help.  The algorithms adhere to a
-simple interface that makes it pretty easy to write your own.
-
 =back
 
 =head1 BIDIRECTIONAL SYNCING
 
-Bidirectional syncing is a new, experimental feature.  To make it work
+Bidirectional syncing is an experimental feature.  To make it work
 reliably there are a number of strict limitations:
 
   * only works when syncing one server to other independent servers
@@ -11989,7 +12325,7 @@ reliably there are a number of strict limitations:
   * does not handle DELETE changes
 
 For example, suppose we have three servers: c1, r1, r2.  c1 is the central
-server, a pseudo-master to the other servers (viz. r1 and r2 are not slaves
+server, a pseudo-source to the other servers (viz. r1 and r2 are not replicas
 to c1).  r1 and r2 are remote servers.  Rows in table foo are updated and
 inserted on all three servers and we want to synchronize all the changes
 between all the servers.  Table foo has columns:
@@ -12045,7 +12381,7 @@ These options are:
   * --conflict-comparison
   * --conflict-value
   * --conflict-threshold
-  * --conflict-error">  (optional)
+  * --conflict-error  (optional)
 
 Use L<"--print"> to test this option before L<"--execute">.  The printed
 SQL statements will have comments saying on which host the statement
@@ -12146,17 +12482,24 @@ For most non-trivial data sizes, you want to leave this option enabled.
 
 This option is disabled when L<"--bidirectional"> is used.
 
+=item --[no]buffer-stdout
+
+default: yes
+
+Enables STDOUT buffering. Disable this option if you want to see live progress
+when using output post-processing tools such as C<tee> or C<kubectl logs>.
+
 =item --channel
 
 type: string
 
 Channel name used when connected to a server using replication channels.
-Suppose you have two masters, master_a at port 12345, master_b at port 1236 and
-a slave connected to both masters using channels chan_master_a and chan_master_b.
-If you want to run pt-table-sync to syncronize the slave against master_a, pt-table-sync
-won't be able to determine what's the correct master since SHOW SLAVE STATUS
-will return 2 rows. In this case, you can use --channel=chan_master_a to specify
-the channel name to use in the SHOW SLAVE STATUS command.
+Suppose you have two sources, source_a at port 12345, source_b at port 1236 and
+a replica connected to both sources using channels chan_source_a and chan_source_b.
+If you want to run pt-table-sync to synchronize the replica against source_a, pt-table-sync
+won't be able to determine what's the correct source since SHOW REPLICA STATUS
+will return 2 rows. In this case, you can use --channel=chan_source_a to specify
+the channel name to use in the SHOW REPLICA STATUS command.
 
 =item --charset
 
@@ -12173,7 +12516,7 @@ connecting to MySQL.
 default: yes
 
 Check if L<"--execute"> will adversely affect child tables.  When
-L<"--replace">, L<"--replicate">, or L<"--sync-to-master"> is specified,
+L<"--replace">, L<"--replicate">, or L<"--sync-to-source"> is specified,
 the tool may sync tables using C<REPLACE> statements.  If a table being
 synced has child tables with C<ON DELETE CASCADE>, C<ON UPDATE CASCADE>,
 or C<ON UPDATE SET NULL>, the tool prints an error and skips the table because
@@ -12186,7 +12529,7 @@ avoid affecting child tables, also specify C<--no-foreign-key-checks>
 so MySQL will not cascade any operations from the parent to child tables.
 
 This check is only preformed if L<"--execute"> and one of L<"--replace">,
-L<"--replicate">, or L<"--sync-to-master"> is specified.  L<"--print">
+L<"--replicate">, or L<"--sync-to-source"> is specified.  L<"--print">
 does not check child tables.
 
 The error message only prints the first child table found with an
@@ -12197,20 +12540,34 @@ foreign key constraint.  There could be other affected child tables.
 
 default: yes
 
-With L<"--sync-to-master">, try to verify that the detected
-master is the real master.
+This option is deprecated and will be removed in future releases.
+Use L<"--[no]check-source"> instead.
 
 =item --[no]check-slave
 
+This option is deprecated and will be removed in future releases.
+Use L<"--[no]check-replica"> instead.
+
 default: yes
 
-Check whether the destination server is a slave.
+=item --[no]check-source
 
-If the destination server is a slave, it's generally unsafe to make changes on
+default: yes
+
+With L<"--sync-to-source">, try to verify that the detected
+source is the real source.
+
+=item --[no]check-replica
+
+default: yes
+
+Check whether the destination server is a replica.
+
+If the destination server is a replica, it's generally unsafe to make changes on
 it.  However, sometimes you have to; L<"--replace"> won't work unless there's a
-unique index, for example, so you can't make changes on the master in that
+unique index, for example, so you can't make changes on the source in that
 scenario.  By default pt-table-sync will complain if you try to change data on
-a slave.  Specify C<--no-check-slave> to disable this check.  Use it at your own
+a replica.  Specify C<--no-check-replica> to disable this check.  Use it at your own
 risk.
 
 =item --[no]check-triggers
@@ -12527,11 +12884,11 @@ you're examining them.  The possible values are as follows:
   3      Lock and unlock once for every server (DSN) synced, with
          C<FLUSH TABLES WITH READ LOCK>.
 
-A replication slave is never locked if L<"--replicate"> or L<"--sync-to-master">
-is specified, since in theory locking the table on the master should prevent any
-changes from taking place.  (You are not changing data on your slave, right?)
-If L<"--wait"> is given, the master (source) is locked and then the tool waits
-for the slave to catch up to the master before continuing.
+A replication replica is never locked if L<"--replicate"> or L<"--sync-to-source">
+is specified, since in theory locking the table on the source should prevent any
+changes from taking place.  (You are not changing data on your replica, right?)
+If L<"--wait"> is given, the source (source) is locked and then the tool waits
+for the replica to catch up to the source before continuing.
 
 If C<--transaction> is specified, C<LOCK TABLES> is not used.  Instead, lock
 and unlock are implemented by beginning and committing transactions.
@@ -12548,6 +12905,18 @@ other (which you may choose to accomplish via any number of means, including
 dump and reload or even something like L<pt-archiver>).  It requires exactly two
 DSNs and assumes they are on the same server, so it does no waiting for
 replication or the like.  Tables are locked with LOCK TABLES.
+
+=item --mysql_ssl
+
+short form: -s; type: int
+
+Create SSL MySQL connection.
+
+=item --mysql_ssl_optional
+
+short form: -o; type: int
+
+Disables strict SSL enforcement and makes SSL connection optional.
 
 =item --password
 
@@ -12584,22 +12953,51 @@ yourself if you want to sync the tables manually.
 
 type: array; default: processlist,hosts
 
-Preferred recursion method used to find slaves.
+Preferred recursion method used to find replicas.
 
 Possible methods are:
 
   METHOD       USES
   ===========  ==================
   processlist  SHOW PROCESSLIST
-  hosts        SHOW SLAVE HOSTS
-  none         Do not find slaves
+  hosts        SHOW REPLICAS (SHOW SLAVE HOSTS before MySQL 8.1)
+  dsn=DSN      DSNs from a table
+  none         Do not find replicas
 
-The processlist method is preferred because SHOW SLAVE HOSTS is not reliable.
-However, the hosts method is required if the server uses a non-standard
-port (not 3306).  Usually pt-table-sync does the right thing and finds
-the slaves, but you may give a preferred method and it will be used first.
-If it doesn't find any slaves, the other methods will be tried.
+The C<processlist> method is the default, because C<SHOW REPLICAS> is not
+reliable.  However, if the server uses a non-standard port (not 3306), then
+the C<hosts> method becomes the default because it works better in this case.
 
+The C<hosts> method requires replicas to be configured with C<report_host>,
+C<report_port>, etc.
+
+The C<dsn> method is special: rather than automatically discovering replicas,
+this method specifies a table with replica DSNs.  The tool will only connect
+to these replicas.  This method works best when replicas do not use the same
+MySQL username or password as the source, or when you want to prevent the tool
+from connecting to certain replicas.  The C<dsn> method is specified like:
+C<--recursion-method dsn=h=host,D=percona,t=dsns>.  The specified DSN must
+have D and t parts, or just a database-qualified t part, which specify the
+DSN table.  The DSN table must have the following structure:
+
+  CREATE TABLE `dsns` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `parent_id` int(11) DEFAULT NULL,
+    `dsn` varchar(255) NOT NULL,
+    PRIMARY KEY (`id`)
+  );
+
+DSNs are ordered by C<id>, but C<id> and C<parent_id> are otherwise ignored.
+The C<dsn> column contains a replica DSN like it would be given on the command
+line, for example: C<"h=replica_host,u=repl_user,p=repl_pass">.
+
+The C<none> method makes the tool ignore all replicas and cluster nodes. This
+method is not recommended because it effectively disables the
+L<"REPLICA CHECKS"> and no differences can be found. It is useful, however, if
+you only need to write checksums on the source or a single cluster node. The
+safer alternative is C<--no-replicate-check>: the tool finds replicas and
+cluster nodes, performs the L<"REPLICA CHECKS">, but does not check for
+differences. See L<"--[no]replicate-check">.
 
 =item --replace
 
@@ -12617,28 +13015,28 @@ Sync tables listed as different in this table.
 Specifies that C<pt-table-sync> should examine the specified table to find data
 that differs.  The table is exactly the same as the argument of the same name to
 L<pt-table-checksum>.  That is, it contains records of which tables (and ranges
-of values) differ between the master and slave.
+of values) differ between the source and replica.
 
-For each table and range of values that shows differences between the master and
-slave, C<pt-table-checksum> will sync that table, with the appropriate C<WHERE>
-clause, to its master.
+For each table and range of values that shows differences between the source and
+replica, pt-table-sync will sync that table, with the appropriate C<WHERE>
+clause, to its source.
 
 This automatically sets L<"--wait"> to 60 and causes changes to be made on the
-master instead of the slave.
+source instead of the replica.
 
-If L<"--sync-to-master"> is specified, the tool will assume the server you
-specified is the slave, and connect to the master as usual to sync.
+If L<"--sync-to-source"> is specified, the tool will assume the server you
+specified is the replica, and connect to the source as usual to sync.
 
-Otherwise, it will try to use C<SHOW PROCESSLIST> to find slaves of the server
-you specified.  If it is unable to find any slaves via C<SHOW PROCESSLIST>, it
-will inspect C<SHOW SLAVE HOSTS> instead.  You must configure each slave's
+Otherwise, it will try to use C<SHOW PROCESSLIST> to find replicas of the server
+you specified.  If it is unable to find any replicas via C<SHOW PROCESSLIST>, it
+will inspect C<SHOW REPLICAS> instead.  You must configure each replica's
 C<report-host>, C<report-port> and other options for this to work right.  After
-finding slaves, it will inspect the specified table on each slave to find data
-that needs to be synced, and sync it. 
+finding replicas, it will inspect the specified table on each replica to find data
+that needs to be synced, and sync it.
 
-The tool examines the master's copy of the table first, assuming that the master
-is potentially a slave as well.  Any table that shows differences there will
-B<NOT> be synced on the slave(s).  For example, suppose your replication is set
+The tool examines the source's copy of the table first, assuming that the source
+is potentially a replica as well.  Any table that shows differences there will
+B<NOT> be synced on the replica(s).  For example, suppose your replication is set
 up as A->B, B->C, B->D.  Suppose you use this argument and specify server B.
 The tool will examine server B's copy of the table.  If it looks like server B's
 data in table C<test.tbl1> is different from server A's copy, the tool will not
@@ -12648,17 +13046,31 @@ sync that table on servers C and D.
 
 type: string
 
-Sets the user to be used to connect to the slaves.
-This parameter allows you to have a different user with less privileges on the 
-slaves but that user must exist on all slaves.
+This option is deprecated and will be removed in future releases.
+Use L<"--replica-user"> instead.
 
 =item --slave-password
 
 type: string
 
-Sets the password to be used to connect to the slaves.
-It can be used with --slave-user and the password for the user must be the same
-on all slaves.
+This option is deprecated and will be removed in future releases.
+Use L<"--replica-password"> instead.
+
+=item --replica-user
+
+type: string
+
+Sets the user to be used to connect to the replicas.
+This parameter allows you to have a different user with less privileges on the
+replicas but that user must exist on all replicas.
+
+=item --replica-password
+
+type: string
+
+Sets the password to be used to connect to the replicas.
+It can be used with --replica-user and the password for the user must be the same
+on all replicas.
 
 =item --set-vars
 
@@ -12686,11 +13098,16 @@ Socket file to use for connection.
 
 =item --sync-to-master
 
-Treat the DSN as a slave and sync it to its master.
+This option is deprecated and will be removed in future releases.
+Use L<"--sync-to-source"> instead.
 
-Treat the server you specified as a slave.  Inspect C<SHOW SLAVE STATUS>,
-connect to the server's master, and treat the master as the source and the slave
-as the destination.  Causes changes to be made on the master.  Sets L<"--wait">
+=item --sync-to-source
+
+Treat the DSN as a replica and sync it to its source.
+
+Treat the server you specified as a replica.  Inspect C<SHOW REPLICA STATUS>,
+connect to the server's source, and treat the source as the source and the replica
+as the destination.  Causes changes to be made on the source.  Sets L<"--wait">
 to 60 by default, sets L<"--lock"> to 1 by default, and disables
 L<"--[no]transaction"> by default.  See also L<"--replicate">, which changes
 this option's behavior.
@@ -12707,7 +13124,7 @@ Table names may be qualified with the database name.
 
 Keep going if L<"--wait"> fails.
 
-If you specify L<"--wait"> and the slave doesn't catch up to the master's
+If you specify L<"--wait"> and the replica doesn't catch up to the source's
 position before the wait times out, the default behavior is to abort.  This
 option makes the tool keep going anyway.  B<Warning>: if you are trying to get a
 consistent comparison between the two servers, you probably don't want to keep
@@ -12743,8 +13160,8 @@ C<TRIM()> C<VARCHAR> columns in C<BIT_XOR> and C<ACCUM> modes.  Helps when
 comparing MySQL 4.1 to >= 5.0.
 
 This is useful when you don't care about the trailing space differences between
-MySQL versions which vary in their handling of trailing spaces. MySQL 5.0 and 
-later all retain trailing spaces in C<VARCHAR>, while previous versions would 
+MySQL versions which vary in their handling of trailing spaces. MySQL 5.0 and
+later all retain trailing spaces in C<VARCHAR>, while previous versions would
 remove them.
 
 =item --[no]unique-checks
@@ -12795,7 +13212,7 @@ done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
@@ -12803,14 +13220,14 @@ For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST
 
 short form: -w; type: time
 
-How long to wait for slaves to catch up to their master.
+How long to wait for replicas to catch up to their source.
 
-Make the master wait for the slave to catch up in replication before comparing
+Make the source wait for the replica to catch up in replication before comparing
 the tables.  The value is the number of seconds to wait before timing out (see
 also L<"--timeout-ok">).  Sets L<"--lock"> to 1 and L<"--[no]transaction"> to 0
 by default.  If you see an error such as the following,
 
-  MASTER_POS_WAIT returned -1
+  SOURCE_POS_WAIT returned -1
 
 It means the timeout was exceeded and you need to increase it.
 
@@ -12818,7 +13235,7 @@ The default value of this option is influenced by other options.  To see what
 value is in effect, run with L<"--help">.
 
 To disable waiting entirely (except for locks), specify L<"--wait"> 0.  This
-helps when the slave is lagging on tables that are not being synced.
+helps when the replica is lagging on tables that are not being synced.
 
 =item --where
 
@@ -12905,6 +13322,18 @@ dsn: user; copy: yes
 
 User for login if not current user.
 
+=item * s
+
+dsn: mysql_ssl; copy: yes
+
+Create SSL connection
+
+=item * o
+
+dsn: mysql_ssl_optional; copy: yes
+
+Disables strict SSL enforcement and makes SSL connection optional
+
 =back
 
 =head1 ENVIRONMENT
@@ -12917,6 +13346,11 @@ To enable debugging and capture all output to a file, run the tool like:
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
 
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
+
 =head1 SYSTEM REQUIREMENTS
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
@@ -12924,7 +13358,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-table-sync>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
 Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
@@ -12986,7 +13420,7 @@ This existing literature mostly addressed how to find the differences between
 the tables, not how to resolve them once found.  I needed a tool that would not
 only find them efficiently, but would then resolve them.  I first began thinking
 about how to improve the technique further with my article
-L<http://tinyurl.com/mysql-data-diff-algorithm>,
+L<https://web.archive.org/web/20071018105253/http://www.xaprb.com/blog/2007/03/05/an-algorithm-to-find-and-resolve-data-differences-between-mysql-tables/>,
 where I discussed a number of problems with the Maxia/Coelho "bottom-up"
 algorithm.  After writing that article, I began to write this tool.  I wanted to
 actually implement their algorithm with some improvements so I was sure I
@@ -13004,8 +13438,8 @@ also my own work.
 
 Another tool that can synchronize tables is the SQLyog Job Agent from webyog.
 Thanks to Rohit Nadhani, SJA's author, for the conversations about the general
-techniques.  There is a comparison of pt-table-sync and SJA at
-L<http://tinyurl.com/maatkit-vs-sqlyog>
+techniques. There is a comparison of pt-table-sync and SJA at
+L<https://web.archive.org/web/20070919024435/http://www.xaprb.com/blog/2007/04/05/mysql-table-sync-vs-sqlyog-job-agent/>
 
 Thanks to the following people and organizations for helping in many ways:
 
@@ -13031,7 +13465,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates,
+This program is copyright 2011-2026 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -13044,12 +13478,11 @@ Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
 systems, you can issue `man perlgpl' or `man perlartistic' to read these
 licenses.
 
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA  02111-1307  USA.
+You should have received a copy of the GNU General Public License, version 2
+along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 
-pt-table-sync 3.0.13
+pt-table-sync 3.7.1
 
 =cut

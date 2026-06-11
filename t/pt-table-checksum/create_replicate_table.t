@@ -17,14 +17,14 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 5;
@@ -33,14 +33,14 @@ else {
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($source_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 
 my $output;
 my $row;
 
-$sb->wipe_clean($master_dbh);
-#$sb->create_dbs($master_dbh, [qw(test)]);
+$sb->wipe_clean($source_dbh);
+#$sb->create_dbs($source_dbh, [qw(test)]);
 
 # Most other tests implicitly test that --create-replicate-table is on
 # by default because they use that functionality.  So here we need to
@@ -57,8 +57,8 @@ like(
    "--no-create-replicate-table dies if db doesn't exist"
 );
 
-$master_dbh->do('create database percona');
-$master_dbh->do('use percona');
+$source_dbh->do('create database percona');
+$source_dbh->do('use percona');
 eval {
    pt_table_checksum::main(@args, '--no-create-replicate-table');
 };
@@ -80,13 +80,13 @@ my $create_repl_table =
   upper_boundary text             NULL,
   this_crc       char(40)     NOT NULL,
   this_cnt       int          NOT NULL,
-  master_crc     char(40)         NULL,
-  master_cnt     int              NULL,
+  ${source_name}_crc     char(40)         NULL,
+  ${source_name}_cnt     int              NULL,
   ts             timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (db, tbl, chunk)
 ) ENGINE=InnoDB;";
 
-$master_dbh->do($create_repl_table);
+$source_dbh->do($create_repl_table);
 
 $output = output(
    sub { pt_table_checksum::main(@args, '--no-create-replicate-table',
@@ -103,12 +103,12 @@ like(
 # Issue 1318: mk-tabke-checksum --create-replicate-table doesn't replicate
 # ############################################################################
 
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 
-# Wait until the slave no longer has the percona db.
+# Wait until the replica no longer has the percona db.
 PerconaTest::wait_until(
    sub {
-      eval { $slave_dbh->do("use percona") };
+      eval { $replica_dbh->do("use percona") };
       return 1 if $EVAL_ERROR;
       return 0;
    },
@@ -117,9 +117,9 @@ PerconaTest::wait_until(
 pt_table_checksum::main(@args, qw(-t sakila.country --quiet));
 
 # Wait until the repl table replicates, or timeout.
-PerconaTest::wait_for_table($slave_dbh, 'percona.checksums');
+PerconaTest::wait_for_table($replica_dbh, 'percona.checksums');
 
-$row = $slave_dbh->selectrow_arrayref("show tables from percona");
+$row = $replica_dbh->selectrow_arrayref("show tables from percona");
 is_deeply(
    $row,
    ['checksums'],
@@ -129,6 +129,6 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

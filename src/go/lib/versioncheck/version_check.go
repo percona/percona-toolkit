@@ -1,3 +1,16 @@
+// This program is copyright 2017-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package versioncheck
 
 import (
@@ -10,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -52,11 +65,11 @@ func CheckUpdates(toolName, version string) (string, error) {
 }
 
 func checkUpdates(url string, timeout time.Duration, toolName, version string) (string, error) {
-
 	client := &http.Client{
 		Timeout: timeout,
 	}
-	payload := fmt.Sprintf("%x;%s;%s", uuid.NewV2(uuid.DomainOrg).String(), PERCONA_TOOLKIT, version)
+	vuuid := uuid.New()
+	payload := fmt.Sprintf("%x;%s;%s", vuuid.String(), PERCONA_TOOLKIT, version)
 	req, err := http.NewRequest("POST", url, strings.NewReader(payload))
 	if err != nil {
 		return "", err
@@ -73,15 +86,15 @@ func checkUpdates(url string, timeout time.Duration, toolName, version string) (
 	if err != nil {
 		return "", err
 	}
-	advices := []Advice{}
-	err = json.Unmarshal(body, &advices)
+	var advice []Advice
+	err = json.Unmarshal(body, &advice)
 	if err != nil {
 		return "", err
 	}
 
-	for _, advice := range advices {
-		if advice.ToolName == PERCONA_TOOLKIT {
-			return advice.Advice, nil
+	for _, a := range advice {
+		if a.ToolName == PERCONA_TOOLKIT {
+			return a.Advice, nil
 		}
 	}
 

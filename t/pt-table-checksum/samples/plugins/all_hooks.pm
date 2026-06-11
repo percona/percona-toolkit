@@ -32,6 +32,12 @@ sub get_slave_lag {
    return sub { return 0; };
 }
  
+sub get_replica_lag {
+   my ($self, %args) = @_;
+   print "PLUGIN get_replica_lag\n";
+   return sub { return 0; };
+}
+ 
 sub before_checksum_table {
    my ($self, %args) = @_;
    print "PLUGIN before_checksum_table\n";

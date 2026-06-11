@@ -1,6 +1,7 @@
 GO := go
 pkgs   = $(shell basename `git rev-parse --show-toplevel`)
-VERSION ?=$(shell git describe --abbrev=0)
+# VERSION ?=$(shell git describe --abbrev=0) doesn't always work here, need to use git log
+VERSION ?=$(shell git log --no-walk --tags --pretty="%H %d" --decorate=short | head -n1 | awk  -F'[, ]' '{ print $$4; }')
 BUILD ?=$(shell date +%FT%T%z)
 GOVERSION ?=$(shell go version | cut --delimiter=" " -f3)
 COMMIT ?=$(shell git rev-parse HEAD)
@@ -18,7 +19,7 @@ $(error GOPATH is not set)
 endif
 
 ifeq (,$(wildcard ${GOPATH}/src))
-$(error Invalid GOPATH. There is no src dir in the GOPATH) 
+$(error Invalid GOPATH. There is no src dir in the GOPATH)
 endif
 
 ifeq ($(findstring ${GOPATH},${CUR_DIR}), )
@@ -58,7 +59,7 @@ linux-amd64: prepare
 linux-amd64-tar: linux-amd64
 	@tar cvzf ${BIN_DIR}/pt-secure-collect_linux_amd64.tar.gz -C ${BIN_DIR} pt-secure-collect
 
-darwin-amd64: 
+darwin-amd64:
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR}"
 	@mkdir -p ${BIN_DIR}
 	@GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/pt-secure-collect *.go

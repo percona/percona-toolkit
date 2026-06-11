@@ -1,8 +1,7 @@
 #!/usr/bin/env perl
 
 BEGIN {
-   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.  See http://code.google.
-com/p/maatkit/wiki/Testing"
+   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
 
@@ -20,11 +19,11 @@ require "$trunk/bin/pt-slave-delay";
 
 my $dp  = DSNParser->new(opts => $dsn_opts);
 my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $dbh        = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $dbh        = $sb->get_dbh_for('replica1');
 
-if ($sandbox_version ge '5.7') {
-   plan skip_all => 'Use SQL_DELAY';
+if ($sandbox_version ge '8.1') {
+   plan skip_all => 'Tool is not supported. Use SQL_DELAY';
 }
 
 if ( !$dbh ) {
@@ -66,14 +65,14 @@ else {
    sleep 1;
    diag(`/tmp/12346/start >/dev/null`);
    # Ensure we don't break the sandbox -- instance 12347 will be disconnected
-   # when its master gets rebooted
+   # when its source gets rebooted
    diag(`/tmp/12347/use -e "stop slave; start slave"`);
    exit;
 }
 # Reap the child.
 waitpid ($pid, 0);
 
-$sb->wait_for_slaves;
+$sb->wait_for_replicas;
 
 # Do it all over again, but this time KILL instead of restart.
 $pid = fork();
@@ -93,7 +92,7 @@ if ( $pid ) {
 else {
    # child. Note that we'll kill the parent's 'mysql' connection
    sleep 1;
-   my $c_dbh = $sb->get_dbh_for('slave1');
+   my $c_dbh = $sb->get_dbh_for('replica1');
    my @cxn = @{$c_dbh->selectall_arrayref('show processlist', {Slice => {}})};
    foreach my $c ( @cxn ) {
       # The parent's connection:
@@ -113,7 +112,7 @@ waitpid ($pid, 0);
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
 exit;

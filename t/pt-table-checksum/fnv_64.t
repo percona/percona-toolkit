@@ -17,24 +17,25 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($source_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $sample     = "t/pt-table-checksum/samples/";
 my $row;
 my $output;
 
+$sb->create_dbs($source_dbh, [qw(test)]);
 
-eval { $master_dbh->do('DROP FUNCTION test.fnv_64'); };
-eval { $master_dbh->do("CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'fnv_udf.so';"); };
+eval { $source_dbh->do('DROP FUNCTION IF EXISTS fnv_64'); };
+eval { $source_dbh->do("CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'libfnv_udf.so';"); };
 if ( $EVAL_ERROR ) {
    chomp $EVAL_ERROR;
    plan skip_all => "No FNV_64 UDF lib"
@@ -43,20 +44,18 @@ else {
    plan tests => 7;
 }
 
-$sb->create_dbs($master_dbh, [qw(test)]);
-
 # ############################################################################
 # First test the the FNV function works in MySQL and gives the correct results.
 # ############################################################################
 
-($row) = $master_dbh->selectrow_array("select fnv_64(1)");
+($row) = $source_dbh->selectrow_array("select fnv_64(1)");
 is(
    $row,
    "-6320923009900088257",
    "FNV_64(1)"
 );
 
-($row) = $master_dbh->selectrow_array("select fnv_64('hello, world')");
+($row) = $source_dbh->selectrow_array("select fnv_64('hello, world')");
 is(
    $row,
    "6062351191941526764",
@@ -108,6 +107,7 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$source_dbh->do('DROP FUNCTION IF EXISTS fnv_64');
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

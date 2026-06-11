@@ -1,14 +1,14 @@
 -- Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
--- 
+--
 -- This program is free software; you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation; version 2 of the License.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 -- GNU General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
@@ -29,7 +29,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE statement_performance_analyzer (
              Create a report of the statements running on the server.
 
              The views are calculated based on the overall and/or delta activity.
-             
+
              Requires the SUPER privilege for "SET sql_log_bin = 0;".
 
              Parameters
@@ -62,7 +62,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE statement_performance_analyzer (
              in_table (VARCHAR(129)):
                The table argument used for some actions. Use the format ''db1.t1'' or ''t1'' without using any backticks (`)
                for quoting. Periods (.) are not supported in the database and table names.
-               
+
                The meaning of the table for each action supporting the argument is:
 
                  * snapshot      The snapshot is created based on the specified table. Set to NULL or NOW() to use
@@ -164,10 +164,10 @@ CREATE DEFINER='root'@'localhost' PROCEDURE statement_performance_analyzer (
              To create an overall report of the 95th percentile queries and the top 10 queries with full table scans:
 
              mysql> CALL sys.statement_performance_analyzer(''snapshot'', NULL, NULL);
-             Query OK, 0 rows affected (0.01 sec)                                   
+             Query OK, 0 rows affected (0.01 sec)
 
              mysql> SET @sys.statement_performance_analyzer.limit = 10;
-             Query OK, 0 rows affected (0.00 sec)          
+             Query OK, 0 rows affected (0.00 sec)
 
              mysql> CALL sys.statement_performance_analyzer(''overall'', NULL, ''with_runtimes_in_95th_percentile,with_full_table_scans'');
              +-----------------------------------------+
@@ -363,7 +363,7 @@ BEGIN
                 SIGNAL SQLSTATE '45000'
                    SET MESSAGE_TEXT = v_error_msg;
             END IF;
-            
+
             IF (in_action = 'delta' AND v_tmp_digests_table_exists <> 'TEMPORARY') THEN
                 SIGNAL SQLSTATE '45000'
                    SET MESSAGE_TEXT = 'An existing snapshot generated with the statement_performance_analyzer() must exist.';
@@ -390,7 +390,7 @@ BEGIN
             END IF;
 
         WHEN in_action = 'cleanup' THEN
-            -- doesn't use any of the arguments 
+            -- doesn't use any of the arguments
             DO (SELECT 1);
         ELSE
             SIGNAL SQLSTATE '45000'
@@ -529,7 +529,7 @@ SELECT `d_end`.`SCHEMA_NAME`,
             ) ENGINE=InnoDB;
 
             SET v_sql = CONCAT('INSERT INTO tmp_digest_avg_latency_distribution1
-SELECT COUNT(*) cnt, 
+SELECT COUNT(*) cnt,
        ROUND(avg_timer_wait/1000000) AS avg_us
   FROM ', v_digests_table, '
  GROUP BY avg_us');

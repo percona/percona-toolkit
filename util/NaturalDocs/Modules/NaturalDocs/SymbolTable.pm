@@ -28,7 +28,7 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright © 2003-2010 Greg Valure
+# This file is part of Natural Docs, which is Copyright Â© 2003-2010 Greg Valure
 # Natural Docs is licensed under version 3 of the GNU Affero General Public License (AGPL)
 # Refer to License.txt for the complete details
 
@@ -1475,7 +1475,7 @@ sub OnTargetSymbolChange #(referenceString)
 #   Removes a symbol definition from the table.  It will call <OnInterpretationChange()> for all references that have it as their
 #   current interpretation.
 #
-#   External code should not attempt to delete symbols using this function.  Instead it should call <WatchFileFoChanges()>,
+#   External code should not attempt to delete symbols using this function.  Instead it should call <WatchFileForChanges()>,
 #   reparse the file, and call <AnalyzeChanges()>.
 #
 #   Parameters:

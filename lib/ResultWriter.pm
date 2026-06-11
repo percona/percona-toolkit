@@ -1,4 +1,4 @@
-# This program is copyright 2013 Percona Ireland Ltd.
+# This program is copyright 2013-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # ResultWriter package
 # ###########################################################################
@@ -128,10 +127,10 @@ sub save {
    }
    else {
       # Save rows, if any (i.e. if it's a SELECT statement).
-      # *except* if it's a SELECT...INTO (issue lp:1421781) 
+      # *except* if it's a SELECT...INTO (issue lp:1421781)
       my $rows;
       if ( my $sth = $results->{sth} ) {
-         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
+         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i
             &&  $event->{arg} !~ /INTO\s*(?:OUTFILE|DUMPFILE|@)/ ) {
             $rows = $sth->fetchall_arrayref();
          }

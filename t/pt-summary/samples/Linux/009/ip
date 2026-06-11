@@ -1,0 +1,60 @@
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    RX:    bytes   packets errors dropped  missed   mcast           
+    116015626073 172946768      0       0       0       0 
+    TX:    bytes   packets errors dropped carrier collsns           
+    116015626073 172946768      0       0       0       0 
+2: enp46s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc fq_codel state DOWN mode DEFAULT group default qlen 1000
+    link/ether d4:93:90:24:37:9a brd ff:ff:ff:ff:ff:ff
+    RX:  bytes packets errors dropped  missed   mcast           
+             0       0      0       0       0       0 
+    TX:  bytes packets errors dropped carrier collsns           
+             0       0      0       0       0       0 
+3: wlp0s20f3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DORMANT group default qlen 1000
+    link/ether 74:04:f1:a1:0a:4a brd ff:ff:ff:ff:ff:ff
+    RX:    bytes   packets errors dropped  missed   mcast           
+    139034106833 148742623      0       0       0       0 
+    TX:    bytes   packets errors dropped carrier collsns           
+     28592926142  77005550      0       0       0       0 
+4: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default 
+    link/ether 02:42:b8:3a:02:a2 brd ff:ff:ff:ff:ff:ff
+    RX:   bytes  packets errors dropped  missed   mcast           
+    11881867716 11928012      0       0       0       0 
+    TX:   bytes  packets errors dropped carrier collsns           
+    31887104008 14000997      0       0       0       0 
+5: br-a7c7f1777df1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default 
+    link/ether 02:42:50:6b:d9:e7 brd ff:ff:ff:ff:ff:ff
+    RX:  bytes packets errors dropped  missed   mcast           
+             0       0      0       0       0       0 
+    TX:  bytes packets errors dropped carrier collsns           
+             0       0      0       0       0       0 
+605: veth0655c9f@if604: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default 
+    link/ether fe:18:1e:af:9f:6b brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    RX:  bytes packets errors dropped  missed   mcast           
+    1170127765 1046851      0       0       0       0 
+    TX:  bytes packets errors dropped carrier collsns           
+    2539354604 1277512      0       0       0       0 
+607: vethd189986@if606: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-79118f7d5a92 state UP mode DEFAULT group default 
+    link/ether 5e:65:38:50:f8:1a brd ff:ff:ff:ff:ff:ff link-netnsid 2
+    RX:  bytes packets errors dropped  missed   mcast           
+      52568948  265022      0       0       0       0 
+    TX:  bytes packets errors dropped carrier collsns           
+     636234838  308474      0       0       0       0 
+609: veth2655c84@if608: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-79118f7d5a92 state UP mode DEFAULT group default 
+    link/ether be:d1:21:fd:d2:fb brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    RX:  bytes packets errors dropped  missed   mcast           
+     547370949  260278      0       0       0       0 
+    TX:  bytes packets errors dropped carrier collsns           
+      51931644  244548      0       0       0       0 
+613: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/none 
+    RX:  bytes packets errors dropped  missed   mcast           
+      17516184   36901      0       0       0       0 
+    TX:  bytes packets errors dropped carrier collsns           
+       6867412   35663      0       0       0       0 
+358: br-79118f7d5a92: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default 
+    link/ether 02:42:3c:6b:97:eb brd ff:ff:ff:ff:ff:ff
+    RX:  bytes packets errors dropped  missed   mcast           
+      16088026  236947      0       0       0       0 
+    TX:  bytes packets errors dropped carrier collsns           
+     792746302  362214      0       0       0       0 

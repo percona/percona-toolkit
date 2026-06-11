@@ -34,18 +34,18 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW schema_tables_with_full_table_scans (
   object_schema,
   object_name,
   rows_full_scanned,
   latency
 ) AS
-SELECT object_schema, 
+SELECT object_schema,
        object_name,
        count_read AS rows_full_scanned,
        sys.format_time(sum_timer_wait) AS latency
-  FROM performance_schema.table_io_waits_summary_by_index_usage 
+  FROM performance_schema.table_io_waits_summary_by_index_usage
  WHERE index_name IS NULL
    AND count_read > 0
  ORDER BY count_read DESC;

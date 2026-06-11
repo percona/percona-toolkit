@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Ireland Ltd.
+# This program is copyright 2009-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # SchemaIterator package
 # ###########################################################################
@@ -270,7 +269,7 @@ sub _iterate_files {
       }
       elsif ($self->{db} && $chunk =~ m/CREATE TABLE/) {
          if ($chunk =~ m/DROP VIEW IF EXISTS/) {
-            # Tables that are actually views have this DROP statment in the
+            # Tables that are actually views have this DROP statement in the
             # chunk just before the CREATE TABLE.  We don't want views.
             PTDEBUG && _d('Table is a VIEW, skipping');
             next CHUNK;
@@ -462,10 +461,10 @@ sub table_is_allowed {
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
-      |slow_log    
+      |slow_log
    )$/x;
 
-   if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
+   if ( $filter->{'ignore-tables'}->{'*'}->{$tbl}
          || $filter->{'ignore-tables'}->{$db}->{$tbl}) {
       PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
       return 0;
@@ -478,7 +477,7 @@ sub table_is_allowed {
    }
 
    if ( $filter->{'tables'}
-        && (!$filter->{'tables'}->{'*'}->{$tbl} && !$filter->{'tables'}->{$db}->{$tbl}) ) { 
+        && (!$filter->{'tables'}->{'*'}->{$tbl} && !$filter->{'tables'}->{$db}->{$tbl}) ) {
       PTDEBUG && _d('Table', $tbl, 'is not in --tables list, ignoring');
       return 0;
    }
@@ -495,7 +494,7 @@ sub table_is_allowed {
    # then we'll get d1 tables when the user only wants d2 tables.  So when
    # a table passes allow filters, reaching this point, meaning it is allowed,
    # we make this final to check to see if it's allowed in any database (*)
-   # or allowed in the specific database that the user qualifed the table with.
+   # or allowed in the specific database that the user qualified the table with.
    # The first two checks are to prevent auto-vivifying the filters which will
    # cause bad results (see a similar comment in _make_filters()).
    if ( $filter->{'tables'}
@@ -527,7 +526,7 @@ sub engine_is_allowed {
    my $filter = $self->{filters};
 
    if ( $filter->{'ignore-engines'}->{$engine} ) {
-      PTDEBUG && _d('Engine', $engine, 'is in --ignore-databases list');
+      PTDEBUG && _d('Engine', $engine, 'is in --ignore-engines list');
       return 0;
    }
 

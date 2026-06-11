@@ -1,0 +1,15 @@
+DROP DATABASE IF EXISTS `test`;
+
+CREATE DATABASE `test`;
+
+CREATE TABLE `test`.`t1` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `f2` char(32) DEFAULT NULL,
+  `f3` ENUM('red','green','blue'),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `c` (`f2`)
+) ENGINE=InnoDB 
+AUTO_INCREMENT=0 
+DEFAULT CHARSET=utf8
+STATS_AUTO_RECALC = 0
+STATS_PERSISTENT = 1;

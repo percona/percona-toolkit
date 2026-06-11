@@ -20,14 +20,14 @@ DELIMITER $$
 CREATE DEFINER='root'@'localhost' FUNCTION extract_table_from_file_name (
         path VARCHAR(512)
     )
-    RETURNS VARCHAR(64) 
+    RETURNS VARCHAR(64)
     COMMENT '
              Description
              -----------
 
              Takes a raw file path, and extracts the table name from it.
 
-             Useful for when interacting with Performance Schema data 
+             Useful for when interacting with Performance Schema data
              concerning IO statistics, for example.
 
              Parameters

@@ -24,7 +24,7 @@ my $proclist =
          'Id'      => '4',
          'Info'    => undef,
          'User'    => 'system user',
-         'State'   => 'Waiting for master to send event',
+         'State'   => 'Waiting for source to send event',
          'Host'    => ''
       },
       {  'Time'    => '488',
@@ -119,7 +119,7 @@ is_deeply(
             'Id'      => '4',
             'Info'    => undef,
             'User'    => 'system user',
-            'State'   => 'Waiting for master to send event',
+            'State'   => 'Waiting for source to send event',
             'Host'    => ''
          },
          {  'Time'    => '488',

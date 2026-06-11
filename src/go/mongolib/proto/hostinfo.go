@@ -1,4 +1,19 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package proto
+
+import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Extra struct {
 	LibcVersion      string  `bson:"libcVersion"`
@@ -19,13 +34,13 @@ type Os struct {
 }
 
 type System struct {
-	CurrentTime string  `bson:"currentTime"`
-	Hostname    string  `bson:"hostname"`
-	MemSizeMB   float64 `bson:"memSizeMB"`
-	NumCores    float64 `bson:"numCores"`
-	NumaEnabled bool    `bson:"numaEnabled"`
-	CpuAddrSize float64 `bson:"cpuAddrSize"`
-	CpuArch     string  `bson:"cpuArch"`
+	CurrentTime primitive.DateTime `bson:"currentTime"`
+	Hostname    string             `bson:"hostname"`
+	MemSizeMB   float64            `bson:"memSizeMB"`
+	NumCores    float64            `bson:"numCores"`
+	NumaEnabled bool               `bson:"numaEnabled"`
+	CpuAddrSize float64            `bson:"cpuAddrSize"`
+	CpuArch     string             `bson:"cpuArch"`
 }
 
 // HostInfo has exported field for the 'hostInfo' command plus some other

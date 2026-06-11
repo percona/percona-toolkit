@@ -1,0 +1,480 @@
+Thread 3441765 (LWP 3441765):
+#0 0x00007f2763f18bcf in __GI___poll at poll.c:29:10
+#1 0x000055be68a34432 in Mysqld_socket_listener::listen_for_connection_event() at socket_connection.cc:1354:3
+#2 0x000055be68770708 in Connection_acceptor<Mysqld_socket_listener>::connection_event_loop() at connection_acceptor.h:64:75
+#3 0x00007f2763e29d90 in __libc_start_call_main at libc_start_call_main.h:58:16
+#4 0x00007f2763e29e40 in call_init at libc-start.c:128:20
+#5 0x000055be6859cfb5 in _start from /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld
+
+Thread 3441805 (LWP 3441805):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441806 (LWP 3441806):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441807 (LWP 3441807):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441808 (LWP 3441808):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441809 (LWP 3441809):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441810 (LWP 3441810):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441811 (LWP 3441811):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441812 (LWP 3441812):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441813 (LWP 3441813):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441814 (LWP 3441814):
+#0 0x00007f2763f1e88d in syscall at syscall.S:38
+#1 0x00007f2764a91279 in io_getevents from /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2 0x000055be69b962cb in LinuxAIOHandler::collect() at os0file.cc:2383:28
+#3 0x000055be69b96712 in LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) at os0file.cc:2531:3
+#4 0x000055be69b99874 in os_aio_linux_handler at os0file.cc:2581:3
+#5 0x000055be69e0f9cd in fil_aio_wait(unsigned long) at fil0fil.cc:7980:3
+#6 0x000055be69c47aa8 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#7 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#8 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#10 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441815 (LWP 3441815):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69d28abb in pc_sleep_if_needed at buf0flu.cc:2832:35
+#5 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441816 (LWP 3441816):
+#0 0x00007f2763ee57f8 in __GI___clock_nanosleep at clock_nanosleep.c:78:7
+#1 0x00007f2763eea677 in __GI___nanosleep at nanosleep.c:26:6
+#2 0x000055be69d2729d in void std::this_thread::sleep_for<long, std::ratio<1l, 1000l> >(std::chrono::duration<long, std::ratio<1l, 1000l> > const&) at this_thread_sleep.h:82:41
+#3 0x000055be69c480e6 in void Detached_thread::operator()<void (*)(unsigned long), unsigned long>(void (*&&)(unsigned long), unsigned long&&) at os0thread-create.h:196:13
+#4 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#5 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#6 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441817 (LWP 3441817):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69c447e0 in srv_monitor_thread() at srv0srv.cc:1969:12
+#5 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441818 (LWP 3441818):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69b32bac in log_checkpointer(log_t*) at log0chkp.cc:1025:37
+#5 0x000055be69b50bae in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441819 (LWP 3441819):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69b819eb in operator() at log0write.cc:2818:18
+#5 0x000055be69b50bae in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441820 (LWP 3441820):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69b80c5a in os_event_wait_for<log_flusher(log_t*)::<lambda(bool)> > at os0event.ic:95:7
+#5 0x000055be69b50bae in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441821 (LWP 3441821):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69b8139b in operator() at log0write.cc:2696:18
+#5 0x000055be69b50bae in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441822 (LWP 3441822):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69b804e3 in operator() at log0write.cc:2270:18
+#5 0x000055be69b50bae in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441823 (LWP 3441823):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69b47d0d in log_files_governor(log_t*) at log0files_governor.cc:1366:42
+#5 0x000055be69b50bae in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441828 (LWP 3441828):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69b2ccae in lock_wait_timeout_thread() at lock0wait.cc:1535:31
+#5 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441829 (LWP 3441829):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69c3b73d in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#5 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441830 (LWP 3441830):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93a41 in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9f096 in os_event::wait() at os0event.cc:186:7
+#3 0x000055be69d06dde in buf_resize_thread() at buf0buf.cc:2668:19
+#4 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#5 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#7 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441831 (LWP 3441831):
+#0 0x00007f2763ee57f8 in __GI___clock_nanosleep at clock_nanosleep.c:78:7
+#1 0x00007f2763eea677 in __GI___nanosleep at nanosleep.c:26:6
+#2 0x000055be69c451b5 in void std::this_thread::sleep_for<long, std::ratio<1l, 1l> >(std::chrono::duration<long, std::ratio<1l, 1l> > const&) at this_thread_sleep.h:82:41
+#3 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#4 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#5 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#6 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441832 (LWP 3441832):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69dd5487 in std::atomic<srv_shutdown_t>::load(std::memory_order) const at atomic:285:15
+#5 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441833 (LWP 3441833):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69ca525c in ib_wqueue_timedwait(ib_wqueue_t*, std::chrono::duration<long, std::ratio<1l, 1000000l> >) at ut0wqueue.cc:130:5
+#5 0x000055be69e57c9a in fts_optimize_thread at fts0opt.cc:2850:57
+#6 0x000055be69e4f42e in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#7 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#8 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#9 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441834 (LWP 3441834):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be6a257885 in xpl::Cond::timed_wait(xpl::Mutex&, unsigned long long) at cond.cc:43:1
+#3 0x000055be6a27e5cd in is_timeout at my_thread.h:60:12
+#4 0x000055be6a27fb9c in ngs::Scheduler_dynamic::worker() at scheduler.cc:243:9
+#5 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#6 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#7 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441835 (LWP 3441835):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be6a257885 in xpl::Cond::timed_wait(xpl::Mutex&, unsigned long long) at cond.cc:43:1
+#3 0x000055be6a27e5cd in is_timeout at my_thread.h:60:12
+#4 0x000055be6a27fb9c in ngs::Scheduler_dynamic::worker() at scheduler.cc:243:9
+#5 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#6 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#7 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441836 (LWP 3441836):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93a41 in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be6a26affc in std::__shared_ptr<xpl::Broker_context, (__gnu_cxx::_Lock_policy)2>::get() const at shared_ptr_base.h:1296:16
+#3 0x000055be6a26b791 in xpl::Global_status_variables::instance() at xpl_global_status_variables.h:35:36
+#4 0x000055be6a2098b2 in std::atomic<ngs::Server::State>::load(std::memory_order) const at atomic:285:15
+#5 0x000055be6a20a494 in std::__shared_count<(__gnu_cxx::_Lock_policy)2>::~__shared_count() at shared_ptr_base.h:704:6
+#6 0x000055be6a27fe95 in std::_Function_base::~_Function_base() at std_function.h:243:11
+#7 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#8 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#9 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441874 (LWP 3441874):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93a41 in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9f096 in os_event::wait() at os0event.cc:186:7
+#3 0x000055be69d1f343 in buf_dump_thread() at buf0dump.cc:688:5
+#4 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#5 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#7 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441875 (LWP 3441875):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69d6e459 in Clone_persist_gtid::periodic_write() at os0event.h:121:32
+#5 0x000055be69d6ae4e in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441876 (LWP 3441876):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9fd1a in os_event::timed_wait(timespec const*) at os0event.cc:315:31
+#3 0x000055be69b9feb9 in os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) at os0event.cc:493:12
+#4 0x000055be69c46523 in srv_purge_coordinator_suspend at srv0srv.cc:3356:33
+#5 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#6 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441877 (LWP 3441877):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93a41 in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9f096 in os_event::wait() at os0event.cc:186:7
+#3 0x000055be69c45a9c in srv_worker_thread() at srv0srv.cc:3214:35
+#4 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#5 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#7 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441878 (LWP 3441878):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93a41 in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9f096 in os_event::wait() at os0event.cc:186:7
+#3 0x000055be69c45a9c in srv_worker_thread() at srv0srv.cc:3214:35
+#4 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#5 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#7 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441879 (LWP 3441879):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93a41 in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69b9f096 in os_event::wait() at os0event.cc:186:7
+#3 0x000055be69c45a9c in srv_worker_thread() at srv0srv.cc:3214:35
+#4 0x000055be69b662fa in std::__shared_ptr<std::__future_base::_State_baseV2, (__gnu_cxx::_Lock_policy)2>::operator bool() const at shared_ptr_base.h:1300:16
+#5 0x00007f27642dc253 in ?? from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#7 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441880 (LWP 3441880):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93a41 in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be68c3ee21 in inline_mysql_cond_wait at mysql_cond.h:205:10
+#3 0x000055be68c3f92f in Event_queue::get_top_for_execution_if_time(THD*, Event_queue_element_for_exec**) at event_queue.cc:559:7
+#4 0x000055be68c41e5b in Event_scheduler::run(THD*) at event_scheduler.cc:577:5
+#5 0x000055be68c42517 in event_scheduler_thread at event_scheduler.cc:288:16
+#6 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441881 (LWP 3441881):
+#0 0x00007f2763e4321a in __GI___sigtimedwait at sigtimedwait.c:61:28
+#1 0x000055be6875631b in signal_hand at mysqld.cc:3833:54
+#2 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#3 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#4 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441883 (LWP 3441883):
+#0 0x00007f2763f25e2e in epoll_wait at epoll_wait.c:30:10
+#1 0x000055be6a2cc925 in epoll_dispatch at epoll.c:467:2
+#2 0x000055be6a2c2238 in event_base_loop at event.c:2000:6
+#3 0x000055be6a2098b2 in std::atomic<ngs::Server::State>::load(std::memory_order) const at atomic:285:15
+#4 0x000055be6a20a494 in std::__shared_count<(__gnu_cxx::_Lock_policy)2>::~__shared_count() at shared_ptr_base.h:704:6
+#5 0x000055be6a27fe95 in std::_Function_base::~_Function_base() at std_function.h:243:11
+#6 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#7 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#8 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441885 (LWP 3441885):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93a41 in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be69608553 in compress_gtid_table at rpl_gtid_persist.cc:775:14
+#3 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#4 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#5 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3441888 (LWP 3441888):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93e9b in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be695b8173 in MYSQL_BIN_LOG::wait_for_update(std::chrono::duration<long, std::ratio<1l, 1000000000l> > const&) at binlog.cc:7967:1
+#3 0x000055be6963f417 in Binlog_sender::wait_with_heartbeat(unsigned long long) at rpl_binlog_sender.cc:823:32
+#4 0x000055be6963f7e9 in Binlog_sender::get_binlog_end_pos(Basic_binlog_file_reader<Binlog_ifile, Binlog_event_data_istream, Binlog_event_object_istream, Binlog_sender::Event_allocator>&) at rpl_binlog_sender.cc:539:5
+#5 0x000055be69640cbb in Binlog_sender::send_binlog(Basic_binlog_file_reader<Binlog_ifile, Binlog_event_data_istream, Binlog_event_object_istream, Binlog_sender::Event_allocator>&, unsigned long long) at rpl_binlog_sender.cc:510:46
+#6 0x000055be69641cb6 in Binlog_sender::run() at rpl_binlog_sender.cc:413:5
+#7 0x000055be69638f58 in Binlog_sender::~Binlog_sender() at rpl_binlog_sender.h:57:3
+#8 0x000055be6963ba5e in com_binlog_dump(THD*, char*, unsigned long) at rpl_source.cc:927:21
+#9 0x000055be688bdbe6 in dispatch_command(THD*, COM_DATA const*, enum_server_command) at sql_parse.cc:2349:30
+#10 0x000055be688bfd92 in do_command(THD*) at sql_parse.cc:1505:17
+#11 0x000055be68a2e000 in handle_connection at connection_handler_per_thread.cc:308:9
+#12 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#13 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#14 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3442446 (LWP 3442446):
+#0 0x00007f2763e91117 in __futex_abstimed_wait_common64 at futex-internal.c:57:12
+#1 0x00007f2763e93a41 in __pthread_cond_wait_common at pthread_cond_wait.c:506:4
+#2 0x000055be68a2dba7 in std::__atomic_base<int>::load(std::memory_order) const at atomic_base.h:481:24
+#3 0x000055be68a2de4f in handle_connection at connection_handler_per_thread.cc:340:77
+#4 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#5 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#6 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+Thread 3772082 (LWP 3772082):
+#0 0x000055be688cfe40 in Optimize_table_order::calculate_scan_cost(JOIN_TAB const*, unsigned int, Key_use const*, double, bool, bool, double*, Opt_trace_object*) at sql_planner.cc:774:42
+#1 0x000055be688d087d in Optimize_table_order::best_access_path(JOIN_TAB*, unsigned long, unsigned int, bool, double, POSITION*) at sql_planner.cc:1154:38
+#2 0x000055be688d6417 in Server_cost_constants::row_evaluate_cost() const at opt_costconstants.h:80:45
+#3 0x000055be688d6ae2 in Optimize_table_order::greedy_search(unsigned long) at sql_planner.cc:2353:5
+#4 0x000055be688d7c95 in Optimize_table_order::choose_table_order() at sql_planner.cc:2028:5
+#5 0x000055be688acd7c in JOIN::make_join_plan() at sql_optimizer.cc:5381:3
+#6 0x000055be688af1dc in JOIN::optimize(bool) at sql_optimizer.cc:716:3
+#7 0x000055be68917b81 in Query_block::optimize(THD*, bool) at sql_select.cc:1814:21
+#8 0x000055be6899b9b9 in Query_expression::optimize(THD*, TABLE*, bool, bool) at sql_union.cc:1007:30
+#9 0x000055be68916954 in Sql_cmd_dml::execute_inner(THD*) at sql_select.cc:763:3
+#10 0x000055be68916019 in Sql_cmd_dml::execute(THD*) at sql_select.cc:578:20
+#11 0x000055be688b87f7 in mysql_execute_command(THD*, bool) at sql_parse.cc:3535:11
+#12 0x000055be688eaec0 in Prepared_statement::execute(THD*, String*, bool) at sql_prepare.cc:3646:33
+#13 0x000055be688efbad in Prepared_statement::execute_loop(THD*, String*, bool) at sql_prepare.cc:3058:18
+#14 0x000055be688f0224 in mysqld_stmt_execute(THD*, Prepared_statement*, bool, unsigned long, PS_PARAM*) at sql_prepare.cc:1914:23
+#15 0x000055be688bdced in dispatch_command(THD*, COM_DATA const*, enum_server_command) at sql_parse.cc:2026:36
+#16 0x000055be688bfd92 in do_command(THD*) at sql_parse.cc:1505:17
+#17 0x000055be68a2e000 in handle_connection at connection_handler_per_thread.cc:308:9
+#18 0x000055be69ee42e9 in pfs_spawn_thread at pfs.cc:2990:1
+#19 0x00007f2763e94ac3 in start_thread at pthread_create.c:442:8
+#20 0x00007f2763f26850 in __clone3 at clone3.S:83
+
+TS 558601424.1705596353 2024-01-18 19:45:53

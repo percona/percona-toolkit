@@ -18,35 +18,37 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 2;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
 
 # #############################################################################
 # Issue 218: Two NULL column values don't compare properly w/ Stream/GroupBy
 # #############################################################################
-$sb->create_dbs($master_dbh, [qw(issue218)]);
-$sb->use('master', '-e "CREATE TABLE issue218.t1 (i INT)"');
-$sb->use('master', '-e "INSERT INTO issue218.t1 VALUES (NULL)"');
-qx($trunk/bin/pt-table-sync --no-check-slave --print --database issue218 h=127.1,P=12345,u=msandbox,p=msandbox P=12346);
+$sb->create_dbs($source_dbh, [qw(issue218)]);
+$sb->use('source', '-e "CREATE TABLE issue218.t1 (i INT)"');
+$sb->use('source', '-e "INSERT INTO issue218.t1 VALUES (NULL)"');
+$sb->wait_for_replicas();
+
+qx($trunk/bin/pt-table-sync --no-check-replica --print --database issue218 h=127.1,P=12345,u=msandbox,p=msandbox P=12346);
 ok(!$?, 'Issue 218: NULL values compare as equal');
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

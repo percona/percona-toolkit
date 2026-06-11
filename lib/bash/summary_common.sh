@@ -1,4 +1,4 @@
-# This program is copyright 2011-2012 Percona Inc.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # summary_common package
 # ###########################################################################
@@ -81,10 +80,10 @@ get_oom_of_pid () {
    if [ -n "${pid}" -a -e /proc/cpuinfo ]; then
       if [ -s "/proc/$pid/oom_score_adj" ]; then
          oom_adj=$(cat "/proc/$pid/oom_score_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_score_adj"
+         _d "For $pid, the oom value is $oom_adj, retrieved from oom_score_adj"
       else
          oom_adj=$(cat "/proc/$pid/oom_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_adj"
+         _d "For $pid, the oom value is $oom_adj, retrieved from oom_adj"
       fi
    fi
 

@@ -80,7 +80,7 @@ in case of |pt| `this can be done <https://www.percona.com/doc/percona-toolkit/L
   # Disable Version Check for all tools:
   no-version-check
 
-In case of |pxb| this can be done `in its configuration file <https://www.percona.com/doc/percona-xtrabackup/2.4/using_xtrabackup/configuring.htm>`_ in a similar way::
+In case of |pxb| this can be done `in its configuration file <https://docs.percona.com/percona-xtrabackup/2.4/using_xtrabackup/configuring.html>`_ in a similar way::
 
   [xtrabackup]
   no-version-check
@@ -99,7 +99,7 @@ of environments running Percona Software and it is good choice for majority of
 the users.
 
 Why not rely on Operating System's built in functionality for software updates?
------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 In many environments the Operating Systems repositories may not carry the
 latest version of software and newer versions of software often installed

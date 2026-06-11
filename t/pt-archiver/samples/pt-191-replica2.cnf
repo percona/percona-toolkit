@@ -1,0 +1,4 @@
+[client]
+ssl-ca=/tmp/12347/data/ca.pem
+ssl-cert=/tmp/12347/data/client-cert.pem
+ssl-key=/tmp/12347/data/client-key.pem

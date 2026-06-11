@@ -1,0 +1,57 @@
+// This program is copyright 2023-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
+package regex
+
+import (
+	"testing"
+	"time"
+)
+
+func TestDateAfter(t *testing.T) {
+	tests := []struct {
+		input    string
+		format   string
+		expected string
+	}{
+		{
+			input:    "2006-01-02T15:04:05Z",
+			format:   time.RFC3339,
+			expected: "(^2006-01-02|^2006-01-0[3-9]|^2006-01-[1-9][0-9]|^2006-0[2-9]-[0-9][0-9]|^2006-[1-9][0-9]-[0-9][0-9]|^200[7-9]-[0-9][0-9]-[0-9][0-9]|^20[1-9][0-9]-[0-9][0-9]-[0-9][0-9]|^060102|^06010[3-9]|^0601[1-9][0-9]|^060[2-9][0-9][0-9]|^06[1-9][0-9][0-9][0-9]|^0[7-9][0-9][0-9][0-9][0-9]|^[1-9][0-9][0-9][0-9][0-9][0-9])",
+		},
+		{
+			input:    "2006-01-02",
+			format:   "2006-01-02",
+			expected: "(^2006-01-02|^2006-01-0[3-9]|^2006-01-[1-9][0-9]|^2006-0[2-9]-[0-9][0-9]|^2006-[1-9][0-9]-[0-9][0-9]|^200[7-9]-[0-9][0-9]-[0-9][0-9]|^20[1-9][0-9]-[0-9][0-9]-[0-9][0-9]|^060102|^06010[3-9]|^0601[1-9][0-9]|^060[2-9][0-9][0-9]|^06[1-9][0-9][0-9][0-9]|^0[7-9][0-9][0-9][0-9][0-9]|^[1-9][0-9][0-9][0-9][0-9][0-9])",
+		},
+		{
+			input:    "060102",
+			format:   "060102",
+			expected: "(^2006-01-02|^2006-01-0[3-9]|^2006-01-[1-9][0-9]|^2006-0[2-9]-[0-9][0-9]|^2006-[1-9][0-9]-[0-9][0-9]|^200[7-9]-[0-9][0-9]-[0-9][0-9]|^20[1-9][0-9]-[0-9][0-9]-[0-9][0-9]|^060102|^06010[3-9]|^0601[1-9][0-9]|^060[2-9][0-9][0-9]|^06[1-9][0-9][0-9][0-9]|^0[7-9][0-9][0-9][0-9][0-9]|^[1-9][0-9][0-9][0-9][0-9][0-9])",
+		},
+		{
+			input:    "2022-01-22",
+			format:   "2006-01-02",
+			expected: "(^2022-01-22|^2022-01-2[3-9]|^2022-01-[3-9][0-9]|^2022-0[2-9]-[0-9][0-9]|^2022-[1-9][0-9]-[0-9][0-9]|^202[3-9]-[0-9][0-9]-[0-9][0-9]|^20[3-9][0-9]-[0-9][0-9]-[0-9][0-9]|^220122|^22012[3-9]|^2201[3-9][0-9]|^220[2-9][0-9][0-9]|^22[1-9][0-9][0-9][0-9]|^2[3-9][0-9][0-9][0-9][0-9]|^[3-9][0-9][0-9][0-9][0-9][0-9])",
+		},
+	}
+
+	for _, test := range tests {
+		d, _ := time.Parse(test.format, test.input)
+		s := BetweenDateRegex(&d, false)
+		if s != test.expected {
+			t.Log("wrong date regex:", s)
+			t.Fail()
+		}
+	}
+}

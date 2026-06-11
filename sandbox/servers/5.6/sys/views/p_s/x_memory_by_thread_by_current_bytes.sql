@@ -17,8 +17,8 @@
 -- View: x$memory_by_thread_by_current_bytes
 --
 -- Summarizes memory use by user
--- 
--- When the user found is NULL, it is assumed to be a "background" thread.  
+--
+-- When the user found is NULL, it is assumed to be a "background" thread.
 --
 -- mysql> select * from sys.x$memory_by_thread_by_current_bytes limit 5;
 -- +-----------+----------------+--------------------+-------------------+-------------------+-------------------+-----------------+
@@ -35,7 +35,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$memory_by_thread_by_current_bytes (
   thread_id,
   user,
@@ -46,8 +46,8 @@ VIEW x$memory_by_thread_by_current_bytes (
   total_allocated
 ) AS
 SELECT t.thread_id,
-       IF(t.name = 'thread/sql/one_connection', 
-          CONCAT(t.processlist_user, '@', t.processlist_host), 
+       IF(t.name = 'thread/sql/one_connection',
+          CONCAT(t.processlist_user, '@', t.processlist_host),
           REPLACE(t.name, 'thread/', '')) user,
        SUM(mt.current_count_used) AS current_count_used,
        SUM(mt.current_number_of_bytes_used) AS current_allocated,
@@ -56,7 +56,7 @@ SELECT t.thread_id,
        SUM(mt.sum_number_of_bytes_alloc) AS total_allocated
   FROM performance_schema.memory_summary_by_thread_by_event_name AS mt
   JOIN performance_schema.threads AS t USING (thread_id)
- GROUP BY thread_id, IF(t.name = 'thread/sql/one_connection', 
-          CONCAT(t.processlist_user, '@', t.processlist_host), 
+ GROUP BY thread_id, IF(t.name = 'thread/sql/one_connection',
+          CONCAT(t.processlist_user, '@', t.processlist_host),
           REPLACE(t.name, 'thread/', ''))
  ORDER BY SUM(mt.current_number_of_bytes_used) DESC;

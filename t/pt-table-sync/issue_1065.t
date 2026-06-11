@@ -17,33 +17,33 @@ require "$trunk/bin/pt-table-sync";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave1_dbh = $sb->get_dbh_for('slave1'); 
-my $slave2_dbh = $sb->get_dbh_for('slave2'); 
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica1_dbh = $sb->get_dbh_for('replica1'); 
+my $replica2_dbh = $sb->get_dbh_for('replica2'); 
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave1_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave1';
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica1';
 }
-elsif ( !$slave1_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave2';
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica2';
 }
 else {
    plan tests => 2;
 }
 
 my $output;
-my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
+my @args = ('--sync-to-source', 'h=127.1,P=12346,u=msandbox,p=msandbox',
             qw(-t test.it1 --print --execute --no-check-triggers));
 
 # #############################################################################
 # Issue 1065: mk-table-sync --algorithm seems to be case-sensitive
 # #############################################################################
-$sb->load_file('master', "t/pt-table-sync/samples/simple-tbls.sql");
+$sb->load_file('source', "t/pt-table-sync/samples/simple-tbls.sql");
 
-$slave1_dbh->do("delete from test.it1 where id=1 limit 1");
+$replica1_dbh->do("delete from test.it1 where id=1 limit 1");
 
 $output = output(
    sub { pt_table_sync::main(@args, qw(--algo chunk)) },
@@ -57,6 +57,6 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -18,20 +18,20 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 2;
 }
 
 $dbh->do("DROP TABLE IF EXISTS percona.checksums");
-$sb->load_file('master', 't/pt-table-checksum/samples/pt-136.sql');
-$sb->wait_for_slaves();
-my $master_dsn = $sb->dsn_for('master');
-my @args       = ($master_dsn, '--databases', 'db1', '--no-replicate-check'); 
+$sb->load_file('source', 't/pt-table-checksum/samples/pt-136.sql');
+$sb->wait_for_replicas();
+my $source_dsn = $sb->dsn_for('source');
+my @args       = ($source_dsn, '--databases', 'db1', '--no-replicate-check'); 
 my $output;
 my $exit_status;
 

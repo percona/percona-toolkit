@@ -32,8 +32,8 @@ require "$trunk/bin/pt-online-schema-change";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
-my $dbh = $sb->get_dbh_for('master');
-my $dsn = $sb->dsn_for("master");
+my $dbh = $sb->get_dbh_for('source');
+my $dsn = $sb->dsn_for("source");
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
@@ -42,7 +42,7 @@ my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1574.sql");
+$sb->load_file('source', "t/pt-online-schema-change/samples/pt-1574.sql");
 
 ($output, $exit_status) = full_output(
     sub { pt_online_schema_change::main(@args, "$dsn,D=test,t=t1",
@@ -54,7 +54,6 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/pt-1574.sql");
 );
 
 my $sql_mode = $dbh->selectcol_arrayref('SELECT @@sql_mode');
-warn Data::Dumper::Dumper($sql_mode);
 
 isnt(
     $exit_status,
@@ -76,11 +75,12 @@ like(
     },
     stderr => 1,
 );
+diag($output);
 
 is(
     $exit_status,
     0,
-    "PT-1574, PT-1590 Exit status 0 with null fields",
+    "PT-1574, PT-1590 Exit status 0 with null fields, got $exit_status",
 );
 
 like(

@@ -15,6 +15,7 @@ use Test::More;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
+require VersionParser;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -23,34 +24,34 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
-my $target_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
+my $target_dbh = $sb->get_dbh_for('source');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( !$target_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master (target)';
+   plan skip_all => 'Cannot connect to sandbox source (target)';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 
 my $output;
-my $master_dsn = $sb->dsn_for('master');
-my $master_cnf = $sb->cnf_for('master');
-my $slave_dsn  = $sb->dsn_for('slave1');
+my $source_dsn = $sb->dsn_for('source');
+my $source_cnf = $sb->cnf_for('source');
+my $replica_dsn  = $sb->dsn_for('replica1');
 
 # Create the --log-dsn table.
-$sb->create_dbs($master_dbh, [qw(kill_test)]);
+$sb->create_dbs($source_dbh, [qw(kill_test)]);
 my $log_table = "kill_test.log_table";
 my $log_dsn   = "D=kill_test,t=log_table";
 my $log_sql   = OptionParser->read_para_after(
    "$trunk/bin/pt-kill", qr/MAGIC_create_log_table/);
 $log_sql =~ s/kill_log/$log_table/;
-$master_dbh->do($log_sql);
-$sb->wait_for_slaves();
+$source_dbh->do($log_sql);
+$sb->wait_for_replicas();
 
 # Create the target db for --match-db.
 my $target_db = "x$PID";
@@ -64,7 +65,7 @@ sub setup_target {
       eval {
          $target_dbh->disconnect();
       };
-      $target_dbh = $sb->get_dbh_for('master');
+      $target_dbh = $sb->get_dbh_for('source');
    }
    $target_dbh->do("USE $target_db");
 }
@@ -79,7 +80,7 @@ foreach my $test (
    [q/h=127.1,P=12345,u=msandbox,p=msandbox,D=kill_test/, 't'],
 ) {
    eval {
-      pt_kill::main($master_dsn, qw(--kill --run-time 1 --interval 1),
+      pt_kill::main($source_dsn, qw(--kill --run-time 1 --interval 1),
          "--match-db", $target_db,
          "--log-dsn", $test->[0],
       )
@@ -97,9 +98,9 @@ foreach my $test (
 
 eval {
    setup_target();
-   pt_kill::main($master_dsn, qw(--kill --run-time 1 --interval 1),
+   pt_kill::main($source_dsn, qw(--kill --run-time 1 --interval 1),
       "--match-db", $target_db,
-      "--log-dsn", "$master_dsn,$log_dsn"
+      "--log-dsn", "$source_dsn,$log_dsn"
    )
 };
 
@@ -128,7 +129,7 @@ is(
 #      user => 'msandbox'
 #   }
 # ];
-my $rows = $master_dbh->selectall_arrayref(
+my $rows = $source_dbh->selectall_arrayref(
    "SELECT * FROM $log_table", { Slice =>{} });
 
 is(
@@ -157,7 +158,7 @@ is(
 
 # Get the current ts in MySQL's format.
 my $current_ts = Transformers::ts(time());
-($current_ts) = $master_dbh->selectrow_array("SELECT TIMESTAMP('$current_ts')");
+($current_ts) = $source_dbh->selectrow_array("SELECT TIMESTAMP('$current_ts')");
 
 # Chop off the minutes & seconds. If the rest of the date is right,
 # this is unlikely to be broken.
@@ -194,10 +195,10 @@ is_deeply(
 
 eval {
    setup_target();
-   pt_kill::main('-F', $master_cnf, qw(--kill --run-time 1 --interval 1),
+   pt_kill::main('-F', $source_cnf, qw(--kill --run-time 1 --interval 1),
       "--create-log-table",
       "--match-info", 'select sleep\(4\)',
-      "--log-dsn", "$master_dsn,$log_dsn",
+      "--log-dsn", "$source_dsn,$log_dsn",
    )
 };
 
@@ -207,15 +208,15 @@ is(
    "--log-dsn --create-log-table and the table exists, no error"
 );
 
-$master_dbh->do("DROP TABLE IF EXISTS $log_table");
-$sb->wait_for_slaves();
+$source_dbh->do("DROP TABLE IF EXISTS $log_table");
+$sb->wait_for_replicas();
 
 eval {
    setup_target();
-   pt_kill::main('-F', $master_cnf, qw(--kill --run-time 1 --interval 1),
+   pt_kill::main('-F', $source_cnf, qw(--kill --run-time 1 --interval 1),
       "--create-log-table",
       "--match-info", 'select sleep\(4\)',
-      "--log-dsn", "$master_dsn,$log_dsn",
+      "--log-dsn", "$source_dsn,$log_dsn",
    )
 };
 
@@ -225,14 +226,14 @@ is(
    "--log-dsn --create-log-table and the table doesn't exist, no error"
 );
 
-$master_dbh->do("DROP TABLE IF EXISTS $log_table");
-$sb->wait_for_slaves();
+$source_dbh->do("DROP TABLE IF EXISTS $log_table");
+$sb->wait_for_replicas();
 
 eval {
    setup_target();
-   pt_kill::main('-F', $master_cnf, qw(--kill --run-time 1 --interval 1),
+   pt_kill::main('-F', $source_cnf, qw(--kill --run-time 1 --interval 1),
       "--match-info", 'select sleep\(4\)',
-      "--log-dsn", "$master_dsn,$log_dsn",
+      "--log-dsn", "$source_dsn,$log_dsn",
    )
 };
 
@@ -243,8 +244,8 @@ like(
 );
 
 # Re-create the log table for the next tests.
-$master_dbh->do($log_sql);
-$sb->wait_for_slaves();
+$source_dbh->do($log_sql);
+$sb->wait_for_replicas();
 
 # #############################################################################
 # Can re-use the log table.
@@ -252,15 +253,15 @@ $sb->wait_for_slaves();
 
 for (1,2) {
    setup_target();
-   pt_kill::main($master_dsn, qw(--kill --run-time 1 --interval 1),
+   pt_kill::main($source_dsn, qw(--kill --run-time 1 --interval 1),
       "--create-log-table",
       "--match-db", $target_db,
-      "--log-dsn", "$master_dsn,$log_dsn",
+      "--log-dsn", "$source_dsn,$log_dsn",
    );
    sleep 0.5;
 }
 
-$rows = $master_dbh->selectall_arrayref("SELECT * FROM $log_table");
+$rows = $source_dbh->selectall_arrayref("SELECT * FROM $log_table");
 
 is(
    scalar @$rows,
@@ -273,31 +274,31 @@ is(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1209436
 # #############################################################################
 
-$master_dbh->do("TRUNCATE $log_table");
-$sb->wait_for_slaves();
+$source_dbh->do("TRUNCATE $log_table");
+$sb->wait_for_replicas();
 
 my $pid_file = "/tmp/pt-kill-test.$PID";
 my $log_file = "/tmp/pt-kill-test-log.$PID";
 diag(`rm -f $pid_file $log_file >/dev/null 2>&1`);
 
 setup_target();
-system("$trunk/bin/pt-kill $master_dsn --daemonize --run-time 1 --kill-query --interval 1 --match-db $target_db --log-dsn $slave_dsn,$log_dsn --pid $pid_file --log $log_file");
+system("$trunk/bin/pt-kill $source_dsn --daemonize --run-time 1 --kill-query --interval 1 --match-db $target_db --log-dsn $replica_dsn,$log_dsn --pid $pid_file --log $log_file");
 PerconaTest::wait_for_files($pid_file);         # start
 # ...                                           # run
 PerconaTest::wait_until(sub { !-f $pid_file});  # stop
 
-# Should *not* log to master
-$rows = $master_dbh->selectall_arrayref("SELECT * FROM $log_table");
+# Should *not* log to source
+$rows = $source_dbh->selectall_arrayref("SELECT * FROM $log_table");
 ok(
    !@$rows,
-   "--log-dsn --daemonize, master (bug 1209436)",
+   "--log-dsn --daemonize, source (bug 1209436)",
 ) or diag(Dumper($rows));
 
-# Should log to slave
-$rows = $slave_dbh->selectall_arrayref("SELECT * FROM $log_table");
+# Should log to replica
+$rows = $replica_dbh->selectall_arrayref("SELECT * FROM $log_table");
 ok(
    scalar @$rows,
-   "--log-dsn --daemonize, slave (bug 1209436)"
+   "--log-dsn --daemonize, replica (bug 1209436)"
 ) or diag(Dumper($rows));
 
 # #############################################################################
@@ -305,16 +306,16 @@ ok(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1209436
 # #############################################################################
 
-$master_dbh->do("TRUNCATE $log_table");
-$sb->wait_for_slaves();
+$source_dbh->do("TRUNCATE $log_table");
+$sb->wait_for_replicas();
 
 my $cnf_file = "/tmp/pt-kill-test.cnf.$PID";
 diag(`rm -f $pid_file $log_file $cnf_file >/dev/null 2>&1`);
 
 open my $fh, '>', $cnf_file or die "Error opening $cnf_file: $OS_ERROR";
 print { $fh } <<EOF;
-defaults-file=$master_cnf
-log-dsn=$slave_dsn,$log_dsn
+defaults-file=$source_cnf
+log-dsn=$replica_dsn,$log_dsn
 daemonize
 run-time=1
 kill-query
@@ -331,18 +332,18 @@ PerconaTest::wait_for_files($pid_file);         # start
 # ...                                           # run
 PerconaTest::wait_until(sub { !-f $pid_file});  # stop
 
-# Should *not* log to master
-$rows = $master_dbh->selectall_arrayref("SELECT * FROM $log_table");
+# Should *not* log to source
+$rows = $source_dbh->selectall_arrayref("SELECT * FROM $log_table");
 ok(
    !@$rows,
-   "--log-dsn in --config file, master (bug 1209436)",
+   "--log-dsn in --config file, source (bug 1209436)",
 ) or diag(Dumper($rows));
 
-# Should log to slave
-$rows = $slave_dbh->selectall_arrayref("SELECT * FROM $log_table");
+# Should log to replica
+$rows = $replica_dbh->selectall_arrayref("SELECT * FROM $log_table");
 ok(
    scalar @$rows,
-   "--log-dsn in --config file, slave (bug 1209436)"
+   "--log-dsn in --config file, replica (bug 1209436)"
 ) or diag(Dumper($rows));
 
 diag(`rm -f $pid_file $log_file $cnf_file >/dev/null 2>&1`);
@@ -351,7 +352,7 @@ diag(`rm -f $pid_file $log_file $cnf_file >/dev/null 2>&1`);
 # Done.
 # #############################################################################
 eval { $target_dbh->disconnect() };
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

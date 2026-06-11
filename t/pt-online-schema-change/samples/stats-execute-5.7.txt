@@ -1,5 +1,5 @@
 No slaves found.  See --recursion-method if host h=127.1,P=12345 has slaves.
-Not checking slave lag because no slaves were found and --check-slave-lag was not specified.
+Not checking slave lag because no slaves were found and --check-replica-lag was not specified.
 Operation, tries, wait:
   analyze_table, 10, 1
   copy_rows, 10, 0.25

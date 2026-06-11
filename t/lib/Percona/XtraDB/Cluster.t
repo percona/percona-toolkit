@@ -31,7 +31,7 @@ use Percona::XtraDB::Cluster;
 my $q   = new Quoter();
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('source');
 
 my $cluster = Percona::XtraDB::Cluster->new();
 
@@ -75,9 +75,9 @@ local @ARGV = ();
 $o->get_opts();
 
 diag("Starting master1");
-$sb->start_sandbox(type => "master", server => "master1");
+$sb->start_sandbox(type => "source", server => "source1");
 
-my $master1_cxn = make_cxn( dsn_string => $sb->dsn_for("master1") );
+my $master1_cxn = make_cxn( dsn_string => $sb->dsn_for("source1") );
 $master1_cxn->connect();
 
 diag("Starting a 1-node PXC");
@@ -94,7 +94,7 @@ ok(
 );
 
 diag("Setting node as a slave of master1");
-$sb->set_as_slave("node4", "master1");
+$sb->set_as_slave("node4", "source1");
 ok(
    !$cluster->same_cluster($master1_cxn, $cxn1),
    "->same_cluster works for master -> cluster"
@@ -109,7 +109,7 @@ $cxn1 = make_cxn( dsn_string => $c->{node4}->{dsn} );
 $cxn1->connect();
 
 diag("Setting master1 as a slave of the node");
-$sb->set_as_slave("master1", "node4");
+$sb->set_as_slave("source1", "node4");
 ok(
    !$cluster->same_cluster($cxn1, $master1_cxn),
    "->same_cluster works for cluster -> master"
@@ -178,7 +178,7 @@ ok(
 
 diag($sb->stop_sandbox(qw(node4 node5 node6 node7)));
 
-diag($sb->stop_sandbox("master1"));
+diag($sb->stop_sandbox("source1"));
 
 # #############################################################################
 # Done.

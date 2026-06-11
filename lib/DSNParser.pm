@@ -1,5 +1,5 @@
 # This program is copyright 2007-2011 Baron Schwartz,
-# 2011-2013 Percona Ireland Ltd.
+# 2011-2013 Percona LLC and/or its affiliates.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -147,7 +147,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -243,7 +243,7 @@ sub get_cxn_params {
       $dsn = 'DBI:mysql:' . ( $info->{D} || '' ) . ';'
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
-                     qw(F h P S A))
+                     qw(F h P S A s o))
          . ';mysql_read_default_group=client'
          . ($info->{L} ? ';mysql_local_infile=1' : '');
    }
@@ -265,7 +265,7 @@ sub fill_in_dsn {
 }
 
 # Actually opens a connection, then sets some things on the connection so it is
-# the way the Maatkit tools will expect.  Tools should NEVER open their own
+# the way the Percona tools will expect.  Tools should NEVER open their own
 # connection or use $dbh->reconnect, or these things will not take place!
 sub get_dbh {
    my ( $self, $cxn_string, $user, $pass, $opts ) = @_;
@@ -303,7 +303,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -316,7 +316,7 @@ sub get_dbh {
                . "DBD::mysql is not installed, try:\n"
                . "  Debian/Ubuntu  apt-get install libdbd-mysql-perl\n"
                . "  RHEL/CentOS    yum install perl-DBD-MySQL\n"
-               . "  OpenSolaris    pgk install pkg:/SUNWapu13dbd-mysql\n";
+               . "  OpenSolaris    pkg install pkg:/SUNWapu13dbd-mysql\n";
          }
          elsif ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
             PTDEBUG && _d('Going to try again without utf8 support');
@@ -333,21 +333,48 @@ sub get_dbh {
       my $sql;
 
       # Set character set and binmode on STDOUT.
-      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
+      my ($charset) = $cxn_string =~ m/charset=([\w]+)/;
+      if ( $charset ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
             die "Error setting NAMES to $charset: $EVAL_ERROR";
          }
-         PTDEBUG && _d('Enabling charset for STDOUT');
-         if ( $charset eq 'utf8' ) {
-            binmode(STDOUT, ':utf8')
-               or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+      }
+      else {
+         my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+         if ( $EVAL_ERROR ) {
+            die "Cannot get MySQL version: $EVAL_ERROR";
          }
-         else {
-            binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
+         my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+         if ( $EVAL_ERROR ) {
+            die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
          }
+
+         if ( $mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/ ) {
+            if ( $1 >= 8 && $character_set_server =~ m/^utf8/ ) {
+               $dbh->{mysql_enable_utf8} = 1;
+               $charset = $character_set_server;
+               my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                        "Setting: SET NAMES $character_set_server";
+               PTDEBUG && _d($msg);
+               eval { $dbh->do("SET NAMES '$character_set_server'") };
+               if ( $EVAL_ERROR ) {
+                  die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+               }
+            }
+         }
+      }
+      PTDEBUG && _d('Enabling charset for STDOUT');
+      if ( $charset && $charset =~ m/^utf8/ ) {
+         binmode(STDOUT, ':utf8')
+            or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+         binmode(STDERR, ':utf8')
+            or die "Can't binmode(STDERR, ':utf8'): $OS_ERROR";
+      }
+      else {
+         binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
       }
 
       if ( my $vars = $self->prop('set-vars') ) {
@@ -378,28 +405,6 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
-   }
-   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
-   if ($EVAL_ERROR) {
-       die "Cannot get MySQL version: $EVAL_ERROR";
-   }
-
-   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
-   if ($EVAL_ERROR) {
-       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
-   }
-
-   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
-       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
-           $dbh->{mysql_enable_utf8} = 1;
-           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
-                     "Setting: SET NAMES $character_set_server";
-           PTDEBUG && _d($msg);
-           eval { $dbh->do("SET NAMES 'utf8mb4'") };
-           if ($EVAL_ERROR) {
-               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
-           }
-       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -515,7 +520,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {

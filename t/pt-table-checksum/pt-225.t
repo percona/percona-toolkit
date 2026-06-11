@@ -18,10 +18,10 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 } elsif ($sandbox_version lt '5.7') {
    plan skip_all => "Generated columns are only available in MySQL 5.7+";
 } else {
@@ -30,20 +30,20 @@ if ( !$dbh ) {
 
 diag("loading samples");
 
-$sb->load_file('master', 't/pt-table-checksum/samples/pt-225.sql');
+$sb->load_file('source', 't/pt-table-checksum/samples/pt-225.sql');
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = $sb->dsn_for('master');
-diag("setting up the slaves");
-my $slave_dbh = $sb->get_dbh_for('slave1');
+my $source_dsn = $sb->dsn_for('source');
+diag("setting up the replicas");
+my $replica_dbh = $sb->get_dbh_for('replica1');
 # Create differences
 
-$slave_dbh->do('DELETE FROM `test`.`sbtest1` WHERE id > 15');
-$slave_dbh->do('FLUSH TABLES');
+$replica_dbh->do('DELETE FROM `test`.`sbtest1` WHERE id > 15');
+$replica_dbh->do('FLUSH TABLES');
 
-my @args       = ($master_dsn, "--set-vars", "innodb_lock_wait_timeout=50", 
+my @args       = ($source_dsn, "--set-vars", "innodb_lock_wait_timeout=50", 
                                "--ignore-databases", "mysql,sys,sakila,percona_test",
                                "--nocheck-replication-filters"); 
 my $output;

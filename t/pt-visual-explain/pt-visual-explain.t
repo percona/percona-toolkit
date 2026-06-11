@@ -44,7 +44,7 @@ like(
 my $output = `$trunk/bin/pt-visual-explain $trunk/t/pt-visual-explain/samples/simple_union.sql --format dump --pid /tmp/mk-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/mk-script.pid exists},
    'Dies if PID file already exists (issue 391)'
 );
 `rm -rf /tmp/mk-script.pid`;

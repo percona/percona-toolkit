@@ -15,7 +15,7 @@
 
 --
 -- View: wait_classes_global_by_avg_latency
--- 
+--
 -- Lists the top wait classes by average latency, ignoring idle (this may be very large).
 --
 -- mysql> select * from wait_classes_global_by_avg_latency where event_class != 'idle';
@@ -34,7 +34,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW wait_classes_global_by_avg_latency (
   event_class,
   total,

@@ -16,13 +16,14 @@ use Sandbox;
 use SqlModes;
 
 require "$trunk/bin/pt-show-grants";
+require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 3;
@@ -51,19 +52,33 @@ $modes->restore_original_modes;
 $output = output(
    sub { pt_show_grants::main('-F', $cnf, qw(--only bob --no-header)); }
 );
+my $expected_84 = <<'END_OUTPUT_6';
+-- Grants for 'bob'@'%'
+CREATE USER IF NOT EXISTS `bob`@`%`;
+ALTER USER `bob`@`%` IDENTIFIED WITH 'caching_sha2_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT PASSWORD REQUIRE CURRENT DEFAULT;
+GRANT USAGE ON *.* TO `bob`@`%`;
+-- Grants for 'bob'@'192.168.1.1'
+CREATE USER IF NOT EXISTS `bob`@`192.168.1.1`;
+ALTER USER `bob`@`192.168.1.1` IDENTIFIED WITH 'caching_sha2_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT PASSWORD REQUIRE CURRENT DEFAULT;
+GRANT USAGE ON *.* TO `bob`@`192.168.1.1`;
+-- Grants for 'bob'@'localhost'
+CREATE USER IF NOT EXISTS `bob`@`localhost`;
+ALTER USER `bob`@`localhost` IDENTIFIED WITH 'caching_sha2_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT PASSWORD REQUIRE CURRENT DEFAULT;
+GRANT USAGE ON *.* TO `bob`@`localhost`;
+END_OUTPUT_6
 
 my $expected_80 = <<'END_OUTPUT_0';
 -- Grants for 'bob'@'%'
-CREATE USER IF NOT EXISTS 'bob'@'%';
-ALTER USER 'bob'@'%' IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT;
+CREATE USER IF NOT EXISTS `bob`@`%`;
+ALTER USER `bob`@`%` IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT PASSWORD REQUIRE CURRENT DEFAULT;
 GRANT USAGE ON *.* TO `bob`@`%`;
 -- Grants for 'bob'@'192.168.1.1'
-CREATE USER IF NOT EXISTS 'bob'@'192.168.1.1';
-ALTER USER 'bob'@'192.168.1.1' IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT;
+CREATE USER IF NOT EXISTS `bob`@`192.168.1.1`;
+ALTER USER `bob`@`192.168.1.1` IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT PASSWORD REQUIRE CURRENT DEFAULT;
 GRANT USAGE ON *.* TO `bob`@`192.168.1.1`;
 -- Grants for 'bob'@'localhost'
-CREATE USER IF NOT EXISTS 'bob'@'localhost';
-ALTER USER 'bob'@'localhost' IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT;
+CREATE USER IF NOT EXISTS `bob`@`localhost`;
+ALTER USER `bob`@`localhost` IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT PASSWORD REQUIRE CURRENT DEFAULT;
 GRANT USAGE ON *.* TO `bob`@`localhost`;
 END_OUTPUT_0
 
@@ -91,7 +106,7 @@ GRANT USAGE ON *.* TO 'bob'@'192.168.1.1';
 GRANT USAGE ON *.* TO 'bob'@'localhost';
 END_OUTPUT_2
 
-my $expected =  $sandbox_version < '5.7' ? $expected_56 : $sandbox_version < '8.0' ? $expected_57 : $expected_80;
+my $expected =  $sandbox_version lt '5.7' ? $expected_56 : $sandbox_version lt '8.0' ? $expected_57 : $sandbox_version lt '8.4' ? $expected_80 : $expected_84;
 
 is(
    $output,
@@ -103,10 +118,17 @@ $output = output(
    sub { pt_show_grants::main('-F', $cnf, qw(--only bob@192.168.1.1 --no-header)); }
 );
 
+$expected_84 = <<'END_OUTPUT_7';
+-- Grants for 'bob'@'192.168.1.1'
+CREATE USER IF NOT EXISTS `bob`@`192.168.1.1`;
+ALTER USER `bob`@`192.168.1.1` IDENTIFIED WITH 'caching_sha2_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT PASSWORD REQUIRE CURRENT DEFAULT;
+GRANT USAGE ON *.* TO `bob`@`192.168.1.1`;
+END_OUTPUT_7
+
 $expected_80 = <<'END_OUTPUT_5';
 -- Grants for 'bob'@'192.168.1.1'
-CREATE USER IF NOT EXISTS 'bob'@'192.168.1.1';
-ALTER USER 'bob'@'192.168.1.1' IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT;
+CREATE USER IF NOT EXISTS `bob`@`192.168.1.1`;
+ALTER USER `bob`@`192.168.1.1` IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT PASSWORD REQUIRE CURRENT DEFAULT;
 GRANT USAGE ON *.* TO `bob`@`192.168.1.1`;
 END_OUTPUT_5
 
@@ -122,7 +144,7 @@ $expected_56 = <<'END_OUTPUT_4';
 GRANT USAGE ON *.* TO 'bob'@'192.168.1.1';
 END_OUTPUT_4
 
-$expected = $sandbox_version < '5.7' ? $expected_56 : $sandbox_version < '8.0' ? $expected_57: $expected_80;
+$expected =  $sandbox_version lt '5.7' ? $expected_56 : $sandbox_version lt '8.0' ? $expected_57 : $sandbox_version lt '8.4' ? $expected_80 : $expected_84;
 
 is(
    $output,

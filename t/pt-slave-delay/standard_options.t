@@ -17,11 +17,11 @@ require "$trunk/bin/pt-slave-delay";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $master_dbh = $sb->get_dbh_for('source');
+my $slave_dbh  = $sb->get_dbh_for('replica1');
 
-if ($sandbox_version ge '5.7') {
-   plan skip_all => 'Use SQL_DELAY';
+if ($sandbox_version ge '8.1') {
+   plan skip_all => 'Tool is not supported. Use SQL_DELAY';
 }
 
 if ( !$master_dbh ) {
@@ -37,7 +37,7 @@ my $pid_file = "/tmp/pt-slave-delay-test.$PID";
 
 # Check daemonization.  This test used to print to STDOUT, causing
 # false-positive test errors.  The output isn't needed.  The tool
-# said "Reconnected to slave" every time it did SHOW SLAVE STATUS,
+# said "Reconnected to slave" every time it did SHOW REPLICA STATUS,
 # so needlessly.  That was removed.  Now it will print stuff when
 # we kill the process, which we don't want either.
 system("$cmd --delay 1m --interval 1s --run-time 5s --daemonize --pid $pid_file >/dev/null 2>&1");
@@ -91,7 +91,7 @@ like(
 $output = `$cmd --run-time 1s --interval 1s --use-master --pid /tmp/mk-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/mk-script.pid exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 `rm -rf /tmp/mk-script.pid`;

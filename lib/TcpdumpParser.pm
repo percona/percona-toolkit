@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # TcpdumpParser package
 # ###########################################################################
@@ -88,10 +87,11 @@ sub parse_event {
       # Remove the separator from the packet, and restore it to the front if
       # necessary.
       $raw_packet =~ s/\n20\Z//;
+      $raw_packet = "20$raw_packet" if $raw_packet =~ /\A20-\d\d-\d\d/; # workaround for year 2020 problem
       $raw_packet = "20$raw_packet" unless $raw_packet =~ m/\A20/;
 
       # Remove special headers (e.g. vlan) before the IPv4 header.
-      # The vast majority of IPv4 headers begin with 4508 (or 4500).  
+      # The vast majority of IPv4 headers begin with 4508 (or 4500).
       # http://code.google.com/p/maatkit/issues/detail?id=906
       $raw_packet =~ s/0x0000:.+?(450.) /0x0000:  $1 /;
 
@@ -120,9 +120,9 @@ sub _parse_packet {
    # Change ports from service name to number.
    $src_port = $self->port_number($src_port);
    $dst_port = $self->port_number($dst_port);
-   
+
    my $hex = qr/[0-9a-f]/;
-   (my $data = join('', $packet =~ m/\s+0x$hex+:\s((?:\s$hex{2,4})+)/go)) =~ s/\s+//g; 
+   (my $data = join('', $packet =~ m/\s+0x$hex+:\s((?:\s$hex{2,4})+)/go)) =~ s/\s+//g;
 
    # Find length information in the IPv4 header.  Typically 5 32-bit
    # words.  See http://en.wikipedia.org/wiki/IPv4#Header

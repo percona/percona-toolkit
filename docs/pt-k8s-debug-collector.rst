@@ -1,0 +1,1 @@
+../src/go/pt-k8s-debug-collector/README.rst

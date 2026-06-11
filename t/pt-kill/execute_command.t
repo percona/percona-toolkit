@@ -14,10 +14,11 @@ use Test::More tests => 9;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
+require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
 my $output;
 my $cnf ='/tmp/12345/my.sandbox.cnf';
@@ -46,8 +47,8 @@ is(
 diag(`rm $out 2>/dev/null`);
 
 SKIP: {
-   skip 'Cannot connect to sandbox master', 2 unless $master_dbh;
-   $master_dbh->do("CREATE DATABASE IF NOT EXISTS pt_kill_zombie_test");
+   skip 'Cannot connect to sandbox source', 2 unless $source_dbh;
+   $source_dbh->do("CREATE DATABASE IF NOT EXISTS pt_kill_zombie_test");
 
    system "/tmp/12345/use -e 'select sleep(2)' >/dev/null 2>&1 &";
 
@@ -71,7 +72,11 @@ SKIP: {
    diag(`rm $out 2>/dev/null`);
 
    # Don't make zombies (https://bugs.launchpad.net/percona-toolkit/+bug/919819)
-   $master_dbh->do("USE pt_kill_zombie_test");
+
+   # We have to store existing zombies, otherwise test occasionally fails
+   my $our_zombies = `ps x | grep Z | grep -v grep`;
+
+   $source_dbh->do("USE pt_kill_zombie_test");
 
    my $sentinel = "/tmp/pt-kill-test.$PID.stop";
    my $pid_file = "/tmp/pt-kill-test.$PID.pid";
@@ -92,9 +97,9 @@ SKIP: {
    $output = `ps x | grep Z | grep -v grep`;
    is(
       $output,
-      "",
+      $our_zombies,
       "No zombies"
-   );
+   ) or diag($output);
 
    diag(`touch $sentinel`);
    sleep 1;
@@ -105,9 +110,9 @@ SKIP: {
    $output = `ps x | grep Z | grep -v grep`;
    is(
       $output,
-      "",
+      $our_zombies,
       "No zombies"
-   );
+   ) or diag($output);
 
    diag(`rm $sentinel 2>/dev/null`);
    diag(`rm $pid_file 2>/dev/null`);
@@ -118,6 +123,6 @@ SKIP: {
 # Done.
 # #############################################################################
 diag(`rm $out 2>/dev/null`);
-$sb->wipe_clean($master_dbh) if $master_dbh;
+$sb->wipe_clean($source_dbh) if $source_dbh;
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

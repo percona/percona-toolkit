@@ -36,8 +36,8 @@ CREATE TABLE `checksums` (
   `upper_boundary` text,
   `this_crc` char(40) NOT NULL,
   `this_cnt` int(11) NOT NULL,
-  `master_crc` char(40) DEFAULT NULL,
-  `master_cnt` int(11) DEFAULT NULL,
+  `source_crc` char(40) DEFAULT NULL,
+  `source_cnt` int(11) DEFAULT NULL,
   `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`db`,`tbl`,`chunk`),
   KEY `ts_db_tbl` (`ts`,`db`,`tbl`)

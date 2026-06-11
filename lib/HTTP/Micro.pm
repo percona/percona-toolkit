@@ -1,4 +1,4 @@
-# This program is copyright 2012 Percona Ireland Ltd.
+# This program is copyright 2012 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -233,7 +233,10 @@ sub _split_url {
          or croak(qq/Could not binmode() socket: '$!'/);
 
        if ( $scheme eq 'https') {
-           IO::Socket::SSL->start_SSL($self->{fh});
+           IO::Socket::SSL->start_SSL(
+              $self->{fh},
+              SSL_verifycn_name => $host,
+           );
            ref($self->{fh}) eq 'IO::Socket::SSL'
                or die(qq/SSL connection failed for $host\n/);
            if ( $self->{fh}->can("verify_hostname") ) {
@@ -248,7 +251,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -414,7 +417,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }
@@ -641,7 +644,7 @@ BEGIN {
          $ipn = IO::Socket::SSL::inet_pton(IO::Socket::SSL::AF_INET6,$identity)
             or croak "'$identity' is not IPv6, but neither IPv4 nor hostname";
       } elsif ( $identity =~m{^\d+\.\d+\.\d+\.\d+$} ) {
-          # definitly no hostname, try IPv4
+          # definitely no hostname, try IPv4
          $ipn = IO::Socket::SSL::inet_aton( $identity ) or croak "'$identity' is not IPv4, but neither IPv6 nor hostname";
       } else {
          # assume hostname, check for umlauts etc

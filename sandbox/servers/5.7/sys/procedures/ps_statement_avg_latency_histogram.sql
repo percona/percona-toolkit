@@ -26,7 +26,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_statement_avg_latency_histogram (
              across all normalized queries tracked within the Performance Schema
              events_statements_summary_by_digest table.
 
-             Can be used to show a very high level picture of what kind of 
+             Can be used to show a very high level picture of what kind of
              latency distribution statements running within this instance have.
 
              Parameters
@@ -78,146 +78,146 @@ SELECT CONCAT('\n',
                                                 (@unit := 'ms'), ')'),
                         REPEAT(' ', (@max_label_size := ((1 + LENGTH(ROUND((@bucket_size * 15) / @unit_div)) + 3 + LENGTH(ROUND(@bucket_size * 16) / @unit_div)) + 1)) - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us <= @bucket_size), 0)),
        REPEAT(' ', (@max_label_len := (@max_label_size + LENGTH((@total_queries := (SELECT SUM(cnt) FROM sys.x$ps_digest_avg_latency_distribution)))) + 1) - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < (@one_unit := 40), '.', IF(@count_in_bucket < (@two_unit := 80), '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < (@one_unit := 40), '.', IF(@count_in_bucket < (@two_unit := 80), '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
 
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND(@bucket_size / @unit_div), ' - ', ROUND((@bucket_size * 2) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size AND b1.avg_us <= @bucket_size * 2), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 2) / @unit_div), ' - ', ROUND((@bucket_size * 3) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 2 AND b1.avg_us <= @bucket_size * 3), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 3) / @unit_div), ' - ', ROUND((@bucket_size * 4) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 3 AND b1.avg_us <= @bucket_size * 4), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 4) / @unit_div), ' - ', ROUND((@bucket_size * 5) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 4 AND b1.avg_us <= @bucket_size * 5), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 5) / @unit_div), ' - ', ROUND((@bucket_size * 6) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 5 AND b1.avg_us <= @bucket_size * 6), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 6) / @unit_div), ' - ', ROUND((@bucket_size * 7) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 6 AND b1.avg_us <= @bucket_size * 7), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 7) / @unit_div), ' - ', ROUND((@bucket_size * 8) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 7 AND b1.avg_us <= @bucket_size * 8), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 8) / @unit_div), ' - ', ROUND((@bucket_size * 9) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 8 AND b1.avg_us <= @bucket_size * 9), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 9) / @unit_div), ' - ', ROUND((@bucket_size * 10) / @unit_div), @unit, ')'),
                          REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                          @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                       FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                       FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                       WHERE b1.avg_us > @bucket_size * 9 AND b1.avg_us <= @bucket_size * 10), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 10) / @unit_div), ' - ', ROUND((@bucket_size * 11) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 10 AND b1.avg_us <= @bucket_size * 11), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 11) / @unit_div), ' - ', ROUND((@bucket_size * 12) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 11 AND b1.avg_us <= @bucket_size * 12), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 12) / @unit_div), ' - ', ROUND((@bucket_size * 13) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 12 AND b1.avg_us <= @bucket_size * 13), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 13) / @unit_div), ' - ', ROUND((@bucket_size * 14) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 13 AND b1.avg_us <= @bucket_size * 14), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 14) / @unit_div), ' - ', ROUND((@bucket_size * 15) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 14 AND b1.avg_us <= @bucket_size * 15), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
        @label := CONCAT(@label_inner := CONCAT('\n(', ROUND((@bucket_size * 15) / @unit_div), ' - ', ROUND((@bucket_size * 16) / @unit_div), @unit, ')'),
                         REPEAT(' ', @max_label_size - LENGTH(@label_inner)),
                         @count_in_bucket := IFNULL((SELECT SUM(cnt)
-                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1 
+                                                      FROM sys.x$ps_digest_avg_latency_distribution AS b1
                                                      WHERE b1.avg_us > @bucket_size * 15 AND b1.avg_us <= @bucket_size * 16), 0)),
        REPEAT(' ', @max_label_len - LENGTH(@label)), '| ',
-       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')), 
+       IFNULL(REPEAT(IF(@count_in_bucket < @one_unit, '.', IF(@count_in_bucket < @two_unit, '*', '#')),
        	             IF(@count_in_bucket < @one_unit, @count_in_bucket,
        	             	IF(@count_in_bucket < @two_unit, @count_in_bucket / 2, @count_in_bucket / 3))), ''),
 

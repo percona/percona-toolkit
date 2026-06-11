@@ -24,7 +24,7 @@ my @required_modules = qw(
    IO::File
    List::Util
    POSIX
-   Socket 
+   Socket
    Test::More
    Time::HiRes
    Time::Local
@@ -46,7 +46,7 @@ printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`;
 foreach my $module (@required_modules) {
    my $version = "NA";
    eval "require $module";
-   if ( $EVAL_ERROR ) { 
+   if ( $EVAL_ERROR ) {
       $exit_status = 1;
    }
    else {
@@ -58,7 +58,7 @@ foreach my $module (@required_modules) {
 foreach my $module (@optional_modules) {
    my $version = "NA";
    eval "require $module";
-   if ( !$EVAL_ERROR ) { 
+   if ( !$EVAL_ERROR ) {
       $version = ${"${module}::VERSION"};
    }
    printf $fmt, $module, $version;

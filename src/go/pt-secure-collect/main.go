@@ -1,3 +1,16 @@
+// This program is copyright 2018-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
@@ -17,7 +30,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type cliOptions struct {
@@ -67,7 +80,7 @@ type myDefaults struct {
 }
 
 const (
-	TOOLNAME = "pt-secure-collect"
+	toolname = "pt-secure-collect"
 
 	decryptCmd       = "decrypt"
 	encryptCmd       = "encrypt"
@@ -84,9 +97,11 @@ var (
 		"pt-mysql-summary --host=$mysql-host --port=$mysql-port --user=$mysql-user --password=$mysql-pass",
 	}
 
-	Build     string = "01-01-1980"
-	GoVersion string = "1.8"
-	Version   string = "3.0.1"
+	// We do not set anything here, these variables are defined by the Makefile
+	Build     string //nolint
+	GoVersion string //nolint
+	Version   string //nolint
+	Commit    string //nolint
 )
 
 func main() {
@@ -170,14 +185,17 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	}
 	msg += "\n "
 
-	app := kingpin.New(TOOLNAME, msg)
+	app := kingpin.New(toolname, msg)
 	if usageWriter != nil {
 		app.UsageWriter(usageWriter)
 		app.Terminate(nil)
+	} else {
+		app.UsageWriter(os.Stdout)
 	}
 
 	// Add support for --version flag
-	app.Version(TOOLNAME + "\nVersion " + Version + "\nBuild: " + Build + " using " + GoVersion)
+	app.Version(toolname + "\nVersion " + Version + "\nBuild: " + Build + " using " + GoVersion +
+		"\nCommit:" + Commit)
 
 	opts := &cliOptions{
 		CollectCommand:  app.Command(collectCmd, "Collect, sanitize, pack and encrypt data from pt-tools."),
@@ -205,11 +223,11 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	opts.MySQLUser = opts.CollectCommand.Flag("mysql-user", "MySQL user name.").String()
 	opts.MySQLPass = opts.CollectCommand.Flag("mysql-password", "MySQL password.").String()
 	opts.AskMySQLPass = opts.CollectCommand.Flag("ask-mysql-pass", "Ask MySQL password.").Bool()
-	// Aditional flags
+	// Additional flags
 	opts.AdditionalCmds = opts.CollectCommand.Flag("extra-cmd",
 		"Also run this command as part of the data collection. This parameter can be used more than once.").Strings()
 	opts.EncryptPassword = opts.CollectCommand.Flag("encrypt-password", "Encrypt the output file using this password."+
-		" If ommited, the file won't be encrypted.").String()
+		" If omitted, the file won't be encrypted.").String()
 	// No-Flags
 	opts.NoCollect = opts.CollectCommand.Flag("no-collect", "Do not collect data").Bool()
 	opts.NoSanitize = opts.CollectCommand.Flag("no-sanitize", "Sanitize data").Bool()
@@ -315,7 +333,7 @@ func validateMySQLParams(opts *cliOptions, mycnf *myDefaults) error {
 func askMySQLPassword(opts *cliOptions) error {
 	if *opts.AskMySQLPass {
 		fmt.Printf("MySQL password for user %q:", *opts.MySQLUser)
-		passb, err := terminal.ReadPassword(0)
+		passb, err := term.ReadPassword(0)
 		if err != nil {
 			return errors.Wrap(err, "Cannot read MySQL password from the terminal")
 		}
@@ -327,14 +345,14 @@ func askMySQLPassword(opts *cliOptions) error {
 func askEncryptionPassword(opts *cliOptions, requireConfirmation bool) error {
 	if !*opts.NoEncrypt && *opts.EncryptPassword == "" {
 		fmt.Print("Encryption password: ")
-		passa, err := terminal.ReadPassword(0)
+		passa, err := term.ReadPassword(0)
 		if err != nil {
 			return errors.Wrap(err, "Cannot read encryption password from the terminal")
 		}
 		fmt.Println("")
 		if requireConfirmation {
 			fmt.Print("Re type password: ")
-			passb, err := terminal.ReadPassword(0)
+			passb, err := term.ReadPassword(0)
 			if err != nil {
 				return errors.Wrap(err, "Cannot read encryption password confirmation from the terminal")
 			}

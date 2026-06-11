@@ -13,7 +13,7 @@ MySQL and system tasks that are too difficult or complex to perform manually.
 These tools are ideal alternatives to private or "one-off" scripts because
 they are professionally developed, formally tested, and fully documented.
 They are also fully self-contained, so installation is quick and easy and
-no libraries are installed. 
+no libraries are installed.
 
 Percona Toolkit is derived from Maatkit and Aspersa, two of the best-known
 toolkits for MySQL server administration.  It is developed and supported by
@@ -50,6 +50,10 @@ An interactive I/O monitoring tool for GNU/Linux.
 
 Find duplicate indexes and foreign keys on MySQL tables.
 
+=item pt-eustack-resolver
+
+Get stack traces for a selected program with eu-stack and resolve symbols.
+
 =item pt-fifo-split
 
 Split files and pipe lines to a fifo without really splitting.
@@ -66,6 +70,10 @@ Convert queries into fingerprints.
 
 Log MySQL foreign key errors.
 
+=item pt-galera-log-explainer
+
+Filter, aggregate and summarize multiple galera logs together.
+
 =item pt-heartbeat
 
 Monitor MySQL replication delay.
@@ -78,6 +86,10 @@ Read queries from a log and analyze how they use indexes.
 
 Watch process IO and print a table of file and I/O activity.
 
+=item pt-k8s-debug-collector
+
+Collect debug data from a k8s/OpenShift cluster.
+
 =item pt-kill
 
 Kill MySQL queries that match certain criteria.
@@ -85,6 +97,18 @@ Kill MySQL queries that match certain criteria.
 =item pt-mext
 
 Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
+
+=item pt-mongodb-index-check
+
+Performs checks on MongoDB indexes
+
+=item pt-mongodb-query-digest
+
+Reports query usage statistics by aggregating queries from MongoDB query profiler
+
+=item pt-mongodb-summary
+
+Collect information about a MongoDB cluster.
 
 =item pt-mysql-summary
 
@@ -94,6 +118,10 @@ Summarize MySQL information nicely.
 
 ALTER tables without locking them.
 
+=item pt-pg-summary
+
+Collect information about a PostgreSQL cluster.
+
 =item pt-pmp
 
 Aggregate GDB stack traces for a selected program.
@@ -101,6 +129,10 @@ Aggregate GDB stack traces for a selected program.
 =item pt-query-digest
 
 Analyze MySQL queries from logs, processlist, and tcpdump.
+
+=item pt-secure-collect
+
+Collect, sanitize, pack and encrypt data.
 
 =item pt-show-grants
 
@@ -374,7 +406,7 @@ databases while running.
 =item F
 
 Defaults file for the MySQL client library (the C client library used by
-DBD::mysql, I<not Percona Toolkit itself>).  All tools all read the
+DBD::mysql, I<not Percona Toolkit itself>).  All tools read the
 C<[client]> section within the defaults file.  If you omit this, the standard
 defaults files will be read in the usual order.  "Standard" varies from system
 to system, because the filenames to read are compiled into the client library.
@@ -405,11 +437,11 @@ Explicitly enable LOAD DATA LOCAL INFILE.
 
 For some reason, some vendors compile libmysql without the
 --enable-local-infile option, which disables the statement.  This can
-lead to weird situations, like the server allowing LOCAL INFILE, but 
+lead to weird situations, like the server allowing LOCAL INFILE, but
 the client throwing exceptions if it's used.
 
 However, as long as the server allows LOAD DATA, clients can easily
-re-enable it; see L<https://dev.mysql.com/doc/refman/5.0/en/load-data-local.html>
+re-enable it; see L<https://dev.mysql.com/doc/refman/en/load-data-local-security.html>
 and L<http://search.cpan.org/~capttofu/DBD-mysql/lib/DBD/mysql.pm>.
 This option does exactly that.
 
@@ -431,6 +463,10 @@ MySQL socket file to use for the connection (on Unix systems).
 =item u
 
 MySQL username to use when connecting, if not current system user.
+
+=item s
+
+Create SSL connection
 
 =back
 
@@ -489,6 +525,13 @@ Percona Toolkit officially supports and is tested on many popular Linux
 distributions and MySQL 5.0 through 5.6; see http://goo.gl/srHm7 for the
 list of supported platforms and versions.
 
+=head1 IPv6 support
+
+In order to support IPv6 addresses to connect to MySQL, Perl DBD::MySQL driver v4.033_01 is
+required. Also, as stated in RFC 3986 L<https://www.ietf.org/rfc/rfc3986.txt> section 3.2.2
+brackets must be used to distinguish host and port.
+Examples: L<https://metacpan.org/pod/DBD::mysql#port>
+
 =head1 BUGS
 
 Please report bugs at L<https://jira.percona.com>.
@@ -500,7 +543,7 @@ Include the following information in your bug report:
 
 =item * Tool C<--version>
 
-=item * MySQL version of all servers involved
+=item * MySQL, MongoDB, or PostgreSQL version of all servers involved
 
 =item * Output from the tool including STDERR
 
@@ -530,7 +573,11 @@ Frank was a full-time Percona Toolkit developer employed by Percona until 2016.
 
 =item Carlos Salguero
 
-Carlos has been the project's lead developer since 2016. He is hired by Percona.
+Carlos has been the project's lead developer since 2016 until 2022.
+
+=item Sveta Smirnova
+
+Sveta has been the project's lead developer since 2022.
 
 =item Others
 
@@ -541,7 +588,7 @@ Many people have contributed code over the years.  See each tool's
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-Percona Toolkit is copyright 2011-2018 Percona LLC and/or its affiliates, et al.
+Percona Toolkit is copyright 2011-2026 Percona LLC and/or its affiliates, et al.
 See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -560,6 +607,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v3.0.13 released 2018-12-28
+Percona Toolkit v3.7.1 released 2025-12-17
 
 =cut

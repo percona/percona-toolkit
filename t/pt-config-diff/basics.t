@@ -15,16 +15,17 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-config-diff";
 
+require VersionParser;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 
 my $cnf = '/tmp/12345/my.sandbox.cnf';
@@ -55,7 +56,7 @@ is(
    "No output when no diff"
 );
 
-# Diff master to slave1.  There should be several differences.
+# Diff source to replica1.  There should be several differences.
 $output = output(
    sub { $retval = pt_config_diff::main(
       'h=127.1,P=12345,u=msandbox,p=msandbox', 'P=12346')
@@ -99,7 +100,7 @@ is(
    "No output"
 );
 
-# Compare master config to slave active/SHOW VARS
+# Compare source config to replica active/SHOW VARS
 $output = output(
    sub { $retval = pt_config_diff::main(
       $cnf, 'h=127.1,P=12346,u=msandbox,p=msandbox')
@@ -110,7 +111,7 @@ $output = output(
 is(
    $retval,
    1,
-   "Master my.sandbox.cnf differs from slave active config"
+   "Source my.sandbox.cnf differs from replica active config"
 );
 
 like(
@@ -151,7 +152,7 @@ $output = output(
 is(
    $retval,
    1,
-   "Master and slave option files differ"
+   "Source and replica option files differ"
 );
 
 like(

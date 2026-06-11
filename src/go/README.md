@@ -1,5 +1,5 @@
 #Percona Toolkit
-[![Build Status](https://travis-ci.org/percona/toolkit-go.svg?branch=master)](https://travis-ci.org/percona/toolkit-go)  
+[![Build Status](https://travis-ci.org/percona/toolkit-go.svg?branch=master)](https://travis-ci.org/percona/toolkit-go)
 
 Percona Toolkit is a collection of advanced command-line tools used by Percona support staff to perform a variety of MySQL and system tasks that are too difficult or complex to perform manually.
 

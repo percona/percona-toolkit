@@ -1,0 +1,22 @@
+platform    Linux
+hostname    localhost.localdomain
+kernel    3.10.0-1160.31.1.el7.x86_64
+release    CentOS Linux release 7.6.1810 (Core) 
+CPU_ARCH    64-bit
+OS_ARCH    64-bit
+virt    KVM
+vendor    innotek GmbH
+system    innotek GmbH; VirtualBox; v1.2 (Other)
+servicetag    0
+rss    487407616
+raid_controller    No RAID controller detected
+threading    NPTL 2.17
+getenforce    Enforcing
+swappiness    30
+dirtypolicy    30, 10
+dirtystatus     0, 0
+internal::disks    sda
+internal::sda    [noop] 128
+dentry-state    44507	24627	45	0	6751	0
+file-nr    1824	0	380072
+inode-nr    37935	335

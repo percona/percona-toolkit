@@ -15,7 +15,7 @@
 
 --
 -- View: ps_check_lost_instrumentation
--- 
+--
 -- Used to check whether Performance Schema is not able to monitor
 -- all runtime data - only returns variables that have lost instruments
 --
@@ -31,7 +31,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW ps_check_lost_instrumentation (
   variable_name,
   variable_value

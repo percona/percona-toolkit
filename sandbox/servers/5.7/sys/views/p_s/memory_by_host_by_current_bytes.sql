@@ -17,8 +17,8 @@
 -- View: memory_by_host_by_current_bytes
 --
 -- Summarizes memory use by host using the 5.7 Performance Schema instrumentation.
--- 
--- When the host found is NULL, it is assumed to be a local "background" thread.  
+--
+-- When the host found is NULL, it is assumed to be a local "background" thread.
 --
 -- mysql> select * from memory_by_host_by_current_bytes;
 -- +------------+--------------------+-------------------+-------------------+-------------------+-----------------+
@@ -32,7 +32,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW memory_by_host_by_current_bytes (
   host,
   current_count_used,

@@ -13,13 +13,14 @@ use Test::More;
 
 use MySQLConfig;
 use DSNParser;
+use VersionParser;
 use Sandbox;
 use TextResultSetParser;
 use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;

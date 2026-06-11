@@ -1,0 +1,213 @@
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 127.0.0.1:12519         0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:42841         0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:42002         0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:42003         0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:42000         0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:42001         0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:7777          0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:40098         0.0.0.0:*               LISTEN      3135169/kbfsfuse    
+tcp        0      0 127.0.0.1:37117         0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:17500           0.0.0.0:*               LISTEN      2837239/dropbox     
+tcp        0      0 127.0.0.1:5432          0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:9123            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:8281            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:8383            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:9900            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:27017         0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:443             0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:6032            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:6033            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:6033            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:6033            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:6033            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:17603         0.0.0.0:*               LISTEN      2837239/dropbox     
+tcp        0      0 127.0.0.1:17600         0.0.0.0:*               LISTEN      2837239/dropbox     
+tcp        0      0 127.0.0.1:17553         0.0.0.0:*               LISTEN      3135130/keybase     
+tcp        0      0 192.168.55.2:33644      89.253.240.17:993       ESTABLISHED 3668124/thunderbird 
+tcp        0      0 192.168.55.2:40942      44.208.19.176:443       ESTABLISHED 2224410/firefox     
+tcp        0      1 192.168.55.2:44586      52.35.150.14:443        SYN_SENT    2224410/firefox     
+tcp        0      0 192.168.55.2:43180      173.194.220.108:993     ESTABLISHED 3668124/thunderbird 
+tcp        0      0 192.168.55.2:50852      89.253.240.17:143       ESTABLISHED 3668124/thunderbird 
+tcp        0      0 192.168.55.2:53066      91.105.192.100:443      ESTABLISHED 1712863/Telegram    
+tcp        0      0 127.0.0.1:44464         127.0.0.1:12345         ESTABLISHED 3060170/mysqld      
+tcp        0      0 127.0.0.1:57436         127.0.0.1:12347         ESTABLISHED 3036479/mysqld      
+tcp        0      0 192.168.55.2:50428      173.194.220.108:993     ESTABLISHED 3668124/thunderbird 
+tcp        0      0 192.168.55.2:38864      35.75.32.93:443         ESTABLISHED 622088/Slack --stan 
+tcp        0      0 192.168.55.2:60536      209.85.233.104:443      ESTABLISHED 2224410/firefox     
+tcp        0      0 192.168.55.2:54002      18.205.222.128:443      ESTABLISHED -                   
+tcp        0      0 127.0.0.1:33532         127.0.0.1:42002         ESTABLISHED -                   
+tcp        0      0 192.168.55.2:59960      188.114.99.233:443      ESTABLISHED 2224410/firefox     
+tcp        0      0 192.168.55.2:50432      173.194.220.108:993     ESTABLISHED 3668124/thunderbird 
+tcp        0      0 192.168.55.2:44788      52.57.79.4:443          ESTABLISHED 2147311/chrome --ty 
+tcp        0      0 10.0.0.5:37084          162.125.21.3:443        ESTABLISHED 2837239/dropbox     
+tcp        0      0 192.168.55.2:38858      35.75.32.93:443         ESTABLISHED 622088/Slack --stan 
+tcp        0      0 192.168.55.2:55814      3.68.61.181:443         ESTABLISHED 622088/Slack --stan 
+tcp       25      0 192.168.55.2:36048      170.114.52.66:443       CLOSE_WAIT  2504953/zoom        
+tcp        0      0 127.0.0.1:51212         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 10.0.0.5:54900          162.125.21.3:443        ESTABLISHED 2837239/dropbox     
+tcp        0      0 127.0.0.1:60112         127.0.0.1:42003         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:46804         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 127.0.0.1:56798         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:36068      185.166.143.36:443      ESTABLISHED 2224410/firefox     
+tcp        0      0 192.168.55.2:55146      35.75.32.93:443         ESTABLISHED 622088/Slack --stan 
+tcp        0      0 10.0.0.5:37220          10.0.0.5:4647           ESTABLISHED -                   
+tcp        0  58696 10.0.0.5:51578          162.125.21.3:443        ESTABLISHED 2837239/dropbox     
+tcp        0      0 192.168.55.2:53128      188.114.98.233:443      ESTABLISHED 2224410/firefox     
+tcp        0      0 192.168.55.2:38856      35.75.32.93:443         ESTABLISHED 622088/Slack --stan 
+tcp        0      0 127.0.0.1:54838         127.0.0.1:42003         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:45766         127.0.0.1:3306          ESTABLISHED -                   
+tcp        0      0 127.0.0.1:46698         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 127.0.0.1:45790         127.0.0.1:3306          ESTABLISHED -                   
+tcp        0      0 192.168.55.2:34472      142.251.1.138:443       ESTABLISHED 2147311/chrome --ty 
+tcp        0      0 192.168.55.2:53054      91.105.192.100:443      ESTABLISHED 1712863/Telegram    
+tcp        0      0 127.0.0.1:45774         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 127.0.0.1:54650         127.0.0.1:12345         ESTABLISHED 3060170/mysqld      
+tcp        0      0 127.0.0.1:56786         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:46696      140.82.113.26:443       ESTABLISHED 2224410/firefox     
+tcp        0      0 192.168.55.2:36956      34.202.253.140:443      ESTABLISHED 622088/Slack --stan 
+tcp        0      0 192.168.55.2:53480      173.194.221.94:443      ESTABLISHED 2224410/firefox     
+tcp        0      0 127.0.0.1:45762         127.0.0.1:3306          ESTABLISHED -                   
+tcp        0      0 127.0.0.1:54598         127.0.0.1:42002         ESTABLISHED -                   
+tcp        0      0 10.0.0.5:58674          213.180.204.148:443     ESTABLISHED 8568/yandex-disk    
+tcp        0      0 127.0.0.1:42003         127.0.0.1:54838         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:42000         127.0.0.1:52316         ESTABLISHED -                   
+tcp        0      0 192.168.55.2:57628      108.157.214.118:443     ESTABLISHED 2224410/firefox     
+tcp        0      0 192.168.55.2:58080      142.250.184.131:443     ESTABLISHED 2224410/firefox     
+tcp        0      0 127.0.0.1:52316         127.0.0.1:42000         ESTABLISHED -                   
+tcp        0      0 10.0.0.5:33806          162.125.21.3:443        ESTABLISHED 2837239/dropbox     
+tcp        0      0 192.168.55.2:40532      170.114.4.224:443       ESTABLISHED 2504953/zoom        
+tcp        0      0 10.0.0.5:60740          162.125.21.3:443        ESTABLISHED 2837239/dropbox     
+tcp        0      0 127.0.0.1:42790         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 127.0.0.1:55080         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 127.0.0.1:46828         127.0.0.1:3306          ESTABLISHED -                   
+tcp        0      0 127.0.0.1:57438         127.0.0.1:12347         ESTABLISHED 3036479/mysqld      
+tcp        0      0 127.0.0.1:55116         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 127.0.0.1:58618         127.0.0.1:42001         ESTABLISHED -                   
+tcp        0      0 192.168.55.2:44004      108.157.214.53:443      ESTABLISHED 2147311/chrome --ty 
+tcp        0      0 172.17.0.1:38122        172.17.0.2:443          ESTABLISHED -                   
+tcp        0      0 127.0.0.1:46682         127.0.0.1:3306          ESTABLISHED -                   
+tcp        0      0 172.17.0.1:33276        172.17.0.2:443          ESTABLISHED -                   
+tcp        0      0 127.0.0.1:42001         127.0.0.1:58618         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:35434         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:43190      173.194.220.108:993     ESTABLISHED 3668124/thunderbird 
+tcp        0      0 192.168.55.2:60080      54.159.113.253:443      ESTABLISHED 3135169/kbfsfuse    
+tcp        0      0 192.168.55.2:33476      52.193.110.50:443       ESTABLISHED 622088/Slack --stan 
+tcp        0      0 127.0.0.1:42001         127.0.0.1:41588         ESTABLISHED -                   
+tcp        0      0 172.17.0.1:38132        172.17.0.2:443          ESTABLISHED -                   
+tcp        0      0 192.168.55.2:37404      162.125.69.13:443       ESTABLISHED 2837239/dropbox     
+tcp       25      0 192.168.55.2:57194      52.84.151.38:443        CLOSE_WAIT  2504953/zoom        
+tcp        0      0 192.168.55.2:50414      173.194.220.108:993     ESTABLISHED 3668124/thunderbird 
+tcp        0      0 192.168.55.2:55152      35.75.32.93:443         ESTABLISHED 622088/Slack --stan 
+tcp        0      0 10.0.0.5:52942          213.180.204.148:443     ESTABLISHED 616951/yandex-disk  
+tcp        1      0 127.0.0.1:60442         127.0.0.1:12347         CLOSE_WAIT  3036479/mysqld      
+tcp        0      0 192.168.55.2:36288      18.190.135.240:443      ESTABLISHED 2147311/chrome --ty 
+tcp       25      0 192.168.55.2:49858      170.114.52.2:443        CLOSE_WAIT  2504953/zoom        
+tcp        0      0 192.168.55.2:50244      172.64.152.233:443      ESTABLISHED 2224410/firefox     
+tcp        0      0 10.0.0.5:38802          162.125.21.3:443        ESTABLISHED 2837239/dropbox     
+tcp       13      0 10.0.0.5:34986          10.0.0.1:139            CLOSE_WAIT  37531/gvfsd-smb-bro 
+tcp        0      0 127.0.0.1:46704         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:53080      91.105.192.100:443      ESTABLISHED 1712863/Telegram    
+tcp        0      0 192.168.55.2:58942      3.124.19.111:443        ESTABLISHED 2147311/chrome --ty 
+tcp        0      0 192.168.55.2:53948      74.125.205.188:5228     ESTABLISHED 2147311/chrome --ty 
+tcp        0      0 127.0.0.1:37416         127.0.0.1:12347         ESTABLISHED 3060170/mysqld      
+tcp        0      0 192.168.55.2:47012      52.73.62.51:443         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:45788         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:53074      91.105.192.100:443      ESTABLISHED 1712863/Telegram    
+tcp        0      0 192.168.55.2:36618      162.125.21.2:443        ESTABLISHED 2837239/dropbox     
+tcp        0      0 192.168.55.2:55440      3.68.61.181:443         ESTABLISHED 622088/Slack --stan 
+tcp        0      1 192.168.55.2:44600      52.35.150.14:443        SYN_SENT    2224410/firefox     
+tcp        0      0 127.0.0.1:41588         127.0.0.1:42001         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:42802         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 127.0.0.1:54652         127.0.0.1:12345         ESTABLISHED 3060170/mysqld      
+tcp        0      0 192.168.55.2:34910      64.233.162.188:5228     ESTABLISHED 2147311/chrome --ty 
+tcp        0      0 10.0.0.5:55240          162.125.21.3:443        ESTABLISHED 2837239/dropbox     
+tcp        0      0 10.0.0.5:36148          162.125.21.3:443        ESTABLISHED 2837239/dropbox     
+tcp       25      0 192.168.55.2:49844      170.114.52.2:443        CLOSE_WAIT  2504953/zoom        
+tcp        0      0 127.0.0.1:34666         127.0.0.1:12346         ESTABLISHED 3035305/mysqld      
+tcp        0      0 127.0.0.1:57612         127.0.0.1:42001         ESTABLISHED -                   
+tcp        0      1 192.168.55.2:45836      52.35.150.14:443        SYN_SENT    2224410/firefox     
+tcp        0      0 192.168.55.2:49218      38.111.114.11:993       ESTABLISHED 3668124/thunderbird 
+tcp        0      0 192.168.55.2:53098      91.105.192.100:443      ESTABLISHED 1712863/Telegram    
+tcp        0      0 127.0.0.1:42003         127.0.0.1:60112         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:46818         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:53082      91.105.192.100:443      ESTABLISHED 1712863/Telegram    
+tcp        0      0 127.0.0.1:54826         127.0.0.1:42003         ESTABLISHED -                   
+tcp        0      0 10.0.0.5:37224          10.0.0.5:4647           ESTABLISHED -                   
+tcp        0      0 192.168.55.2:55324      54.158.119.218:443      ESTABLISHED 3135169/kbfsfuse    
+tcp        0      0 192.168.55.2:50438      206.247.115.239:5091    ESTABLISHED 2504953/zoom        
+tcp        0      0 127.0.0.1:55066         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:57734      188.114.98.233:443      TIME_WAIT   -                   
+tcp        0      0 127.0.0.1:56296         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:55130      35.75.32.93:443         ESTABLISHED 622088/Slack --stan 
+tcp        0      0 192.168.55.2:51354      54.147.17.17:443        ESTABLISHED 3135130/keybase     
+tcp        0      0 192.168.55.2:50970      149.154.167.51:443      ESTABLISHED 1712863/Telegram    
+tcp        0      0 192.168.55.2:53104      91.105.192.100:443      ESTABLISHED 1712863/Telegram    
+tcp        0      0 192.168.55.2:46678      34.107.243.93:443       ESTABLISHED 2224410/firefox     
+tcp        0      0 127.0.0.1:36028         127.0.0.1:3306          ESTABLISHED -                   
+tcp        0      0 127.0.0.1:46796         127.0.0.1:3306          ESTABLISHED -                   
+tcp        0      0 127.0.0.1:42002         127.0.0.1:33532         ESTABLISHED -                   
+tcp        0      0 192.168.55.2:45184      162.125.69.12:443       ESTABLISHED 2837239/dropbox     
+tcp        1      0 127.0.0.1:59430         127.0.0.1:12347         CLOSE_WAIT  3036479/mysqld      
+tcp        0   4778 10.0.0.5:40148          162.125.6.20:443        ESTABLISHED 2837239/dropbox     
+tcp        0      0 127.0.0.1:35428         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:42080      157.240.205.60:443      ESTABLISHED 2147311/chrome --ty 
+tcp        0      0 127.0.0.1:42002         127.0.0.1:54598         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:47960         127.0.0.1:42002         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:37430         127.0.0.1:12347         ESTABLISHED 3060170/mysqld      
+tcp        0      0 192.168.55.2:38774      77.223.96.250:443       ESTABLISHED 2224410/firefox     
+tcp        0      0 127.0.0.1:42003         127.0.0.1:54826         ESTABLISHED -                   
+tcp        0      0 127.0.0.1:42002         127.0.0.1:47960         ESTABLISHED -                   
+tcp        1      0 127.0.0.1:59438         127.0.0.1:12347         CLOSE_WAIT  3036479/mysqld      
+tcp        0      0 192.168.55.2:55414      3.68.61.181:443         ESTABLISHED 622088/Slack --stan 
+tcp        0      0 192.168.55.2:58580      188.114.99.233:443      TIME_WAIT   -                   
+tcp        0      0 172.17.0.1:44894        172.17.0.2:443          ESTABLISHED -                   
+tcp        0      0 192.168.55.2:55950      170.114.15.227:443      ESTABLISHED 2504953/zoom        
+tcp        1      0 127.0.0.1:57442         127.0.0.1:12347         CLOSE_WAIT  3036479/mysqld      
+tcp        0      0 192.168.255.22:35056    213.180.204.148:443     ESTABLISHED 1932374/yandex-disk 
+tcp        0      0 127.0.0.1:51230         127.0.0.1:3306          TIME_WAIT   -                   
+tcp        0      0 192.168.55.2:43440      194.85.125.1:443        ESTABLISHED 2224410/firefox     
+tcp        0      0 172.17.0.1:42368        172.17.0.2:443          ESTABLISHED -                   
+tcp        0      0 127.0.0.1:42001         127.0.0.1:57612         ESTABLISHED -                   
+tcp6       0      0 :::17500                :::*                    LISTEN      2837239/dropbox     
+tcp6       0      0 :::9123                 :::*                    LISTEN      -                   
+tcp6       0      0 :::8281                 :::*                    LISTEN      -                   
+tcp6       0      0 :::8383                 :::*                    LISTEN      -                   
+tcp6       0      0 :::9900                 :::*                    LISTEN      -                   
+tcp6       0      0 ::1:631                 :::*                    LISTEN      -                   
+tcp6       0      0 :::12345                :::*                    LISTEN      3036479/mysqld      
+tcp6       0      0 :::12346                :::*                    LISTEN      3060170/mysqld      
+tcp6       0      0 :::12347                :::*                    LISTEN      3035305/mysqld      
+tcp6       0      0 :::3306                 :::*                    LISTEN      -                   
+tcp6       0      0 :::22                   :::*                    LISTEN      -                   
+tcp6       0      0 :::33060                :::*                    LISTEN      -                   
+tcp6       0      0 :::443                  :::*                    LISTEN      -                   
+tcp6       0      0 :::1716                 :::*                    LISTEN      7748/kdeconnectd    
+tcp6       0      0 :::8080                 :::*                    LISTEN      -                   
+tcp6       0      0 :::4648                 :::*                    LISTEN      -                   
+tcp6       0      0 :::4646                 :::*                    LISTEN      -                   
+tcp6       0      0 :::4647                 :::*                    LISTEN      -                   
+tcp6       0      0 127.0.0.1:12347         127.0.0.1:57436         ESTABLISHED 3035305/mysqld      
+tcp6       0      0 127.0.0.1:12345         127.0.0.1:44464         ESTABLISHED 3036479/mysqld      
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:36028         ESTABLISHED -                   
+tcp6       0      0 10.0.0.5:4647           10.0.0.5:37224          ESTABLISHED -                   
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:45762         ESTABLISHED -                   
+tcp6       0      0 127.0.0.1:12347         127.0.0.1:37416         ESTABLISHED 3035305/mysqld      
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:46828         ESTABLISHED -                   
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:45766         ESTABLISHED -                   
+tcp6       0      0 10.0.0.5:4647           10.0.0.5:37220          ESTABLISHED -                   
+tcp6       0      0 127.0.0.1:12347         127.0.0.1:37430         ESTABLISHED 3035305/mysqld      
+tcp6       0      0 127.0.0.1:12345         127.0.0.1:54652         ESTABLISHED 3036479/mysqld      
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:46682         ESTABLISHED -                   
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:56798         TIME_WAIT   -                   
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:46796         ESTABLISHED -                   
+tcp6       0      0 127.0.0.1:12347         127.0.0.1:57438         ESTABLISHED 3035305/mysqld      
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:35434         TIME_WAIT   -                   
+tcp6       0      0 127.0.0.1:12346         127.0.0.1:34666         ESTABLISHED 3060170/mysqld      
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:46818         TIME_WAIT   -                   
+tcp6       0      0 127.0.0.1:12345         127.0.0.1:54650         ESTABLISHED 3036479/mysqld      
+tcp6       0      0 127.0.0.1:3306          127.0.0.1:45790         ESTABLISHED -                   

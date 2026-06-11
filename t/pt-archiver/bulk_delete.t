@@ -17,10 +17,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 14;
@@ -34,7 +34,7 @@ my $cmd = "$trunk/bin/pt-archiver";
 $sb->create_dbs($dbh, ['test']);
 
 # Test --bulk-delete deletes in chunks
-$sb->load_file('master', 't/pt-archiver/samples/table5.sql');
+$sb->load_file('source', 't/pt-archiver/samples/table5.sql');
 $output = `perl -I $trunk/t/pt-archiver/samples $cmd --plugin Plugin7 --no-ascend --limit 50 --bulk-delete --purge --where 1=1 --source D=test,t=table_5,F=$cnf --statistics 2>&1`;
 like($output, qr/SELECT 105/, 'Fetched 105 rows');
 like($output, qr/DELETE 105/, 'Deleted 105 rows');
@@ -54,7 +54,7 @@ like($output, qr/\(1=1\)/, 'WHERE clause is jailed');
 unlike($output, qr/[^(]1=1/, 'WHERE clause is jailed');
 
 # Test --bulk-delete works ok with a destination table
-$sb->load_file('master', 't/pt-archiver/samples/table5.sql');
+$sb->load_file('source', 't/pt-archiver/samples/table5.sql');
 $output = output(
    sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-delete --where 1=1), "--source", "D=test,t=table_5,F=$cnf", qw(--statistics --dest t=table_5_dest)) },
 );

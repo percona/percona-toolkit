@@ -1,4 +1,4 @@
-# This program is copyright 2011-2012 Percona Inc.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # collect_mysql_info package
 # ###########################################################################
@@ -57,15 +56,31 @@ collect_mysqld_instances () {
 find_my_cnf_file() {
    local file="$1"
    local port="${2:-""}"
+   local pid_file="${3:-""}"
 
    local cnf_file=""
+
+   if [ "$pid_file" ]; then
+      local pid=$(cat "$pid_file")
+      cnf_file="$(grep --max-count 1 -E "^\s*$pid\s+" "$file" \
+         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
+
+      if [ -n "$cnf_file" ]; then
+         echo "$cnf_file"
+         return
+      fi
+   fi
 
    if [ "$port" ]; then
       # Find the cnf file for the specific port.
       cnf_file="$(grep --max-count 1 "/mysqld.*--port=$port" "$file" \
          | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
+
+      if [ -n "$cnf_file" ]; then
+         echo "$cnf_file"
+         return
+      fi
    else
-      # Find the cnf file for the first mysqld instance.
       cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
          | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
    fi
@@ -100,8 +115,10 @@ collect_mysql_plugins () {
    $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW PLUGINS' 2>/dev/null
 }
 
-collect_mysql_slave_status () {
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW SLAVE STATUS' 2>/dev/null
+collect_mysql_replica_status () {
+   local replica_name="$1"
+
+   $CMD_MYSQL $EXT_ARGV -ssE -e "SHOW ${replica_name} STATUS" 2>/dev/null
 }
 
 collect_mysql_innodb_status () {
@@ -119,9 +136,9 @@ collect_mysql_processlist () {
 collect_mysql_users () {
 # The where clause has been added to skip listing MySQL 8+ roles as users.
 # ROLES are locked accounts, without passwords and expired.
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*), SUM(user=''), SUM(password=''), SUM(password NOT LIKE '*%') FROM mysql.user" 2>/dev/null
    if [ "$?" -ne 0 ]; then
-       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user WHERE account_locked <> "Y" AND password_expired <> "Y" AND authentication_string <> ""' 2>/dev/null
+       $CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*), SUM(user=''), SUM(authentication_string=''), SUM(authentication_string NOT LIKE '*%') FROM mysql.user WHERE account_locked <> 'Y' AND password_expired <> 'Y' AND authentication_string <> ''" 2>/dev/null
    fi
 }
 
@@ -130,15 +147,30 @@ collect_mysql_roles () {
    $CMD_MYSQL $EXT_ARGV -ss -e "$QUERY" 2>/dev/null
 }
 
-collect_mysql_show_slave_hosts () {
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW SLAVE HOSTS' 2>/dev/null
+collect_mysql_show_replica_hosts () {
+   local version="$1"
+
+   local replicas='replicas'
+   if [ "$version" '<' "8.1" ]; then
+      replicas='slave hosts';
+   fi
+
+   $CMD_MYSQL $EXT_ARGV -ssE -e "SHOW ${replicas}" 2>/dev/null
 }
 
-collect_master_logs_status () {
-   local master_logs_file="$1"
-   local master_status_file="$2"
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW MASTER LOGS' > "$master_logs_file" 2>/dev/null
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW MASTER STATUS' > "$master_status_file" 2>/dev/null
+collect_source_logs_status () {
+   local source_logs_file="$1"
+   local source_status_file="$2"
+   local version="$3"
+
+   local source_log='binary'
+   local source_status='binary log'
+   if [ "$version" '<' "8.1" ]; then
+      source_log='master';
+      source_status='master';
+   fi
+   $CMD_MYSQL $EXT_ARGV -ss -e "SHOW ${source_log} LOGS" > "$source_logs_file" 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ss -e "SHOW ${source_status} STATUS" > "$source_status_file" 2>/dev/null
 }
 
 # Somewhat different from the others, this one joins the status we got earlier
@@ -152,7 +184,7 @@ collect_internal_vars () {
    local mysqld_executables="${1:-""}"
 
    local FNV_64=""
-   if $CMD_MYSQL $EXT_ARGV -e 'SELECT FNV_64("a")' >/dev/null 2>&1; then
+   if $CMD_MYSQL $EXT_ARGV -e "SELECT FNV_64('a')" >/dev/null 2>&1; then
       FNV_64="Enabled";
    else
       FNV_64="Unknown";
@@ -175,6 +207,46 @@ collect_internal_vars () {
          i=$(($i + 1))
       done < "$mysqld_executables"
    fi
+
+   # jemalloc info
+   local JEMALLOC_STATUS=''
+   local GENERAL_JEMALLOC_STATUS=0
+   local JEMALLOC_LOCATION=''
+
+   for pid in $(pidof mysqld); do
+      grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
+      jemalloc_status=$?
+      if [ $jemalloc_status = 1 ]; then
+         echo "pt-summary-internal-jemalloc_enabled_for_pid_${pid}    0"
+      else
+         echo "pt-summary-internal-jemalloc_enabled_for_pid_${pid}    1"
+         GENERAL_JEMALLOC_STATUS=1
+      fi
+   done
+
+   if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+      JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
+      echo "pt-summary-internal-jemalloc_location    ${JEMALLOC_LOCATION}"
+   fi
+}
+
+collect_keyring_plugins() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE 'keyring%';"
+}
+
+collect_encrypted_tables() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=_Y_%';"
+}
+
+collect_encrypted_tablespaces() {
+    local version="$1"
+# I_S.INNODB_[SYS_]TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192".
+# And seems like MySQL is capable of bitwise operations. https://dev.mysql.com/doc/refman/5.7/en/bit-functions.html
+    if [ "$version" '<' "8.0" ]; then
+        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
+    else
+        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_TABLESPACES where FLAG&8192 = 8192;"
+    fi
 }
 
 # Uses mysqldump and dumps the results to FILE.
@@ -235,36 +307,53 @@ collect_mysql_info () {
    collect_mysql_status        > "$dir/mysql-status"
    collect_mysql_databases     > "$dir/mysql-databases"
    collect_mysql_plugins       > "$dir/mysql-plugins"
-   collect_mysql_slave_status  > "$dir/mysql-slave"
    collect_mysql_innodb_status > "$dir/innodb-status"
    collect_mysql_ndb_status    > "$dir/ndb-status"
-   collect_mysql_processlist   > "$dir/mysql-processlist"   
+   collect_mysql_processlist   > "$dir/mysql-processlist"
    collect_mysql_users         > "$dir/mysql-users"
    collect_mysql_roles         > "$dir/mysql-roles"
+   collect_keyring_plugins     > "$dir/keyring-plugins"
 
+   local mysql_version="$(get_var version "$dir/mysql-variables")"
+
+   local replicas='replicas'
+   local replica_name='replica'
+   if [ "$mysql_version" '<' "8.1" ]; then
+      replicas='slave-hosts'
+      replica_name='slave'
+   fi
+
+   collect_mysql_replica_status $replica_name > "$dir/mysql-${replica_name}"
    collect_mysqld_instances   "$dir/mysql-variables"  > "$dir/mysqld-instances"
    collect_mysqld_executables "$dir/mysqld-instances" > "$dir/mysqld-executables"
-   collect_mysql_show_slave_hosts  "$dir/mysql-slave-hosts" > "$dir/mysql-slave-hosts"
+   collect_mysql_show_replica_hosts "$mysql_version" > "$dir/mysql-${replicas}"
 
    local binlog="$(get_var log_bin "$dir/mysql-variables")"
    if [ "${binlog}" ]; then
-      # "Got a binlog, going to get MASTER LOGS and MASTER STATUS"
-      collect_master_logs_status "$dir/mysql-master-logs" "$dir/mysql-master-status"
+      # "Got a binlog, going to get BINARY LOGS and BINARY LOG STATUS"
+      local source_logs_file="mysql-binary-logs"
+      local source_status_file="mysql-binary-log-status"
+
+      if [ "$mysql_version" '<' "8.1" ]; then
+         source_logs_file='mysql-master-logs'
+         source_status_file='mysql-master-status'
+      fi
+      collect_source_logs_status "$dir/$source_logs_file" "$dir/$source_status_file" ${mysql_version}
    fi
 
    local uptime="$(get_var Uptime "$dir/mysql-status")"
    local current_time="$($CMD_MYSQL $EXT_ARGV -ss -e \
                          "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)")"
 
-   local port="$(get_var port "$dir/mysql-variables")"
-   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port})"
-
-   [ -e "$cnf_file" ] && cat "$cnf_file" > "$dir/mysql-config-file"
-
    local pid_file="$(get_var "pid_file" "$dir/mysql-variables")"
    local pid_file_exists=""
    [ -e "${pid_file}" ] && pid_file_exists=1
    echo "pt-summary-internal-pid_file_exists    $pid_file_exists" >> "$dir/mysql-variables"
+
+   local port="$(get_var port "$dir/mysql-variables")"
+   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port} ${pid_file})"
+
+   [ -e "$cnf_file" ] && cat "$cnf_file" > "$dir/mysql-config-file"
 
    # TODO: Do these require a file of their own?
    echo "pt-summary-internal-current_time    $current_time" >> "$dir/mysql-variables"
@@ -276,6 +365,12 @@ collect_mysql_info () {
       local trg_arg="$(get_mysqldump_args "$dir/mysql-variables")"
       local dbs="${OPT_DATABASES:-""}"
       get_mysqldump_for "${trg_arg}" "$dbs" > "$dir/mysqldump"
+   fi
+
+   # encrypted tables and tablespaces
+   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then
+      collect_encrypted_tables                       > "$dir/encrypted-tables"
+      collect_encrypted_tablespaces ${mysql_version} > "$dir/encrypted-tablespaces"
    fi
 
    # TODO: gather this data in the same format as normal: TS line, stats

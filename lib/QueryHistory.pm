@@ -1,4 +1,4 @@
-# This program is copyright 2008-2011 Percona Ireland Ltd.
+# This program is copyright 2008-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -98,7 +98,7 @@ sub set_history_options {
    my $sql = "REPLACE INTO $args{table}("
       . join(', ',
          map { Quoter->quote($_) } ('checksum', 'sample', @cols))
-      . ') VALUES (CONV(?, 16, 10), ?'
+      . ') VALUES (?, ?'
       . (@cols ? ', ' : '')  # issue 1265
       . join(', ', map {
          # ts_min and ts_max might be part of the PK, in which case they must

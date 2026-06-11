@@ -1,14 +1,14 @@
 -- Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
--- 
+--
 -- This program is free software; you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation; version 2 of the License.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 -- GNU General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
@@ -56,16 +56,16 @@ CREATE DEFINER='root'@'localhost' PROCEDURE table_exists (
              Database changed
              mysql> CREATE TABLE t1 (id INT PRIMARY KEY);
              Query OK, 0 rows affected (0.08 sec)
-             
+
              mysql> CREATE TABLE t2 (id INT PRIMARY KEY);
              Query OK, 0 rows affected (0.08 sec)
-             
+
              mysql> CREATE view v_t1 AS SELECT * FROM t1;
              Query OK, 0 rows affected (0.00 sec)
-             
+
              mysql> CREATE TEMPORARY TABLE t1 (id INT PRIMARY KEY);
              Query OK, 0 rows affected (0.00 sec)
-             
+
              mysql> CALL sys.table_exists(''db1'', ''t1'', @exists); SELECT @exists;
              Query OK, 0 rows affected (0.00 sec)
 
@@ -75,10 +75,10 @@ CREATE DEFINER='root'@'localhost' PROCEDURE table_exists (
              | TEMPORARY  |
              +------------+
              1 row in set (0.00 sec)
-             
+
              mysql> CALL sys.table_exists(''db1'', ''t2'', @exists); SELECT @exists;
              Query OK, 0 rows affected (0.00 sec)
-             
+
              +------------+
              | @exists    |
              +------------+

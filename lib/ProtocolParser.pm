@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Ireland Ltd.
+# This program is copyright 2009-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -86,7 +86,7 @@ sub parse_event {
          $args{stats}->{events_parsed}++ if $args{stats};
       } sort { $a->{seq} <=> $b->{seq} }
       @{$session->{client_packets}};
-      
+
       map {
          $event = $self->_parse_packet($_, $args{misc});
          $args{stats}->{events_parsed}++ if $args{stats};

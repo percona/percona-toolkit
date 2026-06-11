@@ -15,13 +15,14 @@ use PerconaTest;
 use Sandbox;
 use SqlModes;
 require "$trunk/bin/pt-show-grants";
+require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 $sb->wipe_clean($dbh);
@@ -65,7 +66,7 @@ like(
 );
 
 SKIP: {
-   skip "MySQL 8.0+ doesn't have ALL PRIVILEGES", 1 if ($sandbox_version >= '8.0');
+   skip "MySQL 8.0+ doesn't have ALL PRIVILEGES", 1 if ($sandbox_version ge '8.0');
    like(
       $output,
       qr/^REVOKE ALL PRIVILEGES/m,
@@ -83,7 +84,7 @@ unlike(
 );
 
 $output = output(
-   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user,mysql.session@localhost,mysql.sys@localhost,sys,mysql.infoschema@localhost'); }
+   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user,mysql.session@localhost,mysql.sys@localhost,sys,mysql.infoschema@localhost,percona.telemetry@localhost'); }
 );
 unlike(
    $output,
@@ -94,17 +95,17 @@ like(
    $output,
    qr/\d\d:\d\d:\d\d\n\z/,
    'No output when all users skipped'
-);
+) or diag($output);
 # #############################################################################
 # pt-show-grant doesn't support column-level grants
 # https://bugs.launchpad.net/percona-toolkit/+bug/866075
 # #############################################################################
-$sb->load_file('master', 't/pt-show-grants/samples/column-grants.sql');
+$sb->load_file('source', 't/pt-show-grants/samples/column-grants.sql');
 diag(`/tmp/12345/use -u root -e "CREATE USER 'sally'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "GRANT SELECT(DateCreated, PckPrice, PaymentStat, SANumber) ON test.t TO 'sally'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "GRANT SELECT(city_id), INSERT(city) ON sakila.city TO 'sally'\@'%'"`);
 
-my $postfix = $sandbox_version >= '8.0' ? '-80' : $sandbox_version < '5.7' ? '' : '-57';
+my $postfix = $sandbox_version ge '8.4' ? '-84' : $sandbox_version ge '8.0' ? '-80' : $sandbox_version lt '5.7' ? '' : '-57';
 
 # 11
 ok(

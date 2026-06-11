@@ -15,12 +15,13 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-duplicate-key-checker";
 
+require VersionParser;
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 2;
@@ -36,7 +37,7 @@ $sb->create_dbs($dbh, ['test']);
 # #############################################################################
 # Issue 663: Index length prefix gives uninitialized value
 # #############################################################################
-$sb->load_file('master', 't/pt-duplicate-key-checker/samples/issue_663.sql');
+$sb->load_file('source', 't/pt-duplicate-key-checker/samples/issue_663.sql');
 $output = `$cmd -d issue_663`;
 like(
    $output,

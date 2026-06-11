@@ -17,14 +17,14 @@ require "$trunk/bin/pt-archiver";
 
 my $dp   = new DSNParser(opts=>$dsn_opts);
 my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh  = $sb->get_dbh_for('master');
-my $dbh2 = $sb->get_dbh_for('slave1');
+my $dbh  = $sb->get_dbh_for('source');
+my $dbh2 = $sb->get_dbh_for('replica1');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( !$dbh2 ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 
 my $output;
@@ -47,7 +47,7 @@ ok(
 );
 
 # Test with a sentinel file
-$sb->load_file('master', 't/pt-archiver/samples/table1.sql');
+$sb->load_file('source', 't/pt-archiver/samples/table1.sql');
 diag(`touch $sentinel`);
 
 $output = output(
@@ -84,7 +84,26 @@ like(
    'Created the sentinel OK'
 );
 
-diag(`rm -f $sentinel`);
+# Test --unstop, which removes the sentinel
+$output = output(
+   sub { pt_archiver::main("--source", "D=test,t=table_1,F=$cnf",
+      qw(--where 1=1 --why-quit --purge),
+      "--sentinel", $sentinel, "--unstop")
+   },
+);
+
+like(
+   $output,
+   qr/Successfully removed file $sentinel/,
+   'Removed the sentinel OK'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
+is(
+   $output + 0,
+   0,
+   'Rows were deleted'
+) or diag($output);
 
 # #############################################################################
 # Issue 391: Add --pid option to mk-table-sync
@@ -101,7 +120,7 @@ $output = output(
 
 like(
    $output,
-   qr{PID file $pid_file already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists (issue 391)'
 );
 
@@ -112,20 +131,20 @@ diag(`rm -f $pid_file`);
 # #############################################################################
 
 # This test will achive rows from dbh:test.table_1 to dbh2:test.table_2.
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 
 # Change passwords so defaults files won't work.
 $sb->do_as_root(
-   'master',
+   'source',
    q/CREATE USER 'bob'@'%' IDENTIFIED BY 'foo'/,
    q/GRANT ALL ON *.* TO 'bob'@'%'/,
 );
 $dbh2->do('TRUNCATE TABLE test.table_2');
-$sb->wait_for_slaves;
+$sb->wait_for_replicas;
 
 $output = output(
    sub { pt_archiver::main(
-      '--source', 'h=127.1,P=12345,D=test,t=table_1,u=bob,p=foo',
+      '--source', 'h=127.1,P=12345,D=test,t=table_1,u=bob,p=foo,s=1',
       '--dest',   'P=12346,t=table_2',
       qw(--where 1=1))
    },
@@ -137,9 +156,9 @@ is(
    scalar @$r,
    4,
    '--dest inherited from --source'
-);
+) or diag($output);
 
-$sb->do_as_root('master', q/DROP USER 'bob'@'%'/);
+$sb->do_as_root('source', q/DROP USER 'bob'@'%'/);
 
 # #############################################################################
 # Done.

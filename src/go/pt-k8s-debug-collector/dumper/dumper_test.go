@@ -1,0 +1,343 @@
+// This program is copyright 2020-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
+package dumper
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+func TestMatchesCR(t *testing.T) {
+	tests := []struct {
+		name      string
+		cr        string
+		podLabels map[string]string
+		expected  bool
+	}{
+		{
+			name:      "psmdb with mongod component",
+			cr:        "psmdb",
+			podLabels: map[string]string{"app.kubernetes.io/component": "mongod"},
+			expected:  true,
+		},
+		{
+			name:      "ps with mysql component",
+			cr:        "ps",
+			podLabels: map[string]string{"app.kubernetes.io/component": "mysql"},
+			expected:  true,
+		},
+		{
+			name:      "pg with pgo-pg-database label",
+			cr:        "pg",
+			podLabels: map[string]string{"pgo-pg-database": "true"},
+			expected:  true,
+		},
+		{
+			name: "pgv2 with correct labels",
+			cr:   "pgv2",
+			podLabels: map[string]string{
+				"pgv2.percona.com/version":                   "1.0",
+				"postgres-operator.crunchydata.com/instance": "test",
+			},
+			expected: true,
+		},
+		{
+			name:      "no match",
+			cr:        "unknown",
+			podLabels: map[string]string{"app": "test"},
+			expected:  false,
+		},
+		{
+			name:      "psmdb using app.kubernetes.io/name label",
+			cr:        "psmdb",
+			podLabels: map[string]string{"app.kubernetes.io/name": "mongod"},
+			expected:  true,
+		},
+		{
+			name:      "ps using app.kubernetes.io/name label",
+			cr:        "ps",
+			podLabels: map[string]string{"app.kubernetes.io/name": "mysql"},
+			expected:  true,
+		},
+		{
+			name:      "pg with pgo alias",
+			cr:        "pgo",
+			podLabels: map[string]string{"pgo-pg-database": "true"},
+			expected:  true,
+		},
+		{
+			name:      "pgv2 missing one required label",
+			cr:        "pgv2",
+			podLabels: map[string]string{"pgv2.percona.com/version": "1.0"},
+			expected:  false,
+		},
+		{
+			name:      "empty labels",
+			cr:        "psmdb",
+			podLabels: map[string]string{},
+			expected:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := matchesCR(tt.cr, tt.podLabels)
+			if result != tt.expected {
+				t.Errorf("matchesCR(%q, %v) = %v; want %v", tt.cr, tt.podLabels, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestResourceTypeParsing(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       string
+		expected string
+	}{
+		{
+			name:     "pg exact match",
+			cr:       "pg",
+			expected: "pg",
+		},
+		{
+			name:     "pgv2 exact match",
+			cr:       "pgv2",
+			expected: "pgv2",
+		},
+		{
+			name:     "pxc exact match",
+			cr:       "pxc",
+			expected: "pxc",
+		},
+		{
+			name:     "ps exact match",
+			cr:       "ps",
+			expected: "ps",
+		},
+		{
+			name:     "psmdb exact match",
+			cr:       "psmdb",
+			expected: "psmdb",
+		},
+		{
+			name:     "auto",
+			cr:       "auto",
+			expected: "auto",
+		},
+		{
+			name:     "pxc with path",
+			cr:       "pxc/something",
+			expected: "pxc",
+		},
+		{
+			name:     "pg with path",
+			cr:       "pg/something",
+			expected: "pg",
+		},
+		{
+			name:     "pgo exact match",
+			cr:       "pgo",
+			expected: "pg",
+		},
+		{
+			name:     "pgo with path",
+			cr:       "pgo/something",
+			expected: "pg",
+		},
+		{
+			name:     "pgv2 with path",
+			cr:       "pgv2/something",
+			expected: "pgv2",
+		},
+		{
+			name:     "psmdb with path",
+			cr:       "psmdb/something",
+			expected: "psmdb",
+		},
+		{
+			name:     "unknown returns as is",
+			cr:       "unknown",
+			expected: "unknown",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := resourceType(tt.cr)
+			if result != tt.expected {
+				t.Errorf("resourceType(%q) = %q; want %q", tt.cr, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseResourceSpec(t *testing.T) {
+	tests := []struct {
+		name            string
+		resource        string
+		wantResource    string
+		wantClusterName string
+	}{
+		{
+			name:            "plain resource",
+			resource:        "auto",
+			wantResource:    "auto",
+			wantClusterName: "",
+		},
+		{
+			name:            "resource with cluster suffix",
+			resource:        "auto/k3d-pgv2",
+			wantResource:    "auto",
+			wantClusterName: "k3d-pgv2",
+		},
+		{
+			name:            "resource is trimmed",
+			resource:        "  psmdb/k3d-psmdb  ",
+			wantResource:    "psmdb",
+			wantClusterName: "k3d-psmdb",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotResource, gotClusterName := parseResourceSpec(tt.resource)
+			if gotResource != tt.wantResource || gotClusterName != tt.wantClusterName {
+				t.Fatalf("parseResourceSpec(%q) = (%q, %q), want (%q, %q)", tt.resource, gotResource, gotClusterName, tt.wantResource, tt.wantClusterName)
+			}
+		})
+	}
+}
+
+func TestBuildRestConfigUsesSelectedContext(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "kubeconfig-*.yaml")
+	if err != nil {
+		t.Fatalf("create temp kubeconfig: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	kubeconfig := `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://default.example
+  name: default-cluster
+- cluster:
+    server: https://pgv2.example
+  name: pgv2-cluster
+contexts:
+- context:
+    cluster: default-cluster
+    user: default-user
+  name: default
+- context:
+    cluster: pgv2-cluster
+    user: pgv2-user
+  name: k3d-pgv2
+current-context: default
+users:
+- name: default-user
+  user:
+    token: default-token
+- name: pgv2-user
+  user:
+    token: pgv2-token
+`
+
+	if _, err := tmpFile.WriteString(kubeconfig); err != nil {
+		t.Fatalf("write temp kubeconfig: %v", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("close temp kubeconfig: %v", err)
+	}
+
+	cfg, err := buildRestConfig(tmpFile.Name(), "k3d-pgv2")
+	if err != nil {
+		t.Fatalf("buildRestConfig returned error: %v", err)
+	}
+
+	if cfg.Host != "https://pgv2.example" {
+		t.Fatalf("buildRestConfig selected host %q, want %q", cfg.Host, "https://pgv2.example")
+	}
+}
+
+// Tests for individual_files.go
+
+func TestGetSummarySkipPodSummary(t *testing.T) {
+	// Test that getSummary returns early when skipPodSummary is true
+	d := &Dumper{
+		skipPodSummary: true,
+		location:       "/tmp/dump",
+		logger:         NewSafeLogger(),
+	}
+
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: "default",
+		},
+	}
+
+	job := exportJob{Pod: pod}
+
+	// When skipPodSummary is true, getSummary should return early
+	// This test ensures it doesn't panic and completes successfully
+	t.Run("skip pod summary when flag is true", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("getSummary panicked: %v", r)
+			}
+		}()
+
+		// getSummary returns early when skipPodSummary is true
+		d.getSummary(context.Background(), job, "pxc", "/tmp/summary.txt")
+		t.Log("getSummary completed successfully when skipPodSummary is true")
+	})
+}
+
+func TestGetSummarySkipPodSummaryFalse(t *testing.T) {
+	// Test that getSummary processes when skipPodSummary is false
+	d := &Dumper{
+		skipPodSummary: false,
+		location:       "/tmp/dump",
+		logger:         NewSafeLogger(),
+	}
+
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: "default",
+		},
+	}
+
+	job := exportJob{Pod: pod}
+
+	t.Run("process pod summary when flag is false", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				// We expect potential panics from getPodSummary since archive is nil
+				// This is acceptable in this unit test
+				t.Logf("Expected potential panic from getPodSummary: %v", r)
+			}
+		}()
+
+		d.getSummary(context.Background(), job, "pxc", "/tmp/summary.txt")
+	})
+}

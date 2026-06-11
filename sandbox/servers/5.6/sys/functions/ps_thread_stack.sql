@@ -46,8 +46,8 @@ RETURNS LONGTEXT CHARSET latin1
              mysql> SELECT sys.ps_thread_stack(37, FALSE) AS thread_stack\\G
              *************************** 1. row ***************************
              thread_stack: {"rankdir": "LR","nodesep": "0.10","stack_created": "2014-02-19 13:39:03",
-             "mysql_version": "5.7.3-m13","mysql_user": "root@localhost","events": 
-             [{"nesting_event_id": "0", "event_id": "10", "timer_wait": 256.35, "event_info": 
+             "mysql_version": "5.7.3-m13","mysql_user": "root@localhost","events":
+             [{"nesting_event_id": "0", "event_id": "10", "timer_wait": 256.35, "event_info":
              "sql/select", "wait_info": "select @@version_comment limit 1\\nerrors: 0\\nwarnings: 0\\nlock time:
              ...
             '
@@ -73,7 +73,7 @@ BEGIN
               , CONCAT('"nesting_event_id": "', IF(nesting_event_id IS NULL, '0', nesting_event_id), '"')
               , CONCAT('"event_id": "', event_id, '"')
               -- Convert from picoseconds to microseconds
-              , CONCAT( '"timer_wait": ', ROUND(timer_wait/1000000, 2))  
+              , CONCAT( '"timer_wait": ', ROUND(timer_wait/1000000, 2))
               , CONCAT( '"event_info": "'
                   , CASE
                         WHEN event_name NOT LIKE 'wait/io%' THEN REPLACE(SUBSTRING_INDEX(event_name, '/', -2), '\\', '\\\\')
@@ -87,7 +87,7 @@ BEGIN
               -- If debug is enabled, add the file:lineno information for waits
               , CONCAT( '"source": "', IF(true AND event_name LIKE 'wait%', IFNULL(wait_info, ''), ''), '"')
               -- Depending on the type of event, name it appropriately
-              , CASE 
+              , CASE
                      WHEN event_name LIKE 'wait/io/file%'      THEN '"event_type": "io/file"'
                      WHEN event_name LIKE 'wait/io/table%'     THEN '"event_type": "io/table"'
                      WHEN event_name LIKE 'wait/io/socket%'    THEN '"event_type": "io/socket"'
@@ -98,8 +98,8 @@ BEGIN
                      WHEN event_name LIKE 'statement/%'        THEN '"event_type": "stmt"'
                      WHEN event_name LIKE 'stage/%'            THEN '"event_type": "stage"'
                      WHEN event_name LIKE '%idle%'             THEN '"event_type": "idle"'
-                     ELSE '' 
-                END                   
+                     ELSE ''
+                END
             )
             , '}'
           )
@@ -108,7 +108,7 @@ BEGIN
     FROM (
           /*!50600
           -- Select all statements, with the extra tracing information available
-          (SELECT thread_id, event_id, event_name, timer_wait, timer_start, nesting_event_id, 
+          (SELECT thread_id, event_id, event_name, timer_wait, timer_start, nesting_event_id,
                   CONCAT(sql_text, '\\n',
                          'errors: ', errors, '\\n',
                          'warnings: ', warnings, '\\n',
@@ -122,7 +122,7 @@ BEGIN
                          'select full join: ', select_full_join, '\\n',
                          'select full range join: ', select_full_range_join, '\\n',
                          'select range: ', select_range, '\\n',
-                         'select range check: ', select_range_check, '\\n', 
+                         'select range check: ', select_range_check, '\\n',
                          'sort merge passes: ', sort_merge_passes, '\\n',
                          'sort rows: ', sort_rows, '\\n',
                          'sort range: ', sort_range, '\\n',
@@ -131,19 +131,19 @@ BEGIN
                          'no good index used: ', IF(no_good_index_used, 'TRUE', 'FALSE'), '\\n'
                          ) AS wait_info
              FROM performance_schema.events_statements_history_long WHERE thread_id = thd_id)
-          UNION 
+          UNION
           -- Select all stages
           (SELECT thread_id, event_id, event_name, timer_wait, timer_start, nesting_event_id, null AS wait_info
-             FROM performance_schema.events_stages_history_long WHERE thread_id = thd_id) 
+             FROM performance_schema.events_stages_history_long WHERE thread_id = thd_id)
           UNION */
           -- Select all events, adding information appropriate to the event
-          (SELECT thread_id, event_id, 
-                  CONCAT(event_name , 
-                         IF(event_name NOT LIKE 'wait/synch/mutex%', IFNULL(CONCAT(' - ', operation), ''), ''), 
+          (SELECT thread_id, event_id,
+                  CONCAT(event_name ,
+                         IF(event_name NOT LIKE 'wait/synch/mutex%', IFNULL(CONCAT(' - ', operation), ''), ''),
                          IF(number_of_bytes IS NOT NULL, CONCAT(' ', number_of_bytes, ' bytes'), ''),
                          IF(event_name LIKE 'wait/io/file%', '\\n', ''),
-                         IF(object_schema IS NOT NULL, CONCAT('\\nObject: ', object_schema, '.'), ''), 
-                         IF(object_name IS NOT NULL, 
+                         IF(object_schema IS NOT NULL, CONCAT('\\nObject: ', object_schema, '.'), ''),
+                         IF(object_name IS NOT NULL,
                             IF (event_name LIKE 'wait/io/socket%',
                                 -- Print the socket if used, else the IP:port as reported
                                 CONCAT(IF (object_name LIKE ':0%', @@socket, object_name)),
@@ -152,11 +152,11 @@ BEGIN
                          /*!50600 IF(index_name IS NOT NULL, CONCAT(' Index: ', index_name), ''),*/'\\n'
                          ) AS event_name,
                   timer_wait, timer_start, nesting_event_id, source AS wait_info
-             FROM performance_schema.events_waits_history_long WHERE thread_id = thd_id)) events 
+             FROM performance_schema.events_waits_history_long WHERE thread_id = thd_id)) events
     ORDER BY event_id;
 
-    RETURN CONCAT('{', 
-                  CONCAT_WS(',', 
+    RETURN CONCAT('{',
+                  CONCAT_WS(',',
                             '"rankdir": "LR"',
                             '"nodesep": "0.10"',
                             CONCAT('"stack_created": "', NOW(), '"'),

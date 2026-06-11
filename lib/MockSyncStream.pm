@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # MockSyncStream package
 # ###########################################################################
@@ -94,7 +93,7 @@ sub pending_changes {
 # uses sth attributes to return a pseudo table struct for the query's columns.
 sub get_result_set_struct {
    my ( $dbh, $sth ) = @_;
-   my @cols     = map { 
+   my @cols     = map {
       my $name = $_;
       my $name_len = length($name);
       if ( $name_len > 64 ) {
@@ -109,7 +108,7 @@ sub get_result_set_struct {
    my @nullable = map { $dbh->type_info($_)->{NULLABLE} == 1 ? 1 : 0 } @{$sth->{TYPE}};
 
    my $struct   = {
-      cols => \@cols, 
+      cols => \@cols,
       # collation_for => {},  RowDiff::key_cmp() may need this.
    };
 
@@ -120,7 +119,7 @@ sub get_result_set_struct {
       $struct->{col_posn}->{$col}    = $i;
       $struct->{type_for}->{$col}    = $type;
       $struct->{is_nullable}->{$col} = $nullable[$i];
-      $struct->{is_numeric}->{$col} 
+      $struct->{is_numeric}->{$col}
          = ($type =~ m/(?:(?:tiny|big|medium|small)?int|float|double|decimal|year)/ ? 1 : 0);
 
       # We no longer specify the (precision, scale) for double, float, and

@@ -1,0 +1,87 @@
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 0.0.0.0:2049            0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:443             0.0.0.0:*               LISTEN      4451/docker-proxy   
+tcp        0      0 0.0.0.0:111             0.0.0.0:*               LISTEN      1/init              
+tcp        0      0 0.0.0.0:17500           0.0.0.0:*               LISTEN      6630/dropbox        
+tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      1577/systemd-resolv 
+tcp        0      0 0.0.0.0:5100            0.0.0.0:*               LISTEN      1889/haproxy        
+tcp        0      0 127.0.0.1:42857         0.0.0.0:*               LISTEN      1825/pmm-agent      
+tcp        0      0 0.0.0.0:37607           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:38653           0.0.0.0:*               LISTEN      1872/rpc.mountd     
+tcp        0      0 127.0.0.1:7777          0.0.0.0:*               LISTEN      1825/pmm-agent      
+tcp        0      0 0.0.0.0:60983           0.0.0.0:*               LISTEN      1872/rpc.mountd     
+tcp        0      0 127.0.0.1:39817         0.0.0.0:*               LISTEN      1836/containerd     
+tcp        0      0 127.0.0.1:5432          0.0.0.0:*               LISTEN      2003/postgres       
+tcp        0      0 127.0.0.1:17603         0.0.0.0:*               LISTEN      6630/dropbox        
+tcp        0      0 127.0.0.1:17600         0.0.0.0:*               LISTEN      6630/dropbox        
+tcp        0      0 0.0.0.0:45741           0.0.0.0:*               LISTEN      1872/rpc.mountd     
+tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN      4777/master         
+tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN      1632/cupsd          
+tcp        0      0 192.168.1.25:42348      52.73.62.51:443         ESTABLISHED 2425/s1-network     
+tcp        0      0 172.17.0.1:48718        172.17.0.2:443          TIME_WAIT   -                   
+tcp        0      0 172.17.0.1:48720        172.17.0.2:443          TIME_WAIT   -                   
+tcp        0      0 192.168.1.25:36336      157.240.9.53:443        ESTABLISHED 13327/wavebox --typ 
+tcp        0      0 192.168.1.25:50798      185.166.143.25:443      ESTABLISHED 13327/wavebox --typ 
+tcp        0      0 192.168.1.25:38128      162.220.4.198:22        ESTABLISHED 2378176/ssh         
+tcp        0      0 192.168.1.25:41906      108.177.127.108:993     ESTABLISHED 474260/thunderbird  
+tcp        0      0 192.168.1.25:48500      18.197.249.189:443      ESTABLISHED 7119/Slack --standa 
+tcp        0      0 192.168.1.25:48494      18.197.249.189:443      ESTABLISHED 7119/Slack --standa 
+tcp        0      0 192.168.1.25:55614      198.57.27.221:993       ESTABLISHED 474260/thunderbird  
+tcp        0      0 192.168.1.25:34404      52.59.193.28:443        ESTABLISHED 13327/wavebox --typ 
+tcp        1      0 192.168.11.22:57302     108.157.4.6:443         CLOSE_WAIT  12357/python3       
+tcp        0      0 192.168.1.25:59664      82.202.226.23:443       ESTABLISHED 11292/firefox       
+tcp        0      0 192.168.1.25:34400      173.194.79.109:993      ESTABLISHED 474260/thunderbird  
+tcp        0      0 192.168.1.25:42474      84.38.188.87:443        ESTABLISHED 11292/firefox       
+tcp        0      0 192.168.1.25:51650      35.174.188.51:443       ESTABLISHED 11292/firefox       
+tcp       39      0 192.168.11.22:37302     35.168.140.53:443       CLOSE_WAIT  12357/python3       
+tcp        0      0 192.168.1.25:60640      162.125.19.131:443      ESTABLISHED 6630/dropbox        
+tcp        0      0 192.168.1.25:48504      18.197.249.189:443      ESTABLISHED 7119/Slack --standa 
+tcp        0      0 192.168.1.25:38238      142.132.213.154:443     ESTABLISHED 13327/wavebox --typ 
+tcp        0      0 192.168.1.25:45476      149.96.232.184:443      ESTABLISHED 11292/firefox       
+tcp        0      0 172.17.0.1:48724        172.17.0.2:443          TIME_WAIT   -                   
+tcp        0      0 127.0.0.1:56862         127.0.0.1:42857         ESTABLISHED 1825/pmm-agent      
+tcp        1      0 192.168.11.22:40140     34.117.237.239:443      CLOSE_WAIT  12357/python3       
+tcp        0      0 192.168.1.25:44984      54.146.182.72:443       ESTABLISHED 11292/firefox       
+tcp        0      0 192.168.1.25:40314      108.177.119.109:993     ESTABLISHED 474260/thunderbird  
+tcp        0      0 192.168.1.25:45412      149.96.232.184:443      ESTABLISHED 11292/firefox       
+tcp        1      0 192.168.11.22:37304     35.168.140.53:443       CLOSE_WAIT  12357/python3       
+tcp        0      0 192.168.1.25:48502      18.197.249.189:443      ESTABLISHED 7119/Slack --standa 
+tcp        0      0 192.168.1.25:35324      23.61.80.242:443        ESTABLISHED 13327/wavebox --typ 
+tcp        1      0 192.168.11.22:50386     35.186.227.140:443      CLOSE_WAIT  12357/python3       
+tcp        0      0 192.168.1.25:47450      172.67.8.157:443        TIME_WAIT   -                   
+tcp        0      0 192.168.1.25:58620      149.154.167.51:443      ESTABLISHED 181231/Telegram     
+tcp        1      0 192.168.11.22:49692     93.184.220.29:80        CLOSE_WAIT  12357/python3       
+tcp        0      0 192.168.1.25:42408      35.174.127.31:443       ESTABLISHED 13327/wavebox --typ 
+tcp        0      0 192.168.1.25:48498      18.197.249.189:443      ESTABLISHED 7119/Slack --standa 
+tcp        0      0 172.17.0.1:48722        172.17.0.2:443          TIME_WAIT   -                   
+tcp       39      0 192.168.11.22:37306     35.168.140.53:443       CLOSE_WAIT  12357/python3       
+tcp        1      0 192.168.11.22:49690     93.184.220.29:80        CLOSE_WAIT  12357/python3       
+tcp       39      0 192.168.11.22:37300     35.168.140.53:443       CLOSE_WAIT  12357/python3       
+tcp        0      0 192.168.1.25:39040      3.233.54.64:443         ESTABLISHED 7119/Slack --standa 
+tcp        0      0 192.168.1.25:59964      108.177.126.188:5228    ESTABLISHED 13327/wavebox --typ 
+tcp        0      0 192.168.1.25:58452      3.126.186.102:443       ESTABLISHED 7119/Slack --standa 
+tcp        0      0 192.168.1.25:50262      173.194.69.108:993      ESTABLISHED 474260/thunderbird  
+tcp        0      0 127.0.0.1:42857         127.0.0.1:56862         ESTABLISHED 1825/pmm-agent      
+tcp        0      0 192.168.1.25:34402      173.194.79.109:993      ESTABLISHED 474260/thunderbird  
+tcp        0      0 192.168.1.25:54208      162.125.19.9:443        ESTABLISHED 6630/dropbox        
+tcp        0      0 192.168.1.25:42406      35.174.127.31:443       ESTABLISHED 11292/firefox       
+tcp        0      0 192.168.1.25:44784      3.67.131.16:443         ESTABLISHED 7119/Slack --standa 
+tcp        0      0 192.168.1.25:48508      18.197.249.189:443      ESTABLISHED 7119/Slack --standa 
+tcp        0      0 192.168.1.25:50712      108.139.241.22:443      ESTABLISHED 11292/firefox       
+tcp        0      0 192.168.1.25:60766      54.244.16.100:443       ESTABLISHED 11292/firefox       
+tcp        0      0 192.168.1.25:48506      18.197.249.189:443      ESTABLISHED 7119/Slack --standa 
+tcp6       0      0 ::1:631                 :::*                    LISTEN      1632/cupsd          
+tcp6       0      0 :::2049                 :::*                    LISTEN      -                   
+tcp6       0      0 :::3000                 :::*                    LISTEN      2882/grafana-server 
+tcp6       0      0 ::1:25                  :::*                    LISTEN      4777/master         
+tcp6       0      0 :::3306                 :::*                    LISTEN      1996/mysqld         
+tcp6       0      0 :::33060                :::*                    LISTEN      1996/mysqld         
+tcp6       0      0 :::443                  :::*                    LISTEN      4459/docker-proxy   
+tcp6       0      0 :::111                  :::*                    LISTEN      1/init              
+tcp6       0      0 :::17500                :::*                    LISTEN      6630/dropbox        
+tcp6       0      0 :::1716                 :::*                    LISTEN      6285/kdeconnectd    
+tcp6       0      0 :::37817                :::*                    LISTEN      -                   
+tcp6       0      0 :::54381                :::*                    LISTEN      1872/rpc.mountd     
+tcp6       0      0 :::41909                :::*                    LISTEN      1872/rpc.mountd     
+tcp6       0      0 :::47587                :::*                    LISTEN      1872/rpc.mountd     

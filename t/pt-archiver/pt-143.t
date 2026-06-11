@@ -17,10 +17,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 3;
@@ -31,7 +31,7 @@ my $output;
 # #############################################################################
 # Issue 1152: mk-archiver columns option resulting in null archived table data
 # #############################################################################
-$sb->load_file('master', 't/pt-archiver/samples/pt-143.sql');
+$sb->load_file('source', 't/pt-archiver/samples/pt-143.sql');
 
 my $original_rows = $dbh->selectall_arrayref('select * from test.stats_r');
 my $exit_status;

@@ -1,0 +1,68 @@
+2023-10-21T03:01:02.048346Z 480377 [Warning] [MY-013712] [Server] No suitable 'keyring_component_metadata_query' service implementation found to fulfill the request.
+2023-10-21T04:01:01.676602Z 443229 [ERROR] [MY-011263] [Server] Could not use /var/log/mysqld-slow.log for logging (error 13 - Permission denied). Turning logging off for the server process. To turn it on again: fix the cause, then either restart the query logging by using "SET GLOBAL SLOW_QUERY_LOG=ON" or restart the MySQL server.
+2023-10-21T04:01:01.700706Z 0 [Note] [MY-000000] [Galera] Member 0(node1) initiates vote on e234baca-17b2-11ed-b5e0-9ef13b0a9e4f:102573168,cd3bd7de926232d8:  File '/var/log/mysqld-slow.log' not found (OS errno 13 - Permission denied), Error_code: 29;
+2023-10-21T04:01:01.700748Z 0 [Note] [MY-000000] [Galera] Votes over e234baca-17b2-11ed-b5e0-9ef13b0a9e4f:102573168:
+   cd3bd7de926232d8:   1/5
+Waiting for more votes.
+2023-10-21T04:01:01.701416Z 0 [Note] [MY-000000] [Galera] Member 2(node3) responds to vote on e234baca-17b2-11ed-b5e0-9ef13b0a9e4f:102573168,0000000000000000: Success
+2023-10-21T04:01:01.701427Z 0 [Note] [MY-000000] [Galera] Votes over e234baca-17b2-11ed-b5e0-9ef13b0a9e4f:102573168:
+   0000000000000000:   1/5
+   cd3bd7de926232d8:   1/5
+Waiting for more votes.
+2023-10-21T04:01:01.701436Z 0 [Note] [MY-000000] [Galera] Member 3(node2) responds to vote on e234baca-17b2-11ed-b5e0-9ef13b0a9e4f:102573168,0000000000000000: Success
+2023-10-21T04:01:01.701444Z 0 [Note] [MY-000000] [Galera] Votes over e234baca-17b2-11ed-b5e0-9ef13b0a9e4f:102573168:
+   0000000000000000:   2/5
+   cd3bd7de926232d8:   1/5
+Winner: 0000000000000000
+2023-10-21T04:01:01.701512Z 443229 [ERROR] [MY-000000] [Galera] Inconsistency detected: Inconsistent by consensus on e234baca-17b2-11ed-b5e0-9ef13b0a9e4f:102573168
+	 at galera/src/replicator_smm.cpp:process_apply_error():1436
+2023-10-21T04:01:01.702957Z 443229 [Note] [MY-000000] [Galera] Closing send monitor...
+2023-10-21T04:01:01.702984Z 443229 [Note] [MY-000000] [Galera] Closed send monitor.
+2023-10-21T04:01:01.702997Z 443229 [Note] [MY-000000] [Galera] gcomm: terminating thread
+2023-10-21T04:01:01.703017Z 443229 [Note] [MY-000000] [Galera] gcomm: joining thread
+2023-10-21T04:01:01.703176Z 443229 [Note] [MY-000000] [Galera] gcomm: closing backend
+2023-10-21T04:01:01.703866Z 443229 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view (view_id(NON_PRIM,40661022-a2c6,94)
+memb {
+	40661022-a2c6,0
+	}
+joined {
+	}
+left {
+	}
+partitioned {
+	766d0cf0-a7ab,0
+	7c13fd0b-85ac,0
+	855ff0f7-9979,0
+	8ec0e01f-91a0,0
+	}
+)
+2023-10-21T04:01:01.703914Z 443229 [Note] [MY-000000] [Galera] PC protocol downgrade 1 -> 0
+2023-10-21T04:01:01.703925Z 443229 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view ((empty))
+2023-10-21T04:01:01.704291Z 443229 [Note] [MY-000000] [Galera] gcomm: closed
+2023-10-21T04:01:01.704318Z 0 [Note] [MY-000000] [Galera] New COMPONENT: primary = no, bootstrap = no, my_idx = 0, memb_num = 1
+2023-10-21T04:01:01.704368Z 0 [Note] [MY-000000] [Galera] Flow-control interval: [100, 100]
+2023-10-21T04:01:01.704377Z 0 [Note] [MY-000000] [Galera] Received NON-PRIMARY.
+2023-10-21T04:01:01.704384Z 0 [Note] [MY-000000] [Galera] Shifting SYNCED -> OPEN (TO: 102573170)
+2023-10-21T04:01:01.704399Z 0 [Note] [MY-000000] [Galera] New SELF-LEAVE.
+2023-10-21T04:01:01.704436Z 0 [Note] [MY-000000] [Galera] Flow-control interval: [0, 0]
+2023-10-21T04:01:01.704456Z 0 [Note] [MY-000000] [Galera] Received SELF-LEAVE. Closing connection.
+2023-10-21T04:01:01.704465Z 0 [Note] [MY-000000] [Galera] Shifting OPEN -> CLOSED (TO: 102573170)
+2023-10-21T04:01:01.704476Z 0 [Note] [MY-000000] [Galera] RECV thread exiting 0: Success
+2023-10-21T04:01:01.704472Z 16 [Note] [MY-000000] [Galera] ================================================
+View:
+  id: e234baca-17b2-11ed-b5e0-9ef13b0a9e4f:102573170
+  status: non-primary
+  protocol_version: 4
+  capabilities: MULTI-MASTER, CERTIFICATION, PARALLEL_APPLYING, REPLAY, ISOLATION, PAUSE, CAUSAL_READ, INCREMENTAL_WS, UNORDERED, PREORDERED, STREAMING, NBO
+  final: no
+  own_index: 0
+  members(1):
+	0: 40661022-3829-11ee-a2c6-26f8b8643033, node1 
+=================================================
+2023-10-21T04:01:01.704508Z 16 [Note] [MY-000000] [Galera] Non-primary view
+2023-10-21T04:01:01.704520Z 16 [Note] [MY-000000] [WSREP] Server status change synced -> connected
+2023-10-21T04:01:01.704605Z 443229 [Note] [MY-000000] [Galera] recv_thread() joined.
+2023-10-21T04:01:01.704617Z 443229 [Note] [MY-000000] [Galera] Closing replication queue.
+2023-10-21T04:01:01.704638Z 443229 [Note] [MY-000000] [Galera] Closing slave action queue.

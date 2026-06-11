@@ -1,0 +1,9 @@
+*************************** 1. row ***************************
+     Id: 27
+   User: msandbox
+   Host: localhost
+     db: NULL
+Command: Query
+   Time: 0
+  State: NULL
+   Info: SHOW FULL PROCESSLIST

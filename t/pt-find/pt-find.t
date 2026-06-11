@@ -15,15 +15,16 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-find";
 
+require VersionParser;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
-$sb->load_file('master', 't/lib/samples/stored-objs.sql');
+$sb->load_file('source', 't/lib/samples/stored-objs.sql');
 
 my $output;
 my $cnf = '/tmp/12345/my.sandbox.cnf';
@@ -53,7 +54,7 @@ unlike(
 
 
 SKIP: {
-   skip 'Sandbox master does not have the sakila database', 17
+   skip 'Sandbox source does not have the sakila database', 17
       unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    # ########################################################################
@@ -203,7 +204,7 @@ SKIP: {
    };
 }
 
-$sb->load_file('master', "t/pt-find/samples/pseudo-sakila.sql");
+$sb->load_file('source', "t/pt-find/samples/pseudo-sakila.sql");
 
 # Test --procedure.
 $output = `$cmd sakila_test  --procedure min_monthly_purchases  --print`;
@@ -288,7 +289,7 @@ $dbh->do("DROP DATABASE sakila_test");
 $output = `$cmd mysql --pid /tmp/mk-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/mk-script.pid exists},
    'Dies if PID file already exists (issue 391)'
 );
 `rm -rf /tmp/mk-script.pid`;

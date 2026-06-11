@@ -1,9 +1,21 @@
+// This program is copyright 2018-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
 	"archive/tar"
 	"compress/gzip"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,10 +28,11 @@ import (
 	"time"
 
 	shellwords "github.com/mattn/go-shellwords"
-	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize"
-	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize/util"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize"
+	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize/util"
 )
 
 func collectData(opts *cliOptions) error {
@@ -41,17 +54,21 @@ func collectData(opts *cliOptions) error {
 		}
 	}
 
-	tarFile := fmt.Sprintf(path.Join(*opts.TempDir, path.Base(*opts.TempDir)+".tar.gz"))
+	tarFile := path.Join(*opts.TempDir, path.Base(*opts.TempDir)+".tar.gz")
 	log.Infof("Creating tar file %q", tarFile)
 	if err := tarit(tarFile, []string{*opts.TempDir}); err != nil {
 		return err
 	}
 
 	if !*opts.NoEncrypt && *opts.EncryptPassword != "" {
-		password := sha256.Sum256([]byte(*opts.EncryptPassword))
+		key, err := deriveKey(*opts.EncryptPassword)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
 		encryptedFile := tarFile + ".aes"
 		log.Infof("Encrypting %q file into %q", tarFile, encryptedFile)
-		encrypt(tarFile, encryptedFile, password)
+		encrypt(tarFile, encryptedFile, key)
 	}
 
 	return nil

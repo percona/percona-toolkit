@@ -17,11 +17,11 @@ require "$trunk/bin/pt-variable-advisor";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
-my $dsn = $sb->dsn_for('master');
+my $dbh = $sb->get_dbh_for('source');
+my $dsn = $sb->dsn_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => "Cannot connect to sandbox master";
+   plan skip_all => "Cannot connect to sandbox source";
 }
 
 # #############################################################################

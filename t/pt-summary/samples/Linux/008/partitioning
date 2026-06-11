@@ -1,0 +1,12 @@
+Disk /dev/nvme0n1: 3,64 TiB, 4000787030016 bytes, 7814037168 sectors
+Disk model: WD_BLACK SN850X 4000GB                  
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: F57C2A9B-3E4B-49BA-BA83-3D206D23C1F6
+
+Device           Start        End    Sectors  Size Type
+/dev/nvme0n1p1    2048    1050623    1048576  512M EFI System
+/dev/nvme0n1p2 1050624    4550655    3500032  1,7G Linux filesystem
+/dev/nvme0n1p3 4550656 7814035455 7809484800  3,6T Linux filesystem

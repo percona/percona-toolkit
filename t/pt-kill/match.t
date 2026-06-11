@@ -9,14 +9,16 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 16;
+use Test::More tests => 17;
 
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
+require VersionParser;
+
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $slave_dbh = $sb->get_dbh_for('slave1');
+my $replica_dbh = $sb->get_dbh_for('replica1');
 
 my @args = qw(--test-matching);
 my $output;
@@ -143,19 +145,29 @@ $output = output(
 );
 like(
    $output,
-   qr/0x69962191E64980E6/,
+   qr/0x877B0CFF7AD32CA969962191E64980E6/,
    '--query-id'
+);
+
+# --json option
+$output = output(
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset011.txt", qw(--match-all --print --json --json-fields key:value)); }
+);
+like(
+   $output,
+   qr/\{"Command"\:"Query","Db"\:"db","Digest"\:"877B0CFF7AD32CA969962191E64980E6","Host"\:"127\.0\.0\.1\:3306","Id"\:"4","Info"\:"\\\/\* fruit\=orange \*\\\/ select 1 from fuits;","Kill_Error"\:"","Reason"\:"","State"\:"statistics","Time"\:"6","Timestamp"\:".*","User"\:"foo","key"\:"value"\}/,
+   '--json'
 );
 
 # #############################################################################
 # Live tests.
 # #############################################################################
 SKIP: {
-   skip "Cannot connect to sandbox slave", 1 unless $slave_dbh;
+   skip "Cannot connect to sandbox replica", 1 unless $replica_dbh;
    
-   my $pl        = $slave_dbh->selectall_arrayref('show processlist');
+   my $pl        = $replica_dbh->selectall_arrayref('show processlist');
    my @repl_thds = map { $_->[0] } grep { $_->[1] eq 'system user' } @$pl;
-   skip "Sandbox slave has no replication threads", unless scalar @repl_thds;
+   skip "Sandbox replica has no replication threads", unless scalar @repl_thds;
 
    my $repl_thd_ids = join("|", @repl_thds);
 
@@ -177,7 +189,7 @@ SKIP: {
       "--replication-threads allows matching replication thread"
    );
 
-   $slave_dbh->disconnect();
+   $replica_dbh->disconnect();
 };
 
 # #############################################################################

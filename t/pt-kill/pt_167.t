@@ -16,6 +16,7 @@ use threads;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
+require VersionParser;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -31,10 +32,10 @@ $o->get_opts();
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 sub start_thread {
@@ -71,7 +72,7 @@ ok(
    "Got proc id of sleeping query: $pid"
 );
 
-$dsn = $sb->dsn_for('master');
+$dsn = $sb->dsn_for('source');
 my $output = output(
    sub { pt_kill::main($dsn, "--kill-busy-commands","Query,Execute", qw(--run-time 3s --kill --busy-time 2s --print --match-info), "^(select|SELECT)"), },
    stderr => 1,

@@ -1,0 +1,4 @@
+  PID TTY      STAT   TIME COMMAND
+30877 pts/6    Sl     0:09 /home/hugmeir/mysql5/mysqlbrew/mysqls/Percona-XtraDB-Cluster-5.5.28-23.7.373.Linux.i686/bin/mysqld --defaults-file=/tmp/12345/my.sandbox.cnf
+30949 pts/6    Sl     0:09 /home/hugmeir/mysql5/mysqlbrew/mysqls/Percona-XtraDB-Cluster-5.5.28-23.7.373.Linux.i686/bin/mysqld --defaults-file=/tmp/12346/my.sandbox.cnf
+31026 pts/6    Sl     0:09 /home/hugmeir/mysql5/mysqlbrew/mysqls/Percona-XtraDB-Cluster-5.5.28-23.7.373.Linux.i686/bin/mysqld --defaults-file=/tmp/12347/my.sandbox.cnf

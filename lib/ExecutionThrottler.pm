@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Ireland Ltd.
+# This program is copyright 2009-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # ExecutionThrottler package
 # ###########################################################################
@@ -47,7 +46,7 @@ sub new {
    }
    my $self = {
       step       => 0.05,  # default
-      %args, 
+      %args,
       rate_ok    => undef,
       last_check => undef,
       stats      => {
@@ -106,7 +105,7 @@ sub throttle {
             ($args{stats}->{throttle_rate_max} || ()), $current_rate);
       }
       PTDEBUG && _d('Current rate:', $current_rate);
-   } 
+   }
 
    # rand() returns a fractional value between [0,1).  If skip_prob is
    # 0 then, then no queries will be skipped.  If its 1.0, then all queries

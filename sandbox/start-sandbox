@@ -62,13 +62,13 @@ make_sandbox() {
         local cluster_address="gcomm://"
         local listen_port=$(($port + 10))
         local receive_port=$(($port + 20))
-        if [ -n "${master_port}" ]; then
-            local master_listen_port=$(($master_port + 10))
-            cluster_address="gcomm://$ip:$master_listen_port"
+        if [ -n "${source_port}" ]; then
+            local source_listen_port=$(($source_port + 10))
+            cluster_address="gcomm://$ip:$source_listen_port"
 
             local this_listen_port=$(($port + 10))
             local this_cluster_address="gcomm://$ip:$this_listen_port"
-            sed -e "s!gcomm://\$!$this_cluster_address!g" -i.bak "${TMP_DIR}/$master_port/my.sandbox.cnf"
+            sed -e "s!gcomm://\$!$this_cluster_address!g" -i.bak "${TMP_DIR}/$source_port/my.sandbox.cnf"
         fi
 
         sed -e "s/ADDR/$ip/g" -i.bak "${TMP_DIR}/$port/my.sandbox.cnf"
@@ -82,7 +82,7 @@ make_sandbox() {
     for file in `grep -l PORT ${TMP_DIR}/$port/* 2>/dev/null`; do
         sed -e "s/PORT/$port/g" -i.bak $file
         sed -e "s!TMP_DIR!$TMP_DIR!g" -i.bak $file
-        # Use ! instead of / because the replacment has / (it's a directory)
+        # Use ! instead of / because the replacement has / (it's a directory)
         sed -e "s!PERCONA_TOOLKIT_SANDBOX!$PERCONA_TOOLKIT_SANDBOX!g" -i.bak $file
         sed -e "s!MYSQLD!$mysqld!g" -i.bak $file
     done
@@ -91,8 +91,8 @@ make_sandbox() {
     if [ -n "$BINLOG_FORMAT" ]; then
         echo "binlog-format=$BINLOG_FORMAT" >> ${TMP_DIR}/$port/my.sandbox.cnf
     fi
-    if [ -n "$SLAVE_EXEC_MODE" ]; then
-        echo "slave_exec_mode=$SLAVE_EXEC_MODE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    if [ -n "$REPLICA_EXEC_MODE" ]; then
+      echo "${REPLICA_NAME}_exec_mode=$REPLICA_EXEC_MODE" >> ${TMP_DIR}/$port/my.sandbox.cnf
     fi
     if [ -n "$SQL_MODE" ]; then
         echo "sql-mode=$SQL_MODE" >> ${TMP_DIR}/$port/my.sandbox.cnf
@@ -131,16 +131,16 @@ make_sandbox() {
         echo "enforce_gtid_consistency" >> ${TMP_DIR}/$port/my.sandbox.cnf
     fi
     if [ -n "$REPLICATION_THREADS" ]; then
-        echo "slave_parallel_workers=$REPLICATION_THREADS" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        echo "${REPLICA_NAME}_parallel_workers=$REPLICATION_THREADS" >> ${TMP_DIR}/$port/my.sandbox.cnf
     fi
 
     if [ -n "$EXTRA_DEFAULTS_FILE" ]; then
         cat "$EXTRA_DEFAULTS_FILE" >> ${TMP_DIR}/$port/my.sandbox.cnf
     fi
 
-    if [ $generating_database -eq 0 ]; then 
-        # If the sandbox is a slave, set it read_only.
-        if [ "$type" = "slave" ]; then
+    if [ $generating_database -eq 0 ]; then
+        # If the sandbox is a replica, set it read_only.
+        if [ "$type" = "replica" ]; then
             echo "read_only" >> ${TMP_DIR}/$port/my.sandbox.cnf
         fi
     fi
@@ -152,7 +152,7 @@ make_sandbox() {
             touch ${TMP_DIR}/empty-defaults.txt
             rm -rf ${TMP_DIR}/$port/data
             $PERCONA_TOOLKIT_SANDBOX/$mysqld --defaults-file=${TMP_DIR}/${port}/my.sandbox.cnf --initialize
-        else 
+        else
             # MySQL up to 5.6 needs mysql_install_db
             # Support for it is a TODO
             echo "For MySQL < 5.7 data.tar.gz is required to be in $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"
@@ -164,7 +164,6 @@ make_sandbox() {
 
         $PERCONA_TOOLKIT_BRANCH/util/version_cmp $minor_version 5.7.5
         if [ $? -eq 2 ]; then
-            echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'msandbox';" > $init_file
             echo "CREATE USER IF NOT EXISTS 'msandbox'@'%';" > $init_file
             echo "ALTER USER 'msandbox'@'%' IDENTIFIED BY 'msandbox' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK;" >> $init_file
             echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'%';" >> $init_file
@@ -181,7 +180,7 @@ make_sandbox() {
             echo "FLUSH PRIVILEGES;" >> $init_file
         fi
 
-        if [ "$type" = "slave" ]; then
+        if [ "$type" = "replica" ]; then
             echo "FLUSH TABLES WITH READ LOCK;" >> $init_file
             echo "SET GLOBAL read_only = ON;" >> $init_file
             echo "UNLOCK TABLES;" >> $init_file
@@ -225,20 +224,24 @@ make_sandbox() {
         mysql_upgrade_on ${TMP_DIR}/$port/my.sandbox.cnf
     fi
 
-    # If the sandbox is a slave, start the slave.
-    if [ "$type" = "slave" ]; then
-        #${TMP_DIR}/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
-        ${TMP_DIR}/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
-        ${TMP_DIR}/$port/use -e "start slave"
+    # If the sandbox is a replica, start the replica.
+    if [ "$type" = "replica" ]; then
+        ${TMP_DIR}/$port/use -e "change ${CHANGE_SOURCE_NAME} to ${SOURCE_NAME}_host='127.0.0.1', ${SOURCE_NAME}_user='msandbox', ${SOURCE_NAME}_password='msandbox', ${SOURCE_NAME}_port=$source_port, ${SOURCE_NAME}_SSL=1"
+        ${TMP_DIR}/$port/use -e "start ${REPLICA_NAME}"
     fi
 
     if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/ps-admin" ]; then
         # try to enable RocksDB. Only available on Percona Server 5.7.19+
         if [ "$version" > "5.6" -a -n "$ENABLE_ROCKSDB" ]; then
+            sudo rm -f /tmp/ps-admin.err
             $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-rocksdb -u root -pmsandbox -h 127.1 -P $port
         fi
-        if [ "$version" > "5.6" -a -n "$ENABLE_TOKUDB" ]; then 
-            sudo $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-tokudb -u root -pmsandbox -h 127.1 -P $port
+        if [ -n "$ENABLE_TOKUDB" ]; then
+            $PERCONA_TOOLKIT_BRANCH/util/version_cmp $minor_version "8.0.28-19"
+            if [[ "$?" < "2" ]] && [[ "$version" > "5.6" ]]; then
+                sudo rm -f /tmp/ps-admin.err
+                sudo $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-tokudb -u root -pmsandbox -h 127.1 -P $port
+            fi
         fi
     fi
 
@@ -249,31 +252,31 @@ make_sandbox() {
 # Sanity check the cmd line options.
 # ###########################################################################
 if [ $# -lt 2 ]; then
-    die "Usage: start-sandbox master|slave|master-master port [master port]"
+    die "Usage: start-sandbox source|replica|source-source|cluster|channels port [source port]"
 fi
 
-type=$1         # master, slave or master-master
+type=$1         # source, replica or source-source
 port=$2         # sandbox port number, e.g. 12345
-master_port=$3  # master port if slave or master-master
+source_port=$3  # source port if replica or source-source
 enable_tokudb=''
 
 
-if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ] && [ "$type" != "cluster" ] && [ "$type" != "channels" ]; then
-    die "Invalid sandbox type: $type.  Valid types are master, slave, and master-master."
+if [ "$type" != "source" ] && [ "$type" != "replica" ] && [ "$type" != "source-source" ] && [ "$type" != "cluster" ] && [ "$type" != "channels" ]; then
+    die "Invalid sandbox type: $type.  Valid types are source, replica, source-source, cluster, and channels."
 fi
 
 if [ $port -le 1024 ]; then
     die "Invalid port: $port.  Ports must be > 1024."
 fi
 
-if [ "$type" = "slave" -o "$type" = "master-master" ] && [ -z "$master_port" ]; then
-    die "No master port given for the $type."
+if [ "$type" = "replica" -o "$type" = "source-source" ] && [ -z "$source_port" ]; then
+    die "No source port given for the $type."
 fi
 
-# If creating a slave, the master must exist first.  Not true for creating
-# a master-master though.
-if [ "$type" = "slave" ] && [ ! -d "${TMP_DIR}/$master_port" ]; then
-    die "Master sandbox does not exist: ${TMP_DIR}/$master_port"
+# If creating a replica, the source must exist first.  Not true for creating
+# a source-source though.
+if [ "$type" = "replica" ] && [ ! -d "${TMP_DIR}/$source_port" ]; then
+    die "Source sandbox does not exist: ${TMP_DIR}/$source_port"
 fi
 
 # ###########################################################################
@@ -291,7 +294,7 @@ cd $PERCONA_TOOLKIT_BRANCH/sandbox
 
 # This script is usually called by test-env which discovers and
 # sets PERCONA_TOOLKIT_SANDBOX.  If this script is called directly,
-# then the caller is reponsible for setting PERCONA_TOOLKIT_SANDBOX.
+# then the caller is responsible for setting PERCONA_TOOLKIT_SANDBOX.
 # PERCONA_TOOLKIT_SANDBOX points to a base directory containing the
 # MySQL executables like PERCONA_TOOLKIT_SANDBOX/bin/mysqld_safe.
 
@@ -328,6 +331,15 @@ else
     minor_version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2,3 | cut -d- -f1`;
 fi
 
+SOURCE_NAME="master"
+CHANGE_SOURCE_NAME="master"
+REPLICA_NAME="slave"
+if [ "$version" '>' "8.1" ] && [ "$APP" '!=' "mariadb" ]; then
+   SOURCE_NAME="source"
+   CHANGE_SOURCE_NAME="replication source"
+   REPLICA_NAME="replica"
+fi
+
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version" ]; then
     die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version does not exist."
 fi
@@ -341,23 +353,23 @@ if [ -f $PIDFILE ]; then
     echo "Sandbox $port already started (found pid file $PIDFILE)"
 else
     make_sandbox
-    # make_sandbox has started slave and set read_only if necessary.
+    # make_sandbox has started replica and set read_only if necessary.
 
-    # If the sandbox is a master-master, start the second master and slave the
+    # If the sandbox is a source-source, start the second source and replica the
     # two together.
-    if [ "$type" = "master-master" ]; then
+    if [ "$type" = "source-source" ]; then
         mm1_port=$port
-        mm2_port=$master_port
-        port=$master_port  # make_sandbox uses $port
+        mm2_port=$source_port
+        port=$source_port  # make_sandbox uses $port
         make_sandbox
 
-        # Slave mm2 -> mm1
-        ${TMP_DIR}/$mm2_port/use -e "change master to master_host='127.0.0.1', master_log_file='mysql-bin.000001', master_user='msandbox', master_password='msandbox', master_port=$mm1_port"
-        ${TMP_DIR}/$mm2_port/use -e "start slave"
+        # Replica mm2 -> mm1
+        ${TMP_DIR}/$mm2_port/use -e "change ${CHANGE_SOURCE_NAME} to ${SOURCE_NAME}_host='127.0.0.1', ${SOURCE_NAME}_log_file='mysql-bin.000001', ${SOURCE_NAME}_user='msandbox', ${SOURCE_NAME}_password='msandbox', ${SOURCE_NAME}_port=$mm1_port, ${SOURCE_NAME}_SSL=1"
+        ${TMP_DIR}/$mm2_port/use -e "start ${REPLICA_NAME}"
 
-        # Slave mm1 -> mm2
-        ${TMP_DIR}/$mm1_port/use -e "change master to master_host='127.0.0.1', master_log_file='mysql-bin.000001', master_user='msandbox', master_password='msandbox', master_port=$mm2_port"
-        ${TMP_DIR}/$mm1_port/use -e "start slave"
+        # Replica mm1 -> mm2
+        ${TMP_DIR}/$mm1_port/use -e "change ${CHANGE_SOURCE_NAME} to ${SOURCE_NAME}_host='127.0.0.1', ${SOURCE_NAME}_log_file='mysql-bin.000001', ${SOURCE_NAME}_user='msandbox', ${SOURCE_NAME}_password='msandbox', ${SOURCE_NAME}_port=$mm2_port, ${SOURCE_NAME}_SSL=1"
+        ${TMP_DIR}/$mm1_port/use -e "start ${REPLICA_NAME}"
     fi
 fi
 

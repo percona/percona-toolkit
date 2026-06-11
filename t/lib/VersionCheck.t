@@ -16,14 +16,15 @@ use Sys::Hostname qw(hostname);
 
 use VersionCheck;
 use DSNParser;
+use VersionParser;
 use Sandbox;
 use PerconaTest;
 use Percona::Toolkit;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $master_dbh = $sb->get_dbh_for('source');
+my $slave1_dbh = $sb->get_dbh_for('replica1');
 
 local $ENV{PERCONA_FORCE_VERSION_CHECK} = 1;
 

@@ -31,7 +31,7 @@ use Percona::XtraDB::Cluster;
 my $q   = new Quoter();
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('source');
 
 my $cluster = Percona::XtraDB::Cluster->new();
 my $db_flavor = VersionParser->new($master_dbh)->flavor();
@@ -74,14 +74,14 @@ local @ARGV = ();
 $o->get_opts();
 
 diag("Starting master1");
-$sb->start_sandbox(type => "master", server => "master1");
+$sb->start_sandbox(type => "source", server => "source1");
 
 my ($master_cxn, $slave1_cxn, $master1_cxn)
    = map {
          my $cxn = make_cxn( dsn_string => $sb->dsn_for($_) );
          $cxn->connect();
          $cxn;
-   } qw( master slave1 master1 );
+   } qw( source replica1 source1 );
 
 for my $cxn ( $master_cxn, $slave1_cxn, $master1_cxn ) {
    ok(
@@ -90,7 +90,7 @@ for my $cxn ( $master_cxn, $slave1_cxn, $master1_cxn ) {
    );
 }
 
-diag($sb->stop_sandbox("master1"));
+diag($sb->stop_sandbox("source1"));
 
 # #############################################################################
 # Done.

@@ -85,6 +85,21 @@ is_deeply(
 );
 
 is_deeply(
+   $dp->parse('u=a,p=b,F=/something.cnf'),
+   {  
+      F => '/something.cnf',
+      P => undef,
+      u => "a",
+      p => "b",
+      h => undef,
+      A => undef,
+      S => undef,
+      D => undef,
+   },
+   'Read from config overrides other params'
+);
+
+is_deeply(
    $dp->parse('S=/tmp/sock'),
    {  u => undef,
       p => undef,
@@ -256,8 +271,8 @@ SKIP: {
    is($d->{S}, '/tmp/12345/mysql_sandbox12345.sock', 'Filled in socket');
    is($d->{h}, '127.0.0.1', 'Left hostname alone');
 
-   my $want = $sandbox_version lt '8.0' ? [ qw(utf8 utf8 utf8) ]: [ qw(utf8mb4 utf8mb4 utf8mb4) ];
-   warn Data::Dumper::Dumper($want);
+   my $want = $sandbox_version lt '8.0' ? [ qw(utf8 utf8 utf8) ]: [ qw(utf8mb3 utf8mb3 utf8mb3) ];
+   
    is_deeply(
       $dbh->selectrow_arrayref('select @@character_set_client, @@character_set_connection, @@character_set_results'),
       $want,
@@ -512,6 +527,7 @@ my @password_commas = (
    ['u=a,p=foo\,,P=12345',    'foo,',    12345, 'Pass ends with comma'],
    ['u=a,p=foo\,',            'foo,',    undef, 'Pass ends with comma, last part'],
    ['u=a,p=\,,P=12345',       ',',       12345, 'Pass is a comma'],
+   ['u=a,p=foo=bar,P=12345',  'foo=bar', 12345, '= in a pass'],
 );
 foreach my $password_comma ( @password_commas ) {
    test_password_comma(@$password_comma);
@@ -536,8 +552,9 @@ sub test_password_comma_with_auto {
 }
 
 @password_commas = (
-   ['host,p=a\,z,P=9', 'a,z', 9, 'Comma-pass with leading bareword host'],
-   ['p=a\,z,P=9,host', 'a,z', 9, 'Comma-pass with trailing bareword host'],
+   ['host,p=a\,z,P=9',    'a,z',     9, 'Comma-pass with leading bareword host'],
+   ['p=a\,z,P=9,host',    'a,z',     9, 'Comma-pass with trailing bareword host'],
+   ['p=foo=bar,P=9,host', 'foo=bar', 9, '= in a pass with trailing bareword host'],
 
 );
 foreach my $password_comma ( @password_commas ) {
@@ -631,6 +648,20 @@ SKIP: {
    $dbh->do(q{DROP DATABASE IF EXISTS bug_821715});
    $dbh->disconnect();
 }
+
+is_deeply(
+   $dp->parse('h=f000::1,P=12345,u=msandbox,p=msandbox'),
+   {  u => 'msandbox',
+      p => 'msandbox',
+      S => undef,
+      h => 'f000::1',
+      P => '12345',
+      F => undef,
+      D => undef,
+      A => undef,
+   },
+   'IPV6 support'
+);
 
 # #############################################################################
 # Done.

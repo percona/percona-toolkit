@@ -14,13 +14,14 @@ use Test::More;
 use ReportFormatter;
 use Transformers;
 use DSNParser;
+use VersionParser;
 use Sandbox;
 use CompareQueryTimes;
 use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
@@ -150,9 +151,9 @@ compare(0.000100, 0.000250);
 
 $report = <<EOF;
 # Significant query time differences
-# Query ID           host1 host2 %Increase %Threshold
-# ================== ===== ===== ========= ==========
-# EDEF654FCCC4A4D8-0 100us 250us    150.00        100
+# Query ID                           host1 host2 %Increase %Threshold
+# ================================== ===== ===== ========= ==========
+# ACBD18DB4CC2F85CEDEF654FCCC4A4D8-0 100us 250us    150.00        100
 EOF
 
 is(
@@ -166,9 +167,9 @@ compare(0.000100, 1.100251);
 
 $report = <<EOF;
 # Big query time differences
-# Query ID           host1 host2 Difference
-# ================== ===== ===== ==========
-# EDEF654FCCC4A4D8-0 100us    1s         1s
+# Query ID                           host1 host2 Difference
+# ================================== ===== ===== ==========
+# ACBD18DB4CC2F85CEDEF654FCCC4A4D8-0 100us    1s         1s
 EOF
 
 is(

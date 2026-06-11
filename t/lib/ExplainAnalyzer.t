@@ -21,12 +21,13 @@ use ExplainAnalyzer;
 use QueryRewriter;
 use QueryParser;
 use DSNParser;
+use VersionParser;
 use Sandbox;
 use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master', {no_lc=>1});
+my $dbh = $sb->get_dbh_for('source', {no_lc=>1});
 
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";

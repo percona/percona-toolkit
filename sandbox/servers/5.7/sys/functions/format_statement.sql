@@ -28,16 +28,16 @@ CREATE DEFINER='root'@'localhost' FUNCTION format_statement (
              Formats a normalized statement, truncating it if it is > 64 characters long by default.
 
              To configure the length to truncate the statement to by default, update the `statement_truncate_len`
-             variable with `sys_config` table to a different value. Alternatively, to change it just for just 
+             variable with `sys_config` table to a different value. Alternatively, to change it just for just
              your particular session, use `SET @sys.statement_truncate_len := <some new value>`.
 
-             Useful for printing statement related data from Performance Schema from 
+             Useful for printing statement related data from Performance Schema from
              the command line.
 
              Parameters
              -----------
 
-             statement (LONGTEXT): 
+             statement (LONGTEXT):
                The statement to format.
 
              Returns
@@ -73,7 +73,7 @@ BEGIN
 
   IF CHAR_LENGTH(statement) > @sys.statement_truncate_len THEN
       RETURN REPLACE(CONCAT(LEFT(statement, (@sys.statement_truncate_len/2)-2), ' ... ', RIGHT(statement, (@sys.statement_truncate_len/2)-2)), '\n', ' ');
-  ELSE 
+  ELSE
       RETURN REPLACE(statement, '\n', ' ');
   END IF;
 END$$

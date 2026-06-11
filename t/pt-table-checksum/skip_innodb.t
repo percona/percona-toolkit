@@ -21,28 +21,28 @@ if ( $sandbox_version ge '5.6' ) {
 
 diag("Stopping/reconfiguring/restarting sandboxes 12348 and 12349");
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
-diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox source 12348 >/dev/null`);
 
 diag(`$trunk/sandbox/stop-sandbox 12349 >/dev/null`);
-diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox slave 12349 12348 >/dev/null`);
+diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox replica 12349 12348 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master1');
-my $slave_dbh  = $sb->get_dbh_for('master2');
+my $source_dbh = $sb->get_dbh_for('source1');
+my $replica_dbh  = $sb->get_dbh_for('source2');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master 12348';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source 12348';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave 12349';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica 12349';
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
+my $source_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
+my @args       = ($source_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $output;
 my $retval;
 

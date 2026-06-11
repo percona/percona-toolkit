@@ -161,10 +161,10 @@ SELECT id FROM tbl WHERE id = 1\G
 SELECT COUNT(*) FROM blah WHERE col > 2\G
 
 # Profile
-# Rank Query ID                           Response time   Calls R/Call    
-# ==== ================================== =============== ===== ========= 
-#    1 0xA5C90AEFB6734628ABE9508269335CD1 1349.0001 98.9%     1 1349.0001  0.00 DELETE forest
-#    2 0x7023AEC64FE3598DAC1BF726F2AB10C5    2.9042  0.2%     4    0.7261  0.03 SELECT foo
-#    3 0x937677F741B37EAFB79802214165F670    0.7261  0.1%     2    0.3631  0.73 INSERT tbl
-#    4 0x181E5BEE0A9CD8C01F9B2F47A843D460    1.7261  0.1%     1    1.7261  0.00 SELECT tbl
-#    5 0xFBC6FB7F8360D37D3F1024B96D9D469E    9.0001  0.7%     1    9.0001  0.00 SELECT blah
+# Rank Query ID                            Response time   Calls R/Call   
+# ==== =================================== =============== ===== =========
+#    1 0xA5C90AEFB6734628ABE9508269335CD1  1349.0001 98.9%     1 1349.0001  0.00 DELETE forest
+#    2 0x7023AEC64FE3598DAC1BF726F2AB10C5     2.9042  0.2%     4    0.7261  0.03 SELECT foo
+#    3 0x937677F741B37EAFB79802214165F670     0.7261  0.1%     2    0.3631  0.73 INSERT tbl
+#    4 0x181E5BEE0A9CD8C01F9B2F47A843D460     1.7261  0.1%     1    1.7261  0.00 SELECT tbl
+#    5 0xFBC6FB7F8360D37D3F1024B96D9D469E     9.0001  0.7%     1    9.0001  0.00 SELECT blah

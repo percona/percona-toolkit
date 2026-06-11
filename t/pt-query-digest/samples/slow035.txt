@@ -85,7 +85,7 @@ SELECT * FROM blah WHERE something = 'important'\G
 INSERT INTO db.v (m, b) VALUES ('', 'Exact')\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0x01C11894F289821F9E892D4B16D7BFC2  0.0000  0.0%     1 0.0000  0.00 SELECT blah
-#    2 0x53AFEEC4943ACB06727841EC88423713  0.0000  0.0%     1 0.0000  0.00 INSERT db.v
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0x01C11894F289821F9E892D4B16D7BFC2   0.0000  0.0%     1 0.0000  0.00 SELECT blah
+#    2 0x53AFEEC4943ACB06727841EC88423713   0.0000  0.0%     1 0.0000  0.00 INSERT db.v

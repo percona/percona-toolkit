@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
+# This program is copyright 2007-2011 Baron Schwartz, 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # QueryRewriter package
 # ###########################################################################
@@ -173,14 +172,22 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   # -----------------------------------------------------------
+   # Remove quoted strings
+   # -----------------------------------------------------------
+   $query =~ s/([^\\])(\\')/$1/sg;
+   $query =~ s/([^\\])(\\")/$1/sg;
+   $query =~ s/\\\\//sg;
+   $query =~ s/\\'//sg;
+   $query =~ s/\\"//sg;
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;
+   # -----------------------------------------------------------
 
-   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values
 
-   # MD5 checksums which are always 32 hex chars 
-   if ( $self->{match_md5_checksums} ) { 
+   # MD5 checksums which are always 32 hex chars
+   if ( $self->{match_md5_checksums} ) {
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
    }
 
@@ -196,7 +203,7 @@ sub fingerprint {
 
    # Clean up leftovers
    if ( $self->{match_md5_checksums} ) {
-      $query =~ s/[xb+-]\?/?/g;                
+      $query =~ s/[xb+-]\?/?/g;
    }
    else {
       $query =~ s/[xb.+-]\?/?/g;
@@ -218,8 +225,8 @@ sub fingerprint {
    $query =~ s/\blimit \?(?:, ?\?| offset \?)?/limit ?/; # LIMIT
    # The following are disabled because of speed issues.  Should we try to
    # normalize whitespace between and around operators?  My gut feeling is no.
-   # $query =~ s/ , | ,|, /,/g;    # Normalize commas
-   # $query =~ s/ = | =|= /=/g;       # Normalize equals
+   # $query =~ s/ , | ,|, /,/g;                # Normalize commas
+   # $query =~ s/ = | =|= /=/g;                # Normalize equals
    # $query =~ s# [,=+*/-] ?|[,=+*/-] #+#g;    # Normalize operators
 
    # Remove ASC keywords from ORDER BY clause so these queries fingerprint
@@ -262,11 +269,11 @@ sub distill_verbs {
       return $query;
    }
 
-   # All other, more complex verbs. 
+   # All other, more complex verbs.
    $query = $self->strip_comments($query);
 
    # SHOW statements are either 2 or 3 words: SHOW A (B), where A and B
-   # are words; B is optional.  E.g. "SHOW TABLES" or "SHOW SLAVE STATUS". 
+   # are words; B is optional.  E.g. "SHOW TABLES" or "SHOW REPLICA STATUS".
    # There's a few common keywords that may show up in place of A, so we
    # remove them first.  Then there's some keywords that signify extra clauses
    # that may show up in place of B and since these clauses are at the
@@ -292,7 +299,7 @@ sub distill_verbs {
       return $query;
    }
 
-   # Data defintion statements verbs like CREATE and ALTER.
+   # Data definition statements verbs like CREATE and ALTER.
    # The two evals are a hack to keep Perl from warning that
    # "QueryParser::data_def_stmts" used only once: possible typo at...".
    # Some day we'll group all our common regex together in a packet and
@@ -305,7 +312,7 @@ sub distill_verbs {
       $query =~ s/\s+IF(?:\s+NOT)?\s+EXISTS/ /i;
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
-      PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
+      PTDEBUG && _d('Data def statement:', $dds, 'obj:', $obj);
       my ($db_or_tbl)
          = $query =~ m/(?:TABLE|DATABASE)\s+($QueryParser::tbl_ident)(\s+.*)?/i;
       PTDEBUG && _d('Matches db or table:', $db_or_tbl);
@@ -335,7 +342,7 @@ sub distill_verbs {
       @verbs    = $union ? qw(SELECT UNION) : qw(SELECT);
    }
 
-   # This used to be "my $verbs" but older verisons of Perl complain that
+   # This used to be "my $verbs" but older versions of Perl complain that
    # ""my" variable $verbs masks earlier declaration in same scope" where
    # the earlier declaration is our $verbs.
    # http://code.google.com/p/maatkit/issues/detail?id=957
@@ -389,7 +396,7 @@ sub distill {
 
       if ( $verbs && $verbs =~ m/^SHOW/ ) {
          # Ignore tables for SHOW statements and normalize some
-         # aliases like SCHMEA==DATABASE, KEYS==INDEX.
+         # aliases like SCHEMA==DATABASE, KEYS==INDEX.
          my %alias_for = qw(
             SCHEMA   DATABASE
             KEYS     INDEX
@@ -404,8 +411,8 @@ sub distill {
       else {
          # For everything else, distill the tables.
          my @tables = $self->__distill_tables($query, $table, %args);
-         $query     = join(q{ }, $verbs, @tables); 
-      } 
+         $query     = join(q{ }, $verbs, @tables);
+      }
    }
 
    if ( $args{trf} ) {
@@ -419,7 +426,7 @@ sub convert_to_select {
    my ( $self, $query ) = @_;
    return unless $query;
 
-   # Trying to convert statments that have subqueries as values to column
+   # Trying to convert statements that have subqueries as values to column
    # assignments doesn't work.  E.g. SET col=(SELECT ...).  But subqueries
    # do work in other cases like JOIN (SELECT ...).
    # http://code.google.com/p/maatkit/issues/detail?id=347

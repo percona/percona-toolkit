@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Ireland Ltd.
+# This program is copyright 2011 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -20,7 +20,7 @@
 {
 # Package: Schema
 # Schema encapsulates a data structure representing databases and tables.
-# Although in MySQL "schema" is technically equivalent to "databae", we
+# Although in MySQL "schema" is technically equivalent to "database", we
 # use "schema" loosely to mean a collection of schema objects: databases,
 # tables, and columns.  These objects are organized in a hash keyed on
 # database and table names.  The hash is called schema and looks like,

@@ -18,14 +18,14 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 3;
@@ -34,11 +34,11 @@ else {
 # #############################################################################
 # Issue 560: mk-table-sync generates impossible WHERE
 # #############################################################################
-$sb->load_file("master", "t/pt-table-sync/samples/issue_560.sql");
+$sb->load_file("source", "t/pt-table-sync/samples/issue_560.sql");
 
-# Make slave differ.
-$slave_dbh->do('UPDATE issue_560.buddy_list SET buddy_id=0 WHERE player_id IN (333,334)');
-$slave_dbh->do('UPDATE issue_560.buddy_list SET buddy_id=0 WHERE player_id=486');
+# Make replica differ.
+$replica_dbh->do('UPDATE issue_560.buddy_list SET buddy_id=0 WHERE player_id IN (333,334)');
+$replica_dbh->do('UPDATE issue_560.buddy_list SET buddy_id=0 WHERE player_id=486');
 
 $output = `$trunk/bin/pt-table-checksum --replicate issue_560.checksum h=127.1,P=12345,u=msandbox,p=msandbox  -d issue_560 --chunk-size 50 --set-vars innodb_lock_wait_timeout=3`;
 
@@ -49,7 +49,7 @@ is(
 );
 
 $output = output(
-   sub { pt_table_sync::main('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox', qw(-d issue_560 --print -v -v  --chunk-size 50 --replicate issue_560.checksum)) },
+   sub { pt_table_sync::main('--sync-to-source', 'h=127.1,P=12346,u=msandbox,p=msandbox', qw(-d issue_560 --print -v -v  --chunk-size 50 --replicate issue_560.checksum)) },
    trf => \&remove_traces,
 );
 $output =~ s/\d\d:\d\d:\d\d/00:00:00/g;
@@ -65,7 +65,7 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -1,0 +1,5 @@
+jemalloc enabled in mysql config for process with id 80592
+jemalloc enabled in mysql config for process with id 80852
+jemalloc enabled in mysql config for process with id 81695
+jemalloc is not enabled in mysql config for process with id 357384
+Using jemalloc from /usr/lib/x86_64-linux-gnu/libjemalloc.so.2

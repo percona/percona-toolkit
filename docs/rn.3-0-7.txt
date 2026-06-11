@@ -6,7 +6,7 @@ New Features
 
 * :jirabug:`PT-633`: Added --mysql-only option to ``pt-stalk`` for RDS
 
-Bug Fixes     
+Bug Fixes
 
 * :jirabug:`PT-244`: The ``--data-dir`` option of ``pt-online-schema-change``  is broken for partitioned table
 * :jirabug:`PT-1256`: ``pt-table-sync`` does not use the character set for the table it is synchronizing

@@ -19,34 +19,34 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 9;
 }
 
 my $sample     = "t/pt-table-sync/samples";
-my $master_dsn = "h=127.1,P=12345,u=msandbox,p=msandbox";
-my $slave_dsn  = "h=127.1,P=12346,u=msandbox,p=msandbox";
+my $source_dsn = "h=127.1,P=12345,u=msandbox,p=msandbox";
+my $replica_dsn  = "h=127.1,P=12346,u=msandbox,p=msandbox";
 
 # #############################################################################
 # 
 # #############################################################################
 
-$sb->load_file('master', "$sample/wrong-tbl-struct-bug-1003014.sql");
+$sb->load_file('source', "$sample/wrong-tbl-struct-bug-1003014.sql");
 
 # Make a diff in each table.
-$slave_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
-$slave_dbh->do("UPDATE test.zzz SET c='x' WHERE id IN (44,45,46)");
+$replica_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
+$replica_dbh->do("UPDATE test.zzz SET c='x' WHERE id IN (44,45,46)");
 
-$output = `$trunk/bin/pt-table-checksum $master_dsn --set-vars innodb_lock_wait_timeout=3 --max-load '' -d test --chunk-size 10 2>&1`;
+$output = `$trunk/bin/pt-table-checksum $source_dsn --set-vars innodb_lock_wait_timeout=3 --max-load '' -d test --chunk-size 10 2>&1`;
 
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),
@@ -72,7 +72,7 @@ my $checksums = [
    [qw( test zzz 14 )],
 ];
 
-my $rows = $master_dbh->selectall_arrayref("SELECT db, tbl, chunk FROM percona.checksums ORDER BY db, tbl, chunk");
+my $rows = $source_dbh->selectall_arrayref("SELECT db, tbl, chunk FROM percona.checksums ORDER BY db, tbl, chunk");
 is_deeply(
    $rows,
    $checksums,
@@ -81,12 +81,12 @@ is_deeply(
 
 my $exit_status;
 $output = output(
-   sub { $exit_status = pt_table_sync::main($slave_dsn,
-      qw(--replicate percona.checksums --sync-to-master --print --execute),
+   sub { $exit_status = pt_table_sync::main($replica_dsn,
+      qw(--replicate percona.checksums --sync-to-source --print --execute),
       "--tables", "test.aaa,test.zzz") },
    stderr => 1,
 );
-$sb->wait_for_slaves();
+$sb->wait_for_replicas();
 
 is(
    $exit_status,
@@ -94,7 +94,7 @@ is(
    "Bug 1003014 (wrong tbl_struct): 0 exit"
 ) or diag($output);
 
-$rows = $slave_dbh->selectall_arrayref("SELECT c FROM test.zzz WHERE id IN (44,45,46)");
+$rows = $replica_dbh->selectall_arrayref("SELECT c FROM test.zzz WHERE id IN (44,45,46)");
 is_deeply(
    $rows,
    [ ['a'], ['a'], ['a'] ],
@@ -102,17 +102,17 @@ is_deeply(
 );
 
 # #########################################################################
-# Repeat the whole process without --sync-to-master so the second code path
+# Repeat the whole process without --sync-to-source so the second code path
 # in sync_via_replication() is tested.
 # #########################################################################
 
-$sb->wipe_clean($master_dbh);
-$sb->load_file('master', "$sample/wrong-tbl-struct-bug-1003014.sql");
+$sb->wipe_clean($source_dbh);
+$sb->load_file('source', "$sample/wrong-tbl-struct-bug-1003014.sql");
 
-$slave_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
-$slave_dbh->do("UPDATE test.zzz SET c='x' WHERE id IN (44,45,46)");
+$replica_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
+$replica_dbh->do("UPDATE test.zzz SET c='x' WHERE id IN (44,45,46)");
 
-$output = `$trunk/bin/pt-table-checksum $master_dsn --set-vars innodb_lock_wait_timeout=3 --max-load '' -d test --chunk-size 10 2>&1`;
+$output = `$trunk/bin/pt-table-checksum $source_dsn --set-vars innodb_lock_wait_timeout=3 --max-load '' -d test --chunk-size 10 2>&1`;
 
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),
@@ -120,7 +120,7 @@ is(
    "Bug 1003014 (wrong tbl_struct): 2 diffs (just replicate)"
 ) or print STDERR $output;
 
-$rows = $master_dbh->selectall_arrayref("SELECT db, tbl, chunk FROM percona.checksums ORDER BY db, tbl, chunk");
+$rows = $source_dbh->selectall_arrayref("SELECT db, tbl, chunk FROM percona.checksums ORDER BY db, tbl, chunk");
 is_deeply(
    $rows,
    $checksums,
@@ -128,12 +128,12 @@ is_deeply(
 );
 
 $output = output(
-   sub { $exit_status = pt_table_sync::main($master_dsn,
+   sub { $exit_status = pt_table_sync::main($source_dsn,
       qw(--replicate percona.checksums --print --execute),
       "--tables", "test.aaa,test.zzz") },
    stderr => 1,
 );
-$sb->wait_for_slaves();
+$sb->wait_for_replicas();
 
 is(
    $exit_status,
@@ -141,7 +141,7 @@ is(
    "Bug 1003014 (wrong tbl_struct): 0 exit (just replicate)"
 ) or diag($output);
 
-$rows = $slave_dbh->selectall_arrayref("SELECT c FROM test.zzz WHERE id IN (44,45,46)");
+$rows = $replica_dbh->selectall_arrayref("SELECT c FROM test.zzz WHERE id IN (44,45,46)");
 is_deeply(
    $rows,
    [ ['a'], ['a'], ['a'] ],
@@ -151,6 +151,6 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

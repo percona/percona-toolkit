@@ -21,10 +21,10 @@ require "$trunk/bin/pt-upgrade";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => "Cannot connect to sandbox master";
+   plan skip_all => "Cannot connect to sandbox source";
 }
 
 sub test_diff {
@@ -76,7 +76,25 @@ my $expect = [
                    [qw(msandbox)],
                 ]
              ];
-if ($sandbox_version ge '8.0') {
+if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
+    $expect =[
+               [
+                 1,
+                 [ 'msandbox' ],
+                 [ 'root' ]
+               ],
+               [
+                 2,
+                 [ 'mysql.session' ],
+                 [ 'mysql.sys' ]
+               ],
+               [
+                 3,
+                 [ 'mysql.sys' ],
+                 [ 'mysql.session' ]
+               ]
+             ]; 
+} elsif ($sandbox_version ge '8.0') {
     $expect =[
                [
                  1,
@@ -86,12 +104,12 @@ if ($sandbox_version ge '8.0') {
                [
                  2,
                  [ 'mysql.infoschema' ],
-                 [ 'mysql.sys' ]
+                 [ 'percona.telemetry' ]
                ],
                [
-                 4,
-                 [ 'mysql.sys' ],
-                 [ 'mysql.infoschema' ]
+                 3,
+                 [ 'mysql.session' ],
+                 [ 'mysql.sys' ]
                ]
              ]; 
 }
@@ -103,9 +121,6 @@ test_diff (
    expect => $expect,
 );
 
-# Test 3
-diag(">> 3");
-
 $expect = [
    [
       1,
@@ -116,10 +131,22 @@ $expect = [
    ],
 ];
 
-if ($sandbox_version ge '8.0') {
+if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
     $expect =[
               [
-                4,
+                3,
+                undef,
+                [
+                  [ 'mysql.session' ],
+                  [ 'mysql.sys' ],
+                  [ 'root' ],
+                ]
+              ]
+            ];
+} elsif ($sandbox_version ge '8.0') {
+    $expect =[
+              [
+                5,
                 undef,
                 [
                   [ 'mysql.infoschema' ],
@@ -131,7 +158,7 @@ if ($sandbox_version ge '8.0') {
 }
 
 test_diff (
-   name   => 'Host1 missing a row',
+   name   => 'Host1 missing rows',
    query1 => "select user from mysql.user where user='msandbox' order by user",
    query2 => 'select user from mysql.user order by user',
    expect => $expect,
@@ -147,10 +174,22 @@ $expect = [
               ],
            ];
 
-if ($sandbox_version ge '8.0') {
+if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
+    $expect =[
+              [
+                3,
+                [
+                  [ 'mysql.session' ],
+                  [ 'mysql.sys' ],
+                  [ 'root' ],
+                ],
+                undef,
+              ]
+            ];
+} elsif ($sandbox_version ge '8.0') {
     $expect =[
                [
-                 4,
+                 5,
                  [
                    [
                      'mysql.infoschema'
@@ -180,7 +219,7 @@ test_diff (
 # pt-upgrade reports differences on NULL
 # #############################################################################
 
-$sb->load_file('master', "t/pt-upgrade/samples/007/tables.sql");
+$sb->load_file('source', "t/pt-upgrade/samples/007/tables.sql");
 
 test_diff(
    name   => 'Bug 1168434: no diff with NULL',

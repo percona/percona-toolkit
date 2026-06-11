@@ -1,0 +1,1 @@
+../src/go/pt-mongodb-index-check/README.rst

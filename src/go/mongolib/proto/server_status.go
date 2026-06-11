@@ -1,3 +1,16 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package proto
 
 import "time"
@@ -30,10 +43,10 @@ type ServerStatus struct {
 }
 
 type StorageEngine struct {
-	Name                  string `bson:"name"`
-	SupportCommittedREads bool   `bson:supportsCommittedReads"`
-	ReadOnly              bool   `bson:"readOnly"`
-	Persistent            bool   `bson:"persistent"`
+	Name                   string `bson:"name"`
+	SupportsCommittedReads bool   `bson:"supportsCommittedReads"`
+	ReadOnly               bool   `bson:"readOnly"`
+	Persistent             bool   `bson:"persistent"`
 }
 
 // WiredTiger stores information related to the WiredTiger storage engine.
@@ -164,7 +177,7 @@ type NetworkStats struct {
 	NumRequests int64 `bson:"numRequests"`
 }
 
-// OpcountStats stores information related to comamnds and basic CRUD operations.
+// OpcountStats stores information related to commands and basic CRUD operations.
 type OpcountStats struct {
 	Command int64 `bson:"command"`
 	Delete  int64 `bson:"delete"`

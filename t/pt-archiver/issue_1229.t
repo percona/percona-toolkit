@@ -20,10 +20,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( $DBD::mysql::VERSION lt '4' ) {
    plan skip_all => "DBD::mysql version $DBD::mysql::VERSION has utf8 bugs. "
@@ -33,13 +33,13 @@ elsif ( $DBD::mysql::VERSION lt '4' ) {
 my $output;
 my $rows;
 my $cnf  = "/tmp/12345/my.sandbox.cnf";
-my $file = "/tmp/mk-archiver-file.txt";
+my $file = "/tmp/pt-archiver-file.txt";
 
 # #############################################################################
 # Issue 1229: mk-archiver not creating UTF8 compatible file handles for
 # archive to file
 # #############################################################################
-$sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
+$sb->load_file('source', 't/pt-archiver/samples/issue_1225.sql');
 
 $dbh->do('set names "utf8"');
 my $original_rows = $dbh->selectall_arrayref('select c from issue_1225.t where i in (1, 2)');
@@ -53,11 +53,15 @@ is_deeply(
 
 diag(`rm -rf $file >/dev/null`);
 
+# We need to have --no-check-charset here, because utf8 that we use in the test file
+# is alias of utf8mb3 in 5.7 and alias of utf8mb4 in 8.0.
+# We cannot set this character set explicitly due to Perl limitations.
+# Changing utf8 to utf8mb4 will break test on 5.7
 $output = output(
    sub { pt_archiver::main(
       '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
       '--file',    $file,
-      qw(--where 1=1 -A UTF8)) # -A utf8 makes it work
+      qw(--no-check-charset --where 1=1 -A UTF8)) # -A utf8 makes it work
    },
    stderr => 1,
 );

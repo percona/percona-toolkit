@@ -16,13 +16,14 @@ use Time::HiRes qw(sleep);
 use PerconaTest;
 use DSNParser;
 use Sandbox;
+require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -392,18 +393,16 @@ my $tempdir = tempdir( CLEANUP => 1 );
 
 my $script = <<"EOT";
 . $trunk/bin/pt-stalk
-purge_samples $tempdir 10000 2>&1
+purge_samples $tempdir 10000 0 0 2>&1
 EOT
 
-$output = `$script`;
+$output = `bash -c "$script"`;
 
 unlike(
    $output,
    qr/\Qfind: warning: you have specified the -depth option/,
    "Bug 942114: no bad find usage"
 );
-
-
 # ###########################################################################
 # Test that it handles floating point values 
 # ###########################################################################
@@ -422,7 +421,295 @@ like(
    qr/matched=yes/,
    "Accepts floating point values as treshold variable"
 );
+
+# ###########################################################################
+# Variable declaration for the retention tests
+# ###########################################################################
+
+my $odate;
+
+# ###########################################################################
+# Test if retention does not remove files that were not collected
+# ###########################################################################
+
+cleanup();
+
+system("mkdir $dest");
+$odate=`date --rfc-3339=date --date='-3 month'`;
+system("touch -d '$odate' $dest/nostalk");
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest`;
+
+like(
+   $output,
+   qr/nostalk/m,
+   "Retention test 1: Not-matched file not touched"
+);
           
+# ###########################################################################
+# Test if files that match the prefix-, are removed by the retention option
+# ###########################################################################
+
+cleanup();
+
+system("mkdir $dest");
+$odate=`date --rfc-3339=date --date='-3 month'`;
+system("touch -d '$odate' $dest/nostalk-");
+system("touch -d '$odate' $dest/nostalk-innodbstatus1");
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest`;
+
+unlike(
+   $output,
+   qr/^nostalk-$/m,
+   "Retention test 2: tests, matched prefix-, are removed"
+);
+
+unlike(
+   $output,
+   qr/^nostalk-innodbstatus1$/m,
+   "Retention test 2: tests, matched prefix-innodbstatus1, are removed"
+);
+
+# ###########################################################################
+# Test if retention removes old files that match auto-generated pattern
+# ###########################################################################
+
+cleanup();
+
+system("mkdir $dest");
+$odate=`date --rfc-3339=date --date='-3 month'`;
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest | wc -l`;
+
+system("touch -d '$odate' $dest/*");
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest | wc -l` - $output;
+
+is(
+   $output,
+   0,
+   "Retention test 3: tests, matched auto-generated patern, are removed"
+) or diag(`ls -l $dest`);
+
+# ###########################################################################
+# Test if retention by size works as expected
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --sleep 2 --dest $dest --pid $pid_file --iterations 5 -- --defaults-file=$cnf >$log_file 2>&1");
+
+$output = `du -s $dest | cut -f 1`;
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-size 1 --pid $pid_file --iterations 2 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = $output / `du -s $dest | cut -f 1`;
+
+ok(
+   # --retention-size
+   # Keep up to –retention-size MB of data. It will keep at least 1 run even if the size is bigger than the specified in this parameter
+   $output >= 1,
+   "Retention test 4: retention by size works as expected"
+);
+
+# ###########################################################################
+# Test if retention by count works as expected
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest | wc -l`;
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-count 1 --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = $output - `ls -l $dest | wc -l`;
+
+is(
+   $output,
+   0,
+   "Retention test 5: retention by count works as expected"
+);
+
+# ###########################################################################
+# Test if option --system-only works correctly
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+like(
+   $output,
+   qr/(df)|(meminfo)/,
+   "Option --system-only collects system data"
+);
+
+unlike(
+   $output,
+   qr/(innodbstatus)|(mysqladmin)/,
+   "Option --system-only does not collect MySQL data"
+);
+
+$output = `cat $log_file`;
+
+like(
+   $output,
+   qr/SYSTEM_ONLY: yes/,
+   "We are printing information message about option SYSTEM_ONLY"
+);
+
+unlike(
+   $output,
+   qr/MYSQL_ONLY:/,
+   "We are not printing information message about option MYSQL_ONLY"
+);
+
+# ###########################################################################
+# Test if option --mysql-only works correctly
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --mysql-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+unlike(
+   $output,
+   qr/(df)|(meminfo)/,
+   "Option --mysql-only does not collect system data"
+);
+
+like(
+   $output,
+   qr/(innodbstatus)|(mysqladmin)/,
+   "Option --mysql-only collects MySQL data"
+);
+
+$output = `cat $log_file`;
+
+like(
+   $output,
+   qr/MYSQL_ONLY:/,
+   "We are printing information message about option MYSQL_ONLY"
+);
+
+unlike(
+   $output,
+   qr/SYSTEM_ONLY: yes/,
+   "We are not printing information message about option SYSTEM_ONLY"
+);
+
+# ###########################################################################
+# Test if options --mysql-only and --system-only specified together,
+# pt-stalk collects only disk-space, hostname, output, and trigger
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --mysql-only --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+is(
+   $output,
+   "test-disk-space\ntest-hostname\ntest-output\ntest-trigger\n",
+   "If both options --mysql-only and --system-only are specified only essential collections are triggered"
+);
+
+$output = `cat $log_file`;
+
+like(
+   $output,
+   qr/Both options --system-only and --mysql-only specified, collecting only disk-space, hostname, output, and trigger metrics/,
+   "We are printing warning about both options SYSTEM_ONLY and MYSQL_ONLY are specified"
+);
+
+# ###########################################################################
+# Test if open tables are collected if number of open tables <= 1000
+# ###########################################################################
+
+cleanup();
+
+$dbh->do('FLUSH TABLES');
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `head -n 1 $dest/test-opentables1`;
+
+is(
+  $output,
+  "Database\tTable\tIn_use\tName_locked\n",
+  "If number of open tables is less or equal than 1000, the output of 'SHOW OPEN TABLES' is collected"
+);
+
+# ###########################################################################
+# Test if open tables are not collected if number of open tables > 1000
+# ###########################################################################
+
+cleanup();
+
+$retval = $dbh->do('FLUSH TABLES');
+$retval = $dbh->do('CREATE DATABASE IF NOT EXISTS test_open_tables');
+
+$retval = $dbh->do('SET @old_table_open_cache=@@global.table_open_cache, GLOBAL table_open_cache=1001*@@global.table_open_cache_instances');
+
+for (my $i = 0; $i < 1002; $i++) {
+  $retval = $dbh->do("CREATE TABLE IF NOT EXISTS test_open_tables.t_$i(id int)");
+  $retval = $dbh->do("INSERT INTO test_open_tables.t_$i VALUES($i)");
+}
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time=10 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `cat $dest/test-opentables1`;
+
+like(
+  $output,
+  qr/Logging disabled due to having over 1000 tables open. Number of tables currently open/,
+  "If number of open tables is greater than 1000, the output of 'SHOW OPEN TABLES' is not collected"
+);
+
+$retval = $dbh->do('SET GLOBAL table_open_cache=@old_table_open_cache');
+$retval = $dbh->do('DROP DATABASE test_open_tables');
 # ###########################################################################
 # Test report about performance schema transactions in MySQL 5.7+
 # ###########################################################################
@@ -431,15 +718,15 @@ cleanup();
 
 SKIP: {
 
-   skip "Only test on mysql 5.7" if ( $sandbox_version lt '5.7' );
+   skip "Only test on mysql 5.7+" if ( $sandbox_version lt '5.7' );
 
    sub start_thread {
       # this must run in a thread because we need to have an uncommitted transaction
       my ($dsn_opts) = @_;
       my $dp = new DSNParser(opts=>$dsn_opts);
       my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-      my $dbh = $sb->get_dbh_for('master');
-      $sb->load_file('master', "t/pt-stalk/samples/issue-1642751.sql");
+      my $dbh = $sb->get_dbh_for('source');
+      $sb->load_file('source', "t/pt-stalk/samples/issue-1642751.sql");
    }
    my $thr = threads->create('start_thread', $dsn_opts);
    $thr->detach();
@@ -457,13 +744,13 @@ SKIP: {
    like(
       $output,
       qr/ STATE: ACTIVE/,
-      "MySQL 5.7 ACTIVE transactions"
+      "MySQL 5.7+ ACTIVE transactions"
    );
           
    like(
       $output,
       qr/ STATE: COMMITTED/,
-      "MySQL 5.7 COMMITTED transactions"
+      "MySQL 5.7+ COMMITTED transactions"
    );
    
    cleanup();
@@ -471,60 +758,65 @@ SKIP: {
 
 SKIP: {
 
-   skip "Only test on mysql 5.7" if ( $sandbox_version lt '5.7' );
+   skip "Only test on mysql 5.7+" if ( $sandbox_version lt '5.7' );
 
-   my ($master1_dbh, $master1_dsn) = $sb->start_sandbox(
-      server => 'chan_master1',
-      type   => 'master',
+   my ($source1_dbh, $source1_dsn) = $sb->start_sandbox(
+      server => 'chan_source1',
+      type   => 'source',
    );
-   my ($master2_dbh, $master2_dsn) = $sb->start_sandbox(
-      server => 'chan_master2',
-      type   => 'master',
+   my ($source2_dbh, $source2_dsn) = $sb->start_sandbox(
+      server => 'chan_source2',
+      type   => 'source',
    );
-   my ($slave1_dbh, $slave1_dsn) = $sb->start_sandbox(
-      server => 'chan_slave1',
-      type   => 'master',
+   my ($replica1_dbh, $replica1_dsn) = $sb->start_sandbox(
+      server => 'chan_replica1',
+      type   => 'source',
    );
-   my $slave1_port = $sb->port_for('chan_slave1');
-   
-   $sb->load_file('chan_master1', "sandbox/gtid_on.sql", undef, no_wait => 1);
-   $sb->load_file('chan_master2', "sandbox/gtid_on.sql", undef, no_wait => 1);
-   $sb->load_file('chan_slave1', "sandbox/slave_channels_t.sql", undef, no_wait => 1);
+   my $replica1_port = $sb->port_for('chan_replica1');
 
-   my $slave_cnf = "/tmp/$slave1_port/my.sandbox.cnf";
-   my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=$slave1_port --user=msandbox "
+   if ( $sandbox_version lt '8.1' ) {
+      $sb->load_file('chan_source1', "sandbox/gtid_on-legacy.sql", undef, no_wait => 1);
+      $sb->load_file('chan_source2', "sandbox/gtid_on-legacy.sql", undef, no_wait => 1);
+      $sb->load_file('chan_replica1', "sandbox/replica_channels_t-legacy.sql", undef, no_wait => 1);
+   } else {
+      $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+      $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+      $sb->load_file('chan_replica1', "sandbox/replica_channels_t.sql", undef, no_wait => 1);
+   }
+
+   my $replica_cnf = "/tmp/$replica1_port/my.sandbox.cnf";
+   my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=$replica1_port --user=msandbox "
            . "--password=msandbox --sleep 0 --run-time=10 --dest $dest --log $log_file --iterations=1  "
-           . "--run-time=2 --pid $pid_file --defaults-file=$slave_cnf >$log_file 2>&1";
-   diag ($cmd);
+           . "--run-time=2 --pid $pid_file --defaults-file=$replica_cnf >$log_file 2>&1";
    system($cmd);
    sleep 5;
    PerconaTest::kill_program(pid_file => $pid_file);
    
-   $output = `cat $dest/*-slave-status 2>/dev/null`;
+   $output = `cat $dest/*-${replica_name}-status 2>/dev/null`;
    
    like(
       $output,
-      qr/Slave has read all relay log; waiting for more updates/,
-      "MySQL 5.7 SLAVE STATUS"
+      qr/SERVICE_STATE: ON/,
+      "MySQL 5.7+ REPLICA STATUS"
    ) or diag ($output);
-   $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
+   $sb->stop_sandbox(qw(chan_source1 chan_source2 chan_replica1));
 }
                                                                               
 SKIP: {
    skip "Only test on mysql 5.6" if ( $sandbox_version ne '5.6' );
 
-   my $slave1_port = $sb->port_for('slave1');
-   my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=$slave1_port --user=msandbox "
+   my $replica1_port = $sb->port_for('replica1');
+   my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=$replica1_port --user=msandbox "
            . "--password=msandbox --sleep 0 --run-time=10 --dest $dest --log $log_file --iterations=1  "
            . "--run-time=2  --pid $pid_file --defaults-file=$cnf >$log_file 2>&1";
-   system($cmd);                                                                 
-   sleep 5;                                                                      
-   PerconaTest::kill_program(pid_file => $pid_file);                             
-                                                                                 
-   $output = `cat $dest/*-slave-status 2>/dev/null`;                             
-                                                                                 
-   like(                                                                     
-      $output,                                                               
+   system($cmd); 
+   sleep 5; 
+   PerconaTest::kill_program(pid_file => $pid_file); 
+ 
+   $output = `cat $dest/*-${replica_name}-status 2>/dev/null`; 
+
+   like(
+      $output,
       qr/SHOW SLAVE STATUS/,                                                 
       "MySQL 5.6 SLAVE STATUS"                                               
    );
@@ -546,8 +838,8 @@ SKIP: {
       my ($dsn_opts) = @_;
       my $dp = new DSNParser(opts=>$dsn_opts);
       my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-      my $dbh = $sb->get_dbh_for('master');
-      $sb->load_file('master', "t/pt-stalk/samples/issue-1642750.sql");
+      my $dbh = $sb->get_dbh_for('source');
+      $sb->load_file('source', "t/pt-stalk/samples/issue-1642750.sql");
    }
    my $thr = threads->create('start_thread_1642750', $dsn_opts);
    $thr->detach();
@@ -576,11 +868,137 @@ SKIP: {
 }
 
 # #############################################################################
+# Test if locks and transactions are printed
+# #############################################################################
+
+cleanup();
+
+# We are not using SKIP here, because lock tables exist since version 5.1
+# Currently, all active MySQL versions support them
+
+sub start_thread_pt_1897_1 {
+   # this must run in a thread because we need to have an active session
+   # with open transaction
+   my ($dsn_opts) = @_;
+   my $dp = new DSNParser(opts=>$dsn_opts);
+   my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+   my $dbh = $sb->get_dbh_for('source');
+   $sb->load_file('source', "t/pt-stalk/samples/PT-1897-1.sql");
+}
+my $thr1 = threads->create('start_thread_pt_1897_1', $dsn_opts);
+$thr1->detach();
+threads->yield();
+sleep 1;
+
+sub start_thread_pt_1897_2 {
+   # this must run in a thread because we need to have an active session
+   # with waiting transaction
+   my ($dsn_opts) = @_;
+   my $dp = new DSNParser(opts=>$dsn_opts);
+   my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+   my $dbh = $sb->get_dbh_for('source');
+   $sb->load_file('source', "t/pt-stalk/samples/PT-1897-2.sql");
+}
+my $thr2 = threads->create('start_thread_pt_1897_2', $dsn_opts);
+$thr2->detach();
+threads->yield();
+
+my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=12345 --user=msandbox "
+        . "--password=msandbox --sleep 0 --run-time=10 --dest $dest --log $log_file --pid $pid_file  "
+        . "--defaults-file=$cnf >$log_file 2>&1";
+system($cmd);
+sleep 15;
+PerconaTest::kill_program(pid_file => $pid_file);
+
+$output = `cat $dest/*-lock-waits 2>/dev/null`;
+like(
+   $output,
+   qr/waiting_query: UPDATE test.t1 SET f1=3/,
+   "lock-wait: LOCK_WAITS collected correctly"
+);
+
+$output = `cat $dest/*[[:digit:]]-transactions 2>/dev/null`;
+like(
+   $output,
+   qr/trx_query: UPDATE test.t1 SET f1=3/,
+   "transactions: InnoDB transaction info collected"
+);
+like(
+   $output,
+   qr/lock_type/i,
+   "transactions: Lock information collected"
+);
+like(
+   $output,
+   qr/requesting_(trx|ENGINE_TRANSACTION)_id/i,
+   "transactions: Lock wait information collected"
+);
+
+# ###########################################################################
+# Test if option numastat collection works
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+like(
+   $output,
+   qr/numastat/,
+   "numastat data collected"
+);
+
+$output = `cat $dest/*-numastat`;
+
+like(
+   $output,
+   qr/(numa_)/,
+   "numastat collection has data"
+);
+
+# ###########################################################################
+# Test if option operf collection works
+# ###########################################################################
+
+# ./bin/pt-stalk --no-stalk --iterations=1 --sleep=1 --dest=tmp/pt-stalk --collect-oprofile -- --user=msandbox --password=msandbox --port=12345 --host=127.0.0.1  ^C
+SKIP: {
+   my $operf = `which operf`;
+   chomp $operf;
+   skip "--collect-oprofile tests require operf" unless -x "$operf";
+
+   cleanup();
+
+   $retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 --collect-oprofile -- --defaults-file=$cnf >$log_file 2>&1");
+
+   PerconaTest::wait_until(sub { !-f $pid_file });
+
+   $output = `ls $dest`;
+
+   like(
+      $output,
+      qr/opreport/,
+      "operf data collected"
+   ) or diag($output);
+
+   $output = `cat $dest/*-opreport`;
+
+   like(
+      $output,
+      qr/(mysqld)/,
+      "operf collection has data"
+   );
+}
+
+# #############################################################################
 # Done.
 # #############################################################################
 
-
 cleanup();
 diag(`rm -rf $dest 2>/dev/null`);
+$sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

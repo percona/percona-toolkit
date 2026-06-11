@@ -1,0 +1,37 @@
+.. _PT-3.2.0:
+
+================================================================================
+*Percona Toolkit* 3.2.0
+================================================================================
+
+:Date: April 23, 2020
+
+:Installation: `Installing Percona Toolkit <https://www.percona.com/doc/percona-toolkit/3.0/installation.html>`_
+
+Improvements
+================================================================================
+
+* :jirabug:`PT-1773`: Don't make the foreign key check in ``pt-online-schema-change`` if not needed.
+* :jirabug:`PT-1757`: ``pt-table-checksum`` can now handle small tables as a single chunk.
+* :jirabug:`PT-1813`: MariaDB 10.4 is now supported.
+
+
+
+Bugs Fixed
+================================================================================
+
+* :jirabug:`PT-1782`: ``pt-online-schema-change`` declined to handle tables because of foreign keys even when there were no foreign keys with some MariaDB 10.2 and MySQL 8 versions.
+* :jirabug:`PT-1759`: ``pt-stalk`` with ``--mysql-only`` option didn't collect MySQL Status variables.
+* :jirabug:`PT-1802`: ``pt-online-schema-change`` didn't handle self-referencing foreign keys properly which caused an unnecessarily high resource consumption.
+* :jirabug:`PT-1766`: ``pt-table-checksum`` ``DIFF_ROWS`` was not computed correctly.
+* :jirabug:`PT-1760`: ``pt-online-schema-change`` regression caused it to hang for a stopped replica when using replication channels on the slave.
+* :jirabug:`PT-1707`: A number of the Percona Toolkit tools failed to operate in the IPv6 environment if the host address specified as a parameter was not enclosed in square brackets.
+* :jirabug:`PT-1502`: ``pt-online-schema-change`` was not recognizing the slave with multi-source replication active.
+* :jirabug:`PT-1824`: ``pt-online-schema-change`` allowed the name of a constraint to exceed 64 characters when ``--alter-foreign-keys-method=rebuild_constraints`` was used. (Thank you, Iwo Panowicz.)
+* :jirabug:`PT-1765`: Documentation for ``DIFF_ROWS`` doesn't exist.
+* :jirabug:`PT-297`: ``pt-online-schema-change`` could break replication.
+* :jirabug:`PT-1768`: Source code for ``src/go/pt-mongodb-query-digest/pt-mongodb-query-digest`` was missing in the official source tar ball.
+* :jirabug:`PT-1576`: ``pt-stalk` with ``--mysql-only`` option was not adding MySQL ``processlist`` information to the output file.
+* :jirabug:`PT-1793`: ``pt-query-digest`` was unable to handle the year 2020 because of wrong ``tcpdump`` parsing. (Thank you, Kei Tsuchiya.)
+
+

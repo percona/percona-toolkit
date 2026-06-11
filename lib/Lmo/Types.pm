@@ -1,4 +1,4 @@
-# This program is copyright 2013 Percona Ireland Ltd.
+# This program is copyright 2013-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # Lmo::Types package
 # ###########################################################################
@@ -42,7 +41,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)
@@ -56,7 +55,7 @@ sub check_type_constaints {
       . (defined $val ? Lmo::Dumper($val) : 'undef') )
 }
 
-# Nested (or parametized) constraints look like this: ArrayRef[CONSTRAINT] or
+# Nested (or parameritized) constraints look like this: ArrayRef[CONSTRAINT] or
 # Maybe[CONSTRAINT]. This function returns a coderef that implements one of
 # these.
 sub _nested_constraints {
@@ -64,7 +63,7 @@ sub _nested_constraints {
 
    my $inner_types;
    if ( $type =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
-      # If the inner constraint -- the part within brackets -- is also a parametized
+      # If the inner constraint -- the part within brackets -- is also a parametirized
       # constraint, then call this function recursively.
       $inner_types = _nested_constraints($1, $2);
    }

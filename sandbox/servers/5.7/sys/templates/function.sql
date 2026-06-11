@@ -47,7 +47,7 @@ CREATE DEFINER='root'@'localhost' FUNCTION <function name> (
     { DETERMINISTIC | NOT DETERMINISTIC }
     { CONTAINS SQL | NO SQL | READS SQL DATA | MODIFIES SQL DATA }
 BEGIN
-  
+
     /* BODY */
     RETURN <something>;
 

@@ -116,24 +116,24 @@ is(
 );
 
 # These values may be 0 or '' depending on whether or not a previous test
-# turned 12345 into a slave or not.  For this purpose 0 == undef == ''.
-my $only_slave_data = {
+# turned 12345 into a replica or not.  For this purpose 0 == undef == ''.
+my $only_replica_data = {
    map {
       $_ => {
-         relay_master_log_file => $rows->{$_}->{relay_master_log_file} || undef,
-         exec_master_log_pos   => $rows->{$_}->{exec_master_log_pos}   || undef,
+         relay_source_log_file => $rows->{$_}->{"relay_${source_name}_log_file"} || undef,
+         exec_source_log_pos   => $rows->{$_}->{"exec_${source_name}_log_pos"}   || undef,
       } } keys %$rows
 };
 
-my $same_data = { relay_master_log_file => undef, exec_master_log_pos => undef };
+my $same_data = { relay_${source_name}_log_file => undef, exec_${source_name}_log_pos => undef };
 is_deeply(
-   $only_slave_data,
+   $only_replica_data,
    {
       12345 => $same_data,
       12346 => $same_data,
       12347 => $same_data,
    },
-   "Sanity check: No slave data (relay log or master pos) is stored"
+   "Sanity check: No replica data (relay log or source pos) is stored"
 ) or diag(Dumper($rows));
 
 $output = output(sub{
@@ -144,13 +144,13 @@ $output = output(sub{
 
 like(
    $output,
-   qr/\QThe --master-server-id option must be specified because the heartbeat table `test`.`heartbeat`/,
-   "pt-heartbeat --check + PXC doesn't autodetect a master if there isn't any"
+   qr/\QThe --${source_name}-server-id option must be specified because the heartbeat table `test`.`heartbeat`/,
+   "pt-heartbeat --check + PXC doesn't autodetect a source if there isn't any"
 );
 
 $output = output(sub{
       pt_heartbeat::main($node1_dsn, qw(-D test --check),
-                         '--master-server-id', $node3_port),
+                         '--${source_name}-server-id', $node3_port),
    },
    stderr => 1,
 );
@@ -159,7 +159,7 @@ $output =~ s/\d\.\d{2}/0.00/g;
 is(
    $output,
    "0.00\n",
-   "pt-heartbeat --check + PXC works with --master-server-id"
+   "pt-heartbeat --check + PXC works with --source-server-id"
 );
 
 # Test --monitor
@@ -167,7 +167,7 @@ is(
 $output = output(sub {
    pt_heartbeat::main($node1_dsn,
       qw(-D test --monitor --run-time 1s),
-      '--master-server-id', $node3_port)
+      '--${source_name}-server-id', $node3_port)
    },
    stderr => 1,
 );
@@ -189,13 +189,13 @@ my $query_table_pid    = "/tmp/query_table.$PID.pid";
 my $query_table_output = "/tmp/query_table.$PID.output";
 
 $sb->create_dbs($node1, ['pt_osc']);
-$sb->load_file('master', "$pt_osc_sample/basic_no_fks_innodb.sql");
+$sb->load_file('source', "$pt_osc_sample/basic_no_fks_innodb.sql");
 
 $node1->do("USE pt_osc");
 $node1->do("TRUNCATE TABLE t");
 $node1->do("LOAD DATA INFILE '$trunk/$pt_osc_sample/basic_no_fks.data' INTO TABLE t");
 $node1->do("ANALYZE TABLE t");
-$sb->wait_for_slaves();
+$sb->wait_for_replicas();
 
 diag(`rm -rf $query_table_stop`);
 diag(`echo > $query_table_output`);
@@ -210,7 +210,7 @@ system "$trunk/sandbox/load-sakila-db $node1_port &";
 $output = output(sub {
    pt_heartbeat::main($node3_dsn,
       qw(-D test --monitor --run-time 5s),
-      '--master-server-id', $node1_port)
+      '--${source_name}-server-id', $node1_port)
    },
    stderr => 1,
 );
@@ -227,26 +227,26 @@ wait_until(sub{!kill 0, $p});
 
 $node1->do(q{DROP DATABASE pt_osc});
 
-$sb->wait_for_slaves();
+$sb->wait_for_replicas();
 
 # #############################################################################
-# cluster, node1 -> slave, run on node1
+# cluster, node1 -> replica, run on node1
 # #############################################################################
 
-my ($slave_dbh, $slave_dsn) = $sb->start_sandbox(
-   server => 'cslave1',
-   type   => 'slave',
-   master => 'node1',
+my ($replica_dbh, $replica_dsn) = $sb->start_sandbox(
+   server => 'creplica1',
+   type   => 'replica',
+   source => 'node1',
    env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
-$sb->create_dbs($slave_dbh, ['test']);
-$sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
-start_update_instance($sb->port_for('cslave1'));
-PerconaTest::wait_for_table($slave_dbh, "test.heartbeat", "1=1");
+$sb->create_dbs($replica_dbh, ['test']);
+$sb->wait_for_replicas(source => 'node1', replica => 'creplica1');
+start_update_instance($sb->port_for('creplica1'));
+PerconaTest::wait_for_table($replica_dbh, "test.heartbeat", "1=1");
 
 $output = output(sub{
-      pt_heartbeat::main($slave_dsn, qw(-D test --check)),
+      pt_heartbeat::main($replica_dsn, qw(-D test --check)),
    },
    stderr => 1,
 );
@@ -254,11 +254,11 @@ $output = output(sub{
 like(
    $output,
    qr/\d\.\d{2}\n/,
-   "pt-heartbeat --check works on a slave of a cluster node"
+   "pt-heartbeat --check works on a replica of a cluster node"
 );
 
 $output = output(sub {
-   pt_heartbeat::main($slave_dsn,
+   pt_heartbeat::main($replica_dsn,
       qw(-D test --monitor --run-time 2s))
    },
    stderr => 1,
@@ -267,13 +267,13 @@ $output = output(sub {
 like(
    $output,
    qr/^\d.\d{2}s\s+\[/,
-   "pt-heartbeat --monitor + slave of a node1, without --master-server-id"
+   "pt-heartbeat --monitor + replica of a node1, without --source-server-id"
 );
 
 $output = output(sub {
-   pt_heartbeat::main($slave_dsn,
+   pt_heartbeat::main($replica_dsn,
       qw(-D test --monitor --run-time 2s),
-      '--master-server-id', $node3_port)
+      '--${source_name}-server-id', $node3_port)
    },
    stderr => 1,
 );
@@ -281,55 +281,55 @@ $output = output(sub {
 like(
    $output,
    qr/^\d.\d{2}s\s+\[/,
-   "pt-heartbeat --monitor + slave of node1, --master-server-id pointing to node3"
+   "pt-heartbeat --monitor + replica of node1, --source-server-id pointing to node3"
 );
 
 # #############################################################################
-# master -> node1 in cluster
+# source -> node1 in cluster
 # #############################################################################
 
-# CAREFUL! See the comments in t/pt-table-checksum/pxc.t about cmaster.
+# CAREFUL! See the comments in t/pt-table-checksum/pxc.t about csource.
 # Nearly everything applies here.
 
-my ($master_dbh, $master_dsn) = $sb->start_sandbox(
-   server => 'cmaster',
-   type   => 'master',
+my ($source_dbh, $source_dsn) = $sb->start_sandbox(
+   server => 'csource',
+   type   => 'source',
    env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
-my $cmaster_port = $sb->port_for('cmaster');
+my $csource_port = $sb->port_for('csource');
 
-$sb->create_dbs($master_dbh, ['test']);
-$master_dbh->do("INSERT INTO percona_test.sentinel (id, ping) VALUES (1, '')");
-$master_dbh->do("FLUSH LOGS");
-$master_dbh->do("RESET MASTER");
+$sb->create_dbs($source_dbh, ['test']);
+$source_dbh->do("INSERT INTO percona_test.sentinel (id, ping) VALUES (1, '')");
+$source_dbh->do("FLUSH LOGS");
+$source_dbh->do("RESET ${source_reset}");
 
-$sb->set_as_slave('node1', 'cmaster');
-$sb->wait_for_slaves(master => 'cmaster', slave => 'node1');
+$sb->set_as_replica('node1', 'csource');
+$sb->wait_for_replicas(source => 'csource', replica => 'node1');
 
-start_update_instance($sb->port_for('cmaster'));
-PerconaTest::wait_for_table($node1, "test.heartbeat", "server_id=$cmaster_port");
+start_update_instance($sb->port_for('csource'));
+PerconaTest::wait_for_table($node1, "test.heartbeat", "server_id=$csource_port");
 
-# Auto-detecting the master id only works when ran on node1, the direct
-# slave of the master, because other nodes aren't slaves, but this could
+# Auto-detecting the source id only works when ran on node1, the direct
+# replica of the source, because other nodes aren't replicas, but this could
 # be made to work; see the node autodiscovery branch.
 $output = output(
    sub {
       pt_heartbeat::main($node1_dsn,
-         qw(-D test --check --print-master-server-id)
+         qw(-D test --check --print-${source_name}-server-id)
    )},
    stderr => 1,
 );
 
 like(
    $output,
-   qr/^\d.\d{2} $cmaster_port$/,
-   "Auto-detect master ID from node1"
+   qr/^\d.\d{2} $csource_port$/,
+   "Auto-detect source ID from node1"
 );
 
-# Wait until node2 & node3 get cmaster in their heartbeat tables
-$sb->wait_for_slaves(master => 'node1', slave => 'node2');
-$sb->wait_for_slaves(master => 'node1', slave => 'node3');
+# Wait until node2 & node3 get csource in their heartbeat tables
+$sb->wait_for_replicas(source => 'node1', replica => 'node2');
+$sb->wait_for_replicas(source => 'node1', replica => 'node3');
 
 foreach my $test (
    [ $node2_port, $node2_dsn, $node2, 'node2' ],
@@ -340,21 +340,21 @@ foreach my $test (
    $output = output(
       sub {
          pt_heartbeat::main($dsn,
-            qw(-D test --check --print-master-server-id)
+            qw(-D test --check --print-${source_name}-server-id)
       )},
       stderr => 1,
    );
 
    like(
       $output,
-      qr/server's master could not be automatically determined/,
-      "Limitation: cannot auto-detect master id from $name"
+      qr/server's ${source_name} could not be automatically determined/,
+      "Limitation: cannot auto-detect source id from $name"
    );
 
    $output = output(
       sub {
          pt_heartbeat::main($dsn,
-            qw(-D test --check --master-server-id), $cmaster_port
+            qw(-D test --check --${source_name}-server-id), $csource_port
       )},
       stderr => 1,
    );
@@ -364,7 +364,7 @@ foreach my $test (
    is(
       $output,
       "0.00\n",
-      "$name --check --master-server-id $cmaster_port"
+      "$name --check --source-server-id $csource_port"
    );
 }
 
@@ -381,11 +381,11 @@ stop_all_instances();
 # We have to do this after the --stop, otherwise the --update processes will
 # spew a bunch of warnings and clog 
 
-$slave_dbh->disconnect;
-$master_dbh->disconnect;
-$sb->stop_sandbox('cslave1', 'cmaster');
-$node1->do("STOP SLAVE");
-$node1->do("RESET SLAVE");
+$replica_dbh->disconnect;
+$source_dbh->disconnect;
+$sb->stop_sandbox('creplica1', 'csource');
+$node1->do("STOP ${replica_name}");
+$node1->do("RESET ${replica_name}");
 
 # #############################################################################
 # Done.
