@@ -31,7 +31,7 @@ $output = output(
 );
 like(
    $output,
-   qr/KILL 9 \(Query 0 sec\) show processlist/,
+   qr/KILL 9 \(Db: NULL\) \(Query 0 sec\) show processlist/,
    '--match-info'
 );
 
@@ -49,7 +49,7 @@ $output = output(
 );
 like(
    $output,
-   qr/KILL 2 \(Query 5 sec\) select \* from foo2/,
+   qr/KILL 2 \(Db: foo\) \(Query 5 sec\) select \* from foo2/,
    "Can override default ignore State=Locked with --ignore-state ''"
 );
 
@@ -58,7 +58,7 @@ $output = output(
 );
 like(
    $output,
-   qr/KILL 29393378 \(Query 3 sec\)/,
+   qr/KILL 29393378 \(Db: happy\) \(Query 3 sec\)/,
    '--match-state'
 );
 
@@ -103,7 +103,7 @@ $output = output(
 );
 like(
    $output,
-   qr/KILL 29392005 \(Sleep 17 sec\) NULL/,
+   qr/KILL 29392005 \(Db: happy\) \(Sleep 17 sec\) NULL/,
    '--idle-time'
 );
 
@@ -112,7 +112,7 @@ $output = output(
 );
 like(
    $output,
-   qr/KILL 2 \(Query 9 sec\) select \* from foo2/,
+   qr/KILL 2 \(Db: foo\) \(Query 9 sec\) select \* from foo2/,
    "--match-state Locked --ignore-state '' --busy-time 5"
 );
 
