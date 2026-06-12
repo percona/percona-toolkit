@@ -1,3 +1,16 @@
+// This program is copyright 2017-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 /*
    Copyright (c) 2017, Percona LLC and/or its affiliates. All rights reserved.
 
@@ -25,18 +38,18 @@ import (
 )
 
 // Enable enabled the mongo profiler
-func Enable(ctx context.Context, client *mongo.Client) error {
-	res := client.Database("admin").RunCommand(ctx, primitive.M{"profile": 2})
+func Enable(ctx context.Context, client *mongo.Client, database string) error {
+	res := client.Database(database).RunCommand(ctx, primitive.M{"profile": 2})
 	return res.Err()
 }
 
 // Disable disables the mongo profiler
-func Disable(ctx context.Context, client *mongo.Client) error {
-	res := client.Database("admin").RunCommand(ctx, primitive.M{"profile": 0})
+func Disable(ctx context.Context, client *mongo.Client, database string) error {
+	res := client.Database(database).RunCommand(ctx, primitive.M{"profile": 0})
 	return res.Err()
 }
 
 // Drop drops the system.profile collection for clean up
-func Drop(ctx context.Context, client *mongo.Client) error {
-	return client.Database("").Collection("system.profile").Drop(ctx)
+func Drop(ctx context.Context, client *mongo.Client, database string) error {
+	return client.Database(database).Collection("system.profile").Drop(ctx)
 }

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 60;
+use Test::More tests => 61;
 
 use PerconaTest;
 require "$trunk/bin/pt-visual-explain";
@@ -70,6 +70,45 @@ is_deeply(
       warning => 'Impossible HAVING',
    },
    'Impossible HAVING',
+);
+
+$t = $e->parse( load_file("t/pt-visual-explain/samples/impossible_on_condition.sql") );
+is_deeply(
+   $t,
+   {  type     => 'JOIN',
+      children => [
+         {  type     => 'Constant table access',
+            id       => 1,
+            rowid    => 0,
+            rows     => undef,
+            warning  => 'Impossible ON condition',
+            children => [
+               {  type           => 'Table',
+                  table          => 't',
+                  possible_keys  => 't_id',
+                  partitions     => undef
+               }
+            ]
+         },
+         {  type     => 'Filter with WHERE',
+            id       => 1,
+            rowid    => 1,
+            children => [
+               {  type     => 'Table scan',
+                  rows     => 1,
+                  children => [
+                     {  type           => 'Table',
+                        table          => 't2',
+                        possible_keys  => undef,
+                        partitions     => undef
+                     }
+                  ]
+               }
+            ]
+         }
+      ]
+   },
+   "Impossible ON condition"
 );
 
 $t = $e->parse( load_file("t/pt-visual-explain/samples/const_row_not_found.sql") );

@@ -1,0 +1,5 @@
+2023-03-17T11:05:36.920637+02:00 0 [Note] [MY-000000] [Galera] (75b291cc-baf9, 'tcp://0.0.0.0:4567') connection to peer 582bb7c0-8cec with addr tcp://172.17.0.3:4567 timed out, no messages seen in PT3S, socket stats: rtt: 59407 rttvar: 102250 rto: 1876000 lost: 1 last_data_recv: 3031 cwnd: 1 last_queued_since: 397445504 last_delivered_since: 3030162074 send_queue_length: 0 send_queue_bytes: 0 segment: 0 messages: 0 (gmcast.peer_timeout)
+2023-03-17T11:05:36.920813+02:00 0 [Note] [MY-000000] [Galera] (75b291cc-baf9, 'tcp://0.0.0.0:4567') turning message relay requesting on, nonlive peers: tcp://172.17.0.3:4567 
+2023-03-17T11:05:37.920924+02:00 0 [Note] [MY-000000] [Galera] (75b291cc-baf9, 'tcp://0.0.0.0:4567') reconnecting to 582bb7c0-8cec (tcp://172.17.0.3:4567), attempt 0
+2023-03-17T11:05:37.929959+02:00 0 [Note] [MY-000000] [Galera] (75b291cc-baf9, 'tcp://0.0.0.0:4567') connection established to 582bb7c0-8cec tcp://172.17.0.3:4567
+2023-03-17T11:05:41.422836+02:00 0 [Note] [MY-000000] [Galera] (75b291cc-baf9, 'tcp://0.0.0.0:4567') turning message relay requesting off

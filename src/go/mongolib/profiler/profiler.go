@@ -1,3 +1,16 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package profiler
 
 import (
@@ -11,10 +24,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	// DocsBufferSize is the buffer size to store documents from the MongoDB profiler
-	DocsBufferSize = 100
-)
+// DocsBufferSize is the buffer size to store documents from the MongoDB profiler
+var DocsBufferSize = 100
 
 // Profiler interface
 type Profiler interface {
@@ -140,7 +151,7 @@ func (p *Profile) getDocs(ctx context.Context) {
 		for _, filter := range p.filters {
 			if !filter(doc) {
 				valid = false
-				return
+				break
 			}
 		}
 		if !valid {

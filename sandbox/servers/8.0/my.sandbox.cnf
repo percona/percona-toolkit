@@ -39,4 +39,7 @@ binlog_format              = STATEMENT
 #performance_schema         = ON
 #performance-schema-instrument='wait/lock/metadata/sql/mdl=ON'
 #performance-schema-instrument='transaction=ON'
-secure-file-priv           = 
+secure-file-priv           =
+
+# wait_for_replica buggy on multi-threaded replica
+slave-parallel-workers=0

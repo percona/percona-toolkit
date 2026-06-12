@@ -17,14 +17,14 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica1_dbh = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave1_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 48;
@@ -33,24 +33,24 @@ else {
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($source_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $row;
 my $output;
 
 sub load_data_infile {
    my ($file, $where) = @_;
-   $master_dbh->do('truncate table percona.checksums');
-   $master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/checksum_results/$file' INTO TABLE percona.checksums");
+   $source_dbh->do('truncate table percona.checksums');
+   $source_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/checksum_results/$file' INTO TABLE percona.checksums");
    if ( $where ) {
-      PerconaTest::wait_for_table($slave1_dbh, 'percona.checksums', $where);
+      PerconaTest::wait_for_table($replica1_dbh, 'percona.checksums', $where);
    }
 }
 
 # Create an empty replicate table.
 pt_table_checksum::main(@args, qw(-d foo --quiet));
-PerconaTest::wait_for_table($slave1_dbh, 'percona.checksums');
-$master_dbh->do('truncate table percona.checksums');
+PerconaTest::wait_for_table($replica1_dbh, 'percona.checksums');
+$source_dbh->do('truncate table percona.checksums');
 
 my $all_sakila_tables =  [
    [qw( sakila actor        )],
@@ -79,7 +79,7 @@ $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila --resume --chunk-size 10000)) },
 );
 
-$row = $master_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
 
 is_deeply(
    $row,
@@ -92,7 +92,7 @@ is_deeply(
 # ############################################################################
 
 # Timestamps shouldn't change because no rows should be updated.
-$row = $master_dbh->selectall_arrayref('select ts from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref('select ts from percona.checksums order by db, tbl');
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila --resume)) },
@@ -105,7 +105,7 @@ like(
 );
 
 is_deeply(
-   $master_dbh->selectall_arrayref('select ts from percona.checksums order by db, tbl'),
+   $source_dbh->selectall_arrayref('select ts from percona.checksums order by db, tbl'),
    $row,
    "Timestamps didn't change"
 );
@@ -115,9 +115,9 @@ is_deeply(
 # next table.
 # ############################################################################
 load_data_infile("sakila-done-singles", "ts='2011-10-15 13:00:16'");
-$master_dbh->do("delete from percona.checksums where ts > '2011-10-15 13:00:04'");
+$source_dbh->do("delete from percona.checksums where ts > '2011-10-15 13:00:04'");
 
-$row = $master_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
 is_deeply(
    $row,
    [
@@ -127,13 +127,13 @@ is_deeply(
       [qw( sakila city          )],
    ],
    "Checksum results for 1/4 of sakila singles"
-);
+) or diag(Dumper($row));
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila --resume --chunk-size 10000)) },
 );
 
-$row = $master_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
 is_deeply(
    $row,
    $all_sakila_tables,
@@ -169,7 +169,7 @@ is(
 # Resume from the middle of a table that was being chunked.
 # ############################################################################
 load_data_infile("sakila-done-1k-chunks", "ts='2011-10-15 13:00:57'");
-$master_dbh->do("delete from percona.checksums where ts > '2011-10-15 13:00:28'");
+$source_dbh->do("delete from percona.checksums where ts > '2011-10-15 13:00:28'");
 
 my $first_half = [
    [qw(sakila actor 1 200 )],
@@ -241,7 +241,7 @@ my $second_half = [
    [qw(sakila store 1 2 )],
 ];
 
-$row = $master_dbh->selectall_arrayref('select db, tbl, chunk, master_cnt from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref("select db, tbl, chunk, source_cnt from percona.checksums order by db, tbl");
 is_deeply(
    $row,
    $first_half,
@@ -253,7 +253,7 @@ $output = output(
       qw(--chunk-time 0)) },
 );
 
-$row = $master_dbh->selectall_arrayref('select db, tbl, chunk, master_cnt from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref("select db, tbl, chunk, source_cnt from percona.checksums order by db, tbl");
 is_deeply(
    $row,
    [
@@ -304,9 +304,9 @@ is(
 # Resume from the end of a finished table that was being chunked.
 # ############################################################################
 load_data_infile("sakila-done-1k-chunks", "ts='2011-10-15 13:00:57'");
-$master_dbh->do("delete from percona.checksums where ts > '2011-10-15 13:00:38'");
+$source_dbh->do("delete from percona.checksums where ts > '2011-10-15 13:00:38'");
 
-$row = $master_dbh->selectall_arrayref('select db, tbl, chunk, master_cnt from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref("select db, tbl, chunk, source_cnt from percona.checksums order by db, tbl");
 is_deeply(
    $row,
    [
@@ -332,7 +332,7 @@ $output = output(
       qw(--chunk-time 0)) },
 );
 
-$row = $master_dbh->selectall_arrayref('select db, tbl, chunk, master_cnt from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref("select db, tbl, chunk, source_cnt from percona.checksums order by db, tbl");
 is_deeply(
    $row,
    [
@@ -374,11 +374,11 @@ is(
 );
 
 # ############################################################################
-# Resume when master_crc wasn't updated.
+# Resume when source_crc wasn't updated.
 # ############################################################################
 load_data_infile("sakila-done-1k-chunks", "ts='2011-10-15 13:00:57'");
-$master_dbh->do("delete from percona.checksums where ts > '2011-10-15 13:00:50'");
-$master_dbh->do("update percona.checksums set master_crc=NULL, master_cnt=NULL, ts='2011-11-11 11:11:11' where db='sakila' and tbl='rental' and chunk=12");
+$source_dbh->do("delete from percona.checksums where ts > '2011-10-15 13:00:50'");
+$source_dbh->do("update percona.checksums set source_crc=NULL, source_cnt=NULL, ts='2011-11-11 11:11:11' where db='sakila' and tbl='rental' and chunk=12");
 
 # Checksum table now ends with:
 #    *************************** 49. row ***************************
@@ -391,8 +391,8 @@ $master_dbh->do("update percona.checksums set master_crc=NULL, master_cnt=NULL, 
 #    upper_boundary: 11004
 #    this_crc: d2ad38b8
 #    this_cnt: 1000
-#    master_crc: d2ad38b8
-#    master_cnt: 1000
+#    source_crc: d2ad38b8
+#    source_cnt: 1000
 #    ts: 2011-10-15 13:00:49
 #    *************************** 50. row ***************************
 #    db: sakila
@@ -404,20 +404,20 @@ $master_dbh->do("update percona.checksums set master_crc=NULL, master_cnt=NULL, 
 #    upper_boundary: 12004
 #    this_crc: 3b07b7a1
 #    this_cnt: 1000
-#    master_crc: NULL
-#    master_cnt: NULL
+#    source_crc: NULL
+#    source_cnt: NULL
 #    ts: 2011-11-07 10:45:20
-# This ^ last row is bad because master_crc and master_cnt are NULL,
+# This ^ last row is bad because source_crc and source_cnt are NULL,
 # which means the tool was killed before $update_sth was called.  So,
 # it should resume from chunk 11 of this table and overwrite chunk 12.
 
-my $chunk11 = $master_dbh->selectall_arrayref(q{select * from percona.checksums where db='sakila' and tbl='rental' and chunk=11});
+my $chunk11 = $source_dbh->selectall_arrayref(q{select * from percona.checksums where db='sakila' and tbl='rental' and chunk=11});
 
-my $chunk12 = $master_dbh->selectall_arrayref(q{select master_crc from percona.checksums where db='sakila' and tbl='rental' and chunk=12});
+my $chunk12 = $source_dbh->selectall_arrayref(qq{select source_crc from percona.checksums where db='sakila' and tbl='rental' and chunk=12});
 is(
    $chunk12->[0]->[0],
    undef,
-   "Chunk 12 master_crc is null"
+   "Chunk 12 source_crc is null"
 );
 
 $output = output(
@@ -426,7 +426,7 @@ $output = output(
    trf => sub { return PerconaTest::normalize_checksum_results(@_) },
 );
 
-$row = $master_dbh->selectall_arrayref('select db, tbl, chunk, master_cnt from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref("select db, tbl, chunk, source_cnt from percona.checksums order by db, tbl");
 is_deeply(
    $row,
    [
@@ -450,25 +450,25 @@ ERRORS DIFFS ROWS DIFF_ROWS CHUNKS SKIPPED TABLE
 );
 
 is_deeply(
-   $master_dbh->selectall_arrayref(q{select * from percona.checksums where db='sakila' and tbl='rental' and chunk=11}),
+   $source_dbh->selectall_arrayref(q{select * from percona.checksums where db='sakila' and tbl='rental' and chunk=11}),
    $chunk11,
    "Chunk 11 not updated"
 );
 
-$chunk12 = $master_dbh->selectall_arrayref(q{select master_crc, master_cnt from percona.checksums where db='sakila' and tbl='rental' and chunk=12});
+$chunk12 = $source_dbh->selectall_arrayref(qq{select source_crc, source_cnt from percona.checksums where db='sakila' and tbl='rental' and chunk=12});
 ok(
    defined $chunk12->[0]->[0],
-   "Chunk 12 master_crc updated"
+   "Chunk 12 source_crc updated"
 );
 
 # ############################################################################
 # Resume with --ignore-table.
 # ############################################################################
-$sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/3tbl-resume.sql");
 load_data_infile("3tbl-resume", "ts='2011-11-08 00:00:24'");
 
-$master_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:11'");
-my $before = $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums where tbl='t1' or tbl='t2' order by db, tbl");
+$source_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:11'");
+my $before = $source_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums where tbl='t1' or tbl='t2' order by db, tbl");
 is_deeply(
    $before,
    [
@@ -503,7 +503,7 @@ ERRORS DIFFS ROWS DIFF_ROWS CHUNKS SKIPPED TABLE
    "Resumed from t3"
 );
 
-$row = $master_dbh->selectall_arrayref('select db, tbl, chunk from percona.checksums order by db, tbl');
+$row = $source_dbh->selectall_arrayref('select db, tbl, chunk from percona.checksums order by db, tbl');
 is_deeply(
    $row,
    [
@@ -532,7 +532,7 @@ is_deeply(
 );
 
 is_deeply(
-   $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums where tbl='t1' or tbl='t2' order by db, tbl"),
+   $source_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums where tbl='t1' or tbl='t2' order by db, tbl"),
    $before,
    "t1 and t2 checksums not updated"
 );
@@ -540,15 +540,15 @@ is_deeply(
 # ############################################################################
 # Resume from table that finished bounded chunks but not the 2 oob chunks.
 # ############################################################################
-$sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/3tbl-resume.sql");
 load_data_infile("3tbl-resume", "ts='2011-11-08 00:00:24'");
 
 # This will truncate the checksum results after t1 chunk 6 where chunk 7
 # is the lower oob and chunk 8 is the upper oob.
-$master_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:06'");
+$source_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:06'");
 
 is_deeply(
-   $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums order by db, tbl"),
+   $source_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums order by db, tbl"),
    [
       [qw(test t1 1), '2011-11-08 00:00:01'],
       [qw(test t1 2), '2011-11-08 00:00:02'],
@@ -600,12 +600,12 @@ is(
 # Resume from table that finished bounded chunks and the lower oob chunk
 # but not the upper oob chunk.
 # ############################################################################
-$sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/3tbl-resume.sql");
 load_data_infile("3tbl-resume", "ts='2011-11-08 00:00:24'");
-$master_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:07'");
+$source_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:07'");
 
 is_deeply(
-   $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums order by db, tbl"),
+   $source_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums order by db, tbl"),
    [
       [qw(test t1 1), '2011-11-08 00:00:01'],
       [qw(test t1 2), '2011-11-08 00:00:02'],
@@ -660,11 +660,11 @@ is(
 
 # See https://bugs.launchpad.net/percona-toolkit/+bug/898318
 
-$sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/3tbl-resume.sql");
 load_data_infile("3tbl-resume-bar", "ts='2011-11-08 00:01:08'");
 
 is_deeply(
-   $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums order by db, tbl"),
+   $source_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums order by db, tbl"),
    [
       [qw(test	t1	1), '2011-11-08 00:02:01'],
       [qw(test	t1	2), '2011-11-08 00:02:02'],
@@ -698,6 +698,6 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

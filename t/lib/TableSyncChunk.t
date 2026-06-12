@@ -18,7 +18,7 @@ use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( $dbh ) {
    plan tests => 35;
@@ -40,7 +40,7 @@ use TableSyncer;
 use MasterSlave;
 use Retry;
 
-my $mysql = $sb->_use_for('master');
+my $mysql = $sb->_use_for('source');
 
 diag(`$mysql < $trunk/t/lib/samples/before-TableSyncChunk.sql`);
 

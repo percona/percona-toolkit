@@ -16,9 +16,9 @@
 --
 -- View: x$processlist
 --
--- A detailed non-blocking processlist view to replace 
+-- A detailed non-blocking processlist view to replace
 -- [INFORMATION_SCHEMA. | SHOW FULL] PROCESSLIST
--- 
+--
 -- mysql> select * from x$processlist where conn_id is not null\G
 -- *************************** 1. row ***************************
 --                 thd_id: 23
@@ -99,7 +99,7 @@ SELECT pps.thread_id AS thd_id,
           NULL) AS last_statement_latency,
        ewc.event_name AS last_wait,
        IF(ewc.end_event_id IS NULL AND ewc.event_name IS NOT NULL,
-          'Still Waiting', 
+          'Still Waiting',
           ewc.timer_wait) last_wait_latency,
        ewc.source
   FROM performance_schema.threads AS pps

@@ -17,10 +17,10 @@ require "$trunk/bin/pt-table-usage";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 4;
@@ -47,9 +47,10 @@ ok(
    no_diff(
       sub { pt_table_usage::main(@args, qw(-D sakila), "$in/slow003.txt") },
       "$out/slow003-002.txt",
+      keep_output => 1,
    ),
    'EXPLAIN EXTENDED slow003.txt'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 $output = output(
    sub { pt_table_usage::main(@args, qw(-D sakila),
@@ -61,17 +62,6 @@ is(
    "",
    "No error if table doesn't exist"
 );
-
-# This test fails in Maatkit, too.  I guess I never finished writing it?
-#ok(
-#   no_diff(
-#      sub { pt_table_usage::main(@args,
-#         '--query', "select count(*), max(lmp), min(lmp) FROM ca.interval_lmp_rt_5min as A INNER JOIN ca.lmp_rt_5min as B ON A.datetime = B.datetime WHERE A.datetime = '2011-12-01 21:05:00'") },
-#      "t/pt-table-usage/samples/ee.out",
-#      stderr => 1,
-#   ),
-#   "New EXPLAIN EXTENDED"
-#);
 
 # #############################################################################
 # Done.

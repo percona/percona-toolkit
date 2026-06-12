@@ -19,7 +19,7 @@ DELIMITER $$
 
 CREATE DEFINER='root'@'localhost' PROCEDURE ps_trace_statement_digest (
         IN in_digest VARCHAR(32),
-        IN in_runtime INT, 
+        IN in_runtime INT,
         IN in_interval DECIMAL(2,2),
         IN in_start_fresh BOOLEAN,
         IN in_auto_enable BOOLEAN
@@ -29,18 +29,18 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_trace_statement_digest (
              -----------
 
              Traces all instrumentation within Performance Schema for a specific
-             Statement Digest. 
+             Statement Digest.
 
-             When finding a statement of interest within the 
+             When finding a statement of interest within the
              performance_schema.events_statements_summary_by_digest table, feed
-             the DIGEST MD5 value in to this procedure, set how long to poll for, 
-             and at what interval to poll, and it will generate a report of all 
+             the DIGEST MD5 value in to this procedure, set how long to poll for,
+             and at what interval to poll, and it will generate a report of all
              statistics tracked within Performance Schema for that digest for the
              interval.
 
-             It will also attempt to generate an EXPLAIN for the longest running 
+             It will also attempt to generate an EXPLAIN for the longest running
              example of the digest during the interval. Note this may fail, as
-             Performance Schema truncates long SQL_TEXT values (and hence the 
+             Performance Schema truncates long SQL_TEXT values (and hence the
              EXPLAIN will fail due to parse errors).
 
              Requires the SUPER privilege for "SET sql_log_bin = 0;".
@@ -98,7 +98,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_trace_statement_digest (
              | LONGEST RUNNING STATEMENT |
              +---------------------------+
              1 row in set (9.16 sec)
-             
+
              +-----------+-----------+-----------+-----------+---------------+------------+-----------+
              | thread_id | exec_time | lock_time | rows_sent | rows_examined | tmp_tables | full_scan |
              +-----------+-----------+-----------+-----------+---------------+------------+-----------+
@@ -214,7 +214,7 @@ BEGIN
         SELECT UNIX_TIMESTAMP() INTO v_start;
 
         INSERT IGNORE INTO stmt_trace
-        SELECT thread_id, timer_start, event_id, sql_text, timer_wait, lock_time, errors, mysql_errno, 
+        SELECT thread_id, timer_start, event_id, sql_text, timer_wait, lock_time, errors, mysql_errno,
                rows_sent, rows_affected, rows_examined, created_tmp_tables, created_tmp_disk_tables, no_index_used
           FROM performance_schema.events_statements_history_long
         WHERE digest = in_digest;

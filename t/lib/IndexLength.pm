@@ -31,7 +31,7 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -77,7 +77,7 @@ sub test_index_len {
 # #############################################################################
 # bad_plan, PK with 4 cols
 # #############################################################################
-$sb->load_file('master', "t/pt-table-checksum/samples/bad-plan-bug-1010232.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/bad-plan-bug-1010232.sql");
 my $tbl_struct = $tp->parse(
    $tp->get_create_table($dbh, 'bad_plan', 't'));
 my $tbl = {

@@ -18,31 +18,31 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 2;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
+$sb->create_dbs($source_dbh, [qw(test)]);
 
 # #############################################################################
 # Issue 262
 # #############################################################################
-$sb->create_dbs($master_dbh, ['foo']);
-$sb->use('master', '-e "create table foo.t1 (i int)"');
-$sb->use('master', '-e "SET SQL_LOG_BIN=0; insert into foo.t1 values (1)"');
-$sb->use('slave1', '-e "truncate table foo.t1"');
-$output = `$trunk/bin/pt-table-sync --no-check-slave --print h=127.1,P=12345,u=msandbox,p=msandbox -d mysql,foo h=127.1,P=12346 2>&1`;
+$sb->create_dbs($source_dbh, ['foo']);
+$sb->use('source', '-e "create table foo.t1 (i int)"');
+$sb->use('source', '-e "SET SQL_LOG_BIN=0; insert into foo.t1 values (1)"');
+$sb->use('replica1', '-e "truncate table foo.t1"');
+$output = `$trunk/bin/pt-table-sync --no-check-replica --print h=127.1,P=12345,u=msandbox,p=msandbox -d mysql,foo h=127.1,P=12346 2>&1`;
 like(
    $output,
    qr/INSERT INTO `foo`\.`t1`\(`i`\) VALUES \('1'\)/,
@@ -52,7 +52,7 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -17,11 +17,11 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 8;
@@ -30,8 +30,8 @@ else {
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($source_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 
 my $row;
 my $output;
@@ -45,14 +45,14 @@ my $exit_status;
 
 pt_table_checksum::main(@args, qw(--quiet -t sakila.rental));
 
-$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='rental' and chunk=1");
+$row = $source_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='rental' and chunk=1");
 is_deeply(
    $row,
    [1, 1001],
    "First chunk is default size"
 );
 
-$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='rental' and chunk=2");
+$row = $source_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='rental' and chunk=2");
 is(
    $row->[0],
    1002,
@@ -73,7 +73,7 @@ cmp_ok(
 pt_table_checksum::main(@args, qw(--quiet --chunk-size 100 -t sakila.city));
 
 # There's 600 rows in sakila.city so there should be 6 chunks.
-$row = $master_dbh->selectall_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='city'");
+$row = $source_dbh->selectall_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='city'");
 is_deeply(
    $row,
    [
@@ -104,19 +104,19 @@ unlike(
    $output,
    qr/Cannot checksum table/,
    "Very small --chunk-time doesn't cause zero --chunk-size"
-);
+) or diag($output);
 }
 # #############################################################################
 # Bug 921700: pt-table-checksum doesn't add --where to chunk-oversize test
 # on replicas
 # #############################################################################
-$sb->load_file('master', 't/pt-table-checksum/samples/600cities.sql');
-$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
-$master_dbh->do("SET SQL_LOG_BIN=0");
-$master_dbh->do("DELETE FROM test.t WHERE id > 100");
-$master_dbh->do("SET SQL_LOG_BIN=1");
+$sb->load_file('source', 't/pt-table-checksum/samples/600cities.sql');
+$source_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
+$source_dbh->do("SET SQL_LOG_BIN=0");
+$source_dbh->do("DELETE FROM test.t WHERE id > 100");
+$source_dbh->do("SET SQL_LOG_BIN=1");
 
-# Now there are 100 rows on the master and 600 on the slave.
+# Now there are 100 rows on the source and 600 on the replica.
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,
       qw(-t test.t --chunk-size 100 --where id<=100)); },
@@ -138,6 +138,6 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

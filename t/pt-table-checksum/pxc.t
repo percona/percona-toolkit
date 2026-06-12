@@ -13,8 +13,8 @@ use Test::More;
 use Data::Dumper;
 
 # Hostnames make testing less accurate.  Tests need to see
-# that such-and-such happened on specific slave hosts, but
-# the sandbox servers are all on one host so all slaves have
+# that such-and-such happened on specific replica hosts, but
+# the sandbox servers are all on one host so all replicas have
 # the same hostname.
 $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
@@ -27,8 +27,13 @@ my $ip = qr/\Q127.1\E|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $node1 = $sb->get_dbh_for('node1');
+my $sb_version = VersionParser->new($node1);
 my $node2 = $sb->get_dbh_for('node2');
 my $node3 = $sb->get_dbh_for('node3');
+
+if ($sb_version >= '8.0') {
+   plan skip_all => 'Cannot run tests on PXC 8.0 until PT-1699 is fixed';
+}
 
 if ( !$node1 ) {
    plan skip_all => 'Cannot connect to cluster node1';
@@ -62,7 +67,7 @@ my $sample  = "t/pt-table-checksum/samples/";
 
 # This DSN table has node2 and node3 (12346 and 12347) but not node1 (12345)
 # because it was originally created for traditional setups which require only
-# slave DSNs, but the DSN table for a PXC setup can/should contain DSNs for
+# replica DSNs, but the DSN table for a PXC setup can/should contain DSNs for
 # all nodes so the user can run pxc on any node and find all the others.
 $sb->load_file('node1', "$sample/dsn-table.sql");
 $node1->do(qq/INSERT INTO dsns.dsns VALUES (1, 1, '$node1_dsn')/);
@@ -93,8 +98,8 @@ ok (
 );
 
 for my $args (
-      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["using recursion-method=cluster", '--recursion-method', 'cluster']
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns", '--ignore-tables=mysql.proxies_priv'],
+      ["using recursion-method=cluster", '--recursion-method', 'cluster', '--ignore-tables=mysql.proxies_priv']
    )
 {
    my $test = shift @$args;
@@ -125,14 +130,12 @@ for my $args (
 }
 
 # Now really test checksumming a cluster.  To create a diff we have to disable
-# the binlog.  Although PXC doesn't need or use the binlog to communicate
-# (it has its own broadcast-based protocol implemented via the Galera lib)
-# it still respects sql_log_bin, so we can make a change on one node without
+# wsrep replication, so we can make a change on one node without
 # affecting the others.
 $sb->load_file('node1', "$sample/a-z.sql");
-$node2->do("set sql_log_bin=0");
+$node2->do("set wsrep_on=0");
 $node2->do("update test.t set c='zebra' where c='z'");
-$node2->do("set sql_log_bin=1");
+$node2->do("set wsrep_on=1");
 
 my ($row) = $node2->selectrow_array("select c from test.t order by c desc limit 1");
 is(
@@ -188,8 +191,8 @@ sub test_recursion_methods {
    }
 
    for my $args (
-         ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-         ["using recursion-method=cluster", '--recursion-method', 'cluster']
+         ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns", '--ignore-tables=mysql.proxies_priv'],
+         ["using recursion-method=cluster", '--recursion-method', 'cluster', '--ignore-tables=mysql.proxies_priv']
       )
    {
       my $test = shift @$args;
@@ -227,6 +230,7 @@ sub test_recursion_methods {
             0\s+     # errors
             1\s+     # diffs
             26\s+    # rows
+            0\s+     # diff_rows
             \d+\s+   # chunks
             0\s+     # skipped
             \S+\s+   # time
@@ -257,47 +261,47 @@ test_recursion_methods(1);
 
 
 # #############################################################################
-# cluster, node1 -> slave, run on node1
+# cluster, node1 -> replica, run on node1
 # #############################################################################
 
-my ($slave_dbh, $slave_dsn) = $sb->start_sandbox(
-   server => 'cslave1',
-   type   => 'slave',
-   master => 'node1',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+my ($replica_dbh, $replica_dsn) = $sb->start_sandbox(
+   server => 'creplica1',
+   type   => 'replica',
+   source => 'node1',
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
-# Add the slave to the DSN table.
-$node1->do(qq/INSERT INTO dsns.dsns VALUES (4, 3, '$slave_dsn')/);
+# Add the replica to the DSN table.
+$node1->do(qq/INSERT INTO dsns.dsns VALUES (4, 3, '$replica_dsn')/);
 
 # Fix what we changed earlier on node2 so the cluster is consistent.
-$node2->do("set sql_log_bin=0");
+$node2->do("set wsrep_on=0");
 $node2->do("update test.t set c='z' where c='zebra'");
-$node2->do("set sql_log_bin=1");
+$node2->do("set wsrep_on=1");
 
-# Wait for the slave to apply the binlogs from node1 (its master).
+# Wait for the replica to apply the binlogs from node1 (its source).
 # Then change it so it's not consistent.
-PerconaTest::wait_for_table($slave_dbh, 'test.t');
-$sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
-$slave_dbh->do("update test.t set c='zebra' where c='z'");
+PerconaTest::wait_for_table($replica_dbh, 'test.t');
+$sb->wait_for_replicas(source => 'node1', replica => 'creplica1');
+$replica_dbh->do("update test.t set c='zebra' where c='z'");
 
-# Another quick test first: the tool should complain about the slave's
-# binlog format but only the slave's, not the cluster nodes:
+# Another quick test first: the tool should complain about the replica's
+# binlog format but only the replica's, not the cluster nodes:
 # https://bugs.launchpad.net/percona-toolkit/+bug/1080385
 # Cluster nodes default to ROW format because that's what Galeara
 # works best with, even though it doesn't really use binlogs.
 for my $args (
-      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns", '--ignore-tables=mysql.user'],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts', '--ignore-tables=mysql.user']
    )
 {
    my $test = shift @$args;
 
-   # Wait for the slave to apply the binlogs from node1 (its master).
+   # Wait for the replica to apply the binlogs from node1 (its source).
    # Then change it so it's not consistent.
-   PerconaTest::wait_for_table($slave_dbh, 'test.t');
-   $sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
-   $slave_dbh->do("update test.t set c='zebra' where c='z'");
+   PerconaTest::wait_for_table($replica_dbh, 'test.t');
+   $sb->wait_for_replicas(source => 'node1', replica => 'creplica1');
+   $replica_dbh->do("update test.t set c='zebra' where c='z'");
 
    $output = output(
       sub { pt_table_checksum::main(@args,
@@ -309,10 +313,10 @@ for my $args (
    like(
       $output,
       qr/replica h=127(?:\Q.0.0\E)?\.1,P=12348 has binlog_format ROW/i,
-      "--check-binlog-format warns about slave's binlog format ($test)"
+      "--check-binlog-format warns about replica's binlog format ($test)"
    );
    
-   # Now really test that diffs on the slave are detected.
+   # Now really test that diffs on the replica are detected.
    $output = output(
       sub { pt_table_checksum::main(@args,
          @$args,
@@ -324,48 +328,48 @@ for my $args (
    is(
       PerconaTest::count_checksum_results($output, 'diffs'),
       1,
-      "Detects diffs on slave of cluster node1 ($test)"
+      "Detects diffs on replica of cluster node1 ($test)"
    ) or diag($output);
 
 }
 
-$slave_dbh->disconnect;
-$sb->stop_sandbox('cslave1');
+$replica_dbh->disconnect;
+$sb->stop_sandbox('creplica1');
 
 # #############################################################################
-# cluster, node2 -> slave, run on node1
+# cluster, node2 -> replica, run on node1
 #
 # Does not work because we only set binglog_format=STATEMENT on node1 which
 # does not affect other nodes, so node2 gets checksum queries in STATEMENT
 # format, executes them, but then logs the results in ROW format (since ROW
-# format is the default for cluster nodes) which doesn't work on the slave
-# (i.e. the slave doesn't execute the query).  So any diffs on the slave are
+# format is the default for cluster nodes) which doesn't work on the replica
+# (i.e. the replica doesn't execute the query).  So any diffs on the replica are
 # not detected.
 # #############################################################################
 
-($slave_dbh, $slave_dsn) = $sb->start_sandbox(
-   server => 'cslave1',
-   type   => 'slave',
-   master => 'node2',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+($replica_dbh, $replica_dsn) = $sb->start_sandbox(
+   server => 'creplica1',
+   type   => 'replica',
+   source => 'node2',
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
-# Wait for the slave to apply the binlogs from node2 (its master).
+# Wait for the replica to apply the binlogs from node2 (its source).
 # Then change it so it's not consistent.
-PerconaTest::wait_for_table($slave_dbh, 'test.t');
-$sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
-$slave_dbh->do("update test.t set c='zebra' where c='z'");
+PerconaTest::wait_for_table($replica_dbh, 'test.t');
+$sb->wait_for_replicas(source => 'node1', replica => 'creplica1');
+$replica_dbh->do("update test.t set c='zebra' where c='z'");
 
-($row) = $slave_dbh->selectrow_array("select c from test.t order by c desc limit 1");
+($row) = $replica_dbh->selectrow_array("select c from test.t order by c desc limit 1");
 is(
    $row,
    "zebra",
-   "Slave is changed"
+   "Replica is changed"
 );
 
 for my $args (
-      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns", '--ignore-tables=mysql.user'],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts', '--ignore-tables=mysql.user']
    )
 {
    my $test = shift @$args;
@@ -381,66 +385,66 @@ for my $args (
    is(
       PerconaTest::count_checksum_results($output, 'diffs'),
       0,
-      "Limitation: does not detect diffs on slave of cluster node2 ($test)"
+      "Limitation: does not detect diffs on replica of cluster node2 ($test)"
    ) or diag($output);
 }
    
-$slave_dbh->disconnect;
-$sb->stop_sandbox('cslave1');
+$replica_dbh->disconnect;
+$sb->stop_sandbox('creplica1');
 
 # Restore the original DSN table.
 $node1->do(qq/DELETE FROM dsns.dsns WHERE id=4/);
 
 # #############################################################################
-# master -> node1 in cluster, run on master
+# source -> node1 in cluster, run on source
 # #############################################################################
 
-# CAREFUL: The master and the cluster are different, so don't do stuff
-# on the master that will conflict with stuff already done on the cluster.
-# And since we're using RBR, we have to do a lot of stuff on the master
+# CAREFUL: The source and the cluster are different, so don't do stuff
+# on the source that will conflict with stuff already done on the cluster.
+# And since we're using RBR, we have to do a lot of stuff on the source
 # again, manually, because REPLACE and INSERT IGNORE don't work in RBR
 # like they do SBR.
 
-my ($master_dbh, $master_dsn) = $sb->start_sandbox(
-   server => 'cmaster',
-   type   => 'master',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+my ($source_dbh, $source_dsn) = $sb->start_sandbox(
+   server => 'csource',
+   type   => 'source',
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
-# Since master is new, node1 shouldn't have binlog to replay.
-$sb->set_as_slave('node1', 'cmaster');
+# Since source is new, node1 shouldn't have binlog to replay.
+$sb->set_as_replica('node1', 'csource');
 
 # We have to load a-z-cluster.sql else the pk id won'ts match because nodes use
-# auto-inc offsets but the master doesn't.
-$sb->load_file('cmaster', "$sample/a-z-cluster.sql", undef, no_wait => 1);
+# auto-inc offsets but the source doesn't.
+$sb->load_file('csource', "$sample/a-z-cluster.sql", undef, no_wait => 1);
 
-# Do this stuff manually and only on the master because node1/the cluster
+# Do this stuff manually and only on the source because node1/the cluster
 # already has it, and due to RBR, we can't do it other ways.
-$master_dbh->do("SET sql_log_bin=0");
+$source_dbh->do("SET sql_log_bin=0");
 
-# This DSN table does not include 12345 (node1/slave) intentionally,
+# This DSN table does not include 12345 (node1/replica) intentionally,
 # so a later test can auto-find 12345 then warn "Diffs will only be
 # detected if the cluster is consistent with h=127.1,P=12345...".
-$master_dbh->do("CREATE DATABASE dsns");
-$master_dbh->do("CREATE TABLE dsns.dsns (
+$source_dbh->do("CREATE DATABASE dsns");
+$source_dbh->do("CREATE TABLE dsns.dsns (
   id int auto_increment primary key,
   parent_id int default null,
   dsn varchar(255) not null
 )");
-$master_dbh->do("INSERT INTO dsns.dsns VALUES
+$source_dbh->do("INSERT INTO dsns.dsns VALUES
   (2, 1,    'h=127.1,P=12346,u=msandbox,p=msandbox'),
   (3, 2,    'h=127.1,P=12347,u=msandbox,p=msandbox')");
 
-$master_dbh->do("INSERT INTO percona_test.sentinel (id, ping) VALUES (1, '')");
-$master_dbh->do("SET sql_log_bin=1");
+$source_dbh->do("INSERT INTO percona_test.sentinel (id, ping) VALUES (1, '')");
+$source_dbh->do("SET sql_log_bin=1");
 
-$sb->wait_for_slaves(master => 'cmaster', slave => 'node1');
+$sb->wait_for_replicas(source => 'csource', replica => 'node1');
 
-# Notice: no --recursion-method=dsn yet.  Since node1 is a traditional slave
-# of the master, ptc should auto-detect it, which we'll test later by making
-# the slave differ.
+# Notice: no --recursion-method=dsn yet.  Since node1 is a traditional replica
+# of the source, ptc should auto-detect it, which we'll test later by making
+# the replica differ.
 $output = output(
-   sub { pt_table_checksum::main($master_dsn,
+   sub { pt_table_checksum::main($source_dsn,
       qw(-d test))
    },
    stderr => 1,
@@ -449,29 +453,29 @@ $output = output(
 is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
-   "master->cluster no diffs: no errors"
+   "source->cluster no diffs: no errors"
 );
 
 is(
    PerconaTest::count_checksum_results($output, 'skipped'),
    0,
-   "master->cluster no diffs: no skips"
+   "source->cluster no diffs: no skips"
 );
 
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),
    0,
-   "master->cluster no diffs: no diffs"
+   "source->cluster no diffs: no diffs"
 ) or diag($output);
 
 # Make a diff on node1.  If ptc is really auto-detecting node1, then it
 # should report this diff.
-$node1->do("set sql_log_bin=0");
+$node1->do("set wsrep_on=0");
 $node1->do("update test.t set c='zebra' where c='z'");
-$node1->do("set sql_log_bin=1");
+$node1->do("set wsrep_on=1");
 
 $output = output(
-   sub { pt_table_checksum::main($master_dsn,
+   sub { pt_table_checksum::main($source_dsn,
       qw(-d test))
    },
    stderr => 1,
@@ -480,19 +484,19 @@ $output = output(
 is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
-   "master->cluster 1 diff: no errors"
+   "source->cluster 1 diff: no errors"
 );
 
 is(
    PerconaTest::count_checksum_results($output, 'skipped'),
    0,
-   "master->cluster 1 diff: no skips"
+   "source->cluster 1 diff: no skips"
 );
 
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),
    1,
-   "master->cluster 1 diff: 1 diff"
+   "source->cluster 1 diff: 1 diff"
 ) or diag($output);
 
 # 11-17T13:02:54      0      1       26       1       0   0.021 test.t
@@ -502,22 +506,23 @@ like(
       0\s+     # errors
       1\s+     # diffs
       26\s+    # rows
+      0\s+     # diff_rows
       \d+\s+   # chunks
       0\s+     # skipped
       \S+\s+   # time
       test.t$  # table
    /xm,
-   "master->cluster 1 diff: it's in test.t"
+   "source->cluster 1 diff: it's in test.t"
 );
 
 # Use the DSN table to check for diffs on node2 and node3.  This works
-# because the diff is on node1 and node1 is the direct slave of the master,
-# so the checksum query will replicate from the master in STATEMENT format,
+# because the diff is on node1 and node1 is the direct replica of the source,
+# so the checksum query will replicate from the source in STATEMENT format,
 # node1 will execute it, find the diff, then broadcast that result to all
-# other nodes. -- Remember: the DSN table on the master has node2 and node3.
+# other nodes. -- Remember: the DSN table on the source has node2 and node3.
 $output = output(
-   sub { pt_table_checksum::main($master_dsn,
-      '--recursion-method', "dsn=$master_dsn,D=dsns,t=dsns",
+   sub { pt_table_checksum::main($source_dsn,
+      '--recursion-method', "dsn=$source_dsn,D=dsns,t=dsns",
       qw(-d test))
    },
    stderr => 1,
@@ -548,6 +553,7 @@ like(
       0\s+     # errors
       1\s+     # diffs
       26\s+    # rows
+      0\s+     # diff_rows
       \d+\s+   # chunks
       0\s+     # skipped
       \S+\s+   # time
@@ -559,7 +565,7 @@ like(
 like(
    $output,
    qr/the direct replica of h=$ip,P=12349 was not found or specified/,
-   "Warns that direct replica of the master isn't found or specified",
+   "Warns that direct replica of the source isn't found or specified",
 );
 
 # Use the other DSN table with all three nodes.  Now the tool should
@@ -575,12 +581,12 @@ for my $args (
 
    # Make a diff on node1.  If ptc is really auto-detecting node1, then it
    # should report this diff.
-   $node1->do("set sql_log_bin=0");
+   $node1->do("set wsrep_on=0");
    $node1->do("update test.t set c='zebra' where c='z'");
-   $node1->do("set sql_log_bin=1");
+   $node1->do("set wsrep_on=1");
    
    $output = output(
-      sub { pt_table_checksum::main($master_dsn,
+      sub { pt_table_checksum::main($source_dsn,
          @$args,
          qw(-d test))
       },
@@ -600,6 +606,7 @@ for my $args (
          0\s+     # errors
          1\s+     # diffs
          26\s+    # rows
+         0\s+     # diff_rows
          \d+\s+   # chunks
          0\s+     # skipped
          \S+\s+   # time
@@ -619,13 +626,13 @@ for my $args (
    # to node1, node1 isn't different, so it broadcasts the result in ROW format
    # that all is ok, which node2 gets and thus false reports.  This is why
    # those ^ warnings exist.
-   $node1->do("set sql_log_bin=0");
+   $node1->do("set wsrep_on=0");
    $node1->do("update test.t set c='z' where c='zebra'");
-   $node1->do("set sql_log_bin=1");
+   $node1->do("set wsrep_on=1");
 
-   $node2->do("set sql_log_bin=0");
+   $node2->do("set wsrep_on=0");
    $node2->do("update test.t set c='zebra' where c='z'");
-   $node2->do("set sql_log_bin=1");
+   $node2->do("set wsrep_on=1");
 
    ($row) = $node2->selectrow_array("select c from test.t order by c desc limit 1");
    is(
@@ -651,7 +658,7 @@ for my $args (
    # the other DSN table with all three nodes, but it won't matter because
    # node1 is going to broadcast the false-positive that there are no diffs.
    $output = output(
-      sub { pt_table_checksum::main($master_dsn,
+      sub { pt_table_checksum::main($source_dsn,
          @$args,
          qw(-d test))
       },
@@ -667,16 +674,16 @@ for my $args (
 }
 
 # ###########################################################################
-# Be sure to stop the slave on node1, else further test will die with:
-# Failed to execute -e "change master to master_host='127.0.0.1',
-# master_user='msandbox', master_password='msandbox', master_port=12349"
+# Be sure to stop the replica on node1, else further test will die with:
+# Failed to execute -e "change source to source_host='127.0.0.1',
+# source_user='msandbox', source_password='msandbox', source_port=12349"
 # on node1: ERROR 1198 (HY000) at line 1: This operation cannot be performed
-# with a running slave; run STOP SLAVE first
+# with a running replica; run STOP REPLICA first
 # ###########################################################################
-$master_dbh->disconnect;
-$sb->stop_sandbox('cmaster');
-$node1->do("STOP SLAVE");
-$node1->do("RESET SLAVE");
+$source_dbh->disconnect;
+$sb->stop_sandbox('csource');
+$node1->do("STOP ${replica_name}");
+$node1->do("RESET ${replica_name}");
 
 # #############################################################################
 # cluster -> cluster

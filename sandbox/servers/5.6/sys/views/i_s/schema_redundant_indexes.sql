@@ -16,7 +16,7 @@
 --             subpart_exists: 0
 --             sql_drop_index: ALTER TABLE `test`.`rkey` DROP INDEX `j`
 -- 1 row in set (0.20 sec)
--- 
+--
 -- mysql> SHOW CREATE TABLE test.rkey\G
 -- *************************** 1. row ***************************
 --        Table: rkey
@@ -29,7 +29,7 @@
 --   KEY `j_2` (`j`,`k`)
 -- ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 -- 1 row in set (0.06 sec)
--- 
+--
 
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
@@ -67,24 +67,24 @@ VIEW schema_redundant_indexes (
   WHERE
     redundant_keys.index_name != dominant_keys.index_name
     AND (
-      ( 
+      (
         /* Identical columns */
         (redundant_keys.index_columns = dominant_keys.index_columns)
         AND (
           (redundant_keys.non_unique > dominant_keys.non_unique)
-          OR (redundant_keys.non_unique = dominant_keys.non_unique 
+          OR (redundant_keys.non_unique = dominant_keys.non_unique
           	AND IF(redundant_keys.index_name='PRIMARY', '', redundant_keys.index_name) > IF(dominant_keys.index_name='PRIMARY', '', dominant_keys.index_name)
           )
         )
       )
       OR
-      ( 
+      (
         /* Non-unique prefix columns */
         LOCATE(CONCAT(redundant_keys.index_columns, ','), dominant_keys.index_columns) = 1
         AND redundant_keys.non_unique = 1
       )
       OR
-      ( 
+      (
         /* Unique prefix columns */
         LOCATE(CONCAT(dominant_keys.index_columns, ','), redundant_keys.index_columns) = 1
         AND dominant_keys.non_unique = 0

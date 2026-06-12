@@ -23,11 +23,11 @@ require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my $source_dbh = $sb->get_dbh_for('source');
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 if ($sandbox_version lt '5.7') {
@@ -35,7 +35,7 @@ if ($sandbox_version lt '5.7') {
 }
 
 
-if (!$sb->has_engine('master', 'rocksdb')) {
+if (!$sb->has_engine('source', 'rocksdb')) {
    plan skip_all => "RocksDB engine is not available";
 }
 
@@ -48,10 +48,10 @@ my @args       = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-$sb->load_file('master', "t/pt-online-schema-change/samples/pt-205.sql");
+$sb->load_file('source', "t/pt-online-schema-change/samples/pt-205.sql");
 
 ($output, $exit_status) = full_output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=t1",
+   sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=t1",
          '--execute', 
          '--alter', "Engine=RocksDB",
          ),
@@ -70,11 +70,11 @@ like(
       "PT-205 Altering engine to RocksDB error message",
 );
 
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+$source_dbh->do("DROP DATABASE IF EXISTS test");
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

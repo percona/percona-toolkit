@@ -18,21 +18,25 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
+}
+elsif ($sandbox_version gt '5.7') {
+   plan tests => 4;
 }
 else {
    plan tests => 5;
 }
 
 my $output;
+my $archived_rows;
 
 # #############################################################################
 # Issue 1152: mk-archiver columns option resulting in null archived table data
 # #############################################################################
-$sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
+$sb->load_file('source', 't/pt-archiver/samples/issue_1225.sql');
 
 $dbh->do('set names "utf8"');
 my $original_rows = $dbh->selectall_arrayref('select c from issue_1225.t limit 2');
@@ -57,7 +61,6 @@ SKIP: {
       "--check-charset"
    );
 
-}
 $output = output(
    sub { pt_archiver::main(
       '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
@@ -66,20 +69,21 @@ $output = output(
    },
 );
 
-my $archived_rows = $dbh->selectall_arrayref('select c from issue_1225.a limit 2');
+$archived_rows = $dbh->selectall_arrayref('select c from issue_1225.a limit 2');
 
 ok(
    $original_rows->[0]->[0] ne $archived_rows->[0]->[0],
    "UTF8 characters lost when cxn isn't also UTF8"
 );
+}
 
-$sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
+$sb->load_file('source', 't/pt-archiver/samples/issue_1225.sql');
 
 $output = output(
    sub { pt_archiver::main(
       '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
       '--dest',    't=a',
-      qw(--where 1=1 --purge -A utf8)) # -A utf8 makes it work
+      qw(--no-check-charset --where 1=1 --purge -A utf8)) # -A utf8 makes it work
    },
 );
 

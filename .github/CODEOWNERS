@@ -1,0 +1,4 @@
+# https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners
+# Order is important; the last matching pattern takes the most precedence.
+
+*      @svetasmirnova

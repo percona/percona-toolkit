@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x3F79759E7FA2F117 at byte 1106 _____
+# Query 1: 0 QPS, 0x concurrency, ID 0x53704700F9CECAAF3F79759E7FA2F117 at byte 1106
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-12-08 09:23:49.637892
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -29,7 +29,7 @@ EXECUTE SELECT i FROM d.t WHERE i="3"\G
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT i FROM d.t WHERE i="3"\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0xAA8E9FA785927259 at byte 0 ________
+# Query 2: 0 QPS, 0x concurrency, ID 0xC29D79D8CB57E235AA8E9FA785927259 at byte 0
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-12-08 09:23:49.637394
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -60,6 +60,6 @@ PREPARE SELECT i FROM d.t WHERE i=?\G
 SELECT i FROM d.t WHERE i=?\G
 
 # Prepared statements
-# Rank Query ID           PREP PREP Response EXEC EXEC Response Item
-# ==== ================== ==== ============= ==== ============= ==========
-#    1 0x3F79759E7FA2F117    1  0.0003  0.9%    1  0.0303 99.1% SELECT d.t
+# Rank Query ID                           PREP PREP Response EXEC EXEC Res
+# ==== ================================== ==== ============= ==== ========
+#    1 0x53704700F9CECAAF3F79759E7FA2F117    1  0.0003  0.9%    1  0.0303 99.1% SELECT d.t

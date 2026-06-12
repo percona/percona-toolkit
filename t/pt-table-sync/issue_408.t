@@ -18,26 +18,26 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
-diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
-my $dbh2 = $sb->get_dbh_for('master1');
+diag(`$trunk/sandbox/start-sandbox source 12348 >/dev/null`);
+my $dbh2 = $sb->get_dbh_for('source1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( !$dbh2 ) {
-   plan skip_all => 'Cannot connect to second sandbox master';
+   plan skip_all => 'Cannot connect to second sandbox source';
 }
 else {
    plan tests => 2;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
+$sb->wipe_clean($source_dbh);
+$sb->create_dbs($source_dbh, [qw(test)]);
 
 # Need at least 1 table so the db will be used.
-$master_dbh->do('create table test.foo (i int)');
+$source_dbh->do('create table test.foo (i int)');
 
 # #############################################################################
 # Issue 408: DBD::mysql::st execute failed: Unknown database 'd1' at
@@ -54,7 +54,7 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 diag(`/tmp/12348/stop >/dev/null`);
 diag(`rm -rf /tmp/12348 >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");

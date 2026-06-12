@@ -17,58 +17,64 @@ require "$trunk/bin/pt-archiver";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1'); 
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1'); 
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 } elsif ($sandbox_version lt '5.7') {
    plan skip_all => 'Only on MySQL 5.7+';
 } else {
-   plan tests => 5;
+   plan tests => 8;
 }
 
-my ($master1_dbh, $master1_dsn) = $sb->start_sandbox(
-   server => 'chan_master1',
-   type   => 'master',
+my ($source1_dbh, $source1_dsn) = $sb->start_sandbox(
+   server => 'chan_source1',
+   type   => 'source',
 );
-my ($master2_dbh, $master2_dsn) = $sb->start_sandbox(
-   server => 'chan_master2',
-   type   => 'master',
+my ($source2_dbh, $source2_dsn) = $sb->start_sandbox(
+   server => 'chan_source2',
+   type   => 'source',
 );
-my ($slave1_dbh, $slave1_dsn) = $sb->start_sandbox(
-   server => 'chan_slave1',
-   type   => 'master',
+my ($replica1_dbh, $replica1_dsn) = $sb->start_sandbox(
+   server => 'chan_replica1',
+   type   => 'source',
 );
-my $slave1_port = $sb->port_for('chan_slave1');
+my $replica1_port = $sb->port_for('chan_replica1');
 
-$sb->load_file('chan_master1', "sandbox/gtid_on.sql", undef, no_wait => 1);
-$sb->load_file('chan_master2', "sandbox/gtid_on.sql", undef, no_wait => 1);
-$sb->load_file('chan_slave1', "sandbox/slave_channels.sql", undef, no_wait => 1);
+if ( $sandbox_version lt '8.1' ) {
+   $sb->load_file('chan_source1', "sandbox/gtid_on-legacy.sql", undef, no_wait => 1);
+   $sb->load_file('chan_source2', "sandbox/gtid_on-legacy.sql", undef, no_wait => 1);
+   $sb->load_file('chan_replica1', "sandbox/replica_channels-legacy.sql", undef, no_wait => 1);
+} else {
+   $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+   $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+   $sb->load_file('chan_replica1', "sandbox/replica_channels.sql", undef, no_wait => 1);
+}
 
-my $master1_port = $sb->port_for('chan_master1');
+my $source1_port = $sb->port_for('chan_source1');
 my $num_rows = 40000;
 
-# Load some rows into masters 1 & 2.
-$sb->load_file('chan_master1', "t/pt-archiver/samples/channels.sql", undef, no_wait => 1);
+# Load some rows into sources 1 & 2.
+$sb->load_file('chan_source1', "t/pt-archiver/samples/channels.sql", undef, no_wait => 1);
 
-diag("Loading $num_rows into the test.t1 table on first master. This might take some time.");
-diag(`util/mysql_random_data_load --host=127.0.0.1 --port=$master1_port --user=msandbox --password=msandbox test t1 $num_rows`);
+diag("Loading $num_rows into the test.t1 table on first source. This might take some time.");
+diag(`util/mysql_random_data_load --host=127.0.0.1 --port=$source1_port --user=msandbox --password=msandbox test t1 $num_rows`);
 diag("$num_rows rows loaded. Starting tests.");
-$master_dbh->do("FLUSH TABLES");
+$source_dbh->do("FLUSH TABLES");
 
-my $rows = $master1_dbh->selectrow_arrayref('SELECT COUNT(*) FROM test.t1 ');
+my $rows = $source1_dbh->selectrow_arrayref('SELECT COUNT(*) FROM test.t1 ');
 
 is(
     @$rows[0],
     $num_rows,
-    "All rows were loaded into master 1",
+    "All rows were loaded into source 1",
 );
 
-my @args = ('--source', $master1_dsn.',D=test,t=t1', '--purge', '--where', sprintf('id >= %d', $num_rows / 2), '--check-slave-lag', $slave1_dsn);
+my @args = ('--source', $source1_dsn.',D=test,t=t1', '--purge', '--where', sprintf('id >= %d', $num_rows / 2), "--check-replica-lag", $replica1_dsn);
 
 my ($exit_status, $output);
 
@@ -87,12 +93,38 @@ like (
     $output,
     qr/"channel" was not specified/,
     'Message saying channel name must be specified'
+) or diag($output);
+
+# Legacy option --check-slave-lag
+@args = ('--source', $source1_dsn.',D=test,t=t1', '--purge', '--where', sprintf('id >= %d', $num_rows / 2), "--check-slave-lag", $replica1_dsn);
+
+$output = output(
+   sub { $exit_status = pt_archiver::main(@args) },
+   stderr => 1,
 );
 
-push @args, ('--channel', 'masterchan1');
+isnt(
+    $exit_status,
+    0,
+    'Must specify a channel name',
+);
+
+like (
+    $output,
+    qr/"channel" was not specified/,
+    'Message saying channel name must be specified'
+) or diag($output);
+
+like(
+   $output,
+   qr/Option --check-slave-lag is deprecated and will be removed in future versions./,
+   'Deprecation warning printed'
+) or diag($output);
+
+push @args, ('--channel', 'sourcechan1');
 
 output(
-   sub { $exit_status = pt_archiver::main(@args, '--channel', 'masterchan1') },
+   sub { $exit_status = pt_archiver::main(@args, '--channel', 'sourcechan1') },
    stderr => 1,
 );
 
@@ -102,12 +134,12 @@ is(
     'Ok if channel name was specified',
 );
 
-$sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
+$sb->stop_sandbox(qw(chan_source1 chan_source2 chan_replica1));
 
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

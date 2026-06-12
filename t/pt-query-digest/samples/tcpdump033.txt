@@ -99,11 +99,11 @@ select * from d.t where name="daniel"\G
 DEALLOCATE PREPARE 4\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0xE4695C206D6C7F946EE88728F6F29C72  0.0010 54.4%     7 0.0001  0.00 SELECT d.t
-#    2 0x84DDEEB20D115535ECBCD0412B5E497A  0.0008 45.6%     5 0.0002  0.00 SELECT d.t
-#    3 0xF35CCCED7D400036559914DA8A7B7F28  0.0000  0.0%     3 0.0000  0.00 
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0xE4695C206D6C7F946EE88728F6F29C72   0.0010 54.4%     7 0.0001  0.00 SELECT d.t
+#    2 0x84DDEEB20D115535ECBCD0412B5E497A   0.0008 45.6%     5 0.0002  0.00 SELECT d.t
+#    3 0xF35CCCED7D400036559914DA8A7B7F28   0.0000  0.0%     3 0.0000  0.00 
 
 # Prepared statements
 # Rank Query ID                           PREP PREP Response EXEC EXEC Res

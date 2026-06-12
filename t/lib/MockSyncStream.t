@@ -78,10 +78,11 @@ is_deeply(
 # Test online stuff, e.g. get_cols_and_struct().
 # #############################################################################
 use DSNParser;
+use VersionParser;
 use Sandbox;
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 SKIP: {
    skip 'Cannot connect to sandbox mater', 2 unless $dbh;

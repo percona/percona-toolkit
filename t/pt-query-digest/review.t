@@ -15,13 +15,14 @@ use PerconaTest;
 use Sandbox;
 use SqlModes;
 require "$trunk/bin/pt-query-digest";
+require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 sub normalize_numbers {
@@ -47,7 +48,7 @@ my $output;
 my $cmd;
 
 $sb->create_dbs($dbh, ['test']);
-$sb->load_file('master', 't/pt-query-digest/samples/query_review.sql');
+$sb->load_file('source', 't/pt-query-digest/samples/query_review.sql');
 
 # Test --create-review
 $output = run_with("slow006.txt", qw(--create-review-table),
@@ -188,7 +189,7 @@ unlike($output, qr/Use of uninitialized value/, 'no crash due to totally missing
 # #############################################################################
 # --review --no-report
 # #############################################################################
-$sb->load_file('master', 't/pt-query-digest/samples/query_review.sql');
+$sb->load_file('source', 't/pt-query-digest/samples/query_review.sql');
 $output = run_with("slow006.txt", '--no-report',
                    '--review', "$dsn,D=test,t=query_review");
 

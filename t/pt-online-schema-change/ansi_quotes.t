@@ -18,20 +18,20 @@ use Sandbox;
 require "$trunk/bin/pt-online-schema-change";
 
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
-diag(`MODE_ANSI=1 $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+diag(`MODE_ANSI=1 $trunk/sandbox/start-sandbox source 12348 >/dev/null`);
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master1');
+my $dbh = $sb->get_dbh_for('source1');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master 12348';
+   plan skip_all => 'Cannot connect to sandbox source 12348';
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
 # tool will die.
-my $master_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
+my $source_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
 my @args       = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
@@ -41,7 +41,7 @@ my $sample  = "t/pt-online-schema-change/samples/";
 # pt-online-schema-change doesn't work with ANSI_QUOTES + some other sql_modes
 # https://bugs.launchpad.net/percona-toolkit/+bug/1058285
 # ############################################################################
-$sb->load_file('master1', "$sample/sql-mode-bug-1058285.sql");
+$sb->load_file('source1', "$sample/sql-mode-bug-1058285.sql");
 
 my ($orig_sql_mode) = $dbh->selectrow_array(q{SELECT @@SQL_MODE});
 # check that ANSI_QUOTES and ANSI is there
@@ -51,10 +51,10 @@ ok(
 );
 
 SKIP: {
-    skip "Skipping in MySQL 8.0.4-rc since there is an error in the server itself. See https://bugs.mysql.com/bug.php?id=89441", 9 if ($sandbox_version ge '8.0');
+    skip "Skipping in MySQL 8.0.4-rc since there is an error in the server itself. See https://bugs.mysql.com/bug.php?id=89441", 9 if ($sandbox_version ge '8.0' and VersionParser->new($dbh) le'8.0.14');
     ($output, $exit_status) = full_output(
        sub { pt_online_schema_change::main(@args,
-          "$master_dsn,D=issue26211,t=process_model_inst",
+          "$source_dsn,D=issue26211,t=process_model_inst",
           "--alter", "ADD COLUMN foo int",
           qw(--dry-run --print --alter-foreign-keys-method auto)) },
     );
@@ -80,7 +80,7 @@ SKIP: {
     
     ($output, $exit_status) = full_output(
        sub { pt_online_schema_change::main(@args,
-          "$master_dsn,D=issue26211,t=process_model_inst",
+          "$source_dsn,D=issue26211,t=process_model_inst",
           "--alter", "ADD COLUMN foo int",
           qw(--execute --alter-foreign-keys-method auto)) },
     );
@@ -116,14 +116,14 @@ SKIP: {
     # pt-online-schema-change foreign key error
     # Customer issue 26211
     # ############################################################################
-    $sb->load_file('master1', "$sample/issue-26211.sql");
+    $sb->load_file('source1', "$sample/issue-26211.sql");
     
     my $retval;
     ($output, $retval) = full_output(sub { pt_online_schema_change::main(@args,
                                   '--alter-foreign-keys-method', 'auto',
                                   '--no-check-replication-filters',
                                   '--alter', "ENGINE=InnoDB",
-                                  '--execute', "$master_dsn,D=bug_26211,t=prm_inst")});
+                                  '--execute', "$source_dsn,D=bug_26211,t=prm_inst")});
     
     is(
        $retval,

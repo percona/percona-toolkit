@@ -16,7 +16,7 @@
 --
 -- View: schema_table_lock_waits
 --
--- Shows sessions that are blocked waiting on table metadata locks, and 
+-- Shows sessions that are blocked waiting on table metadata locks, and
 -- who is blocking them.
 --
 -- mysql> select * from sys.schema_table_lock_waits\G
@@ -44,7 +44,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW schema_table_lock_waits (
   object_schema,
   object_name,
@@ -84,7 +84,7 @@ SELECT g.object_schema AS object_schema,
        CONCAT('KILL QUERY ', gt.processlist_id) AS sql_kill_blocking_query,
        CONCAT('KILL ', gt.processlist_id) AS sql_kill_blocking_connection
   FROM performance_schema.metadata_locks g
- INNER JOIN performance_schema.metadata_locks p 
+ INNER JOIN performance_schema.metadata_locks p
     ON g.object_type = p.object_type
    AND g.object_schema = p.object_schema
    AND g.object_name = p.object_name

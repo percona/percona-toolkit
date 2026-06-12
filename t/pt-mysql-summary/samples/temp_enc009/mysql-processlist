@@ -1,0 +1,48 @@
+*************************** 1. row ***************************
+           Id: 5
+         User: event_scheduler
+         Host: localhost
+           db: NULL
+      Command: Daemon
+         Time: 174514
+        State: Waiting on empty queue
+         Info: NULL
+      Time_ms: 174514856
+    Rows_sent: 0
+Rows_examined: 0
+*************************** 2. row ***************************
+           Id: 14
+         User: msandbox
+         Host: localhost:42338
+           db: NULL
+      Command: Binlog Dump
+         Time: 174509
+        State: Source has sent all binlog to replica; waiting for more updates
+         Info: NULL
+      Time_ms: 174509192
+    Rows_sent: 0
+Rows_examined: 0
+*************************** 3. row ***************************
+           Id: 5210
+         User: msandbox
+         Host: localhost:58166
+           db: NULL
+      Command: Sleep
+         Time: 849
+        State: 
+         Info: NULL
+      Time_ms: 849425
+    Rows_sent: 64
+Rows_examined: 64
+*************************** 4. row ***************************
+           Id: 5364
+         User: msandbox
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: init
+         Info: SHOW FULL PROCESSLIST
+      Time_ms: 0
+    Rows_sent: 0
+Rows_examined: 0

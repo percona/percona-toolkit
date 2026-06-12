@@ -26,14 +26,14 @@ if ( !$sb->is_cluster_mode ) {
    plan skip_all => 'Only for PXC',
 }
 
-my ($master_dbh, $master_dsn) = $sb->start_sandbox(
-   server => 'cmaster',
-   type   => 'master',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+my ($source_dbh, $source_dsn) = $sb->start_sandbox(
+   server => 'csource',
+   type   => 'source',
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -45,10 +45,20 @@ my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
 # This is the same test we have for bug-1613915 but using DATA-DIR
-$sb->load_file('cmaster', "$sample/bug-1613915.sql");
+$sb->load_file('csource', "$sample/bug-1613915.sql");
 my $dir = tempdir( CLEANUP => 1 );
+my $csource_port=$sb->port_for('csource');
+
+if ($sandbox_version ge '8.0') {
+    diag(`/tmp/$csource_port/stop >/dev/null`);
+	diag(`echo "innodb_directories='$dir'" >> /tmp/$csource_port/my.sandbox.cnf`);
+    diag(`/tmp/$csource_port/start > /dev/null`);
+}
+
+$source_dbh = $sb->get_dbh_for('csource');
+
 $output = output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+   sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=o1",
          '--execute', 
          '--alter', "ADD COLUMN c INT",
          '--chunk-size', '10',
@@ -63,7 +73,7 @@ like(
       "bug-1613915 enum field in primary key",
 );
 
-my $rows = $master_dbh->selectrow_arrayref(
+my $rows = $source_dbh->selectrow_arrayref(
    "SELECT COUNT(*) FROM test.o1");
 is(
    $rows->[0],
@@ -71,12 +81,12 @@ is(
    "bug-1613915 correct rows count"
 ) or diag(Dumper($rows));
 
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+$source_dbh->do("DROP DATABASE IF EXISTS test");
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->stop_sandbox(qw(cmaster)); 
+$sb->wipe_clean($source_dbh);
+$sb->stop_sandbox(qw(csource)); 
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

@@ -19,14 +19,14 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica1_dbh = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave1_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave1';
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica1';
 }
 
 my $output;
@@ -35,9 +35,9 @@ my $cnf  = "/tmp/12345/my.sandbox.cnf";
 my $cmd  = "$trunk/bin/pt-archiver";
 my @args = qw(--dry-run --where 1=1);
 
-$sb->create_dbs($master_dbh, ['test']);
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
-$sb->wait_for_slaves();
+$sb->create_dbs($source_dbh, ['test']);
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
+$sb->wait_for_replicas();
 
 # ###########################################################################
 # These are dry-run tests of various options to test that the correct
@@ -97,7 +97,7 @@ like($output, qr/SELECT/, 'I can disable the check OK');
 shift @args;  # remove --dry-run
 
 # Test --why-quit and --statistics output
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(sub {pt_archiver::main(@args, '--source', "D=test,t=table_1,F=$cnf", qw(--purge --why-quit --statistics)) });
 like($output, qr/Started at \d/, 'Start timestamp');
 like($output, qr/Source:/, 'source');
@@ -105,18 +105,18 @@ like($output, qr/SELECT 4\nINSERT 0\nDELETE 4\n/, 'row counts');
 like($output, qr/Exiting because there are no more rows/, 'Exit reason');
 
 # Test basic functionality with OPTIMIZE
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(sub {pt_archiver::main(@args, qw(--optimize ds --source), "D=test,t=table_1,F=$cnf", qw(--purge)) });
 is($output, '', 'OPTIMIZE did not fail');
 
 # Test an empty table
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = `/tmp/12345/use -N -e "delete from test.table_1"`;
 $output = output(sub {pt_archiver::main(@args, '--source', "D=test,t=table_1,F=$cnf", qw(--purge)) });
 is($output, "", 'Empty table OK');
 
 # Test the output
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = `$trunk/bin/pt-archiver --where 1=1 --source D=test,t=table_1,F=$cnf --purge --progress 2 2>&1 | awk '{print \$3}'`;
 is($output, <<EOF
 COUNT
@@ -128,12 +128,12 @@ EOF
 ,'Progress output looks okay');
 
 # Statistics
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(sub {pt_archiver::main(@args, qw(--statistics --source), "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) });
 like($output, qr/commit *10/, 'Stats print OK');
 
 # Test --no-delete.
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(sub {pt_archiver::main(@args, qw(--no-delete --source), "D=test,t=table_1,F=$cnf", qw(--dry-run --file /tmp/pt-archiver-test-no-delete-1)) });
 like($output, qr/> /, '--no-delete implies strict ascending');
 unlike($output, qr/>=/, '--no-delete implies strict ascending');
@@ -146,7 +146,7 @@ is($output + 0, 4, 'All 4 rows are still there');
 # --sleep
 # #############################################################################
 # This table, gt_n.t1, is nothing special; it just has 19 rows and a PK.
-$sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
+$sb->load_file('source', 't/pt-archiver/samples/gt_n.sql');
 
 # https://bugs.launchpad.net/percona-toolkit/+bug/979092
 # This shouldn't take more than 3 seconds because it only takes 2 SELECT
@@ -166,7 +166,7 @@ ok(
 ) or diag($output, "t=", $t);
 
 # Try again with --bulk-delete.  The tool should work the same.
-$sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
+$sb->load_file('source', 't/pt-archiver/samples/gt_n.sql');
 $t0 = time;
 $output = output(
    sub { pt_archiver::main(@args, '--source', "D=gt_n,t=t1,F=$cnf",
@@ -184,11 +184,11 @@ ok(
 # Bug 903387: pt-archiver doesn't honor b=1 flag to create SQL_LOG_BIN statement
 # #############################################################################
 SKIP: {
-   $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
-   $sb->wait_for_slaves();
+   $sb->load_file('source', "t/pt-archiver/samples/bulk_regular_insert.sql");
+   $sb->wait_for_replicas();
 
-   my $original_rows  = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
-   my $original_no_id = $slave1_dbh->selectall_arrayref("SELECT c,t FROM bri.t ORDER BY id");
+   my $original_rows  = $replica1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   my $original_no_id = $replica1_dbh->selectall_arrayref("SELECT c,t FROM bri.t ORDER BY id");
    is_deeply(
       $original_no_id,
       [
@@ -203,7 +203,7 @@ SKIP: {
          ['ii', '11:11:19'],
          ['jj', '11:11:10'],
       ],
-      "Bug 903387: slave has rows"
+      "Bug 903387: replica has rows"
    );
 
    $output = output(
@@ -214,26 +214,26 @@ SKIP: {
          qw(--limit 10)) },
    );
 
-   $rows = $master_dbh->selectall_arrayref("SELECT c,t FROM bri.t ORDER BY id");
+   $rows = $source_dbh->selectall_arrayref("SELECT c,t FROM bri.t ORDER BY id");
    is_deeply(
       $rows,
       [
          ['jj', '11:11:10'],
       ],
-      "Bug 903387: rows deleted on master"
+      "Bug 903387: rows deleted on source"
    ) or diag(Dumper($rows));
 
-   $rows = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   $rows = $replica1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
    is_deeply(
       $rows,
       $original_rows,
-      "Bug 903387: slave still has rows"
+      "Bug 903387: replica still has rows"
    ) or diag(Dumper($rows));
 }
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 
 done_testing;

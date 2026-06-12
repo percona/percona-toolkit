@@ -18,18 +18,18 @@ require "$trunk/bin/pt-heartbeat";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica1_dbh = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave1_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave1';
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica1';
 }
 
 
-$sb->create_dbs($master_dbh, ['test']);
+$sb->create_dbs($source_dbh, ['test']);
 
 my $output;
 my $cnf       = '/tmp/12345/my.sandbox.cnf';
@@ -40,12 +40,12 @@ my $ps_grep_cmd = "ps x | grep pt-heartbeat | grep daemonize | grep -v grep";
 
 diag(`rm $sent_file 2>/dev/null`);
 
-$master_dbh->do('drop table if exists test.heartbeat');
-$master_dbh->do(q{CREATE TABLE test.heartbeat (
+$source_dbh->do('drop table if exists test.heartbeat');
+$source_dbh->do(q{CREATE TABLE test.heartbeat (
              id int NOT NULL PRIMARY KEY,
              ts datetime NOT NULL
           ) ENGINE=MEMORY});
-$sb->wait_for_slaves;
+$sb->wait_for_replicas;
 
 
 # Issue: pt-heartbeat should check that the heartbeat table has a row
@@ -74,7 +74,7 @@ like(
 $output = output(
    sub { pt_heartbeat::main('-F', $cnf, qw(-D test --check)) },
 );
-my $row = $master_dbh->selectall_hashref('select * from test.heartbeat', 'id');
+my $row = $source_dbh->selectall_hashref('select * from test.heartbeat', 'id');
 is(
    $row->{1}->{id},
    1,
@@ -88,7 +88,7 @@ output(
    stderr => 1,
 );
 ok(
-   $master_dbh->selectrow_array('select id from test.heartbeat'),
+   $source_dbh->selectrow_array('select id from test.heartbeat'),
    'Record is there'
 );
 
@@ -109,6 +109,7 @@ like($output, qr/$cmd/, 'It is running');
 ok(-f $pid_file, 'PID file created');
 my ($pid) = $output =~ /^\s*(\d+)\s+/;
 $output = `cat $pid_file` if -f $pid_file;
+chomp($output);
 is($output, $pid, 'PID file has correct PID');
 
 $output = `$cmd -D test --monitor --run-time 1s`;
@@ -140,17 +141,17 @@ $output = `$ps_grep_cmd`;
 unlike($output, qr/$cmd/, 'It is not running');
 ok(-f $sent_file, 'Sentinel file is there');
 unlink($sent_file);
-$master_dbh->do('drop table if exists test.heartbeat'); # This will kill it
+$source_dbh->do('drop table if exists test.heartbeat'); # This will kill it
 
 # #############################################################################
 # Issue 353: Add --create-table to mk-heartbeat
 # #############################################################################
 
 # These creates the new table format, whereas the preceding tests used the
-# old format, so tests from here on may need --master-server-id.
+# old format, so tests from here on may need --source-server-id.
 
-$master_dbh->do('drop table if exists test.heartbeat');
-$sb->wait_for_slaves;
+$source_dbh->do('drop table if exists test.heartbeat');
+$sb->wait_for_replicas;
 
 $output = output(
    sub { pt_heartbeat::main('-F', $cnf,
@@ -158,16 +159,16 @@ $output = output(
       qw(--create-table)) },
    stderr => 1,
 );
-$master_dbh->do('use test');
-$row = $master_dbh->selectcol_arrayref("SHOW TABLES LIKE 'heartbeat'");
+$source_dbh->do('use test');
+$row = $source_dbh->selectcol_arrayref("SHOW TABLES LIKE 'heartbeat'");
 is(
    $row->[0],
    'heartbeat', 
    '--create-table creates heartbeat table'
 ) or diag($output, Dumper($row));
 
-$master_dbh->do('drop table if exists test.heartbeat');
-$sb->wait_for_slaves;
+$source_dbh->do('drop table if exists test.heartbeat');
+$sb->wait_for_replicas;
 
 $output = output(
    sub { pt_heartbeat::main('-F', $cnf,
@@ -175,8 +176,8 @@ $output = output(
       qw(--create-table --create-table-engine MEMORY)) },
    stderr => 1,
 );
-$master_dbh->do('use test');
-$row = $master_dbh->selectrow_hashref("SHOW TABLE STATUS LIKE 'heartbeat'");
+$source_dbh->do('use test');
+$row = $source_dbh->selectrow_hashref("SHOW TABLE STATUS LIKE 'heartbeat'");
 is(
    uc($row->{engine}),
    'MEMORY', 
@@ -190,7 +191,7 @@ sleep 1;
 $output = output(
    sub { pt_heartbeat::main(
       qw(--host 127.1 --user msandbox --password msandbox --port 12345),
-      qw(-D test --check --recurse 1 --master-server-id 12345)) },
+      qw(-D test --check --recurse 1 --source-server-id 12345)) },
    stderr => 1,
 );
 like(
@@ -203,64 +204,64 @@ like(
 # Bug 1004567: pt-heartbeat --update --replace causes duplicate key error
 # #############################################################################
 
-# Create the heartbeat table on the master and slave.
-$master_dbh->do("DROP TABLE IF EXISTS test.heartbeat");
-$sb->wait_for_slaves();
+# Create the heartbeat table on the source and replica.
+$source_dbh->do("DROP TABLE IF EXISTS test.heartbeat");
+$sb->wait_for_replicas();
 
 $output = output(
    sub { pt_heartbeat::main("F=/tmp/12345/my.sandbox.cnf",
       qw(-D test --update --replace --create-table --run-time 1))
    }
 );
-$row = $master_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
+$row = $source_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
 is(
    $row->[0],
    '12345',
-   'Heartbeat on master'
+   'Heartbeat on source'
 );
 
-$sb->wait_for_slaves();
+$sb->wait_for_replicas();
 
-$row = $slave1_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
+$row = $replica1_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
 is(
    $row->[0],
    '12345',
-   'Heartbeat on slave1'
+   'Heartbeat on replica1'
 );
 
-# Drop the heartbeat table only on the master.
-$master_dbh->do("SET SQL_LOG_BIN=0");
-$master_dbh->do("DROP TABLE test.heartbeat");
-$master_dbh->do("SET SQL_LOG_BIN=1");
+# Drop the heartbeat table only on the source.
+$source_dbh->do("SET SQL_LOG_BIN=0");
+$source_dbh->do("DROP TABLE test.heartbeat");
+$source_dbh->do("SET SQL_LOG_BIN=1");
 
-# Re-create the heartbeat table on the master.
+# Re-create the heartbeat table on the source.
 $output = output(
    sub { pt_heartbeat::main("F=/tmp/12345/my.sandbox.cnf",
       qw(-D test --update --replace --create-table --run-time 1))
    }
 );
 
-$row = $master_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
+$row = $source_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
 is(
    $row->[0],
    '12345',
-   'New heartbeat on master'
+   'New heartbeat on source'
 );
 
-$sb->wait_for_slaves();
+$sb->wait_for_replicas();
 
-$row = $slave1_dbh->selectrow_hashref("SHOW SLAVE STATUS");
+$row = $replica1_dbh->selectrow_hashref("SHOW ${replica_name} STATUS");
 is(
    $row->{last_error},
    '',
-   "No slave error"
+   "No replica error"
 );
 
 # #############################################################################
 # --check-read-only
 # #############################################################################
 
-if ($sandbox_version ge '8.0') {
+if ($sandbox_version eq '8.0') {
     diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'%' IDENTIFIED WITH mysql_native_password BY 'msandbox'"`);
 } else {
     diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'%' IDENTIFIED BY 'msandbox'"`);
@@ -276,11 +277,13 @@ diag(`/tmp/12345/use -u root -e "FLUSH PRIVILEGES"`);
 # to STATEMENT if it's set to ROW, so the tool will fail with a different error 
 # message earlier in the code. (This should be tested separately)
 # So we set binlog_format = STATEMENT globaly before these tests and then revert.
-# Notice these tests are run on slave1 so we change it there.
+# Notice these tests are run on replica1 so we change it there.
 
 # get original binlog_format, so we can revert later
-my (undef, $orig_binlog_format) = $slave1_dbh->selectrow_array('SHOW VARIABLES LIKE "binlog_format"'); 
+my (undef, $orig_binlog_format) = $replica1_dbh->selectrow_array('SHOW VARIABLES LIKE "binlog_format"'); 
+diag(`/tmp/12346/use -u root -e "stop ${replica_name} sql_thread"`);
 diag(`/tmp/12346/use -u root -e "set global binlog_format=STATEMENT"`);
+diag(`/tmp/12346/use -u root -e "start ${replica_name} sql_thread"`);
 
 $output = output(
    sub { pt_heartbeat::main("u=bob,F=/tmp/12346/my.sandbox.cnf",
@@ -296,7 +299,7 @@ like(
    $output,
    qr/--read-only/,
    "By default, fails if the server is read_only=1"
-);
+) or diag($output);
 
 $output = output(
    sub { pt_heartbeat::main("u=bob,F=/tmp/12346/my.sandbox.cnf",
@@ -313,7 +316,9 @@ unlike(
 
 diag(`/tmp/12345/use -u root -e "DROP USER 'bob'\@'%'"`);
 #revert to original binlog_format
+diag(`/tmp/12346/use -u root -e "stop ${replica_name} sql_thread"`);
 diag(`/tmp/12346/use -u root -e "set global binlog_format=$orig_binlog_format"`);
+diag(`/tmp/12346/use -u root -e "start ${replica_name} sql_thread"`);
 diag(`/tmp/12345/use -u root -e "DROP DATABASE test"`);
 
 
@@ -321,8 +326,8 @@ diag(`/tmp/12345/use -u root -e "DROP DATABASE test"`);
 # Done.
 # #############################################################################
 diag(`rm $pid_file $sent_file 2>/dev/null`);
-# $sb->wipe_clean($master_dbh);
-# $sb->wipe_clean($slave1_dbh);
+# $sb->wipe_clean($source_dbh);
+# $sb->wipe_clean($replica1_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 
 done_testing;

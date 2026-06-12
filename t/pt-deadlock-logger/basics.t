@@ -19,15 +19,15 @@ require "$trunk/bin/pt-deadlock-logger";
 
 my $dp   = new DSNParser(opts=>$dsn_opts);
 my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh1 = $sb->get_dbh_for('master', { PrintError => 0, RaiseError => 1, AutoCommit => 0 });
-my $dbh2 = $sb->get_dbh_for('master', { PrintError => 0, RaiseError => 1, AutoCommit => 0 });
+my $dbh1 = $sb->get_dbh_for('source', { PrintError => 0, RaiseError => 1, AutoCommit => 0 });
+my $dbh2 = $sb->get_dbh_for('source', { PrintError => 0, RaiseError => 1, AutoCommit => 0 });
 
 if ( !$dbh1 || !$dbh2 ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;
-my $dsn  = $sb->dsn_for('master');
+my $dsn  = $sb->dsn_for('source');
 my @args = ($dsn, qw(--iterations 1));
 
 $dbh1->commit;
@@ -98,7 +98,7 @@ sub make_deadlock {
 sub reconnect {
     my $dbh = shift;
     $dbh->disconnect();
-    $dbh = $sb->get_dbh_for('master', { PrintError => 0, RaiseError => 1, AutoCommit => 0 });
+    $dbh = $sb->get_dbh_for('source', { PrintError => 0, RaiseError => 1, AutoCommit => 0 });
     return $dbh;
 }
 
@@ -209,7 +209,7 @@ SKIP: {
    $output = 'foo';
    $dbh1->do('TRUNCATE TABLE test.deadlocks');
 
-   $sb->load_file('master', "t/pt-deadlock-logger/samples/dead-lock-with-partitions.sql");
+   $sb->load_file('source', "t/pt-deadlock-logger/samples/dead-lock-with-partitions.sql");
 
    make_deadlock();
 

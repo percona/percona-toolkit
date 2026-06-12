@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
+# This program is copyright 2007-2011 Baron Schwartz, 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # TableChecksum package
 # ###########################################################################
@@ -88,7 +87,10 @@ sub get_crc_type {
       $type   = $sth->{mysql_type_name}->[0];
       $length = $sth->{mysql_length}->[0];
       PTDEBUG && _d($sql, $type, $length);
-      if ( $type eq 'bigint' && $length < 20 ) {
+      if ( $type eq 'integer' && $length < 11 ) {
+         $type = 'int';
+      }
+      elsif ( $type eq 'bigint' && $length < 20 ) {
          $type = 'int';
       }
    };
@@ -305,6 +307,9 @@ sub make_row_checksum {
          elsif ( $args{trim} && $type =~ m/varchar/ ) {
             $result = "TRIM($result)";
          }
+         elsif ( $type =~ m/binary|text|blob/ ) {
+            $result = "CRC32($result)";
+         }
          $result;
       }
       grep {
@@ -320,7 +325,7 @@ sub make_row_checksum {
    my $query;
    if ( !$args{no_cols} ) {
       $query = join(', ',
-                  map { 
+                  map {
                      my $col = $_;
                      if ( $col =~ m/\+ 0/ ) {
                         # Alias col name back to itself else its name becomes
@@ -330,6 +335,10 @@ sub make_row_checksum {
                      }
                      elsif ( $col =~ m/TRIM/ ) {
                         my ($real_col) = m/TRIM\(([^\)]+)\)/;
+                        $col .= " AS $real_col";
+                     }
+                     elsif ( $col =~ m/CRC32/ ) {
+                        my ($real_col) = m/CRC32\(([^\)]+)\)/;
                         $col .= " AS $real_col";
                      }
                      $col;
@@ -459,20 +468,20 @@ sub make_checksum_query {
    return $result . "FROM /*DB_TBL*//*INDEX_HINT*//*WHERE*/";
 }
 
-# Queries the replication table for chunks that differ from the master's data.
+# Queries the replication table for chunks that differ from the source's data.
 sub find_replication_differences {
    my ( $self, $dbh, $table ) = @_;
 
    my $sql
       = "SELECT db, tbl, CONCAT(db, '.', tbl) AS `table`, "
       . "chunk, chunk_index, lower_boundary, upper_boundary, "
-      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+      . "COALESCE(this_cnt-source_cnt, 0) AS cnt_diff, "
       . "COALESCE("
-      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
-      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+      .   "this_crc <> source_crc OR ISNULL(source_crc) <> ISNULL(this_crc), 0"
+      . ") AS crc_diff, this_cnt, source_cnt, this_crc, source_crc "
       . "FROM $table "
-      . "WHERE master_cnt <> this_cnt OR master_crc <> this_crc "
-      . "OR ISNULL(master_crc) <> ISNULL(this_crc)";
+      . "WHERE source_cnt <> this_cnt OR source_crc <> this_crc "
+      . "OR ISNULL(source_crc) <> ISNULL(this_crc)";
    PTDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
    return $diffs;

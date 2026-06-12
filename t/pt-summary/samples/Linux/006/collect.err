@@ -1,0 +1,2 @@
+join: -:4: is not sorted: cgroup on /sys/fs/cgroup/blkio type cgroup (rw,nosuid,nodev,noexec,relatime,blkio)
+join: /tmp/pt-summary.2397616.XMBMxL/mounted_fs_info.tmp:11: is not sorted: /dev/loop1                 9,0M  9,0M     0 100% /snap/canonical-livepatch/146

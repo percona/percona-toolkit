@@ -34,7 +34,7 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 my $output;
 
 plan skip_all => 'Cannot connect to sandbox master';
@@ -72,7 +72,7 @@ sub make_nibble_iter {
    my (%args) = @_;
 
    if (my $file = $args{sql_file}) {
-      $sb->load_file('master', "$in/$file");
+      $sb->load_file('source', "$in/$file");
    }
 
    @ARGV = $args{argv} ? @{$args{argv}} : ();
@@ -258,7 +258,7 @@ ok(
 # Empty table
 # https://bugs.launchpad.net/percona-toolkit/+bug/987393 
 # #############################################################################
-$sb->load_file('master', "t/pt-table-checksum/samples/empty-table-bug-987393.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/empty-table-bug-987393.sql");
 
 $ni = make_nibble_iter(
    db       => 'test',

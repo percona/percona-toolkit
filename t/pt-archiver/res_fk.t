@@ -17,10 +17,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 8;
@@ -35,7 +35,7 @@ my $cmd = "perl -I $trunk/t/pt-archiver/samples $trunk/bin/pt-archiver";
 # ###########################################################################
 # Test the custom plugin res_fk.
 # ###########################################################################
-$sb->load_file('master', 't/pt-archiver/samples/res_fk.sql');
+$sb->load_file('source', 't/pt-archiver/samples/res_fk.sql');
 $sql = 'select * from test.comp';
 is_deeply(
    $dbh->selectall_arrayref($sql),

@@ -20,18 +20,18 @@ if ( $sandbox_version lt '5.6' ) {
 }
 
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
-diag(`EXTRA_DEFAULTS_FILE="$trunk/t/pt-table-checksum/samples/explicit_defaults_for_timestamp.cnf" $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+diag(`EXTRA_DEFAULTS_FILE="$trunk/t/pt-table-checksum/samples/explicit_defaults_for_timestamp.cnf" $trunk/sandbox/start-sandbox source 12348 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master1');
+my $source_dbh = $sb->get_dbh_for('source1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master 12348';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source 12348';
 }
 
-my $master_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, '--max-load', ''); 
+my $source_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
+my @args       = ($source_dsn, '--max-load', ''); 
 my $output;
 my $retval;
 
@@ -47,7 +47,7 @@ unlike(
 );
 
 # Exit will be non-zero because of "Diffs cannot be detected because
-# no slaves were found."
+# no replicas were found."
 
 # #############################################################################
 # Done.

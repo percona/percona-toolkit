@@ -49,11 +49,11 @@
 --    innodb_buffer_pages_old: 42
 --  innodb_buffer_rows_cached: 210
 --
- 
+
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$schema_table_statistics_with_buffer (
   table_schema,
   table_name,

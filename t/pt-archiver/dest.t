@@ -18,10 +18,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;
@@ -31,7 +31,7 @@ my $cmd = "$trunk/bin/pt-archiver";
 
 # Make sure load works.
 $sb->create_dbs($dbh, ['test']);
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 
 # Archive to another table.
 $output = output(
@@ -44,7 +44,7 @@ $output = `/tmp/12345/use -N -e "select count(*) from test.table_2"`;
 is($output + 0, 4, 'Found rows in new table OK when archiving to another table');
 
 # Archive only some columns to another table.
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(
    sub { pt_archiver::main("-c", "b,c", qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
 );
@@ -55,7 +55,7 @@ ok(scalar @$rows == 0, 'Purged all rows ok');
 # and after the archive operation and I am convinced that the original
 # expected output was incorrect.
 my ($sql, $expect_rows);
-if ( $sb->is_cluster_node('master') ) {
+if ( $sb->is_cluster_node('source') ) {
    # PXC nodes have auto-inc offsets, so rather than see what they are
    # and account for them, we just don't select the auto-inc col, a.
    # This test is really about b, c, and d anyway.
@@ -84,7 +84,7 @@ is_deeply(
    'Found rows in new table OK when archiving only some columns to another table') or diag(Dumper($rows));
 
 # Archive to another table with autocommit
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1 --txn-size 0), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
 );
@@ -95,7 +95,7 @@ $output = `/tmp/12345/use -N -e "select count(*) from test.table_2"`;
 is($output + 0, 4, 'Found rows in new table OK when archiving to another table with autocommit');
 
 # Archive to another table with commit every 2 rows
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1 --txn-size 2), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
 );
@@ -106,7 +106,7 @@ $output = `/tmp/12345/use -N -e "select count(*) from test.table_2"`;
 is($output + 0, 4, 'Found rows in new table OK when archiving to another table with commit every 2 rows');
 
 # Test that table with many rows can be archived to table with few
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1 --dest t=table_4 --no-check-columns), "--source", "D=test,t=table_1,F=$cnf") },
 );

@@ -27,14 +27,14 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 
 my $q      = new Quoter();
@@ -51,7 +51,7 @@ my $rows;
 # #############################################################################
 
 
-$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+$sb->load_file('source', "$sample/basic_no_fks_innodb.sql");
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
@@ -64,7 +64,7 @@ like(
    "Doesn't run without --execute (bug 933232)"
 ) or diag($output);
 
-my $ddl = $master_dbh->selectrow_arrayref("show create table pt_osc.t");
+my $ddl = $source_dbh->selectrow_arrayref("show create table pt_osc.t");
 like(
    $ddl->[1],
    qr/^\s+["`]id["`]/m,
@@ -96,12 +96,12 @@ sub test_alter_table {
    my $pk_col     = $args{pk_col} || 'id';
 
    if ( my $file = $args{file} ) {
-      $sb->load_file('master', "$sample/$file");
-      $master_dbh->do("USE `$db`");
-      $slave_dbh->do("USE `$db`");
+      $sb->load_file('source', "$sample/$file");
+      $source_dbh->do("USE `$db`");
+      $replica_dbh->do("USE `$db`");
    }
 
-   my $ddl        = $tp->get_create_table($master_dbh, $db, $tbl);
+   my $ddl        = $tp->get_create_table($source_dbh, $db, $tbl);
    my $tbl_struct = $tp->parse($ddl);
 
    my $cols = '*';
@@ -111,13 +111,13 @@ sub test_alter_table {
       die "I need a drop_col argument" unless $col;
       $cols = join(', ', grep { $_ ne $col } @{$tbl_struct->{cols}});
    }
-   my $orig_rows = $master_dbh->selectall_arrayref(
+   my $orig_rows = $source_dbh->selectall_arrayref(
       "SELECT $cols FROM $table ORDER BY `$pk_col`");
 
-   my $orig_tbls = $master_dbh->selectall_arrayref(
+   my $orig_tbls = $source_dbh->selectall_arrayref(
       "SHOW TABLES FROM `$db`");
 
-   my $orig_max_id = $master_dbh->selectall_arrayref(
+   my $orig_max_id = $source_dbh->selectall_arrayref(
       "SELECT MAX(`$pk_col`) FROM `$db`.`$tbl`");
 
    my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT, SQL_MODE, "
@@ -125,7 +125,7 @@ sub test_alter_table {
                     . "  FROM INFORMATION_SCHEMA.TRIGGERS "
                     . " WHERE TRIGGER_SCHEMA = '$db' " 
                     .  "  AND EVENT_OBJECT_TABLE = '$tbl'";
-   my $orig_triggers = $master_dbh->selectall_arrayref($triggers_sql);
+   my $orig_triggers = $source_dbh->selectall_arrayref($triggers_sql);
 
    my ($orig_auto_inc) = $ddl =~ m/\s+AUTO_INCREMENT=(\d+)\s+/;
 
@@ -134,7 +134,7 @@ sub test_alter_table {
    if ( $fk_method ) {
       foreach my $tbl ( @$orig_tbls ) {
          my $fks = $tp->get_fks(
-            $tp->get_create_table($master_dbh, $db, $tbl->[0]));
+            $tp->get_create_table($source_dbh, $db, $tbl->[0]));
          push @orig_fks, $fks;
       }
    }
@@ -152,13 +152,13 @@ sub test_alter_table {
       sub { pt_online_schema_change::main(
          @args,
          '--print',
-         "$dsn,D=$db,t=$tbl",
+         "$dsn,D=$db,t=$tbl,s=1",
          @$cmds,
       )},
       stderr => 1,
    );
 
-   my $new_ddl = $tp->get_create_table($master_dbh, $db, $tbl);
+   my $new_ddl = $tp->get_create_table($source_dbh, $db, $tbl);
    my $new_tbl_struct = $tp->parse($new_ddl);
    my $fail    = 0;
 
@@ -169,7 +169,7 @@ sub test_alter_table {
    ) or $fail = 1;
 
    # There should be no new or missing tables.
-   my $new_tbls = $master_dbh->selectall_arrayref("SHOW TABLES FROM `$db`");
+   my $new_tbls = $source_dbh->selectall_arrayref("SHOW TABLES FROM `$db`");
    is_deeply(
       $new_tbls,
       $orig_tbls,
@@ -178,7 +178,7 @@ sub test_alter_table {
 
    # Rows in the original and new table should be identical.
    my $query = "SELECT $cols FROM $table ORDER BY `$pk_col`";
-   my $new_rows = $master_dbh->selectall_arrayref("SELECT $cols FROM $table ORDER BY `$pk_col`");
+   my $new_rows = $source_dbh->selectall_arrayref("SELECT $cols FROM $table ORDER BY `$pk_col`");
    my $should_diag;
    is_deeply(
       $new_rows,
@@ -187,7 +187,7 @@ sub test_alter_table {
    ) or $fail=1;
 
    if ( grep { $_ eq '--preserve-triggers' } @$cmds ) {
-      my $new_triggers = $master_dbh->selectall_arrayref($triggers_sql);
+      my $new_triggers = $source_dbh->selectall_arrayref($triggers_sql);
       is_deeply(
          $new_triggers,
          $orig_triggers,
@@ -196,7 +196,7 @@ sub test_alter_table {
    }
 
    if ( grep { $_ eq '--no-drop-new-table' } @$cmds ) {
-      $new_rows = $master_dbh->selectall_arrayref(
+      $new_rows = $source_dbh->selectall_arrayref(
          "SELECT $cols FROM `$db`.`$new_tbl` ORDER BY `$pk_col`");
       is_deeply(
          $new_rows,
@@ -205,7 +205,7 @@ sub test_alter_table {
       ) or $fail = 1;
    }
 
-   my $new_max_id = $master_dbh->selectall_arrayref(
+   my $new_max_id = $source_dbh->selectall_arrayref(
       "SELECT MAX(`$pk_col`) FROM `$db`.`$tbl`");
    is(
       $orig_max_id->[0]->[0],
@@ -256,7 +256,7 @@ sub test_alter_table {
    elsif ( $test_type eq 'new_engine' ) {
       my $new_engine = lc($args{new_engine});
       die "I need a new_engine argument" unless $new_engine;
-      my $rows = $master_dbh->selectall_hashref(
+      my $rows = $source_dbh->selectall_hashref(
          "SHOW TABLE STATUS FROM `$db`", "name");
       is(
          lc($rows->{$tbl}->{engine}),
@@ -272,7 +272,7 @@ sub test_alter_table {
 
       foreach my $tbl ( @$orig_tbls ) {
          my $fks = $tp->get_fks(
-            $tp->get_create_table($master_dbh, $db, $tbl->[0]));
+            $tp->get_create_table($source_dbh, $db, $tbl->[0]));
 
          # The tool does not use the same/original fk name,
          # it appends a single _.  So we need to strip this
@@ -318,7 +318,7 @@ sub test_alter_table {
       # a parent row that's being referenced by a child.
       my $sql = "DELETE FROM $table WHERE $pk_col=1 LIMIT 1";
       eval {
-         $master_dbh->do($sql);
+         $source_dbh->do($sql);
       };
       like(
          $EVAL_ERROR,
@@ -341,7 +341,7 @@ sub test_alter_table {
 # The most basic: alter a small table with no fks that's not active.
 # #############################################################################
 
-my $db_flavor = VersionParser->new($master_dbh)->flavor();
+my $db_flavor = VersionParser->new($source_dbh)->flavor();
 if ( $db_flavor =~ m/XtraDB Cluster/ ) {
 diag('====================================================================================================');
 diag($db_flavor);
@@ -459,7 +459,7 @@ test_alter_table(
 # Somewhat dangerous, but quick.  Downside: table doesn't exist for a moment.
 
 SKIP: {
-    skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0');
+    skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0' and VersionParser->new($source_dbh) le '8.0.14');
 
 test_alter_table(
    name       => "Basic FK drop_swap --dry-run",
@@ -573,10 +573,10 @@ test_alter_table(
 );
 
 SKIP: {
-   skip 'Sandbox master does not have the sakila database', 7
-   unless @{$master_dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
+   skip 'Sandbox source does not have the sakila database', 7
+   unless @{$source_dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
-   skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0');
+   skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0' and VersionParser->new($source_dbh) le '8.0.14');
 
    # This test will use the drop_swap method because the child tables
    # are large.  To prove this, change check_fks to rebuild_constraints
@@ -623,7 +623,7 @@ test_alter_table(
 );
 
 my $fks = $tp->get_fks(
-   $tp->get_create_table($master_dbh, "pt_osc", "city"));
+   $tp->get_create_table($source_dbh, "pt_osc", "city"));
 is(
    $fks->{fk_city_country}->{parent_tbl}->{tbl},
    "_country_old",
@@ -637,11 +637,11 @@ sub test_table {
    my (%args) = @_;
    my ($file, $name) = @args{qw(file name)};
 
-   $sb->load_file('master', "t/lib/samples/osc/$file");
-   $master_dbh->do('use osc');
-   $master_dbh->do("DROP TABLE IF EXISTS osc.__new_t");
+   $sb->load_file('source', "t/lib/samples/osc/$file");
+   $source_dbh->do('use osc');
+   $source_dbh->do("DROP TABLE IF EXISTS osc.__new_t");
 
-   my $org_rows = $master_dbh->selectall_arrayref('select * from osc.t order by id');
+   my $org_rows = $source_dbh->selectall_arrayref('select * from osc.t order by id');
 
    ($output, $exit) = full_output(
       sub { pt_online_schema_change::main(@args,
@@ -649,7 +649,7 @@ sub test_table {
       stderr => 1,
    );
 
-   my $new_rows = $master_dbh->selectall_arrayref('select * from osc.t order by id');
+   my $new_rows = $source_dbh->selectall_arrayref('select * from osc.t order by id');
 
    my $fail = 0;
 
@@ -715,7 +715,7 @@ test_alter_table(
 # --statistics
 # #############################################################################
 
-$sb->load_file('master', "$sample/bug_1045317.sql");
+$sb->load_file('source', "$sample/bug_1045317.sql");
 
 ok(
    no_diff(
@@ -739,6 +739,8 @@ if ($sandbox_version eq '5.5' && $db_flavor !~ m/XtraDB Cluster/) {
    $res_file =  "$sample/stats-execute-5.7.txt";
 } elsif ($sandbox_version eq '8.0' && $db_flavor !~ m/XtraDB Cluster/) {
    $res_file =  "$sample/stats-execute-8.0.txt";
+} elsif ($sandbox_version ge '8.4' && $db_flavor !~ m/XtraDB Cluster/ && $db_flavor !~ m/mariadb/) {
+   $res_file =  "$sample/stats-execute-8.4.txt";
 }
  
 
@@ -832,48 +834,52 @@ test_alter_table(
 # --recursion-method=dns  (lp: 1523685)
 # #############################################################################
 
-$sb->load_file('master', "$sample/create_dsns.sql");
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-($output, $exit) = full_output(
-   sub { pt_online_schema_change::main(@args,
-      "$dsn,D=sakila,t=actor", ('--recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox',  
-          '--alter-foreign-keys-method', 'rebuild_constraints', '--execute', '--alter', 'ENGINE=InnoDB')) 
-       },
-   stderr => 1,
-);
+   $sb->load_file('source', "$sample/create_dsns.sql");
 
-like(
+   ($output, $exit) = full_output(
+      sub { pt_online_schema_change::main(@args,
+         "$dsn,D=sakila,t=actor,s=1", ('--recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox,s=1',  
+             '--alter-foreign-keys-method', 'rebuild_constraints', '--execute', '--alter', 'ENGINE=InnoDB')) 
+          },
+      stderr => 1,
+   ); 
+
+   like(
       $output,
-      qr/Found 2 slaves.*Successfully altered/si,
+      qr/Found 2 ${replica_name}s.*Successfully altered/si,
       "--recursion-method=dns works"
-);
+   ) or diag($output);
 
-$master_dbh->do("DROP DATABASE test_recursion_method");
+   $source_dbh->do("DROP DATABASE test_recursion_method");
 
-diag("Reloading sakila");
-my $master_port = $sb->port_for('master');
-system "$trunk/sandbox/load-sakila-db $master_port";
-$sb->wait_for_slaves();
+   diag("Reloading sakila");
+   my $source_port = $sb->port_for('source');
+   system "$trunk/sandbox/load-sakila-db $source_port";
+   $sb->wait_for_replicas();
 
-$sb->do_as_root("slave1", q/CREATE USER 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
-$sb->do_as_root("slave1", q/GRANT SELECT, INSERT, UPDATE, SUPER, REPLICATION SLAVE ON *.* TO 'slave_user'@'%'/);
+   $sb->do_as_root("replica1", q/CREATE USER 'replica_user'@'%' IDENTIFIED BY 'replica_password'/);
+   $sb->do_as_root("replica1", q/GRANT SELECT, INSERT, UPDATE, SUPER, REPLICATION SLAVE ON *.* TO 'replica_user'@'%'/);
 
-test_alter_table(
-   name       => "--slave-user --slave-password",
-   file       => "basic_no_fks_innodb.sql",
-   table      => "pt_osc.t",
-   test_type  => "add_col",
-   new_col    => "bar",
-   cmds       => [
-         qw(--execute --slave-user slave_user --slave-password slave_password), '--alter', 'ADD COLUMN bar INT',
-   ],
-);
+   test_alter_table(
+      name       => "--replica-user --replica-password",
+      file       => "basic_no_fks_innodb.sql",
+      table      => "pt_osc.t",
+      test_type  => "add_col",
+      new_col    => "bar",
+      cmds       => [
+            qw(--execute --replica-user replica_user --replica-password replica_password), '--alter', 'ADD COLUMN bar INT',
+      ],
+   );
+   $sb->do_as_root("replica1", q/DROP USER 'replica_user'@'%'/);
+}
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->do_as_root("slave1", q/DROP USER 'slave_user'@'%'/);
 
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 #
 done_testing;

@@ -16,3 +16,5 @@
 
 # NOTE innodb_flush_method: Most production database servers that use InnoDB should set innodb_flush_method to O_DIRECT to avoid double-buffering, unless the I/O system is very low performance.
 
+# NOTE end-of-life mysql version: Every release older than 8.0 is now officially end-of-life.
+

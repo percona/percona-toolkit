@@ -1,0 +1,15 @@
+DROP DATABASE IF EXISTS test;
+CREATE DATABASE test;
+USE test;
+
+CREATE TABLE `test_table` (
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `value1` DOUBLE NOT NULL,
+  `value2` DOUBLE NOT NULL,
+  `some_string` VARCHAR(32) NOT NULL
+) ENGINE=InnoDB;
+
+INSERT INTO `test_table`
+ (`value1`, `value2`, `some_string`)
+VALUES
+ (315.2599999999994, 2.6919444444444447, 'a');

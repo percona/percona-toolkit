@@ -22,11 +22,11 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $q      = new Quoter();
@@ -63,12 +63,12 @@ like( $output,
    "Original table must exist"
 );
 
-$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
-$master_dbh->do("USE pt_osc");
-$slave_dbh->do("USE pt_osc");
+$sb->load_file('source', "$sample/basic_no_fks_innodb.sql");
+$source_dbh->do("USE pt_osc");
+$replica_dbh->do("USE pt_osc");
 
 # The orig table cannot have any triggers.
-$master_dbh->do("CREATE TRIGGER pt_osc.pt_osc_test AFTER DELETE ON pt_osc.t FOR EACH ROW DELETE FROM pt_osc.t WHERE 0");
+$source_dbh->do("CREATE TRIGGER pt_osc.pt_osc_test AFTER DELETE ON pt_osc.t FOR EACH ROW DELETE FROM pt_osc.t WHERE 0");
 ($output, undef) = full_output(
    sub { pt_online_schema_change::main(@args,
          "$dsn,D=pt_osc,t=t", qw(--dry-run)) },
@@ -78,11 +78,11 @@ like( $output,
    qr/`pt_osc`.`t` has triggers/,
    "Original table cannot have triggers"
 );
-$master_dbh->do('DROP TRIGGER pt_osc.pt_osc_test');
+$source_dbh->do('DROP TRIGGER pt_osc.pt_osc_test');
 
 # The new table must have a pk or unique index so the delete trigger is safe.
-$master_dbh->do("ALTER TABLE pt_osc.t DROP COLUMN id");
-$master_dbh->do("ALTER TABLE pt_osc.t DROP INDEX c");
+$source_dbh->do("ALTER TABLE pt_osc.t DROP COLUMN id");
+$source_dbh->do("ALTER TABLE pt_osc.t DROP INDEX c");
 ($output, undef) = full_output(
    sub { pt_online_schema_change::main(@args,
          "$dsn,D=pt_osc,t=t", qw(--dry-run)) },
@@ -97,13 +97,13 @@ like( $output,
 # Checks for the new table.
 # #############################################################################
 
-$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
-$master_dbh->do("USE pt_osc");
-$slave_dbh->do("USE pt_osc");
+$sb->load_file('source', "$sample/basic_no_fks_innodb.sql");
+$source_dbh->do("USE pt_osc");
+$replica_dbh->do("USE pt_osc");
 
 for my $i ( 1..10 ) {
    my $table = ('_' x $i) . 't_new';
-   $master_dbh->do("create table $table (id int)");
+   $source_dbh->do("create table $table (id int)");
 }
 
 my $x;
@@ -121,6 +121,6 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

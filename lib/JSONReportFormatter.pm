@@ -1,4 +1,4 @@
-# This program is copyright 2013 Percona Ireland Ltd.
+# This program is copyright 2013-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # JSONReportFormatter package
 # ###########################################################################
@@ -58,14 +57,14 @@ has _json => (
    builder  => '_build_json',
 );
 
-has 'max_query_length' => (  
+has 'max_query_length' => (
    is       => 'rw',
    isa      => 'Int',
    required => 0,
    default  => sub { return 10_000; }, # characters, not bytes
 );
 
-has 'max_fingerprint_length' => ( 
+has 'max_fingerprint_length' => (
    is       => 'rw',
    isa      => 'Int',
    required => 0,
@@ -187,7 +186,7 @@ override query_report => sub {
       my $real_attrib = $attrib eq 'bytes' ? 'Query_length' : $attrib;
 
       if ( $type eq 'num' ) {
-         foreach my $m ( qw(sum min max) ) { 
+         foreach my $m ( qw(sum min max) ) {
             if ( $int ) {
                $global_data->{metrics}->{$real_attrib}->{$m}
                   = sprintf('%d', $store->{$m} || 0);
@@ -214,7 +213,7 @@ override query_report => sub {
          else {
             $global_data->{metrics}->{$real_attrib}->{avg}
                = sprintf('%.6f', $store->{sum} / $store->{cnt});
-         }  
+         }
       }
       elsif ( $type eq 'bool' ) {
          my $store = $results->{globals}->{$real_attrib};
@@ -241,6 +240,7 @@ override query_report => sub {
                       :                             undef;
       my $fingerprint = substr($item, 0, $self->max_fingerprint_length);
       my $checksum    = make_checksum($item);
+      my $explain     = $self->explain_report($sample->{arg}, $sample->{db});
       my $class       = {
          checksum    => $checksum,
          fingerprint => $fingerprint,
@@ -252,6 +252,8 @@ override query_report => sub {
                query      => substr($sample->{arg}, 0, $self->max_query_length),
                ts         => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
                Query_time => $sample->{Query_time},
+               $explain ?
+                  ( explain  => $explain ): (),
             },
          ),
       };
@@ -287,7 +289,7 @@ override query_report => sub {
          else {
             my $type = $attrib eq 'Query_length' ? 'num' : $ea->type_for($attrib) || 'string';
             if ( $type eq 'string' ) {
-               $metrics{$attrib} = { value => $metrics{$attrib}{max} }; 
+               $metrics{$attrib} = { value => $metrics{$attrib}{max} };
             }
             elsif ( $type eq 'num' ) {
                # Avoid scientific notation in the metrics by forcing it to use
@@ -311,14 +313,14 @@ override query_report => sub {
       }
 
       # Add "copy-paste" info, i.e. this stuff from the regular report:
-      # 
+      #
       # Tables
       #    SHOW TABLE STATUS FROM `db2` LIKE 'tuningdetail_21_265507'\G
       #    SHOW CREATE TABLE `db2`.`tuningdetail_21_265507`\G
       #    SHOW TABLE STATUS FROM `db1` LIKE 'gonzo'\G
       #    SHOW CREATE TABLE `db1`.`gonzo`\G
       #     update db2.tuningdetail_21_265507 n
-      #           inner join db1.gonzo a using(gonzo) 
+      #           inner join db1.gonzo a using(gonzo)
       #                 set n.column1 = a.column1, n.word3 = a.word3\G
       # Converted for EXPLAIN
       # EXPLAIN /*!50100 PARTITIONS*/
@@ -390,7 +392,7 @@ override query_report => sub {
          }
       }
 
-      # Add reponse time histogram for Query_time
+      # Add response time histogram for Query_time
       my $vals = $stats->{Query_time}->{all};
       if ( defined $vals && scalar %$vals ) {
          # TODO: this is broken.

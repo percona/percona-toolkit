@@ -21,8 +21,8 @@ require "$trunk/bin/pt-table-sync";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
 my $mysqlbinlog = `which mysqlbinlog`;
 if ( $mysqlbinlog ) {
@@ -32,11 +32,11 @@ elsif ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
    $mysqlbinlog = "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog";
 }
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 elsif ( !$mysqlbinlog ) {
    plan skip_all => 'Cannot find mysqlbinlog';
@@ -48,9 +48,9 @@ else {
 # We execute the test by changing a table so pt-table-sync will find something
 # to modify.  Then we examine the binary log to find the SQL in it, and check
 # that.
-$sb->load_file('master', "t/pt-table-sync/samples/issue_533.sql");
-my $pos = $master_dbh->selectrow_hashref('show master status');
-diag("Master position: $pos->{file} / $pos->{position}");
+$sb->load_file('source', "t/pt-table-sync/samples/issue_533.sql");
+my $pos = $source_dbh->selectrow_hashref("show ${source_status} status");
+diag("Source position: $pos->{file} / $pos->{position}");
 
 my @args = ('h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=t1', 't=t2', '--execute');
 output(
@@ -74,6 +74,6 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

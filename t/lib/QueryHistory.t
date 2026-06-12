@@ -17,19 +17,20 @@ use TableParser;
 use Quoter;
 use OptionParser;
 use DSNParser;
+use VersionParser;
 use Sandbox;
 use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master', {no_lc=>1});
+my $dbh = $sb->get_dbh_for('source', {no_lc=>1});
 
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
 }
 
 $sb->create_dbs($dbh, ['test']);
-$sb->load_file('master', "t/lib/samples/query_review.sql");
+$sb->load_file('source', "t/lib/samples/query_review.sql");
 my $output = "";
 my $tp = new TableParser(Quoter => 'Quoter');
 my $opt_parser = new OptionParser( description => 'QueryHistory tests' );
@@ -87,7 +88,7 @@ my $res = $dbh->selectall_arrayref(
    { Slice => {} });
 is_deeply(
    $res,
-   [  {  checksum          => '17145033699835028696',
+   [  {  checksum          => 'ACBD18DB4CC2F85CEDEF654FCCC4A4D8',
          sample            => 'foo sample',
          ts_min            => '2009-01-01 12:39:12',
          ts_max            => '2009-01-01 13:19:12',
@@ -141,7 +142,7 @@ $dbh->do('truncate table test.query_review');
 $dbh->do('drop table test.query_review_history');
 # mqd says "The table must have at least the following columns:"
 my $min_tbl = "CREATE TABLE query_review_history (
-  checksum     BIGINT UNSIGNED NOT NULL,
+  checksum     CHAR(32) NOT NULL,
   sample       TEXT NOT NULL
 )";
 $dbh->do($min_tbl);

@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # TableSyncer package
 # ###########################################################################
@@ -183,7 +182,7 @@ sub sync_table {
          # checksum algo and hash func can't be used on both.
          die "Failed to make checksum queries: $EVAL_ERROR";
       }
-   } 
+   }
 
    # ########################################################################
    # Plugin is ready, return now if this is a dry run.
@@ -255,12 +254,12 @@ sub sync_table {
             $dst_sql .= ' FOR UPDATE';
          }
          elsif ( $args{changing_src} ) {
-            # Making changes on master (src) which replicate to slave (dst).
+            # Making changes on source (src) which replicate to replica (dst).
             $src_sql .= ' FOR UPDATE';
             $dst_sql .= ' LOCK IN SHARE MODE';
          }
          else {
-            # Making changes on slave (dst).
+            # Making changes on replica (dst).
             $src_sql .= ' LOCK IN SHARE MODE';
             $dst_sql .= ' FOR UPDATE';
          }
@@ -441,7 +440,7 @@ sub unlock {
 #    src          hashref
 #    dst          hashref
 # Optional arguments:
-#   * wait_retry_args  hashref: retry args for retrying wait/MASTER_POS_WAIT
+#   * wait_retry_args  hashref: retry args for retrying wait/SOURCE_POS_WAIT
 # Lock levels:
 #   0 => none
 #   1 => per sync cycle
@@ -449,7 +448,7 @@ sub unlock {
 #   3 => global
 # This function might actually execute the $src_sth.  If we're using
 # transactions instead of table locks, the $src_sth has to be executed before
-# the MASTER_POS_WAIT() on the slave.  The return value is whether the
+# the SOURCE_POS_WAIT() on the replica.  The return value is whether the
 # $src_sth was executed.
 sub lock_and_wait {
    my ( $self, %args ) = @_;
@@ -478,7 +477,7 @@ sub lock_and_wait {
    }
 
    # User wants us to lock for consistency.  But lock only on source initially;
-   # might have to wait for the slave to catch up before locking on the dest.
+   # might have to wait for the replica to catch up before locking on the dest.
    if ( $args{lock} == 3 ) {
       my $sql = 'FLUSH TABLES WITH READ LOCK';
       PTDEBUG && _d($src->{dbh}, $sql);
@@ -523,40 +522,40 @@ sub lock_and_wait {
                # here are the passed-in args, not the args to lock_and_wait().
 
                if ( $args{tryno} > 1 ) {
-                  warn "Retrying MASTER_POS_WAIT() for --wait $timeout...";
+                  warn "Retrying SOURCE_POS_WAIT() for --wait $timeout...";
                }
 
-               # Always use the misc_dbh dbh to check the master's position
+               # Always use the misc_dbh dbh to check the source's position
                # because the main dbh might be in use due to executing
                # $src_sth.
-               $wait = $ms->wait_for_master(
-                  master_status => $ms->get_master_status($src->{misc_dbh}),
-                  slave_dbh     => $dst->{dbh},
+               $wait = $ms->wait_for_source(
+                  source_status => $ms->get_source_status($src->{misc_dbh}),
+                  replica_dbh     => $dst->{dbh},
                   timeout       => $timeout,
                );
                if ( defined $wait->{result} && $wait->{result} != -1 ) {
-                  return;  # slave caught up
+                  return;  # replica caught up
                }
                die; # call fail
             },
             fail => sub {
                my (%args) = @_;
                if ( !defined $wait->{result} ) {
-                  # Slave was stopped either before or during the wait.
+                  # Replica was stopped either before or during the wait.
                   # Wait a few seconds and try again in hopes that the
-                  # slave is restarted.  This is the only case for which
-                  # we wait and retry because the slave might have been
+                  # replica is restarted.  This is the only case for which
+                  # we wait and retry because the replica might have been
                   # stopped temporarily and/or unbeknownst to the user,
-                  # so they'll be happy if we wait for slave to be restarted
+                  # so they'll be happy if we wait for replica to be restarted
                   # and then continue syncing.
                   my $msg;
                   if ( $wait->{waited}  ) {
-                     $msg = "The slave was stopped while waiting with "
-                          . "MASTER_POS_WAIT().";
+                     $msg = "The replica was stopped while waiting with "
+                          . "SOURCE_POS_WAIT().";
                   }
                   else {
-                     $msg = "MASTER_POS_WAIT() returned NULL.  Verify that "
-                          . "the slave is running.";
+                     $msg = "SOURCE_POS_WAIT() returned NULL.  Verify that "
+                          . "the replica is running.";
                   }
                   if ( $tries - $args{tryno} ) {
                      $msg .= "  Sleeping $sleep seconds then retrying "
@@ -566,26 +565,26 @@ sub lock_and_wait {
                   return 1; # call wait, call try
                }
                elsif ( $wait->{result} == -1 ) {
-                  # MASTER_POS_WAIT timed out, don't retry since we've
+                  # SOURCE_POS_WAIT timed out, don't retry since we've
                   # already waited as long as the user specified with --wait.
                   return 0;  # call final_fail
                }
             },
             final_fail => sub {
-               die "Slave did not catch up to its master after $tries attempts "
-                  . "of waiting $timeout seconds with MASTER_POS_WAIT.  "
-                  . "Check that the slave is running, increase the --wait "
+               die "Replica did not catch up to its source after $tries attempts "
+                  . "of waiting $timeout seconds with SOURCE_POS_WAIT.  "
+                  . "Check that the replica is running, increase the --wait "
                   . "time, or disable this feature by specifying --wait 0.";
             },
-         );  # retry MasterSlave::wait_for_master()
+         );  # retry MasterSlave::wait_for_source()
       }
 
       # Don't lock the destination if we're making changes on the source
-      # (for sync-to-master and sync via replicate) else the destination
+      # (for sync-to-source and sync via replicate) else the destination
       # won't be apply to make the changes.
       if ( $args{changing_src} ) {
          PTDEBUG && _d('Not locking destination because changing source ',
-            '(syncing via replication or sync-to-master)');
+            '(syncing via replication or sync-to-source)');
       }
       else {
          if ( $args{lock} == 3 ) {

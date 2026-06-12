@@ -1,0 +1,132 @@
+identifier                    cluster1-pxc-0                                          cluster1-pxc-1                             cluster1-pxc-2                             
+current path                  tests/logs/operator_split/node0.log                     tests/logs/operator_split/node1.log        tests/logs/operator_split/node2.log        
+last known ip                 10.42.0.5                                               10.42.2.8                                  10.42.1.10                                 
+last known name               cluster1-pxc-0                                          cluster1-pxc-1                             cluster1-pxc-2                             
+mysql version                 8.0.32                                                  8.0.32                                     8.0.32                                     
+                                                                                                                                                                            
+2024-02-09T10:43:18.764700Z   started(standalone)                                     |                                          |                                          
+2024-02-09T10:43:29.907284Z   starting(8.0.32, could not catch how/when it stopped)   |                                          |                                          
+2024-02-09T10:43:29.911161Z   started(cluster)                                        |                                          |                                          
+2024-02-09T10:43:29.912919Z   no grastate.dat file                                    |                                          |                                          
+2024-02-09T10:43:29.912934Z   bootstrapping(empty grastate)                           |                                          |                                          
+2024-02-09T10:43:29.913010Z   safe_to_bootstrap: 1                                    |                                          |                                          
+2024-02-09T10:43:29.943469Z   bootstrapping                                           |                                          |                                          
+2024-02-09T10:43:29.951652Z   CLOSED -> OPEN                                          |                                          |                                          
+2024-02-09T10:43:29.951979Z   PRIMARY(n=1)                                            |                                          |                                          
+2024-02-09T10:43:29.952352Z   (restored)OPEN -> JOINED                                |                                          |                                          
+2024-02-09T10:43:29.952384Z   JOINED -> SYNCED                                        |                                          |                                          
+2024-02-09T10:43:34.188233Z   received shutdown                                       |                                          |                                          
+2024-02-09T10:43:44.190649Z   SYNCED -> CLOSED                                        |                                          |                                          
+2024-02-09T10:43:46.563893Z   shutdown complete                                       |                                          |                                          
+2024-02-09T10:43:58.465095Z   starting(8.0.32)                                        |                                          |                                          
+2024-02-09T10:43:58.470074Z   started(cluster)                                        |                                          |                                          
+2024-02-09T10:43:58.471892Z   safe_to_bootstrap: 1                                    |                                          |                                          
+2024-02-09T10:43:58.472170Z   recovering gcache                                       |                                          |                                          
+2024-02-09T10:43:58.472225Z   recovering gcache                                       |                                          |                                          
+2024-02-09T10:43:58.491964Z   bootstrapping                                           |                                          |                                          
+2024-02-09T10:43:58.499487Z   CLOSED -> OPEN                                          |                                          |                                          
+2024-02-09T10:43:58.499690Z   PRIMARY(n=1)                                            |                                          |                                          
+2024-02-09T10:43:58.499964Z   (restored)OPEN -> JOINED                                |                                          |                                          
+2024-02-09T10:43:58.499994Z   JOINED -> SYNCED                                        |                                          |                                          
+2024-02-09T10:45:04.175273Z   |                                                       starting(8.0.32)                           |                                          
+2024-02-09T10:45:04.179554Z   |                                                       started(cluster)                           |                                          
+2024-02-09T10:45:04.181272Z   |                                                       no grastate.dat file                       |                                          
+2024-02-09T10:45:04.181292Z   |                                                       bootstrapping(empty grastate)              |                                          
+2024-02-09T10:45:04.181350Z   |                                                       safe_to_bootstrap: 1                       |                                          
+2024-02-09T10:45:04.719407Z   cluster1-pxc-1 joined                                   |                                          |                                          
+2024-02-09T10:45:04.719538Z   |                                                       cluster1-pxc-0 joined                      |                                          
+2024-02-09T10:45:04.737264Z   PRIMARY(n=2)                                            |                                          |                                          
+2024-02-09T10:45:05.218295Z   |                                                       CLOSED -> OPEN                             |                                          
+2024-02-09T10:45:05.218502Z   |                                                       PRIMARY(n=2)                               |                                          
+2024-02-09T10:45:05.219600Z   |                                                       OPEN -> PRIMARY                            |                                          
+2024-02-09T10:45:06.301742Z   |                                                       will receive SST                           |                                          
+2024-02-09T10:45:06.302574Z   |                                                       cluster1-pxc-0 will resync local node      |                                          
+2024-02-09T10:45:06.302624Z   |                                                       PRIMARY -> JOINER                          |                                          
+2024-02-09T10:45:06.302828Z   local node will resync cluster1-pxc-1                   |                                          |                                          
+2024-02-09T10:45:06.302913Z   SYNCED -> DONOR                                         |                                          |                                          
+2024-02-09T10:45:06.312458Z   IST to cluster1-pxc-1(seqno:35)                         |                                          |                                          
+2024-02-09T10:45:08.158143Z   |                                                       receiving SST                              |                                          
+2024-02-09T10:45:18.201951Z   SST to cluster1-pxc-1                                   |                                          |                                          
+2024-02-09T10:45:21.265590Z   finished sending IST to cluster1-pxc-1                  |                                          |                                          
+2024-02-09T10:45:21.265656Z   DESYNCED -> JOINED                                      |                                          |                                          
+2024-02-09T10:45:21.265687Z   |                                                       got SST from cluster1-pxc-0                |                                          
+2024-02-09T10:45:21.266336Z   JOINED -> SYNCED                                        |                                          |                                          
+2024-02-09T10:45:21.272868Z   |                                                       preparing SST backup                       |                                          
+2024-02-09T10:45:27.690579Z   |                                                       wsrep recovery                             |                                          
+2024-02-09T10:45:27.707754Z   |                                                       IST received(seqno:35)                     |                                          
+2024-02-09T10:45:27.708442Z   |                                                       JOINER -> JOINED                           |                                          
+2024-02-09T10:45:27.709084Z   |                                                       JOINED -> SYNCED                           |                                          
+2024-02-09T10:46:35.633632Z   |                                                       |                                          starting(8.0.32)                           
+2024-02-09T10:46:35.638118Z   |                                                       |                                          started(cluster)                           
+2024-02-09T10:46:35.639792Z   |                                                       |                                          no grastate.dat file                       
+2024-02-09T10:46:35.639806Z   |                                                       |                                          bootstrapping(empty grastate)              
+2024-02-09T10:46:35.639870Z   |                                                       |                                          safe_to_bootstrap: 1                       
+2024-02-09T10:45:23.538218Z   |                                                       starting(8.0.32)(post.processing.log)      |                                          
+2024-02-09T10:45:24.441865Z   |                                                       started(standalone)(post.processing.log)   |                                          
+2024-02-09T10:45:26.683757Z   |                                                       shutdown complete(post.processing.log)     |                                          
+2024-02-09T10:46:36.177246Z   |                                                       cluster1-pxc-0 joined                      |                                          
+2024-02-09T10:46:36.177345Z   |                                                       cluster1-pxc-2 joined                      |                                          
+2024-02-09T10:46:36.177674Z   cluster1-pxc-1 joined                                   |                                          |                                          
+2024-02-09T10:46:36.177738Z   cluster1-pxc-2 joined                                   |                                          |                                          
+2024-02-09T10:46:36.178025Z   |                                                       |                                          cluster1-pxc-0 joined                      
+2024-02-09T10:46:36.178042Z   |                                                       |                                          cluster1-pxc-1 joined                      
+2024-02-09T10:46:37.195810Z   |                                                       PRIMARY(n=3)                               |                                          
+2024-02-09T10:46:37.195858Z   PRIMARY(n=3)                                            |                                          |                                          
+2024-02-09T10:46:37.676991Z   |                                                       |                                          CLOSED -> OPEN                             
+2024-02-09T10:46:37.677354Z   |                                                       |                                          PRIMARY(n=3)                               
+2024-02-09T10:46:37.679340Z   |                                                       |                                          OPEN -> PRIMARY                            
+2024-02-09T10:46:38.762965Z   |                                                       |                                          will receive SST                           
+2024-02-09T10:46:38.764075Z   |                                                       |                                          cluster1-pxc-1 will resync local node      
+2024-02-09T10:46:38.764092Z   |                                                       |                                          PRIMARY -> JOINER                          
+2024-02-09T10:46:38.764127Z   |                                                       local node will resync cluster1-pxc-2      |                                          
+2024-02-09T10:46:38.764189Z   cluster1-pxc-1 will resync cluster1-pxc-2               |                                          |                                          
+2024-02-09T10:46:38.764195Z   |                                                       SYNCED -> DONOR                            |                                          
+2024-02-09T10:46:38.774983Z   |                                                       IST to cluster1-pxc-2(seqno:36)            |                                          
+2024-02-09T10:46:40.617441Z   |                                                       |                                          receiving SST                              
+2024-02-09T10:46:50.653965Z   |                                                       SST to cluster1-pxc-2                      |                                          
+2024-02-09T10:46:53.708248Z   |                                                       finished sending IST to cluster1-pxc-2     |                                          
+2024-02-09T10:46:53.708271Z   cluster1-pxc-1 synced cluster1-pxc-2                    |                                          |                                          
+2024-02-09T10:46:53.708314Z   |                                                       DESYNCED -> JOINED                         |                                          
+2024-02-09T10:46:53.708455Z   |                                                       |                                          got SST from cluster1-pxc-1                
+2024-02-09T10:46:53.709514Z   |                                                       JOINED -> SYNCED                           |                                          
+2024-02-09T10:46:53.715924Z   |                                                       |                                          preparing SST backup                       
+2024-02-09T10:46:55.948110Z   |                                                       |                                          starting(8.0.32)(post.processing.log)      
+2024-02-09T10:46:56.967340Z   |                                                       |                                          started(standalone)(post.processing.log)   
+2024-02-09T10:46:59.255089Z   |                                                       |                                          shutdown complete(post.processing.log)     
+2024-02-09T10:47:00.605623Z   |                                                       |                                          wsrep recovery                             
+2024-02-09T10:47:00.622122Z   |                                                       |                                          IST received(seqno:36)                     
+2024-02-09T10:47:00.622913Z   |                                                       |                                          JOINER -> JOINED                           
+2024-02-09T10:47:00.623634Z   |                                                       |                                          JOINED -> SYNCED                           
+                                                                                                                                 tests/logs/operator_split/node2.log        
+                                                                                                                                 (file path)                                
+                                                                                                                                  V                                         
+                                                                                                                                 tests/logs/operator_split/node2.2.log      
+2024-02-09T10:57:00.561080Z   |                                                       |                                          starting(8.0.32)                           
+2024-02-09T10:57:00.565384Z   |                                                       |                                          started(cluster)                           
+2024-02-09T10:57:00.567068Z   |                                                       |                                          no grastate.dat file                       
+2024-02-09T10:57:00.567079Z   |                                                       |                                          bootstrapping(empty grastate)              
+2024-02-09T10:57:00.567139Z   |                                                       |                                          safe_to_bootstrap: 1                       
+2024-02-09T10:57:01.099130Z   |                                                       |                                          cluster1-pxc-0 joined                      
+2024-02-09T10:57:01.099157Z   |                                                       |                                          cluster1-pxc-1 joined                      
+2024-02-09T10:57:01.597877Z   |                                                       |                                          CLOSED -> OPEN                             
+2024-02-09T10:57:01.598280Z   |                                                       |                                          PRIMARY(n=3)                               
+2024-02-09T10:57:01.600245Z   |                                                       |                                          OPEN -> PRIMARY                            
+2024-02-09T10:57:02.668245Z   |                                                       |                                          will receive SST                           
+2024-02-09T10:57:02.669659Z   |                                                       |                                          cluster1-pxc-1 will resync local node      
+2024-02-09T10:57:02.669703Z   |                                                       |                                          PRIMARY -> JOINER                          
+2024-02-09T10:57:04.525871Z   |                                                       |                                          receiving SST                              
+2024-02-09T10:57:17.601741Z   |                                                       |                                          got SST from cluster1-pxc-1                
+2024-02-09T10:57:17.610081Z   |                                                       |                                          preparing SST backup                       
+2024-02-09T10:57:19.848464Z   |                                                       |                                          starting(8.0.32)(post.processing.log)      
+2024-02-09T10:57:20.797809Z   |                                                       |                                          started(standalone)(post.processing.log)   
+2024-02-09T10:57:24.141411Z   |                                                       |                                          wsrep recovery                             
+2024-02-09T10:57:24.160432Z   |                                                       |                                          IST received(seqno:42)                     
+2024-02-09T10:57:24.161564Z   |                                                       |                                          JOINER -> JOINED                           
+2024-02-09T10:57:24.162369Z   |                                                       |                                          JOINED -> SYNCED                           
+2024-02-09T10:57:23.055898Z   |                                                       |                                          shutdown complete(post.processing.log)     
+                                                                                                                                                                            
+identifier                    cluster1-pxc-0                                          cluster1-pxc-1                             cluster1-pxc-2                             
+current path                  tests/logs/operator_split/node0.log                     tests/logs/operator_split/node1.log        tests/logs/operator_split/node2.2.log      
+last known ip                 10.42.0.5                                               10.42.2.8                                  10.42.1.10                                 
+last known name               cluster1-pxc-0                                          cluster1-pxc-1                             cluster1-pxc-2                             
+mysql version                 8.0.32                                                  8.0.32                                     8.0.32                                     

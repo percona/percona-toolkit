@@ -1,21 +1,34 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package profiler
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -39,21 +52,14 @@ func TestMain(m *testing.M) {
 		log.Printf("cannot get root path: %s", err.Error())
 		os.Exit(1)
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestRegularIterator(t *testing.T) {
-	uri := fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort)
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-	if err != nil {
-		t.Fatalf("Cannot create a new MongoDB client: %s", err)
-	}
-
 	ctx := context.Background()
-
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Cannot connect to MongoDB: %s", err)
-	}
+	client, err := tu.TestClient(ctx, tu.MongoDBShard1PrimaryPort)
+	require.NoError(t, err)
 
 	database := "test"
 	// Disable the profiler and drop the db. This should also remove the system.profile collection
@@ -62,10 +68,11 @@ func TestRegularIterator(t *testing.T) {
 	if res.Err() != nil {
 		t.Fatalf("Cannot enable profiler: %s", res.Err())
 	}
-	client.Database(database).Drop(ctx)
+	err = client.Database(database).Drop(ctx)
+	assert.NoError(t, err)
 
 	// re-enable the profiler
-	res = client.Database("admin").RunCommand(ctx, primitive.D{{"profile", 2}, {"slowms", 2}})
+	res = client.Database("test").RunCommand(ctx, primitive.D{{"profile", 2}, {"slowms", 0}})
 	if res.Err() != nil {
 		t.Fatalf("Cannot enable profiler: %s", res.Err())
 	}
@@ -73,7 +80,8 @@ func TestRegularIterator(t *testing.T) {
 	// run some queries to have something to profile
 	count := 1000
 	for j := 0; j < count; j++ {
-		client.Database("test").Collection("testc").InsertOne(ctx, primitive.M{"number": j})
+		_, err := client.Database("test").Collection("testc").InsertOne(ctx, primitive.M{"number": j})
+		assert.NoError(t, err)
 		time.Sleep(20 * time.Millisecond)
 	}
 
@@ -83,7 +91,7 @@ func TestRegularIterator(t *testing.T) {
 	}
 	filters := []filter.Filter{}
 
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters())
 	s := stats.New(fp)
 	prof := NewProfiler(cursor, filters, nil, s)
 	prof.Start(ctx)

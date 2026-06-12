@@ -23,11 +23,11 @@ require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my $source_dbh = $sb->get_dbh_for('source');
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 if ($sandbox_version lt '5.7') {
@@ -44,10 +44,10 @@ my $output;
 my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
-$sb->load_file('master', "$sample/pt-202.sql");
+$sb->load_file('source', "$sample/pt-202.sql");
 
 ($output, $exit_status) = full_output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=t1",
+   sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=t1",
          '--execute', 
          '--alter', "ADD COLUMN `Column4` VARCHAR(45) NULL AFTER `Column3`",
          ),
@@ -66,11 +66,11 @@ like(
       "PT-202 Altering table having generated columns success",
 );
 
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+$source_dbh->do("DROP DATABASE IF EXISTS test");
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

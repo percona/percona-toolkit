@@ -13,8 +13,8 @@ use Test::More;
 use Data::Dumper;
 
 # Hostnames make testing less accurate.  Tests need to see
-# that such-and-such happened on specific slave hosts, but
-# the sandbox servers are all on one host so all slaves have
+# that such-and-such happened on specific replica hosts, but
+# the sandbox servers are all on one host so all replicas have
 # the same hostname.
 $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
@@ -134,43 +134,43 @@ is_deeply(
 ) or BAIL_OUT("Failed to restore wsrep_OSU_method=TOI");
 
 # #############################################################################
-# master -> cluster, run on master on table with foreign keys.
+# source -> cluster, run on source on table with foreign keys.
 # #############################################################################
 
-# CAREFUL: The master and the cluster are different, so don't do stuff
-# on the master that will conflict with stuff already done on the cluster.
-# And since we're using RBR, we have to do a lot of stuff on the master
+# CAREFUL: The source and the cluster are different, so don't do stuff
+# on the source that will conflict with stuff already done on the cluster.
+# And since we're using RBR, we have to do a lot of stuff on the source
 # again, manually, because REPLACE and INSERT IGNORE don't work in RBR
 # like they do SBR.
 
-my ($master_dbh, $master_dsn) = $sb->start_sandbox(
-   server => 'cmaster',
-   type   => 'master',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+my ($source_dbh, $source_dsn) = $sb->start_sandbox(
+   server => 'csource',
+   type   => 'source',
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
-$sb->set_as_slave('node1', 'cmaster');
+$sb->set_as_replica('node1', 'csource');
 
-$sb->load_file('cmaster', "$sample/basic_with_fks.sql", undef, no_wait => 1);
+$sb->load_file('csource', "$sample/basic_with_fks.sql", undef, no_wait => 1);
 
-$master_dbh->do("SET SESSION binlog_format=STATEMENT");
-$master_dbh->do("REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')");
-$sb->wait_for_slaves(master => 'cmaster', slave => 'node1');
+$source_dbh->do('SET @@binlog_format:="STATEMENT"');
+$source_dbh->do("REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')");
+$sb->wait_for_replicas(source => 'csource', replica => 'node1');
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
-      "$master_dsn,D=pt_osc,t=city",
+      "$source_dsn,D=pt_osc,t=city",
       qw(--print --execute --alter-foreign-keys-method drop_swap),
       '--alter', 'DROP COLUMN last_update'
    )},
    stderr => 1,
 );
 
-my $rows = $node1->selectrow_hashref("SHOW SLAVE STATUS");
+my $rows = $node1->selectrow_hashref("SHOW ${replica_name} STATUS");
 is(
    $rows->{last_error},
    "",
-   "Alter table with foreign keys on master replicating to cluster"
+   "Alter table with foreign keys on source replicating to cluster"
 ) or diag(Dumper($rows), $output);
 
 is(
@@ -179,9 +179,9 @@ is(
    "... exit 0"
 ) or diag($output);
 
-$sb->stop_sandbox(qw(cmaster));
-$node1->do("STOP SLAVE");
-$node1->do("RESET SLAVE");
+$sb->stop_sandbox(qw(csource));
+$node1->do("STOP ${replica_name}");
+$node1->do("RESET ${replica_name}");
 
 # #############################################################################
 # Done.

@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Ireland Ltd.
+# This program is copyright 2010-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,15 +11,14 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # MySQLConfigComparer package
 # ###########################################################################
 {
 # Package: MySQLConfigComparer
-# MySQLConfigComparer compares and diffs C<MySQLConfig> objects. 
+# MySQLConfigComparer compares and diffs C<MySQLConfig> objects.
 package MySQLConfigComparer;
 
 use strict;
@@ -31,12 +30,12 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 # in SHOW VARS as var=TRUE.  I.e. there's several synonyms for basic
 # true (1) and false (0), so we normalize them to make comparisons easier.
 my %alt_val_for = (
-   ON    => 1,
-   YES   => 1,
-   TRUE  => 1,
-   OFF   => 0,
-   NO    => 0,
-   FALSE => 0,
+	  ON    => 1,
+	  YES   => 1,
+	  TRUE  => 1,
+	  OFF   => 0,
+	  NO    => 0,
+	  FALSE => 0,
 );
 
 # Sub: new
@@ -47,7 +46,7 @@ my %alt_val_for = (
 # Optional Arguments:
 #   ignore_variables            - Arrayref of variables to ignore
 #   numeric_variables           - Arrayref of variables to compare numerically
-#   optional_value_variables    - Arrayref of vars whose val is optional 
+#   optional_value_variables    - Arrayref of vars whose val is optional
 #   any_value_is_true_variables - Arrayref of vars... see below
 #   base_path                   - Hashref of variable=>base_path
 #
@@ -71,7 +70,7 @@ sub new {
    # The vars should be compared with == instead of eq so that
    # 0 equals 0.0, etc.
    my %is_numeric = (
-      long_query_time => 1, 
+      long_query_time => 1,
       ($args{numeric_variables}
          ? map { $_ => 1 } @{$args{numeric_variables}}
          : ()),
@@ -87,7 +86,7 @@ sub new {
       ($args{optional_value_variables}
          ? map { $_ => 1 } @{$args{optional_value_variables}}
          : ()),
-   ); 
+   );
 
    # Like value_is_optional but SHOW VARIABlES does not list a default value,
    # it only lists ON if the variable was given in a config file without or
@@ -202,7 +201,8 @@ sub diff {
                next CONFIG if $val0 == $valN;
             }
             else {
-               next CONFIG if $ignore_case
+   	    
+		next CONFIG if $ignore_case
                               ? lc($val0) eq lc($valN)
                               : $val0 eq $valN;
 
@@ -293,7 +293,11 @@ sub _normalize_value {
    my ($val, $is_dir, $base_path) = @args{qw(value is_directory base_path)};
 
    $val = defined $val ? $val : '';
-   $val = $alt_val_for{$val} if exists $alt_val_for{$val};
+   $val = $alt_val_for{uc($val)} if exists $alt_val_for{uc($val)};
+
+   if ( $val =~ m/,/ && !$is_dir && !$base_path) {
+      $val = join(',', sort(split(',', $val)));
+   }
 
    if ( $val ) {
       if ( $is_dir ) {

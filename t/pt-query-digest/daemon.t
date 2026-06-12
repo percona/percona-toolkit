@@ -15,10 +15,11 @@ use Test::More tests => 7;
 use PerconaTest;
 use Sandbox;
 use DSNParser;
+require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 my $output;
 
@@ -41,7 +42,7 @@ like(
 # Daemonizing and pid creation
 # #########################################################################
 SKIP: {
-   skip "Cannot connect to sandbox master", 5 unless $dbh;
+   skip "Cannot connect to sandbox source", 5 unless $dbh;
 
    my $cmd = "$trunk/bin/pt-query-digest --daemonize --pid $pid_file --processlist h=127.1,P=12345,u=msandbox,p=msandbox --log /dev/null";
    `$cmd`;

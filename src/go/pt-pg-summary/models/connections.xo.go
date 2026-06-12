@@ -1,3 +1,16 @@
+// This program is copyright 2019-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 // Package models contains the types for schema 'public'.
 package models
 
@@ -14,7 +27,7 @@ func GetConnections(db XODB) ([]*Connections, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT state, count(*) ` +
+	sqlstr := `SELECT state, count(*) ` +
 		`FROM pg_stat_activity ` +
 		`GROUP BY 1`
 

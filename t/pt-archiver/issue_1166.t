@@ -17,10 +17,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 4;
@@ -35,8 +35,8 @@ $sb->create_dbs($dbh, ['test']);
 # #############################################################################
 # Issue 1166: Don't LIMIT 1 for unique indexes 
 # #############################################################################
-$sb->load_file('master', 't/pt-archiver/samples/issue_131.sql');
-$sb->load_file('master', 't/pt-archiver/samples/issue_1166.sql');
+$sb->load_file('source', 't/pt-archiver/samples/issue_131.sql');
+$sb->load_file('source', 't/pt-archiver/samples/issue_1166.sql');
 
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1 --dry-run --source),
@@ -65,7 +65,7 @@ like(
 # This issue is related:
 # Issue 1170: Allow bulk delete without LIMIT
 # #############################################################################
-$sb->load_file('master', 't/pt-archiver/samples/issue_131.sql');
+$sb->load_file('source', 't/pt-archiver/samples/issue_131.sql');
 
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1 --dry-run --source),

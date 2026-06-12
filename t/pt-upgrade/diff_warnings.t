@@ -22,14 +22,14 @@ require "$trunk/bin/pt-upgrade";
 
 my $dp   = new DSNParser(opts=>$dsn_opts);
 my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh1 = $sb->get_dbh_for('master');
-my $dbh2 = $sb->get_dbh_for('master');
+my $dbh1 = $sb->get_dbh_for('source');
+my $dbh2 = $sb->get_dbh_for('source');
 
 if ( !$dbh1 || !$dbh2 ) {
-   plan skip_all => "Cannot connect to sandbox master";
+   plan skip_all => "Cannot connect to sandbox source";
 }
 
-$sb->load_file('master', "t/lib/samples/compare-warnings.sql");
+$sb->load_file('source', "t/lib/samples/compare-warnings.sql");
 
 sub clear_warnings {
    $dbh1->do("SELECT /* clear warnings */ 1 FROM mysql.user");

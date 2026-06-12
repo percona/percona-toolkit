@@ -17,10 +17,10 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 14;
@@ -29,12 +29,12 @@ else {
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3 --explain --chunk-size 3), '--max-load', '');
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($source_dsn, qw(--set-vars innodb_lock_wait_timeout=3 --explain --chunk-size 3), '--max-load', '');
 my $output;
 my $out        = "t/pt-table-checksum/samples/";
 
-$sb->load_file('master', "t/pt-table-checksum/samples/issue_519.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/issue_519.sql");
 
 ok(
    no_diff(
@@ -115,12 +115,12 @@ ok(
 # #############################################################################
 # Bug 925855: pt-table-checksum index check is case-sensitive
 # #############################################################################
-$sb->load_file('master', "t/pt-table-checksum/samples/all-uc-table.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/all-uc-table.sql");
 my $exit_status = 0;
 
 $output = output(sub {
    $exit_status = pt_table_checksum::main(
-      $master_dsn, '--max-load', '',
+      $source_dsn, '--max-load', '',
       qw(--set-vars innodb_lock_wait_timeout=3 --chunk-size 5 -t ALL_UC.T)
    ) },
    stderr => 1,
@@ -153,7 +153,7 @@ is(
 # #############################################################################
 # Bug 978432: PK is ignored
 # #############################################################################
-$sb->load_file('master', "t/pt-table-checksum/samples/not-using-pk-bug.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/not-using-pk-bug.sql");
 
 ok(
    no_diff(
@@ -176,11 +176,11 @@ ok(
 # PK but bad explain plan.
 # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
 # #############################################################################
-#$sb->load_file('master', "t/pt-table-checksum/samples/bad-plan-bug-1010232.sql");
+#$sb->load_file('source', "t/pt-table-checksum/samples/bad-plan-bug-1010232.sql");
 #PerconaTest::wait_for_table($dbh, "bad_plan.t", "(c1,c2,c3,c4)=(1,1,2,100)");
 #$output = output(sub {
 #   $exit_status = pt_table_checksum::main(
-#      $master_dsn, '--max-load', '',
+#      $source_dsn, '--max-load', '',
 #      qw(--set-vars innodb_lock_wait_timeout=3 --chunk-size 10 -t bad_plan.t)
 #   ) },
 #   stderr => 1,
@@ -207,7 +207,7 @@ ok(
    no_diff(
       sub {
          pt_table_checksum::main(
-            $master_dsn, '--max-load', '',
+            $source_dsn, '--max-load', '',
             qw(--set-vars innodb_lock_wait_timeout=3 --chunk-size 5000  -t sakila.rental),
             qw(--chunk-index rental_date --chunk-index-columns 2),
             qw(--explain --explain));
@@ -220,7 +220,7 @@ ok(
 $output = output(         
    sub {
       $exit_status = pt_table_checksum::main(
-         $master_dsn, '--max-load', '',
+         $source_dsn, '--max-load', '',
          qw(--set-vars innodb_lock_wait_timeout=3 --chunk-size 1000  -t sakila.film_actor),
          qw(--chunk-index PRIMARY --chunk-index-columns 9),
       );
@@ -237,7 +237,7 @@ is(
 $output = output(         
    sub {
       $exit_status = pt_table_checksum::main(
-         $master_dsn, '--max-load', '',
+         $source_dsn, '--max-load', '',
          qw(--set-vars innodb_lock_wait_timeout=3 --chunk-size 1000 -t sakila.film_actor),
          qw(--chunk-index-columns 1 --chunk-size-limit 3),
       );

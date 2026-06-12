@@ -24,22 +24,22 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh1 = $sb->get_dbh_for('master');
-my $dbh2 = $sb->get_dbh_for('master');
+my $dbh1 = $sb->get_dbh_for('source');
+my $dbh2 = $sb->get_dbh_for('source');
 
 if ( !$dbh1 || !$dbh2 ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;
-my $master_dsn = $sb->dsn_for('master');
+my $source_dsn = $sb->dsn_for('source');
 my $sample     = "t/pt-online-schema-change/samples";
 my $plugin     = "$trunk/$sample/plugins";
 my $exit;
 my $rows;
 
 # Loads pt_osc.t with cols id (pk), c (unique index),, d.
-$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+$sb->load_file('source', "$sample/basic_no_fks_innodb.sql");
 
 # #############################################################################
 # --no-swap-tables --no-drop-triggers
@@ -47,7 +47,7 @@ $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 
 $output = output(
    sub { pt_online_schema_change::main(
-      "$master_dsn,D=pt_osc,t=t",
+      "$source_dsn,D=pt_osc,t=t",
       '--alter', 'DROP COLUMN d',
       qw(--execute --no-swap-tables --no-drop-new-table --no-drop-triggers))
    },
@@ -71,16 +71,16 @@ is_deeply(
 # #############################################################################
 # --no-swap-tables --no-drop-triggers implies --no-drop-new-table
 # #############################################################################
-$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+$sb->load_file('source', "$sample/basic_no_fks_innodb.sql");
 
-$output = output(
+($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
-      "$master_dsn,D=pt_osc,t=t",
-      '--alter', 'ADD COLUMN d INT',
+      "$source_dsn,D=pt_osc,t=t",
+      '--alter', 'ADD COLUMN t INT',
       qw(--execute --no-swap-tables --no-drop-triggers))
-   },
-   stderr => 1,
+   }
 );
+unlike($output, qr/DBD::mysql::db do failed:/, "Not failed (PT-1966)");
 
 $tables = $dbh1->selectall_arrayref("SHOW TABLES FROM pt_osc");
 is_deeply(

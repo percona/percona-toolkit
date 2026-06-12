@@ -18,19 +18,17 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( VersionParser->new($master_dbh) < '5.5' ) {
+if ( VersionParser->new($source_dbh) < '5.5' ) {
    plan skip_all => "This functionality doesn't work correctly on MySQLs earlier than 5.5";
 }
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
-} elsif ($sandbox_version ge '8.0') {
-   plan skip_all => "Skipped due to an error in MySQL 8.0.4-rc";
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 } else {
    plan tests => 3;
 }
@@ -38,8 +36,8 @@ elsif ( !$slave_dbh ) {
 # #############################################################################
 # Issue 363: lock and rename.
 # #############################################################################
-$sb->create_dbs($master_dbh, [qw(test)]);
-$sb->load_file('master', 't/pt-table-sync/samples/before.sql');
+$sb->create_dbs($source_dbh, [qw(test)]);
+$sb->load_file('source', 't/pt-table-sync/samples/before.sql');
 
 $output = `$trunk/bin/pt-table-sync --lock-and-rename h=127.1,P=12345 P=12346 2>&1`;
 like($output, qr/requires exactly two/,
@@ -58,6 +56,6 @@ like($output, qr/COMMENT='test1'/, '--lock-and-rename worked');
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

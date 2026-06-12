@@ -370,6 +370,30 @@ $c2 = new MySQLConfig(
 }
 
 # ############################################################################
+# PS-2015 pt-config-diff doesn't diff ordered flags
+# ############################################################################
+$c1 = new MySQLConfig(
+   result_set => [['log_slow_verbosity', 'innodb,microtime']],
+   format     => 'show_variables',
+);
+$c2 = new MySQLConfig(
+   result_set => [['log_slow_verbosity', 'microtime,innodb']],
+   format     => 'show_variables',
+);
+
+{
+   $diff = $cc->diff(
+      configs => [$c1, $c2],
+   );
+
+   is_deeply(
+      $diff,
+      undef,
+      "Values are same regardless of order"
+   ) or diag(Dumper($diff));
+}
+
+# ############################################################################
 # https://bugs.launchpad.net/percona-toolkit/+bug/889739
 # pt-config-diff doesn't diff quoted strings properly
 # ############################################################################
@@ -424,6 +448,30 @@ is_deeply(
    },
    "..but can be turned off"
 );
+
+# ############################################################################
+# https://perconadev.atlassian.net/browse/PT-2014
+# pt-config-diff does not honor case insensitivity flag for boolean values
+# ############################################################################
+$c1 = new MySQLConfig(
+   file                => "$trunk/$sample/pt-2014-1.txt",
+   TextResultSetParser => $trp,
+);
+$c2 = new MySQLConfig(
+   file                => "$trunk/$sample/pt-2014-2.txt",
+   TextResultSetParser => $trp,
+);
+{
+    my $diff = $cc->diff(
+      configs => [$c1, $c2],
+    );
+
+    is_deeply(
+        $diff,
+        undef,
+        "Boolean values are the same regardless of the case"
+    ) or diag(Dumper($diff));
+}
 
 # #############################################################################
 # Done.

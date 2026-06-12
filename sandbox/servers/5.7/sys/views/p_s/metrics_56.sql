@@ -11,11 +11,11 @@
 --
 --   You should have received a copy of the GNU General Public License
 --   along with this program; if not, write to the Free Software
---   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA 
+--   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 -- View: metrics
--- 
+--
 -- Creates a union of the following information:
 --
 --    *  information_schema.GLOBAL_STATUS
@@ -39,7 +39,7 @@
 -- 1 row in set (0.00 sec)
 --
 -- For view has the following columns:
--- 
+--
 --    * Variable_name: The name of the variable
 --    * Variable_value: The value of the variable
 --    * Type: The type of the variable. This will depend on the source, e.g. Global Status, InnoDB Metrics - ..., etc.
@@ -78,7 +78,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW metrics (
   Variable_name,
   Variable_value,

@@ -9,13 +9,14 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 27;
+use Test::More;
 
 use MockSync;
 use RowDiff;
 use MockSth;
 use Sandbox;
 use DSNParser;
+use VersionParser;
 use TableParser;
 use Quoter;
 use PerconaTest;
@@ -28,8 +29,8 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 
 # Connect to sandbox now to make sure it's running.
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $master_dbh = $sb->get_dbh_for('source');
+my $slave_dbh  = $sb->get_dbh_for('replica1');
 
 throws_ok( sub { new RowDiff() }, qr/I need a dbh/, 'DBH required' );
 $d = new RowDiff(dbh => 1);
@@ -298,7 +299,7 @@ SKIP: {
          { a => 'a', b => 2, c => 3 },
       ),
       syncer     => $s,
-      tbl_struct => { collation_for => { a => 'utf8_general_ci' } },
+      tbl_struct => { collation_for => { a => 'utf8mb4_general_ci' } },
    );
    is_deeply(
       $s,
@@ -442,10 +443,13 @@ SKIP: {
    skip 'Cannot connect to sandbox master', 4 unless $master_dbh;
    skip 'Cannot connect to sandbox slave',  4 unless $slave_dbh;
 
+PXC_SKIP: {
+      skip 'Not for PXC' if ( $sb->is_cluster_mode );
+
    $d = new RowDiff(dbh => $master_dbh);
 
    $sb->create_dbs($master_dbh, [qw(test)]);
-   $sb->load_file('master', 't/lib/samples/issue_11.sql');
+   $sb->load_file('source', 't/lib/samples/issue_11.sql');
    PerconaTest::wait_until(
       sub {
          my $r;
@@ -543,10 +547,10 @@ SKIP: {
       ],
       'one identical row (real DBI sth)',
    );
-
+}
+}
    $sb->wipe_clean($master_dbh);
    $sb->wipe_clean($slave_dbh);
-}
 
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;

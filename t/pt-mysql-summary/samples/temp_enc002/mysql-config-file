@@ -1,0 +1,26 @@
+[client]
+user     = msandbox
+password = msandbox
+port     = 12345
+socket   = /tmp/12345/mysql_sandbox12345.sock
+
+[mysqld]
+port                       = 12345
+socket                     = /tmp/12345/mysql_sandbox12345.sock
+pid-file                   = /tmp/12345/data/mysql_sandbox12345.pid
+basedir                    = /home/hugmeir/mysql5/mysqlbrew/mysqls/Percona-Server-5.1/
+datadir                    = /tmp/12345/data
+key_buffer_size            = 16M
+innodb_buffer_pool_size    = 16M
+innodb_data_home_dir       = /tmp/12345/data
+innodb_log_group_home_dir  = /tmp/12345/data
+innodb_data_file_path      = ibdata1:10M:autoextend
+innodb_log_file_size       = 5M
+log-bin                    = mysql-bin
+relay_log                  = mysql-relay-bin
+log_slave_updates
+server-id                  = 12345
+report-host                = 127.0.0.1
+report-port                = 12345
+log-error                  = mysqld.log
+innodb_lock_wait_timeout   = 3

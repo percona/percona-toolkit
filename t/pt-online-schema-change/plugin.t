@@ -22,21 +22,21 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;
-my $master_dsn = $sb->dsn_for('master');
+my $source_dsn = $sb->dsn_for('source');
 my $sample     = "t/pt-online-schema-change/samples";
 my $plugin     = "$trunk/$sample/plugins";
 my $exit;
 my $rows;
 
 # Loads pt_osc.t with cols id (pk), c (unique index),, d.
-$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+$sb->load_file('source', "$sample/basic_no_fks_innodb.sql");
 
 # #############################################################################
 # all_hooks.pm
@@ -44,7 +44,7 @@ $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 
 ($output) = full_output(
    sub { pt_online_schema_change::main(
-      "$master_dsn,D=pt_osc,t=t",
+      "$source_dsn,D=pt_osc,t=t",
       '--plugin', "$plugin/all_hooks.pm",
       qw(--statistics --execute),
    )},
@@ -56,7 +56,7 @@ my @called = $output =~ m/^PLUGIN \S+$/gm;
 is_deeply(
    \@called,
    [
-      'PLUGIN get_slave_lag',
+      'PLUGIN get_replica_lag',
       'PLUGIN init',
       'PLUGIN before_create_new_table',
       'PLUGIN after_create_new_table',
@@ -65,6 +65,7 @@ is_deeply(
       'PLUGIN before_create_triggers',
       'PLUGIN after_create_triggers',
       'PLUGIN before_copy_rows',
+      'PLUGIN on_copy_rows_after_nibble',
       'PLUGIN after_copy_rows',
       'PLUGIN before_swap_tables',
       'PLUGIN after_swap_tables',

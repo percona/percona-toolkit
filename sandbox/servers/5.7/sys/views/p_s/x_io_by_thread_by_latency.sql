@@ -39,7 +39,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$io_by_thread_by_latency (
   user,
   total,
@@ -51,10 +51,10 @@ VIEW x$io_by_thread_by_latency (
   processlist_id
 )
 AS
-SELECT IF(processlist_id IS NULL, 
-             SUBSTRING_INDEX(name, '/', -1), 
+SELECT IF(processlist_id IS NULL,
+             SUBSTRING_INDEX(name, '/', -1),
              CONCAT(processlist_user, '@', processlist_host)
-          ) user, 
+          ) user,
        SUM(count_star) total,
        SUM(sum_timer_wait) total_latency,
        MIN(min_timer_wait) min_latency,
@@ -62,7 +62,7 @@ SELECT IF(processlist_id IS NULL,
        MAX(max_timer_wait) max_latency,
        thread_id,
        processlist_id
-  FROM performance_schema.events_waits_summary_by_thread_by_event_name 
+  FROM performance_schema.events_waits_summary_by_thread_by_event_name
   LEFT JOIN performance_schema.threads USING (thread_id)
  WHERE event_name LIKE 'wait/io/file/%'
    AND sum_timer_wait > 0

@@ -22,10 +22,10 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 2;
@@ -44,17 +44,17 @@ sub start_thread {
    my ($dsn_opts, $initial_sleep_time) = @_;
    my $dp = new DSNParser(opts=>$dsn_opts);
    my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-   my $master_dbh = $sb->get_dbh_for('master');
-   my $slave_dbh = $sb->get_dbh_for('slave1');
+   my $source_dbh = $sb->get_dbh_for('source');
+   my $replica_dbh = $sb->get_dbh_for('replica1');
    diag("Sleeping");
    sleep($initial_sleep_time);
    diag("Woke up");
-   $slave_dbh->do("STOP SLAVE IO_THREAD FOR CHANNEL ''");
-   $slave_dbh->do("STOP SLAVE");
-   $master_dbh->do("TRUNCATE TABLE test.$table");
+   $replica_dbh->do("STOP ${replica_name} IO_THREAD FOR CHANNEL ''");
+   $replica_dbh->do("STOP ${replica_name}");
+   $source_dbh->do("TRUNCATE TABLE test.$table");
    # PTDEBUG && diag("Exit thread")
    sleep(2);
-   $slave_dbh->do("START SLAVE");
+   $replica_dbh->do("START ${replica_name}");
    diag("Exit thread")
 }
 # This is not a realiable sleep value. It works for a i7, hybrid HDD
@@ -66,8 +66,8 @@ diag("Starting checksum");
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--no-check-binlog-format --chunk-size 10)); 
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($source_dsn, qw(--no-check-binlog-format --chunk-size 10)); 
 my $output;
 
 $output = output(
@@ -75,7 +75,6 @@ $output = output(
    stderr => 1,
 );
 
-diag($output);
 unlike(
    $output,
    qr/Can't use an undefined value as an ARRAY/,

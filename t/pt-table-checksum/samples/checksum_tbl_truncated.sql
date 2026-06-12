@@ -10,8 +10,8 @@ CREATE TABLE truncated_checksums (
   upper_boundary char(1)      NOT NULL,  -- will cause truncation error
   this_crc       char(40)     NOT NULL,
   this_cnt       int          NOT NULL,
-  master_crc     char(40)         NULL,
-  master_cnt     int              NULL,
+  source_crc     char(40)         NULL,
+  source_cnt     int              NULL,
   ts             timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (db, tbl, chunk)
 ) ENGINE=InnoDB;

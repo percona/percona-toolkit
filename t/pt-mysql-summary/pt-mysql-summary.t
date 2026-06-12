@@ -20,12 +20,12 @@ local $ENV{PTDEBUG} = "";
 
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 my $has_keyring_plugin;
 
-my $db_flavor = VersionParser->new($master_dbh)->flavor();
+my $db_flavor = VersionParser->new($source_dbh)->flavor();
 if ( $db_flavor =~ m/Percona Server/ ) {
-    my $rows = $master_dbh->selectall_hashref("SHOW PLUGINS", "name");
+    my $rows = $source_dbh->selectall_hashref("SHOW PLUGINS", "name");
     while (my ($key, $values) = each %$rows) {
         if ($key =~ m/^keyring_/) {
             $has_keyring_plugin=1;
@@ -43,7 +43,9 @@ my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 # mysqldump from earlier versions doesn't seem to work with 5.6,
 # so use the actual mysqldump from each MySQL bin which should
 # always be compatible with itself.
-my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump"\;
+# We need LC_NUMERIC=POSIX, so test does not fail in environment 
+# which use , insead of . for numbers.
+my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump" LC_NUMERIC=POSIX\;
 
 #
 # --save-samples
@@ -60,10 +62,14 @@ ok(
 
 # If the box has a default my.cnf (e.g. /etc/my.cnf) there
 # should be 15 files, else 14.
+# Latest version creates 18 for PS/MySQL 8.0+
+# If run as regular user and there is default MySQL server, running as mysql user
+# there would be file collect.err, containing "Permission denied" error.
+# This error should be ignored.
 my @files = glob("$dir/*");
 my $n_files = scalar @files;
 ok(
-   $n_files >= 15 && $n_files <= 18,
+   $n_files >= 15 && $n_files <= 19,
    "And leaves all files in there"
 ) or diag($n_files, `ls -l $dir`);
 

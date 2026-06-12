@@ -1,11 +1,29 @@
+// This program is copyright 2019-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package testutils
 
 import (
+	"context"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -30,55 +48,60 @@ const (
 	envMongoDBConfigsvr3Port       = "TEST_MONGODB_CONFIGSVR3_PORT"
 	//
 	envMongoDBMongosPort = "TEST_MONGODB_MONGOS_PORT"
+
+	envMongoDBStandalonePort = "TEST_MONGODB_STANDALONE_PORT"
 	//
-	envMongoDBUser     = "TEST_MONGODB_ADMIN_USERNAME"
-	envMongoDBPassword = "TEST_MONGODB_ADMIN_PASSWORD"
+	envMongoDBUser     = ""
+	envMongoDBPassword = ""
 )
 
 var (
 	// MongoDBHost is the hostname. Since it runs locally, it is localhost
 	MongoDBHost = "127.0.0.1"
 
+	// Port for standalone instance
+	MongoDBStandalonePort = getEnvDefault(envMongoDBStandalonePort, "27017")
+
 	// MongoDBShard1ReplsetName Replicaset name for shard 1
-	MongoDBShard1ReplsetName = os.Getenv(envMongoDBShard1ReplsetName)
+	MongoDBShard1ReplsetName = getEnvDefault(envMongoDBShard1ReplsetName, "rs1")
 	// MongoDBShard1PrimaryPort is the port for the primary instance of shard 1
-	MongoDBShard1PrimaryPort = os.Getenv(envMongoDBShard1PrimaryPort)
+	MongoDBShard1PrimaryPort = getEnvDefault(envMongoDBShard1PrimaryPort, "17001")
 	// MongoDBShard1Secondary1Port is the port for the secondary instance 1 of shard 1
-	MongoDBShard1Secondary1Port = os.Getenv(envMongoDBShard1Secondary1Port)
+	MongoDBShard1Secondary1Port = getEnvDefault(envMongoDBShard1Secondary1Port, "17002")
 	// MongoDBShard1Secondary2Port is the port for the secondary instance 2 of shard 1
-	MongoDBShard1Secondary2Port = os.Getenv(envMongoDBShard1Secondary2Port)
+	MongoDBShard1Secondary2Port = getEnvDefault(envMongoDBShard1Secondary2Port, "17003")
 
 	// MongoDBShard2ReplsetName Replicaset name for shard 2
-	MongoDBShard2ReplsetName = os.Getenv(envMongoDBShard2ReplsetName)
+	MongoDBShard2ReplsetName = getEnvDefault(envMongoDBShard2ReplsetName, "rs2")
 	// MongoDBShard2PrimaryPort is the port for the primary instance of shard 2
-	MongoDBShard2PrimaryPort = os.Getenv(envMongoDBShard2PrimaryPort)
+	MongoDBShard2PrimaryPort = getEnvDefault(envMongoDBShard2PrimaryPort, "17004")
 	// MongoDBShard2Secondary1Port is the port for the secondary instance 1 of shard 2
-	MongoDBShard2Secondary1Port = os.Getenv(envMongoDBShard2Secondary1Port)
+	MongoDBShard2Secondary1Port = getEnvDefault(envMongoDBShard2Secondary1Port, "17005")
 	// MongoDBShard2Secondary2Port is the port for the secondary instance 1 of shard 2
-	MongoDBShard2Secondary2Port = os.Getenv(envMongoDBShard2Secondary2Port)
+	MongoDBShard2Secondary2Port = getEnvDefault(envMongoDBShard2Secondary2Port, "17006")
 
 	// MongoDBShard3ReplsetName Replicaset name for the 3rd cluster
-	MongoDBShard3ReplsetName = os.Getenv(envMongoDBShard3ReplsetName)
+	MongoDBShard3ReplsetName = getEnvDefault(envMongoDBShard3ReplsetName, "rs3")
 	// MongoDBShard3PrimaryPort is the port for the primary instance of 3rd cluster (non-sharded)
-	MongoDBShard3PrimaryPort = os.Getenv(envMongoDBShard3PrimaryPort)
+	MongoDBShard3PrimaryPort = getEnvDefault(envMongoDBShard3PrimaryPort, "17021")
 	// MongoDBShard3Secondary1Port is the port for the secondary instance 1 on the 3rd cluster
-	MongoDBShard3Secondary1Port = os.Getenv(envMongoDBShard3Secondary1Port)
+	MongoDBShard3Secondary1Port = getEnvDefault(envMongoDBShard3Secondary1Port, "17022")
 	// MongoDBShard3Secondary2Port is the port for the secondary instance 2 on the 3rd cluster
-	MongoDBShard3Secondary2Port = os.Getenv(envMongoDBShard3Secondary2Port)
+	MongoDBShard3Secondary2Port = getEnvDefault(envMongoDBShard3Secondary2Port, "17023")
 
 	// MongoDBConfigsvrReplsetName Replicaset name for the config servers
-	MongoDBConfigsvrReplsetName = os.Getenv(envMongoDBConfigsvrReplsetName)
+	MongoDBConfigsvrReplsetName = getEnvDefault(envMongoDBConfigsvrReplsetName, "csReplSet")
 	// MongoDBConfigsvr1Port Config server primary's port
-	MongoDBConfigsvr1Port = os.Getenv(envMongoDBConfigsvr1Port)
-	// MongoDBConfigsvr2Port       = os.Getenv(envMongoDBConfigsvr2Port)
-	// MongoDBConfigsvr3Port       = os.Getenv(envMongoDBConfigsvr3Port)
+	MongoDBConfigsvr1Port = getEnvDefault(envMongoDBConfigsvr1Port, "17007")
+	// MongoDBConfigsvr2Port       = getEnvDefault(envMongoDBConfigsvr2Port)
+	// MongoDBConfigsvr3Port       = getEnvDefault(envMongoDBConfigsvr3Port)
 
 	// MongoDBMongosPort mongos port
-	MongoDBMongosPort = os.Getenv(envMongoDBMongosPort)
+	MongoDBMongosPort = getEnvDefault(envMongoDBMongosPort, "17000")
 	// MongoDBUser username for all instances
-	MongoDBUser = os.Getenv(envMongoDBUser)
+	MongoDBUser = getEnvDefault(envMongoDBUser, "")
 	// MongoDBPassword password for all instances
-	MongoDBPassword = os.Getenv(envMongoDBPassword)
+	MongoDBPassword = getEnvDefault(envMongoDBPassword, "")
 	// MongoDBTimeout global connection timeout
 	MongoDBTimeout = time.Duration(10) * time.Second
 
@@ -120,6 +143,13 @@ func init() {
 	MongoDBSSLCACertFile = filepath.Join(MongoDBSSLDir, "rootCA.crt")
 }
 
+func getEnvDefault(key, defVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defVal
+}
+
 // BaseDir returns the project's root dir by asking git
 func BaseDir() string {
 	if basedir != "" {
@@ -131,30 +161,96 @@ func BaseDir() string {
 	}
 
 	basedir = strings.TrimSpace(string(out))
+
 	return basedir
 }
 
 // GetMongoDBAddr returns the address of an instance by replicaset name and instance type like
-// (rs1, primary) or (rs1, secondary1)
+// (rs1, primary) or (rs1, secondary1).
 func GetMongoDBAddr(rs, name string) string {
 	if _, ok := hosts[rs]; !ok {
 		return ""
 	}
+
 	replset := hosts[rs]
+
 	if host, ok := replset[name]; ok {
 		return host
 	}
+
 	return ""
 }
 
-// GetMongoDBReplsetAddrs return the addresses of all instances for a replicaset name
+// GetMongoDBReplsetAddrs return the addresses of all instances for a replicaset name.
 func GetMongoDBReplsetAddrs(rs string) []string {
 	addrs := []string{}
+
 	if _, ok := hosts[rs]; !ok {
 		return addrs
 	}
+
 	for _, host := range hosts[rs] {
 		addrs = append(addrs, host)
 	}
+
 	return addrs
+}
+
+// TestClient returns a new MongoDB connection to the specified server port.
+func TestClient(ctx context.Context, port string) (*mongo.Client, error) {
+	if port == "" {
+		port = MongoDBShard1PrimaryPort
+	}
+
+	hostname := "127.0.0.1"
+	direct := true
+	to := time.Second
+	co := &options.ClientOptions{
+		ConnectTimeout: &to,
+		Hosts:          []string{net.JoinHostPort(hostname, port)},
+		Direct:         &direct,
+	}
+	if MongoDBUser != "" {
+		co.Auth = &options.Credential{
+			Username:    MongoDBUser,
+			Password:    MongoDBPassword,
+			PasswordSet: true,
+		}
+	}
+
+	client, err := mongo.Connect(ctx, co)
+	if err != nil {
+		return nil, err
+	}
+
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func TestClientOptions(port string) *options.ClientOptions {
+	if port == "" {
+		port = MongoDBShard1PrimaryPort
+	}
+
+	hostname := "127.0.0.1"
+	direct := true
+	to := time.Second
+	co := &options.ClientOptions{
+		ConnectTimeout: &to,
+		Hosts:          []string{net.JoinHostPort(hostname, port)},
+		Direct:         &direct,
+	}
+	if MongoDBUser != "" {
+		co.Auth = &options.Credential{
+			Username:    MongoDBUser,
+			Password:    MongoDBPassword,
+			PasswordSet: true,
+		}
+	}
+
+	return co
 }

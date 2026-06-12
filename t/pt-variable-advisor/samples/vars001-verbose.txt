@@ -8,7 +8,7 @@
 
 # NOTE port: The server is listening on a non-default port. 
 
-# WARN slave_net_timeout: This variable is set too high. This is too long to wait before noticing that the connection to the master has failed and retrying.
+# WARN slave_net_timeout: This variable is set too high. This is too long to wait before noticing that the connection to the replication source has failed and retrying.
 
 # WARN expire_logs_days: Binary logs are enabled, but automatic purging is not enabled. If you do not purge binary logs, your disk will fill up.
 
@@ -19,4 +19,6 @@
 # WARN myisam_recover_options: myisam_recover_options should be set to some value such as BACKUP,FORCE to ensure that table corruption is noticed. 
 
 # WARN sync_binlog: Binary logging is enabled, but sync_binlog isn't configured so that every transaction is flushed to the binary log for durability. 
+
+# NOTE end-of-life mysql version: Every release older than 8.0 is now officially end-of-life. 
 

@@ -19,20 +19,20 @@ require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave1';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica1';
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout-3 else the
 # tool will die.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 my @args       = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
@@ -43,11 +43,11 @@ my $sample  = "t/pt-online-schema-change/samples/";
 # pt-online-schema-change loses data when renaming columns
 # ############################################################################
 
-$sb->load_file('master', "$sample/data-loss-bug-1068562.sql");
+$sb->load_file('source', "$sample/data-loss-bug-1068562.sql");
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=bug1068562,t=simon",
+      "$source_dsn,D=bug1068562,t=simon",
       "--alter", "change old_column_name new_column_name varchar(255) NULL",
       qw(--execute)) },
 );
@@ -65,12 +65,12 @@ like(
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=bug1068562,t=simon",
+      "$source_dsn,D=bug1068562,t=simon",
       "--alter", "change old_column_name new_column_name varchar(255) NULL",
       qw(--execute --no-check-alter)) },
 );
 
-my $rows = $master_dbh->selectall_arrayref("SELECT * FROM bug1068562.simon ORDER BY id");
+my $rows = $source_dbh->selectall_arrayref("SELECT * FROM bug1068562.simon ORDER BY id");
 
 is_deeply(
    $rows,
@@ -82,11 +82,11 @@ is_deeply(
 # Now try with sakila.city.
 # #############################################################################
 
-my $orig = $master_dbh->selectall_arrayref(q{SELECT city FROM sakila.city});
+my $orig = $source_dbh->selectall_arrayref(q{SELECT city FROM sakila.city});
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=sakila,t=city",
+      "$source_dsn,D=sakila,t=city",
       "--alter", "change column `city` `some_cities` varchar(50) NOT NULL",
       qw(--execute --alter-foreign-keys-method auto --no-check-alter)) },
 );
@@ -97,7 +97,7 @@ is(
    "sakila.city: Exit status 0",
 ) or diag($output);
 
-my $mod = $master_dbh->selectall_arrayref(q{SELECT some_cities FROM sakila.city});
+my $mod = $source_dbh->selectall_arrayref(q{SELECT some_cities FROM sakila.city});
 
 is_deeply(
    $orig,
@@ -107,12 +107,12 @@ is_deeply(
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=sakila,t=city",
+      "$source_dsn,D=sakila,t=city",
       "--alter", "change column `some_cities` city varchar(50) NOT NULL",
       qw(--execute --alter-foreign-keys-method auto --no-check-alter)) },
 );
 
-my $mod2 = $master_dbh->selectall_arrayref(q{SELECT city FROM sakila.city});
+my $mod2 = $source_dbh->selectall_arrayref(q{SELECT city FROM sakila.city});
 
 is_deeply(
    $orig,
@@ -126,19 +126,19 @@ is_deeply(
 # #############################################################################
 
 diag("Reloading sakila");
-my $master_port = $sb->port_for('master');
-system "$trunk/sandbox/load-sakila-db $master_port";
-$sb->wait_for_slaves();
+my $source_port = $sb->port_for('source');
+system "$trunk/sandbox/load-sakila-db $source_port";
+$sb->wait_for_replicas();
 
-$orig = $master_dbh->selectall_arrayref(q{SELECT first_name, last_name FROM sakila.staff});
+$orig = $source_dbh->selectall_arrayref(q{SELECT first_name, last_name FROM sakila.staff});
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=sakila,t=staff",
+      "$source_dsn,D=sakila,t=staff",
       "--alter", "change column first_name first_name_mod varchar(45) NOT NULL, change column last_name last_name_mod varchar(45) NOT NULL",
-      qw(--execute --alter-foreign-keys-method rebuild_constraints --no-check-alter)) },
+      qw(--execute --alter-foreign-keys-method rebuild_constraints --no-check-alter --chunk-size 20000)) },
 );
-$mod = $master_dbh->selectall_arrayref(q{SELECT first_name_mod, last_name_mod FROM sakila.staff});
+$mod = $source_dbh->selectall_arrayref(q{SELECT first_name_mod, last_name_mod FROM sakila.staff});
 
 is_deeply(
    $orig,
@@ -148,13 +148,12 @@ is_deeply(
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=sakila,t=staff",
+      "$source_dsn,D=sakila,t=staff",
       "--alter", "change column first_name_mod first_name varchar(45) NOT NULL, change column last_name_mod last_name varchar(45) NOT NULL",
-      qw(--execute --alter-foreign-keys-method auto --no-check-alter)) },
+      qw(--execute --alter-foreign-keys-method auto --no-check-alter --chunk-size 20000)) },
 );
 
-$mod2 = $master_dbh->selectall_arrayref(q{SELECT first_name, last_name FROM sakila.staff});
-
+$mod2 = $source_dbh->selectall_arrayref(q{SELECT first_name, last_name FROM sakila.staff});
 is_deeply(
    $orig,
    $mod2,
@@ -168,7 +167,7 @@ is_deeply(
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=sakila,t=staff",
+      "$source_dsn,D=sakila,t=staff",
       "--alter", "change column first_name first_name_mod varchar(45) NOT NULL, change column last_name last_name_mod varchar(45) NOT NULL",
       qw(--dry-run --alter-foreign-keys-method auto)) },
 );
@@ -189,7 +188,7 @@ like(
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=sakila,t=staff",
+      "$source_dsn,D=sakila,t=staff",
       "--alter", "change column first_name first_name varchar(45) NOT NULL",
       qw(--execute --alter-foreign-keys-method auto)) },
 );
@@ -203,6 +202,6 @@ unlike(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

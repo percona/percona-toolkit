@@ -17,12 +17,12 @@ require "$trunk/bin/pt-slave-delay";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave1_dbh  = $sb->get_dbh_for('slave1');
-my $slave2_dbh  = $sb->get_dbh_for('slave2');
+my $master_dbh = $sb->get_dbh_for('source');
+my $slave1_dbh  = $sb->get_dbh_for('replica1');
+my $slave2_dbh  = $sb->get_dbh_for('replica2');
 
-if ($sandbox_version ge '5.7') {
-   plan skip_all => 'Use SQL_DELAY';
+if ($sandbox_version ge '8.1') {
+   plan skip_all => 'Tool is not supported. Use SQL_DELAY';
 }
 
 if ( !$master_dbh ) {
@@ -35,7 +35,7 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 6;
+   plan tests => 7;
 }
 
 my $output;
@@ -43,11 +43,14 @@ my $cnf = '/tmp/12346/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-slave-delay -F $cnf h=127.1";
 
 # 1
-$output = `$cmd --help`;
+$output = `$cmd --help 2>&1`;
 like($output, qr/Prompt for a password/, 'It compiles');
 
+# Check deprecation warning
+like($output, qr/This tool is deprecated and will be removed in future releases/, 'Deprecation warning printed') or diag($output);
+
 # #############################################################################
-# 2 Issue 149: h is required even with S, for slavehost argument
+# Issue 149: h is required even with S, for slavehost argument
 # #############################################################################
 $output = `$trunk/bin/pt-slave-delay --run-time 1s --delay 1s --interval 1s S=/tmp/12346/mysql_sandbox12346.sock 2>&1`;
 unlike($output, qr/Missing DSN part 'h'/, 'Does not require h DSN part');
@@ -58,34 +61,40 @@ unlike($output, qr/Missing DSN part 'h'/, 'Does not require h DSN part');
 # easily when you connect to a SLAVE-HOST twice by accident.)  To reproduce,
 # just disable log-bin and log-slave-updates on the slave.
 # #####1#######################################################################
-diag(`cp /tmp/12346/my.sandbox.cnf /tmp/12346/my.sandbox.cnf-original`);
-diag(`sed -i.bak -e '/log-bin/d' -e '/log_slave_updates/d' /tmp/12346/my.sandbox.cnf`);
-diag(`/tmp/12346/stop >/dev/null`);
-diag(`/tmp/12346/start >/dev/null`);
-diag("Sleeping 3 seconds ...");
-sleep(3);
-$slave2_dbh->do('STOP SLAVE');
-$slave2_dbh->do('RESET SLAVE');
-$slave2_dbh->do('START SLAVE');
+SKIP: {
+   if ($sandbox_version ge '8.0') {
+      skip 'Binary log is ON by default in 8.0+';
+   }
 
-# 3
-$output = `$trunk/bin/pt-slave-delay --delay 1s h=127.1,P=12346,u=msandbox,p=msandbox h=127.1 2>&1`;
-like(
-   $output,
-   qr/Binary logging is disabled/,
-   'Detects master that is not a master'
-);
+   diag(`cp /tmp/12346/my.sandbox.cnf /tmp/12346/my.sandbox.cnf-original`);
+   diag(`sed -i.bak -e '/log-bin/d' -e '/log_slave_updates/d' /tmp/12346/my.sandbox.cnf`);
+   diag(`/tmp/12346/stop >/dev/null`);
+   diag(`/tmp/12346/start >/dev/null`);
+   diag("Sleeping 3 seconds ...");
+   sleep(3);
+   $slave2_dbh->do('STOP SLAVE');
+   $slave2_dbh->do('RESET SLAVE');
+   $slave2_dbh->do('START SLAVE');
 
-diag(`/tmp/12346/stop >/dev/null`);
-diag(`mv /tmp/12346/my.sandbox.cnf-original /tmp/12346/my.sandbox.cnf`);
-diag(`/tmp/12346/start >/dev/null`);
-diag(`/tmp/12346/use -e "set global read_only=1"`);
+   # 3
+   $output = `$trunk/bin/pt-slave-delay --delay 1s h=127.1,P=12346,u=msandbox,p=msandbox h=127.1 2>&1`;
+   like(
+      $output,
+      qr/Binary logging is disabled/,
+      'Detects master that is not a master'
+   );
 
-diag("Sleeping 3 seconds ...");
-sleep(3);
-$slave2_dbh->do('STOP SLAVE');
-$slave2_dbh->do('RESET SLAVE');
-$slave2_dbh->do('START SLAVE');
+   diag(`/tmp/12346/stop >/dev/null`);
+   diag(`mv /tmp/12346/my.sandbox.cnf-original /tmp/12346/my.sandbox.cnf`);
+   diag(`/tmp/12346/start >/dev/null`);
+   diag(`/tmp/12346/use -e "set global read_only=1"`);
+
+   diag("Sleeping 3 seconds ...");
+   sleep(3);
+   $slave2_dbh->do('STOP SLAVE');
+   $slave2_dbh->do('RESET SLAVE');
+   $slave2_dbh->do('START SLAVE');
+}
 
 # #############################################################################
 # Check --use-master

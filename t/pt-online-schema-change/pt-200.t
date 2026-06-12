@@ -25,11 +25,11 @@ require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my $source_dbh = $sb->get_dbh_for('source');
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,s=1';
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -40,10 +40,10 @@ my $output;
 my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
-$sb->load_file('master', "$sample/pt-153.sql");
+$sb->load_file('source', "$sample/pt-153.sql");
 
 ($output, $exit_status) = full_output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=t1",
+   sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=t1",
          '--execute', 
          '--alter', "ADD COLUMN unique_id BIGINT UNSIGNED NOT NULL DEFAULT 0, ADD INDEX(unique_id)",
          ),
@@ -62,11 +62,11 @@ like(
       "PT-200 Adding field having 'unique' in the name",
 );
 
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+$source_dbh->do("DROP DATABASE IF EXISTS test");
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

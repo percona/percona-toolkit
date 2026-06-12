@@ -1,0 +1,15 @@
+.sphinx-tabs-tab {
+  position: relative;
+  font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #fb8c00;
+  line-height: 24px;
+  margin: 0;
+  font-size: 19px;
+  font-weight: 400;
+  background-color: rgba(255, 255, 255, 0);
+  border-radius: 5px 5px 0 0;
+  border: 0;
+  padding: 1rem 1.5rem;
+  margin-bottom: 0;
+}
+

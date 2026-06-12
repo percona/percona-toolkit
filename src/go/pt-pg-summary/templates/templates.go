@@ -1,3 +1,16 @@
+// This program is copyright 2019-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package templates
 
 var TPL = `{{define "report"}}
@@ -5,8 +18,10 @@ var TPL = `{{define "report"}}
 {{ template "tablespaces" .Tablespaces }}
 {{ if .SlaveHosts96 -}}
   {{ template "slaves_and_lag" .SlaveHosts96 }}
-{{ else if .SlaveHosts10 -}}
+{{- else if .SlaveHosts10 -}}
   {{ template "slaves_and_lag" .SlaveHosts10 }}
+{{- else -}}
+  {{ template "slaves_and_log_none" }}
 {{- end }}
 {{ template "cluster" .ClusterInfo }}
 {{ template "databases" .AllDatabases }}
@@ -43,34 +58,35 @@ var TPL = `{{define "report"}}
 ` +
 	`{{ define "slaves_and_lag" -}}
 ##### --- Slave and the lag with Master --- ####
-{{ if . -}}
-+----------------------+----------------------+----------------------------------------------------+
++----------------------+----------------------+--------------------------------+-------------------+
 |  Application Name    |    Client Address    |           State                |      Lag          |
-+----------------------+----------------------+----------------------------------------------------+
++----------------------+----------------------+--------------------------------+-------------------+
 {{ range . -}}` +
-	`| {{ printf "%-20s" .ApplicationName }} ` +
-	`| {{ printf "%-20s" .ClientAddr }} ` +
-	`| {{ printf "%-50s" .State }} ` +
-	`|  {{ printf "% 4.2f" .ByteLag }}` +
-	`{{ end -}} {{/* end define */}}
+	`| {{ convertnullstring .ApplicationName | printf "%-20s" }} | ` +
+	`{{ convertnullstring .ClientAddr | printf "%-20s" }} | ` +
+	`{{ convertnullstring .State | printf "%-30s" }} | ` +
+	`{{ convertnullfloat64 .ByteLag | printf "% 17.2f" }} |` + "\n" +
+	`{{ end -}}
 +----------------------+----------------------+----------------------------------------------------+
-{{- else -}}
+{{ end -}} {{/* end define */}}
+` +
+	`{{- define "slaves_and_log_none" -}}
+##### --- Slave and the lag with Master --- ####
 There are no slave hosts
-{{ end -}}
-{{ end -}}
+{{ end -}} {{/* end define */}}
 ` +
 	`{{ define "cluster" -}}
 ##### --- Cluster Information --- ####
 {{ if . -}}
 +------------------------------------------------------------------------------------------------------+
-{{- range . }}                                                                                 
- Usename        : {{ printf "%-20s" .Usename }}                                               
- Time           : {{ printf "%v" .Time }}                                     
- Client Address : {{ printf "%-20s" .ClientAddr }}                            
- Client Hostname: {{ trim .ClientHostname.String 80 }}                        
- Version        : {{ trim .Version 80 }}                                      
- Started        : {{ printf "%v" .Started }}                                  
- Is Slave       : {{ .IsSlave }}                                              
+{{- range . }}
+ Usename        : {{ trim 20 .Usename }}
+ Time           : {{ printf "%v" .Time }}
+ Client Address : {{ convertnullstring .ClientAddr | trim 20 }}
+ Client Hostname: {{ convertnullstring .ClientHostname | trim 90 }}
+ Version        : {{ trim 90 .Version }}
+ Started        : {{ printf "%v" .Started }}
+ Is Slave       : {{ .IsSlave }}
 +------------------------------------------------------------------------------------------------------+
 {{ end -}}
 {{ else -}}
@@ -97,7 +113,7 @@ Database: {{ $dbname }}
 +----------------------+------------+
 |      Index Name      |    Ratio   |
 +----------------------+------------+
-| {{ printf "%-20s" .Name }} |     {{ printf "% 5.2f" .Ratio.Float64 }}  |
+| {{ printf "%-20s" .Name }} |     {{ convertnullfloat64 .Ratio | printf "% 5.2f" }}  |
 +----------------------+------------+
 {{ else -}}
   No stats available
@@ -144,10 +160,10 @@ Database: {{ $dbname }}
 +----------------------+------------+---------+----------------------+---------+
 {{ range . -}}` +
 	`| {{ printf "%-20s" .Usename }} | ` +
-	`{{ printf "%-20s" .Client.String }} | ` +
-	`{{ printf "%-20s" .State.String }} | ` +
-	`{{ printf "% 7d" .Count.Int64 }} |` + "\n" +
-	`{{ end -}}                     
+	`{{ convertnullstring .Client | printf "%-20s" }} | ` +
+	`{{ convertnullstring .State | printf "%-20s" }} | ` +
+	`{{ convertnullint64 .Count | printf "% 7d" }} |` + "\n" +
+	`{{ end -}}
 +----------------------+------------+---------+----------------------+---------+
 {{ else -}}
   No stats available
@@ -266,8 +282,8 @@ Database: {{ $dbname }}
 	`{{ range . -}}
 | {{ printf "%-50s" .Relname }} ` +
 	`|   {{ printf "%1s" .Relkind }}  ` +
-	`| {{ printf "%-30s" .Datname }} ` +
-	`| {{ printf "% 7d" .Count.Int64 }} ` +
+	`| {{ convertnullstring .Datname | printf "%-30s" }} ` +
+	`| {{ convertnullint64 .Count | printf "% 7d" }} ` +
 	"|\n" +
 	"{{ end }}" +
 	"+----------------------------------------------------" +
@@ -286,7 +302,7 @@ Database: {{ $dbname }}
 	"                           Value                     \n" +
 	`{{ range $name, $values := . -}}` +
 	` {{ printf "%-45s" .Name }} ` +
-	`: {{ printf "%-60s" .Setting }}  ` +
+	`: {{ printf "%s" .Setting }}` +
 	"\n" +
 	"{{ end }}" +
 	"{{ end }}" +

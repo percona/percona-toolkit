@@ -33,7 +33,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$latest_file_io (
   thread,
   file,
@@ -41,15 +41,15 @@ VIEW x$latest_file_io (
   operation,
   requested
 ) AS
-SELECT IF(id IS NULL, 
-             CONCAT(SUBSTRING_INDEX(name, '/', -1), ':', thread_id), 
+SELECT IF(id IS NULL,
+             CONCAT(SUBSTRING_INDEX(name, '/', -1), ':', thread_id),
              CONCAT(user, '@', host, ':', id)
-          ) thread, 
-       object_name file, 
-       timer_wait AS latency, 
-       operation, 
+          ) thread,
+       object_name file,
+       timer_wait AS latency,
+       operation,
        number_of_bytes AS requested
-  FROM performance_schema.events_waits_history_long 
+  FROM performance_schema.events_waits_history_long
   JOIN performance_schema.threads USING (thread_id)
   LEFT JOIN information_schema.processlist ON processlist_id = id
  WHERE object_name IS NOT NULL

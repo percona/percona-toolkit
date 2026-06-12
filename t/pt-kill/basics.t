@@ -17,13 +17,14 @@ use Data::Dumper;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
+require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 6;
@@ -83,7 +84,7 @@ like(
 # #############################################################################
 # Reconnect if cxn lost.
 # #############################################################################
-$master_dbh->do("CREATE DATABASE IF NOT EXISTS pt_kill_test");
+$source_dbh->do("CREATE DATABASE IF NOT EXISTS pt_kill_test");
 
 system(qq($trunk/util/kill-mysql-process db=pt_kill_test wait=2 &));
 
@@ -109,6 +110,6 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

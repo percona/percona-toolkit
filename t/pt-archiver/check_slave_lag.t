@@ -17,20 +17,20 @@ require "$trunk/bin/pt-archiver";
 
 my $dp   = new DSNParser(opts=>$dsn_opts);
 my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh  = $sb->get_dbh_for('master');
-my $dbh2 = $sb->get_dbh_for('slave1');
+my $dbh  = $sb->get_dbh_for('source');
+my $dbh2 = $sb->get_dbh_for('replica1');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( !$dbh2 ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 elsif ( $sb->is_cluster_mode ) {
    plan skip_all => 'Not for PXC',
 }
 elsif ( $sandbox_version ge '5.6' ) {
-   plan skip_all => 'Slave trick does not work on MySQL 5.6+';
+   plan skip_all => 'Replica trick does not work on MySQL 5.6+';
 }
 
 my $output;
@@ -39,10 +39,10 @@ my $cnf = "/tmp/12345/my.sandbox.cnf";
 my $cmd = "$trunk/bin/pt-archiver";
 
 # #############################################################################
-# Issue 758: Make mk-archiver wait for a slave
+# Issue 758: Make mk-archiver wait for a replica
 # #############################################################################
 
-$sb->load_file('master', 't/pt-archiver/samples/issue_758.sql');
+$sb->load_file('source', 't/pt-archiver/samples/issue_758.sql');
 
 is_deeply(
    $dbh->selectall_arrayref('select * from issue_758.t'),
@@ -50,20 +50,20 @@ is_deeply(
    'Table not purged yet (issue 758)'
 );
 
-# Once this goes through repl, the slave will sleep causing
-# seconds behind master to increase > 0.
+# Once this goes through repl, the replica will sleep causing
+# seconds behind source to increase > 0.
 system('/tmp/12345/use -e "insert into issue_758.t select sleep(3)"');
 
-# Slave seems to be lagging now so the first row should get purged
+# Replica seems to be lagging now so the first row should get purged
 # immediately, then the script should wait about 2 seconds until
-# slave lag is gone.
-system("$cmd --source F=$cnf,D=issue_758,t=t --purge --where 'i>0' --check-slave-lag h=127.1,P=12346,u=msandbox,p=msandbox >/dev/null 2>&1 &");
+# replica lag is gone.
+system("$cmd --source F=$cnf,D=issue_758,t=t --purge --where 'i>0' --check-${replica_name}-lag h=127.1,P=12346,u=msandbox,p=msandbox &");
 
 sleep 1;
 is_deeply(
    $dbh2->selectall_arrayref('select * from issue_758.t'),
    [[1],[2]],
-   'No changes on slave yet (issue 758)'
+   'No changes on replica yet (issue 758)'
 );
 
 is_deeply(
@@ -72,7 +72,7 @@ is_deeply(
    'First row purged (issue 758)'
 );
 
-# The script it waiting for slave lag so no more rows should be purged yet.
+# The script it waiting for replica lag so no more rows should be purged yet.
 sleep 1;
 is_deeply(
    $dbh->selectall_arrayref('select * from issue_758.t'),
@@ -80,19 +80,19 @@ is_deeply(
    'Still only first row purged (issue 758)'
 );
 
-# After this sleep the slave should have executed the INSERT SELECT,
+# After this sleep the replica should have executed the INSERT SELECT,
 # which returns 0, and the 2 purge/delete statments from above.
 sleep 3;
 is_deeply(
    $dbh->selectall_arrayref('select * from issue_758.t'),
    [[0]],
-   'Final table state on master (issue 758)'
+   'Final table state on source (issue 758)'
 );
 
 is_deeply(
    $dbh2->selectall_arrayref('select * from issue_758.t'),
    [[0]],
-   'Final table state on slave (issue 758)'
+   'Final table state on replica (issue 758)'
 );
 
 # #############################################################################

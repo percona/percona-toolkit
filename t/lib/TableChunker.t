@@ -15,12 +15,13 @@ use TableParser;
 use TableChunker;
 use Quoter;
 use DSNParser;
+use VersionParser;
 use Sandbox;
 use PerconaTest;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -550,7 +551,7 @@ SKIP: {
 # #############################################################################
 # Issue 47: TableChunker::range_num broken for very large bigint
 # #############################################################################
-$sb->load_file('master', 't/lib/samples/issue_47.sql');
+$sb->load_file('source', 't/lib/samples/issue_47.sql');
 $t = $tp->parse( $tp->get_create_table($dbh, 'test', 'issue_47') );
 my %params = $c->get_range_statistics(
    dbh        => $dbh,
@@ -591,7 +592,7 @@ is(
    'Adds USE INDEX (issue 8)'
 );
 
-$sb->load_file('master', 't/lib/samples/issue_8.sql');
+$sb->load_file('source', 't/lib/samples/issue_8.sql');
 $t = $tp->parse( $tp->get_create_table($dbh, 'test', 'issue_8') );
 my @candidates = $c->find_chunk_columns(tbl_struct=>$t);
 is_deeply(
@@ -628,7 +629,13 @@ $Data::Dumper::Quotekeys = 0;
 # is ignored then the chunks are much better and the first chunk will
 # cover the zero row.
 
-$sb->load_file('master', 't/lib/samples/issue_941.sql');
+$sb->load_file('source', 't/lib/samples/issue_941.sql');
+
+# We use empty SQL mode here, because zero dates do not work with 
+# the default SQL mode. We do not adjust the tool, because, if users
+# have zero or invalid dates, they can adjust SQL mode when using Toolkit.
+my $old_sql_mode = ($dbh->selectrow_array('SELECT @@sql_mode'))[0];
+$dbh->do("set sql_mode=''");
 
 sub test_zero_row {
    my ( $tbl, $range, $chunks, $zero_chunk ) = @_;
@@ -758,7 +765,7 @@ test_zero_row(
 # #############################################################################
 # Issue 602: mk-table-checksum issue with invalid dates
 # #############################################################################
-$sb->load_file('master', 't/pt-table-checksum/samples/issue_602.sql');
+$sb->load_file('source', 't/pt-table-checksum/samples/issue_602.sql');
 $t = $tp->parse( $tp->get_create_table($dbh, 'issue_602', 't') );
 %params = $c->get_range_statistics(
    dbh        => $dbh,
@@ -840,6 +847,7 @@ is_deeply(
    "Gets valid min with enough tries"
 );
 
+$dbh->do("set sql_mode='$old_sql_mode'");
 
 # #############################################################################
 # Test issue 941 + issue 602
@@ -970,7 +978,7 @@ is_deeply(
    "get_first_chunkable_column(), bad preferred column and index"
 );
 
-$sb->load_file('master', "t/lib/samples/t1.sql", 'test');
+$sb->load_file('source', "t/lib/samples/t1.sql", 'test');
 $t = $tp->parse( load_file('t/lib/samples/t1.sql') );
 
 is_deeply(
@@ -980,7 +988,7 @@ is_deeply(
 );
 
 # char chunking ###############################################################
-$sb->load_file('master', "t/lib/samples/char-chunking/ascii.sql", 'test');
+$sb->load_file('source', "t/lib/samples/char-chunking/ascii.sql", 'test');
 $t = $tp->parse( $tp->get_create_table($dbh, 'test', 'ascii') );
 
 is_deeply(
@@ -1173,7 +1181,7 @@ SKIP: {
    );
 }
 
-$sb->load_file('master', "t/lib/samples/char-chunking/world-city.sql", 'test');
+$sb->load_file('source', "t/lib/samples/char-chunking/world-city.sql", 'test');
 $t = $tp->parse( $tp->get_create_table($dbh, 'test', 'world_city') );
 %params = $c->get_range_statistics(
    dbh        => $dbh,
@@ -1262,7 +1270,7 @@ SKIP: {
 # ############################################################################
 # Bug 821673: pt-table-checksum doesn't included --where in min max queries
 # ############################################################################
-$sb->load_file('master', "t/pt-table-checksum/samples/where01.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/where01.sql");
 $t = $tp->parse( $tp->get_create_table($dbh, 'test', 'checksum_test') );
 %params = $c->get_range_statistics(
    dbh        => $dbh,
@@ -1284,7 +1292,7 @@ is(
 );
 
 # char chunking
-$sb->load_file('master', "t/pt-table-checksum/samples/where02.sql");
+$sb->load_file('source', "t/pt-table-checksum/samples/where02.sql");
 $t = $tp->parse( $tp->get_create_table($dbh, 'test', 'checksum_test') );
 %params = $c->get_range_statistics(
    dbh        => $dbh,
@@ -1320,7 +1328,7 @@ is(
 # #############################################################################
 # Bug 967451: Char chunking doesn't quote column name
 # #############################################################################
-$sb->load_file('master', "t/lib/samples/char-chunking/ascii.sql", 'test');
+$sb->load_file('source', "t/lib/samples/char-chunking/ascii.sql", 'test');
 $dbh->do("ALTER TABLE test.ascii CHANGE COLUMN c `key` char(64) NOT NULL");
 $t = $tp->parse( $tp->get_create_table($dbh, 'test', 'ascii') );
 
@@ -1380,7 +1388,7 @@ is(
 # Bug 1034717: Divison by zero error when all columns tsart with the same char
 # https://bugs.launchpad.net/percona-toolkit/+bug/1034717
 # #############################################################################
-$sb->load_file('master', "t/lib/samples/bug_1034717.sql", 'test');
+$sb->load_file('source', "t/lib/samples/bug_1034717.sql", 'test');
 $t = $tp->parse( $tp->get_create_table($dbh, 'bug_1034717', 'table1') );
 
 %params = $c->get_range_statistics(

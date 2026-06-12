@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Ireland Ltd.
+# This program is copyright 2009-2011 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -54,7 +54,7 @@ our @EXPORT      = qw(
    parse_file
    wait_until
    wait_for
-   wait_until_slave_running
+   wait_until_replica_running
    test_log_parser
    test_protocol_parser
    test_packet_parser
@@ -68,6 +68,11 @@ our @EXPORT      = qw(
    $sandbox_version
    $can_load_data
    $test_diff
+   $source_name
+   $source_status
+   $source_reset
+   $source_change
+   $replica_name
 );
 
 our $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -77,6 +82,19 @@ eval {
    chomp(my $v = `$trunk/sandbox/test-env version 2>/dev/null`);
    $sandbox_version = $v if $v;
 };
+
+our $source_name = 'source';
+our $source_status = 'binary log';
+our $source_reset = 'binary logs and gtids';
+our $source_change = 'replication source';
+our $replica_name = 'replica';
+if ( $sandbox_version lt '8.1' || ( $ENV{FORK} || "" eq 'mariadb' ) ) {
+   $source_name = 'master';
+   $source_status = 'master';
+   $source_reset = 'master';
+   $source_change = 'master';
+   $replica_name = 'slave';
+}
 
 our $can_load_data = can_load_data();
 
@@ -137,6 +155,12 @@ our $dsn_opts = [
       dsn  => 'user',
       copy => 1,
    },
+   {
+      key  => 's',
+      desc => 'Use SSL',
+      dsn  => 'mysql_ssl',
+      copy => 1,
+   },
 ];
 
 # Runs code, captures and returns its output.
@@ -152,7 +176,7 @@ sub output {
 
    my $output = '';
    {
-      if ( $file ) { 
+      if ( $file ) {
          open *output_fh, '>', $file
             or die "Cannot open file $file: $OS_ERROR";
       }
@@ -400,7 +424,7 @@ sub test_log_parser {
          misc       => $args{misc},
          oktorun    => $args{oktorun},
       );
-      while ( my $e = $p->parse_event(%parser_args) ) { 
+      while ( my $e = $p->parse_event(%parser_args) ) {
          push @e, $e;
       }
       close $fh;
@@ -637,7 +661,7 @@ sub no_diff {
 
    # diff returns 0 if there were no differences,
    # so !0 = 1 = no diff in our testing parlance.
-   $retval = $retval >> 8; 
+   $retval = $retval >> 8;
 
    if ( $retval ) {
       if ( $ENV{UPDATE_SAMPLES} || $args{update_sample} ) {
@@ -653,7 +677,7 @@ sub no_diff {
    if ( $res_file ne $tmp_file ) {
       unlink $res_file if -f $res_file;
    }
-   
+
    if ( $cmp_file ne $expected_output ) {
       unlink $cmp_file if -f $cmp_file;
    }
@@ -742,18 +766,34 @@ sub normalize_checksum_results {
    return $normal_output;
 }
 
-sub get_master_binlog_pos {
+sub get_source_binlog_pos {
    my ($dbh) = @_;
-   my $sql = "SHOW MASTER STATUS";
+
+   my $vp = VersionParser->new($dbh);
+   my $source_name = 'source';
+   if ( $vp->cmp('8.1') < 0 || $vp->flavor() =~ m/maria/i ) {
+      $source_name = 'master';
+   }
+
+   my $sql = "SHOW ${source_status} STATUS";
    my $ms  = $dbh->selectrow_hashref($sql);
    return $ms->{position};
 }
 
-sub get_slave_pos_relative_to_master {
+sub get_replica_pos_relative_to_source {
    my ($dbh) = @_;
-   my $sql = "SHOW SLAVE STATUS";
+
+   my $vp = VersionParser->new($dbh);
+   my $source_name = 'source';
+   my $replica_name = 'replica';
+   if ( $vp->cmp('8.1') < 0 || $vp->flavor() =~ m/maria/i ) {
+      $source_name = 'master';
+      $replica_name = 'slave';
+   }
+
+   my $sql = "SHOW ${replica_name} STATUS";
    my $ss  = $dbh->selectrow_hashref($sql);
-   return $ss->{exec_master_log_pos};
+   return $ss->{"exec_${source_name}_log_pos"};
 }
 
 # Like output(), but forks a process to execute the coderef.
@@ -802,7 +842,7 @@ sub full_output {
 
    unlink $file;
    unlink $file2;
-   
+
    return ($output, $status);
 }
 

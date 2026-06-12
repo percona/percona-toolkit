@@ -83,7 +83,7 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 
 # Connect to sandbox now to make sure it's running.
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('source');
 my $slave_dbh  = $sb->get_dbh_for('slave1');
 if ( !$master_dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
@@ -97,7 +97,7 @@ else {
 
 
 $sb->create_dbs($master_dbh, [qw(test)]);
-$sb->load_file('master', 't/lib/samples/issue_11.sql');
+$sb->load_file('source', 't/lib/samples/issue_11.sql');
 
 my $tbl = $tp->parse(
    $tp->get_create_table($master_dbh, 'test', 'issue_11'));

@@ -201,6 +201,19 @@ wsrep_cluster_size                          100
       HandlerSocket NoSQL | Not Supported
            Fast Hash UDFs | Unknown
 # Percona XtraDB Cluster #####################################
+             Cluster Name | pt_sandbox_cluster
+          Cluster Address | gcomm://
+             Cluster Size | 3
+            Cluster Nodes | 192.168.0.100,192.168.0.100,192.168.0.100
+                Node Name | 12345
+              Node Status | Primary
+               SST Method | rsync
+            Slave Threads | 2
+       Ignore Split Brain | false
+            Ignore Quorum | false
+              gcache Size | 128M
+         gcache Directory | /tmp/12345/data/
+              gcache Name | /tmp/12345/data//galera.cache
 # Plugins ####################################################
        InnoDB compression | ACTIVE
 # Query cache ################################################

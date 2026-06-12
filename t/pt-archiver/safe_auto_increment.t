@@ -17,10 +17,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 5;
@@ -34,7 +34,7 @@ my $cmd = "$trunk/bin/pt-archiver";
 $sb->create_dbs($dbh, ['test']);
 
 # Safe auto-increment behavior.
-$sb->load_file('master', 't/pt-archiver/samples/table12.sql');
+$sb->load_file('source', 't/pt-archiver/samples/table12.sql');
 $output = output(
    sub { pt_archiver::main(qw(--purge --where 1=1), "--source", "D=test,t=table_12,F=$cnf") },
 );
@@ -43,7 +43,7 @@ $output = `/tmp/12345/use -N -e "select min(a),count(*) from test.table_12"`;
 like($output, qr/^3\t1$/, 'Did not touch the max auto_increment');
 
 # Safe auto-increment behavior, disabled.
-$sb->load_file('master', 't/pt-archiver/samples/table12.sql');
+$sb->load_file('source', 't/pt-archiver/samples/table12.sql');
 $output = output(
    sub { pt_archiver::main(qw(--no-safe-auto-increment --purge --where 1=1), "--source", "D=test,t=table_12,F=$cnf") },
 );

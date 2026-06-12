@@ -32,7 +32,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$user_summary_by_file_io (
   user,
   ios,
@@ -40,7 +40,7 @@ VIEW x$user_summary_by_file_io (
 ) AS
 SELECT IF(user IS NULL, 'background', user) AS user,
        SUM(count_star) AS ios,
-       SUM(sum_timer_wait) AS io_latency 
+       SUM(sum_timer_wait) AS io_latency
   FROM performance_schema.events_waits_summary_by_user_by_event_name
  WHERE event_name LIKE 'wait/io/file/%'
  GROUP BY IF(user IS NULL, 'background', user)

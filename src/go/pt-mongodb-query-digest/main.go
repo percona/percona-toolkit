@@ -1,9 +1,23 @@
+// This program is copyright 2017-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -11,8 +25,13 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/term"
+
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
@@ -21,14 +40,10 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
-	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
-	TOOLNAME = "pt-mongodb-query-digest"
+	toolname = "pt-mongodb-query-digest"
 
 	DEFAULT_AUTHDB          = "admin"
 	DEFAULT_HOST            = "localhost:27017"
@@ -37,11 +52,12 @@ const (
 	DEFAULT_SKIPCOLLECTIONS = "system.profile" // comma separated list
 )
 
+// We do not set anything here, these variables are defined by the Makefile
 var (
-	Build     string = "01-01-1980" //nolint
-	GoVersion string = "1.8"        //nolint
-	Version   string = "3.0.1"      //nolint
-	Commit    string                //nolint
+	Build     string //nolint
+	GoVersion string //nolint
+	Version   string //nolint
+	Commit    string //nolint
 )
 
 type cliOptions struct {
@@ -70,7 +86,6 @@ type report struct {
 }
 
 func main() {
-
 	opts, err := getOptions()
 	if err != nil {
 		log.Errorf("error processing command line arguments: %s", err)
@@ -88,16 +103,16 @@ func main() {
 	log.SetLevel(logLevel)
 
 	if opts.Version {
-		fmt.Println(TOOLNAME)
+		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		fmt.Printf("Commit: %s\n", Commit)
 		return
 	}
 
-	conf := config.DefaultConfig(TOOLNAME)
+	conf := config.DefaultConfig(toolname)
 	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
-		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
 		} else if advice != "" {
@@ -132,7 +147,7 @@ func main() {
 		log.Fatalf("Cannot connect to MongoDB: %s", err)
 	}
 
-	isProfilerEnabled, err := isProfilerEnabled(ctx, clientOptions)
+	isProfilerEnabled, err := isProfilerEnabled(ctx, clientOptions, opts.Database)
 	if err != nil {
 		log.Errorf("Cannot get profiler status: %s", err.Error())
 		os.Exit(4)
@@ -161,7 +176,7 @@ func main() {
 		panic(err)
 	}
 
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters())
 	s := stats.New(fp)
 	prof := profiler.NewProfiler(cursor, filters, nil, s)
 	prof.Start(ctx)
@@ -193,7 +208,6 @@ func main() {
 	}
 
 	fmt.Println(string(out))
-
 }
 
 func formatResults(rep report, outputFormat string) ([]byte, error) {
@@ -329,7 +343,7 @@ func getOptions() (*cliOptions, error) {
 
 	if gop.IsSet("password") && opts.Password == "" {
 		print("Password: ")
-		pass, err := gopass.GetPasswd()
+		pass, err := term.ReadPassword(0)
 		if err != nil {
 			return nil, err
 		}
@@ -360,7 +374,7 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 
 func getHeaders(opts *cliOptions) []string {
 	h := []string{
-		fmt.Sprintf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z)),
+		fmt.Sprintf("%s - %s\n", toolname, time.Now().Format(time.RFC1123Z)),
 		fmt.Sprintf("Host: %s\n", opts.Host),
 		fmt.Sprintf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections),
 	}
@@ -368,7 +382,6 @@ func getHeaders(opts *cliOptions) []string {
 }
 
 func getQueryTemplate() string {
-
 	t := `
 # Query {{.Rank}}: {{printf "% 0.2f" .QPS}} QPS, ID {{.ID}}
 # Ratio {{Format .Ratio 7.2}} (docs scanned/returned)
@@ -400,7 +413,7 @@ func getTotalsTemplate() string {
 # Docs Scanned        {{printf "% 4.0f" .Scanned.Pct}}   {{Format .Scanned.Total 7.2}}    {{Format .Scanned.Min 7.2}}    {{Format .Scanned.Max 7.2}}    {{Format .Scanned.Avg 7.2}}    {{Format .Scanned.Pct95 7.2}}    {{Format .Scanned.StdDev 7.2}}    {{Format .Scanned.Median 7.2}}
 # Docs Returned       {{printf "% 4.0f" .Returned.Pct}}   {{Format .Returned.Total 7.2}}    {{Format .Returned.Min 7.2}}    {{Format .Returned.Max 7.2}}    {{Format .Returned.Avg 7.2}}    {{Format .Returned.Pct95 7.2}}    {{Format .Returned.StdDev 7.2}}    {{Format .Returned.Median 7.2}}
 # Bytes sent          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
-# 
+#
 `
 	return t
 }
@@ -412,15 +425,15 @@ type multiSorter struct {
 	less    []lessFunc
 }
 
-// Sort sorts the argument slice according to the less functions passed to OrderedBy.
+// Sort sorts the argument slice according to the less functions passed to orderedBy.
 func (ms *multiSorter) Sort(queries []stats.QueryStats) {
 	ms.queries = queries
 	sort.Sort(ms)
 }
 
-// OrderedBy returns a Sorter that sorts using the less functions, in order.
+// orderedBy returns a Sorter that sorts using the less functions, in order.
 // Call its Sort method to sort the data.
-func OrderedBy(less ...lessFunc) *multiSorter {
+func orderedBy(less ...lessFunc) *multiSorter {
 	return &multiSorter{
 		less: less,
 	}
@@ -497,46 +510,63 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 			}
 
 		//
-		case "docs-scanned":
+		case "docs-examined":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Scanned.Max < c2.Scanned.Max
+				return c1.DocsExamined.Max < c2.DocsExamined.Max
 			}
-		case "-docs-scanned":
+		case "-docs-examined":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Scanned.Max > c2.Scanned.Max
+				return c1.DocsExamined.Max > c2.DocsExamined.Max
 			}
 
 		//
 		case "docs-returned":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Returned.Max < c2.Scanned.Max
+				return c1.Returned.Max < c2.DocsExamined.Max
 			}
 		case "-docs-returned":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Returned.Max > c2.Scanned.Max
+				return c1.Returned.Max > c2.DocsExamined.Max
 			}
 		}
 		// count,query-time,docs-scanned, docs-returned. - in front of the field name denotes reverse order.")
 		sortFuncs = append(sortFuncs, f)
 	}
 
-	OrderedBy(sortFuncs...).Sort(queries)
+	orderedBy(sortFuncs...).Sort(queries)
 	return queries
-
 }
 
-func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions) (bool, error) {
+func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions, dbname string) (bool, error) {
 	var ps proto.ProfilerStatus
 	replicaMembers, err := util.GetReplicasetMembers(ctx, clientOptions)
-	if err != nil {
+	if err != nil && !errors.Is(err, util.ShardingNotEnabledError) {
 		return false, err
 	}
 
+	if len(replicaMembers) == 0 {
+		client, err := mongo.NewClient(clientOptions)
+		if err != nil {
+			return false, err
+		}
+		if err = client.Connect(ctx); err != nil {
+			return false, err
+		}
+
+		client.Database(dbname).RunCommand(ctx, primitive.M{"profile": -1}).Decode(&ps)
+
+		if ps.Was == 0 {
+			return false, nil
+		}
+	}
+
 	for _, member := range replicaMembers {
-		// Stand alone instances return state = REPLICA_SET_MEMBER_STARTUP
 		client, err := util.GetClientForHost(clientOptions, member.Name)
 		if err != nil {
 			continue
+		}
+		if err := client.Connect(ctx); err != nil {
+			log.Fatalf("Cannot connect to MongoDB: %s", err)
 		}
 
 		isReplicaEnabled := isReplicasetEnabled(ctx, client)
@@ -548,7 +578,7 @@ func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions
 		if isReplicaEnabled && member.State != proto.REPLICA_SET_MEMBER_PRIMARY {
 			continue
 		}
-		if err := client.Database("admin").RunCommand(ctx, primitive.M{"profile": -1}).Decode(&ps); err != nil {
+		if err := client.Database(dbname).RunCommand(ctx, primitive.M{"profile": -1}).Decode(&ps); err != nil {
 			continue
 		}
 

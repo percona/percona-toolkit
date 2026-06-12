@@ -17,10 +17,10 @@ require "$trunk/bin/pt-table-sync";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 3;
@@ -30,7 +30,7 @@ my $output;
 my @args = (qw(-F /tmp/12345/my.sandbox.cnf --print), 'D=issue_641,t=lt',
             'D=issue_641,t=rt');
 
-$sb->load_file('master', "t/lib/samples/issue_641.sql");
+$sb->load_file('source', "t/lib/samples/issue_641.sql");
 
 # #############################################################################
 # Issue 641: Make mk-table-sync use hex for binary/blob data

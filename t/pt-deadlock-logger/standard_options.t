@@ -17,14 +17,14 @@ require "$trunk/bin/pt-deadlock-logger";
 
 my $dp   = new DSNParser(opts=>$dsn_opts);
 my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;
-my $dsn  = $sb->dsn_for('master');
+my $dsn  = $sb->dsn_for('source');
 my @args = ($dsn, qw(--iterations 1));
 
 $sb->wipe_clean($dbh);
@@ -67,7 +67,7 @@ $output = output(
 
 like(
    $output,
-   qr{PID file $pid_file already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 
@@ -78,7 +78,7 @@ unlink $pid_file if -f $pid_file;
 # #############################################################################
 $dbh->do('USE test');
 $dbh->do('DROP TABLE IF EXISTS deadlocks');
-$sb->load_file('master', 't/pt-deadlock-logger/samples/deadlocks_tbl.sql', 'test');
+$sb->load_file('source', 't/pt-deadlock-logger/samples/deadlocks_tbl.sql', 'test');
 
 $output = `$trunk/bin/pt-deadlock-logger $dsn --dest D=test,t=deadlocks --daemonize --run-time 10 --interval 1 --pid $pid_file 1>/dev/null 2>/dev/null`;
 
@@ -127,7 +127,7 @@ $output = output(
 
 like(
    $output,
-   qr/PID file $pid_file already exists/,
+   qr/PID file $pid_file exists/,
    'Does not run if PID file already exists'
 );
 

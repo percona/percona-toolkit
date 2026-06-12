@@ -21,18 +21,18 @@ require "$trunk/bin/pt-table-sync";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica1_dbh = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave1_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave1';
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica1';
 }
 
-my $master_dsn = $sb->dsn_for('master');
-my $slave1_dsn = $sb->dsn_for('slave1');
+my $source_dsn = $sb->dsn_for('source');
+my $replica1_dsn = $sb->dsn_for('replica1');
 
 my $output;
 my $sample = "t/pt-table-sync/samples";
@@ -47,16 +47,16 @@ my $sample = "t/pt-table-sync/samples";
 # https://bugs.launchpad.net/percona-toolkit/+bug/918056
 # #############################################################################
 
-# The slave has 49 extra rows on the low end, e.g. master has rows 50+
-# but slave has rows 1-49 and 50+.  This tests syncing the lower oob chunk.
-$sb->create_dbs($master_dbh, [qw(bug918056)]);
-$sb->load_file('master', "$sample/bug-918056-master.sql", "bug918056");
-$sb->load_file('slave1', "$sample/bug-918056-slave.sql",  "bug918056");
+# The replica has 49 extra rows on the low end, e.g. source has rows 50+
+# but replica has rows 1-49 and 50+.  This tests syncing the lower oob chunk.
+$sb->create_dbs($source_dbh, [qw(bug918056)]);
+$sb->load_file('source', "$sample/bug-918056-master.sql", "bug918056");
+$sb->load_file('replica1', "$sample/bug-918056-slave.sql",  "bug918056");
 
 ok(
    no_diff(
       sub {
-         pt_table_sync::main($master_dsn, qw(--replicate percona.checksums),
+         pt_table_sync::main($source_dsn, qw(--replicate percona.checksums),
             qw(--print))
       },
       "$sample/bug-918056-print.txt",
@@ -66,13 +66,13 @@ ok(
 );
 
 # Test syncing the upper oob chunk.
-$sb->load_file('master', "$sample/upper-oob-master.sql");
-$sb->load_file('slave1', "$sample/upper-oob-slave.sql");
+$sb->load_file('source', "$sample/upper-oob-master.sql");
+$sb->load_file('replica1', "$sample/upper-oob-slave.sql");
 
 ok(
    no_diff(
       sub {
-         pt_table_sync::main($master_dsn, qw(--replicate percona.checksums),
+         pt_table_sync::main($source_dsn, qw(--replicate percona.checksums),
             qw(--print))
       },
       "$sample/upper-oob-print.txt",
@@ -84,7 +84,7 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave1_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica1_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

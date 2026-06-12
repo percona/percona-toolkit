@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # report_formatting package
 # ###########################################################################
@@ -74,9 +73,9 @@ section () {
 }
 
 NAME_VAL_LEN=12
-name_val () {
+name_val() {
    # We use $NAME_VAL_LEN here because the two summary tools, as well as
-   # the tests, use diffent widths.
+   # the tests, use different widths.
    printf "%+*s | %s\n" "${NAME_VAL_LEN}" "$1" "$2"
 }
 
@@ -113,7 +112,7 @@ shorten() {
    '
 }
 
-group_concat () {
+group_concat() {
    sed -e '{H; $!d;}' -e 'x' -e 's/\n[[:space:]]*\([[:digit:]]*\)[[:space:]]*/, \1x/g' -e 's/[[:space:]][[:space:]]*/ /g' -e 's/, //' "${1}"
 }
 

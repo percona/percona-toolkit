@@ -1,0 +1,16 @@
+#!/bin/bash
+
+for tool in bin/*; do 
+	shasum=$(md5sum $tool)
+	util/update-modules $tool; 
+	rc="$?"
+	if [ $? -ne 0 ]; then
+		echo "'util/update-modules $tool' exited with code $rc"
+	fi
+	
+	updated_shasum=$(md5sum $tool)
+	if [ "$shasum" != "$updated_shasum" ]; then
+		echo "$tool had unsynced changes from lib, md5sum before and after running './util/update-modules $tool' is different"
+		exit 1
+	fi
+done

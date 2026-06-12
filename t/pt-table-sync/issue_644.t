@@ -18,29 +18,29 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 3;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
+$sb->create_dbs($source_dbh, [qw(test)]);
 
 # #############################################################################
 # Issue 644: Another possible infinite loop with mk-table-sync Nibble
 # #############################################################################
 diag(`/tmp/12345/use < $trunk/t/pt-table-sync/samples/issue_644.sql`);
 sleep 1;
-$output = `$trunk/bin/pt-table-sync --algo Nibble --sync-to-master h=127.1,P=12346,u=msandbox,p=msandbox -d issue_644 --print --chunk-size 2 -v`;
+$output = `$trunk/bin/pt-table-sync --algo Nibble --sync-to-source h=127.1,P=12346,u=msandbox,p=msandbox -d issue_644 --print --chunk-size 2 -v`;
 $output =~ s/\d\d:\d\d:\d\d/00:00:00/g;
 ok(
    no_diff(
@@ -52,7 +52,7 @@ ok(
 );
 
 # Thanks to issue 568, this table can be chunked on the char col.
-$output = `$trunk/bin/pt-table-sync --algo Chunk --sync-to-master h=127.1,P=12346,u=msandbox,p=msandbox -d issue_644 --print --chunk-size 2 -v`;
+$output = `$trunk/bin/pt-table-sync --algo Chunk --sync-to-source h=127.1,P=12346,u=msandbox,p=msandbox -d issue_644 --print --chunk-size 2 -v`;
 $output =~ s/\d\d:\d\d:\d\d/00:00:00/g;
 ok(
    no_diff(
@@ -66,7 +66,7 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -14,6 +14,7 @@ use Test::More;
 use Sandbox;
 use OptionParser;
 use DSNParser;
+use VersionParser;
 use Quoter;
 use PerconaTest;
 use Cxn;
@@ -23,9 +24,9 @@ use Data::Dumper;
 my $q   = new Quoter();
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave1_dbh = $sb->get_dbh_for('slave1');
-my $slave1_dsn = $sb->dsn_for('slave1');
+my $master_dbh = $sb->get_dbh_for('source');
+my $slave1_dbh = $sb->get_dbh_for('replica1');
+my $slave1_dsn = $sb->dsn_for('replica1');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -125,7 +126,7 @@ ok(
    "cxn->connect()"
 );
 
-my ($row) = $cxn->dbh()->selectrow_hashref('SHOW MASTER STATUS');
+my ($row) = $cxn->dbh()->selectrow_hashref("SHOW ${source_status} STATUS");
 ok(
    exists $row->{binlog_ignore_db},
    "FetchHashKeyName = NAME_lc",
@@ -174,7 +175,7 @@ test_var_val(
 $cxn->dbh()->disconnect();
 $cxn->connect();
 
-($row) = $cxn->dbh()->selectrow_hashref('SHOW MASTER STATUS');
+($row) = $cxn->dbh()->selectrow_hashref("SHOW ${source_status} STATUS");
 ok(
    exists $row->{binlog_ignore_db},
    "Reconnect FetchHashKeyName = NAME_lc",
@@ -213,6 +214,7 @@ is_deeply(
       S => undef,
       D => undef,
       t => undef,
+      s => undef,
    },
    "cxn->dsn()"
 );
@@ -240,6 +242,7 @@ is_deeply(
       S => undef,
       D => undef,
       t => undef,
+      s => undef,
    },
    "Defaults to h=localhost"
 );
@@ -259,6 +262,7 @@ is_deeply(
       S => undef,
       D => undef,
       t => undef,
+      s => undef,
    },
    "Default cxn inherits default connection options"
 );
@@ -339,7 +343,7 @@ SKIP: {
       "First connect()"
    );
 
-   ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
+   ($row) = $cxn->dbh()->selectrow_hashref("SHOW ${replica_name} STATUS");
    ok(
       !defined $row,
       "First connect() to master"
@@ -353,25 +357,29 @@ SKIP: {
       "Re-connect connect()"
    );
 
-   ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
-   ok(
-      $row,
-      "Re-connect connect(slave_dsn) to slave"
-   ) or diag(Dumper($row));
+PXC_SKIP: {
+      skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-   $cxn->dbh->disconnect();
-   $cxn->connect();
+      ($row) = $cxn->dbh()->selectrow_hashref("SHOW ${replica_name} STATUS");
+      ok(
+         $row,
+         "Re-connect connect(slave_dsn) to slave"
+      ) or diag(Dumper($row));
 
-   ok(
-      $cxn->dbh()->ping(),
-      "Re-re-connect connect()"
-   );
+      $cxn->dbh->disconnect();
+      $cxn->connect();
 
-   ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
-   ok(
-      $row,
-      "Re-re-connect connect() to slave"
-   ) or diag(Dumper($row));
+      ok(
+         $cxn->dbh()->ping(),
+         "Re-re-connect connect()"
+      );
+
+      ($row) = $cxn->dbh()->selectrow_hashref("SHOW ${source_status} STATUS");
+      ok(
+         $row,
+         "Re-re-connect connect() to slave"
+      ) or diag(Dumper($row));
+   }
 }
 
 # #############################################################################

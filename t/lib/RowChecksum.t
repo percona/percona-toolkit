@@ -15,13 +15,14 @@ use RowChecksum;
 use TableParser;
 use Quoter;
 use DSNParser;
+use VersionParser;
 use OptionParser;
 use Sandbox;
 use PerconaTest;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
@@ -128,9 +129,9 @@ is(
    ),
    q{`film_id`, `title`, CRC32(`description`), `release_year`, `language_id`, `original_language_id`,}
    .q{ `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`,}
-   .q{ UNIX_TIMESTAMP(`last_update`) AS `last_update`, SHA1(CONCAT_WS('#', `film_id`, `title`,}
+   .q{ UNIX_TIMESTAMP(`last_update`) AS `last_update`, SHA1(CONCAT_WS('#', `film_id`, convert(`title` using utf8mb4),}
    .q{ CRC32(`description`), `release_year`, `language_id`, `original_language_id`, `rental_duration`,}
-   .q{ `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, }
+   .q{ `rental_rate`, `length`, `replacement_cost`, convert(`rating` using utf8mb4), convert(`special_features` using utf8mb4), }
    .q{UNIX_TIMESTAMP(`last_update`), CONCAT(ISNULL(`description`), ISNULL(`release_year`), }
    .q{ISNULL(`original_language_id`), ISNULL(`length`), ISNULL(`rating`), ISNULL(`special_features`))))},
    'SHA1 query for sakila.film',
@@ -180,7 +181,7 @@ is(
       tbl  => $tbl,
       func => 'SHA1',
    ),
-   q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, `title`))},
+   q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, convert(`title` using utf8mb4)))},
    'Separator',
 );
 
@@ -191,7 +192,7 @@ is(
       tbl  => $tbl,
       func => 'SHA1',
    ),
-   q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, `title`))},
+   q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, convert(`title` using utf8mb4)))},
    'Bad separator',
 );
 
@@ -204,7 +205,7 @@ is(
       cols => [qw(film_id title)],
       sep  => "'''",
    ),
-   q{`film_id`, `title`, SHA1(CONCAT_WS('#', `film_id`, `title`))},
+   q{`film_id`, `title`, SHA1(CONCAT_WS('#', `film_id`, convert(`title` using utf8mb4)))},
    'Really bad separator',
 );
 
@@ -397,7 +398,7 @@ is(
 # #############################################################################
 # Issue 94: Enhance mk-table-checksum, add a --ignorecols option
 # #############################################################################
-$sb->load_file('master', 't/lib/samples/issue_94.sql');
+$sb->load_file('source', 't/lib/samples/issue_94.sql');
 $tbl = {
    db         => 'test',
    tbl        => 'issue_94',

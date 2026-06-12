@@ -1,3 +1,16 @@
+// This program is copyright 2019-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 // Package models contains the types for schema 'public'.
 package models
 
@@ -22,7 +35,7 @@ func GetDatabaseWaitEvents(db XODB) ([]*DatabaseWaitEvents, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT c.relname, c.relkind, d.wait_event_type, d.wait_event, b.datname, count(*) ` +
+	sqlstr := `SELECT c.relname, c.relkind, d.wait_event_type, d.wait_event, b.datname, count(*) ` +
 		`FROM pg_locks a ` +
 		`JOIN pg_stat_database b ON a.database=b.datid ` +
 		`JOIN pg_class c ON a.relation=c.oid ` +

@@ -1,4 +1,4 @@
-# This program is copyright 2011-2012 Percona Inc.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # parse_options package
 # ###########################################################################
@@ -24,6 +23,10 @@
 
 # XXX
 # GLOBAL $PT_TMPDIR AND $TOOL MUST BE SET BEFORE USING THIS LIB!
+# XXX
+
+# XXX
+# THIS LIB REQUIRES alt_cmds!
 # XXX
 
 # Parsing command line options with Bash is easy until we have to dealt
@@ -56,6 +59,8 @@ OPT_VERSION=""    # If --version was specified
 OPT_HELP=""       # If --help was specified
 OPT_ASK_PASS=""   # If --ask-pass was specified
 PO_DIR=""         # Directory with program option spec files
+GLOBAL_CONFIG=0   # We ignore non-recognized options in global configs
+                  # and return error for user-defined configs and command line
 
 # Sub: usage
 #   Print usage (--help) and list the program's options.
@@ -82,6 +87,11 @@ usage_or_errors() {
    if [ "$OPT_VERSION" ]; then
       version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
+      return 1
+   fi
+
+   if [ -z $(_which perl) ]; then
+      echo "Perl binary required to run this tool"
       return 1
    fi
 
@@ -167,7 +177,7 @@ option_error() {
 #   TIMDIR  - Temp directory set by <set_PT_TMPDIR()>.
 #
 # Set Global Variables:
-#   This sub decalres a global var for each option by uppercasing the
+#   This sub declares a global var for each option by uppercasing the
 #   option, removing the option's leading --, changing all - to _, and
 #   prefixing with "OPT_".  E.g. --foo-bar becomes OPT_FOO_BAR.
 parse_options() {
@@ -215,10 +225,16 @@ parse_options() {
          _parse_config_files "$user_config_file"
       done
    else
-      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf"
+       GLOBAL_CONFIG=1
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf"
+       GLOBAL_CONFIG=0
+       _parse_config_files "/etc/percona-toolkit/$TOOL.conf"
       # conditional in case $HOME isn't set;  e.g. tool launched from init
       if [ "${HOME:-}" ]; then
-         _parse_config_files "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+         GLOBAL_CONFIG=1
+         _parse_config_files "$HOME/.percona-toolkit.conf"
+         GLOBAL_CONFIG=0
+         _parse_config_files "$HOME/.$TOOL.conf"
       fi
    fi
 
@@ -231,7 +247,7 @@ _parse_pod() {
 
    # Parse the program options (po) from the POD.  Each option has
    # a spec file like:
-   #   $ cat po/string-opt2 
+   #   $ cat po/string-opt2
    #   long=string-opt2
    #   type=string
    #   default=foo
@@ -305,7 +321,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -348,7 +364,7 @@ _parse_config_files() {
 
          # Strip leading and trailing spaces, and spaces around the first =,
          # and end-of-line # comments.
-         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]+#.*$//')"
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
 
          # Skip blank lines.
          [ "$config_opt" = "" ] && continue
@@ -458,7 +474,7 @@ _parse_command_line() {
 
          # Split opt=val pair.
          if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
-            val="$(echo $opt | awk -F= '{print $2}')"
+            val="$(echo "$opt" | awk '{ st = index($0,"="); print substr($0, st+1)}')"
             opt="$(echo $opt | awk -F= '{print $1}')"
          fi
 
@@ -468,11 +484,14 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               # Not all programs uses the same options and since these options can be stored
-               # in a common config file, we need to skip general options not used by a particular
-               # program
-               # option_error "Unknown option: $real_opt"
-               continue
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
+                  # Not all programs uses the same options and since these options can be stored
+                  # in a common config file, we need to skip general options not used by a particular
+                  # program
+                  continue
+               else
+                  option_error "Unknown option: $real_opt"
+               fi
             fi
          fi
 
@@ -493,7 +512,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -513,7 +532,7 @@ _parse_command_line() {
          fi
 
          # Re-eval the option to update its global variable value.
-         eval "OPT_$opt"="'$val'"
+         eval "OPT_$opt"='$val'
 
          opt=""
          val=""

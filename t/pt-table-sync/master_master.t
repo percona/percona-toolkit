@@ -18,45 +18,44 @@ require "$trunk/bin/pt-table-sync";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
-if ($sandbox_version ge '8.0') {
-    plan skip_all => "TODO master master sandbox is failing with MySQL 8.0+. FIX ME !!!!";
-} else {
-    plan tests => 4;
-}
+plan tests => 11;
 
 # #############################################################################
-# Ensure that syncing master-master works OK
+# Ensure that syncing source-source works OK
 # #############################################################################
 
 # Start up 12348 <-> 12349
-diag('Starting master-master servers...');
-#diag(`$trunk/sandbox/start-sandbox master-master 12348 12349 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox master-master 12348 12349`);
-my $master1_dbh = $sb->get_dbh_for('master1');
-my $master2_dbh = $sb->get_dbh_for('master2');
+diag('Starting source-source servers...');
+diag(`$trunk/sandbox/start-sandbox source-source 12348 12349`);
+my $source1_dbh = $sb->get_dbh_for('source1');
+my $source2_dbh = $sb->get_dbh_for('source2');
 
-# Load some tables and data (on both, since they're master-master).
-$master1_dbh->do("CREATE DATABASE test");
-$sb->load_file("master1", "t/pt-table-sync/samples/before.sql");
-$sb->wait_for_slaves();
+# Load some tables and data (on both, since they're source-source).
+$sb->load_file("source1", "t/pt-table-sync/samples/before.sql");
+$sb->wait_for_replicas();
+$sb->wait_for_replicas(
+                     source => 'source1',
+                     replica => 'source2',
+                  );
 
-# Make master2 different from master1.  So master2 has the _correct_ data,
-# and the sync below will make master1 have that data too.
-$master2_dbh->do("set sql_log_bin=0");
-$master2_dbh->do("update test.test1 set b='mm' where a=1");
-$master2_dbh->do("set sql_log_bin=1");
+# Make source2 different from source1.  So source2 has the _correct_ data,
+# and the sync below will make source1 have that data too.
+$source2_dbh->do("set sql_log_bin=0");
+$source2_dbh->do("update test.test1 set b='mm' where a=1");
+$source2_dbh->do("set sql_log_bin=1");
 
-# This will make master1's data match the changed, correcct data on master2
-# (that is _not_ a typo). The sync direction is therefore master2 -> master1
-# because, given the command below, the given host master1 and with
-# --sync-to-master that makes master2 "the" master with the correct data.
+# This will make source1's data match the changed, correcct data on source2
+# (that is _not_ a typo). The sync direction is therefore source2 -> source1
+# because, given the command below, the given host source1 and with
+# --sync-to-source that makes source2 "the" source with the correct data.
 my $exit_status = 0;
 my $output = output(
    sub {
       $exit_status = pt_table_sync::main(
-         qw(--no-check-slave --sync-to-master --print --execute),
+         qw(--no-check-replica --sync-to-source --print --execute),
          "h=127.0.0.1,P=12348,u=msandbox,p=msandbox,D=test,t=test1")
    },
+   stderr => 1
 );
 
 # 0  = ok no diffs
@@ -74,16 +73,103 @@ like(
    "SQL to sync diff"
 );
 
+unlike(
+   $output,
+   qr/Option --sync-to-master is deprecated and will be removed in future versions./,
+   'Deprecation warning not printed when option --sync-to-source provided'
+) or diag($output);
 
-PerconaTest::wait_for_table($master1_dbh, "test.test1", "a=1 and b='mm'");
-my $rows = $master1_dbh->selectall_arrayref("SELECT * FROM test.test1");
+unlike(
+   $output,
+   qr/Option --\[no\]check-slave is deprecated and will be removed in future versions./,
+   'Deprecation warning not printed when option --no-check-replica provided'
+) or diag($output);
+
+
+PerconaTest::wait_for_table($source1_dbh, "test.test1", "a=1 and b='mm'");
+my $rows = $source1_dbh->selectall_arrayref("SELECT * FROM test.test1");
 is_deeply(
    $rows,
    [ [1, 'mm'], [2, 'ca'] ],
-   "Diff row synced on master1"
+   "Diff row synced on source1"
 ); 
 
-diag('Stopping master-master servers...');
+diag('Stopping source-source servers...');
+diag(`$trunk/sandbox/stop-sandbox 12348 12349 >/dev/null`);
+# #############################################################################
+# Repeat the test with deprecated options.
+# #############################################################################
+
+# Start up 12348 <-> 12349
+diag('Starting source-source servers...');
+diag(`$trunk/sandbox/start-sandbox source-source 12348 12349`);
+$source1_dbh = $sb->get_dbh_for('source1');
+$source2_dbh = $sb->get_dbh_for('source2');
+
+$sb->load_file("source1", "t/pt-table-sync/samples/before.sql");
+$sb->wait_for_replicas();
+$sb->wait_for_replicas(
+                     source => 'source1',
+                     replica => 'source2',
+                  );
+
+# Make source2 different from source1.  So source2 has the _correct_ data,
+# and the sync below will make source1 have that data too.
+$source2_dbh->do("set sql_log_bin=0");
+$source2_dbh->do("update test.test1 set b='mm' where a=1");
+$source2_dbh->do("set sql_log_bin=1");
+
+# This will make source1's data match the changed, correcct data on source2
+# (that is _not_ a typo). The sync direction is therefore source2 -> source1
+# because, given the command below, the given host source1 and with
+# --sync-to-source that makes source2 "the" source with the correct data.
+$exit_status = 0;
+$output = output(
+   sub {
+      $exit_status = pt_table_sync::main(
+         qw(--no-check-slave --sync-to-master --print --execute),
+         "h=127.0.0.1,P=12348,u=msandbox,p=msandbox,D=test,t=test1")
+   },
+   stderr =>1
+);
+
+# 0  = ok no diffs
+# 1  = error
+# >1 = sum(@status{@ChangeHandler::ACTIONS})
+is(
+   $exit_status,
+   2,
+   "Exit status 2"
+);
+
+like(
+   $output,
+   qr/REPLACE INTO `test`\.`test1`\s*\(`a`, `b`\) VALUES\s*\('1', 'mm'\)/,
+   "SQL to sync diff"
+);
+
+like(
+   $output,
+   qr/Option --sync-to-master is deprecated and will be removed in future versions./,
+   'Deprecation warning printed when option --sync-to-master provided'
+) or diag($output);
+
+like(
+   $output,
+   qr/Option --\[no\]check-slave is deprecated and will be removed in future versions./,
+   'Deprecation warning printed when option --no-check-slave provided'
+) or diag($output);
+
+
+PerconaTest::wait_for_table($source1_dbh, "test.test1", "a=1 and b='mm'");
+$rows = $source1_dbh->selectall_arrayref("SELECT * FROM test.test1");
+is_deeply(
+   $rows,
+   [ [1, 'mm'], [2, 'ca'] ],
+   "Diff row synced on source1"
+);
+
+diag('Stopping source-source servers...');
 diag(`$trunk/sandbox/stop-sandbox 12348 12349 >/dev/null`);
 
 # #############################################################################

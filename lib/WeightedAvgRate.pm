@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Ireland Ltd.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # WeightedAvgRate package
 # ###########################################################################
@@ -67,7 +66,7 @@ sub new {
 #   n adjust to meet target_t based on weighted decaying avg rate
 sub update {
    my ($self, $n, $t) = @_;
-   PTDEBUG && _d('Master op time:', $n, 'n /', $t, 's');
+   PTDEBUG && _d('Source op time:', $n, 'n /', $t, 's');
 
    if ( $self->{avg_n} && $self->{avg_t} ) {
       $self->{avg_n}    = ($self->{avg_n} * $self->{weight}) + $n;

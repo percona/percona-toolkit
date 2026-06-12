@@ -22,10 +22,10 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 2;
@@ -37,7 +37,7 @@ sub start_thread {
    my ($dsn_opts, $initial_sleep_time, $sleep_time, $db_count) = @_;
    my $dp = new DSNParser(opts=>$dsn_opts);
    my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-   my $dbh = $sb->get_dbh_for('master');
+   my $dbh = $sb->get_dbh_for('source');
    PTDEBUG && diag("Thread started: Sleeping $initial_sleep_time milliseconds before start dropping DBs");
    usleep($initial_sleep_time );
    for (my $i=0; $i < $db_count; $i++) {
@@ -59,8 +59,8 @@ for (my $i=0; $i < $db_count; $i++) {
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--no-check-binlog-format)); 
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($source_dsn, qw(--no-check-binlog-format)); 
 my $output;
 
 $output = output(

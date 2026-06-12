@@ -17,11 +17,11 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
-my $slave_dbh = $sb->get_dbh_for('slave1');
+my $dbh = $sb->get_dbh_for('source');
+my $replica_dbh = $sb->get_dbh_for('replica1');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 4;
@@ -35,7 +35,7 @@ my $cmd = "perl -I $trunk/t/pt-archiver/samples $trunk/bin/pt-archiver";
 # ###########################################################################
 # Bulk delete with limit that results in 2 chunks.
 # ###########################################################################
-$sb->load_file('master', "t/pt-archiver/samples/compact_col_vals.sql");
+$sb->load_file('source', "t/pt-archiver/samples/compact_col_vals.sql");
 $dbh->do('use cai');
 
 is_deeply(

@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # report_mysql_info package
 # ###########################################################################
@@ -107,21 +106,6 @@ get_plugin_status () {
    echo ${status:-"Not found"}
 }
 
-collect_keyring_plugins() {
-    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
-}
-
-collect_encrypted_tables() {
-    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=\"Y\"%';"
-}
-
-collect_encrypted_tablespaces() {
-# I_S.INNODB_SYS_TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192". 
-# And seems like MySQL is capable of bitwise operations. https://dev.mysql.com/doc/refman/5.7/en/bit-functions.html
-    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
-}
-
-
 # ##############################################################################
 # Functions for parsing specific files and getting desired info from them.
 # These are called from within main() and are separated so they can be tested
@@ -162,7 +146,7 @@ parse_mysqld_instances () {
             defaults_file="$(echo "${word}" | cut -d= -f2)"
          fi
       done
-      
+
       if [ -n "${defaults_file:-""}" -a -r "${defaults_file:-""}" ]; then
          socket="${socket:-"$(grep "^socket\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
          port="${port:-"$(grep "^port\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
@@ -177,7 +161,7 @@ parse_mysqld_instances () {
          oom="?"
       fi
       printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
-      
+
       # Need to unset all of them in case the next process uses --defaults-file
       defaults_file=""
       socket=""
@@ -215,7 +199,7 @@ get_mysql_uptime () {
    echo "${restart} (up ${uptime})"
 }
 
-# Summarizes the output of SHOW MASTER LOGS.
+# Summarizes the output of SHOW BINARY LOGS.
 summarize_binlogs () {
    local file="$1"
 
@@ -332,7 +316,7 @@ summarize_processlist () {
          }
          \$1 == \"Time:\" {
             t = \$2;
-            if ( t == \"NULL\" ) { 
+            if ( t == \"NULL\" ) {
                 t = 0;
             }
          }
@@ -371,16 +355,35 @@ pretty_print_cnf_file () {
 
    perl -n -l -e '
       my $line = $_;
-      if ( $line =~ /^\s*[a-zA-Z[]/ ) { 
-         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) { 
-            printf("%-35s = %s\n", $1, $2)  
-         } 
-         elsif ( $line =~ /\s*\[/ ) { 
-            print "\n$line" 
+      if ( $line =~ /^\s*[a-zA-Z[]/ ) {
+         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) {
+            printf("%-35s = %s\n", $1, $2)
+         }
+         elsif ( $line =~ /\s*\[/ ) {
+            print "\n$line"
          } else {
             print $line
-         } 
+         }
       }' "$file"
+
+   while read line; do
+      echo $line | grep -q '!include'
+      if [ $? -eq 0 ]; then
+         clause=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 1)
+         include=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 2)
+
+         if [ "x$include" != "x" -a -d "${include}" -a "x$clause" = 'x!includedir' ]; then
+            for subfile in $(find -L "$include" -type f -maxdepth 1 -name *.cnf ); do
+               echo "# $subfile"
+               pretty_print_cnf_file $subfile
+            done
+         elif [ -f "$include" -a "$clause" = '!include' ]; then
+            echo "# $include"
+            pretty_print_cnf_file $include
+         fi
+      fi
+
+   done < "$file"
 
 }
 
@@ -523,9 +526,9 @@ find_max_trx_time() {
    }' "${file}"
 }
 
-find_transation_states () {
+find_transaction_states () {
    local file="$1"
-   local tmpfile="$PT_TMPDIR/find_transation_states.tmp"
+   local tmpfile="$PT_TMPDIR/find_transaction_states.tmp"
 
    [ -e "$file" ] || return
 
@@ -551,7 +554,7 @@ format_innodb_status () {
    name_val "Pending I/O Reads"   "$(find_pending_io_reads "${file}")"
    name_val "Pending I/O Writes"  "$(find_pending_io_writes "${file}")"
    name_val "Pending I/O Flushes" "$(find_pending_io_flushes "${file}")"
-   name_val "Transaction States"  "$(find_transation_states "${file}" )"
+   name_val "Transaction States"  "$(find_transaction_states "${file}" )"
    if grep 'TABLE LOCK table' "${file}" >/dev/null ; then
       echo "Tables Locked"
       awk '/^TABLE LOCK table/{print $4}' "${file}" \
@@ -579,7 +582,7 @@ format_ndb_status() {
    local file=$1
 
    [ -e "$file" ] || return
-   # We could use "& \n" but that does not seem to work on bsd sed. 
+   # We could use "& \n" but that does not seem to work on bsd sed.
    egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
 }
 
@@ -587,7 +590,7 @@ format_keyring_plugins() {
     local keyring_plugins="$1"
     local encrypted_tables="$2"
 
-    if [ -z "$keyring_plugins" ]; then 
+    if [ -z "$keyring_plugins" ]; then
         echo "No keyring plugins found"
         if [ ! -z "$encrypted_tables" ]; then
             echo "Warning! There are encrypted tables but keyring plugins are not loaded"
@@ -920,6 +923,7 @@ format_overall_db_stats () {
 
 section_percona_server_features () {
    local file="$1"
+   replica_name="$2"
 
    [ -e "$file" ] || return
 
@@ -944,11 +948,11 @@ section_percona_server_features () {
    # Renamed to innodb_buffer_pool_restore_at_startup in 5.5.10-20.1
    name_val "Fast Server Restarts"  \
             "$(feat_on_renamed "$file" innodb_auto_lru_dump innodb_buffer_pool_restore_at_startup)"
-   
+
    name_val "Enhanced Logging"      \
             "$(feat_on "$file" log_slow_verbosity ne microtime)"
    name_val "Replica Perf Logging"  \
-            "$(feat_on "$file" log_slow_slave_statements)"
+            "$(feat_on "$file" log_slow_${replica_name}_statements)"
 
    # Renamed to query_response_time_stats in 5.5
    name_val "Response Time Hist."   \
@@ -966,7 +970,7 @@ section_percona_server_features () {
       fi
    fi
    name_val "Smooth Flushing" "$smooth_flushing"
-   
+
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
    name_val "Fast Hash UDFs"   \
@@ -1010,6 +1014,13 @@ section_innodb () {
    local bp_free="$(get_var Innodb_buffer_pool_pages_free "$status_file")"
    local bp_dirt="$(get_var Innodb_buffer_pool_pages_dirty "$status_file")"
    local bp_fill=$((${bp_pags} - ${bp_free}))
+
+   # dynamically allocate variable name - transaction_isolation
+   local transaction_isolation_var="transaction_isolation"
+   if [ "$version" '<' "5.7.20" ]; then # false if version >= 5.7.20
+      transaction_isolation_var="tx_isolation"
+   fi
+
    name_val "Buffer Pool Fill"   "$(fuzzy_pct ${bp_fill} ${bp_pags})"
    name_val "Buffer Pool Dirty"  "$(fuzzy_pct ${bp_dirt} ${bp_pags})"
 
@@ -1044,7 +1055,7 @@ section_innodb () {
    name_val "Commit Concurrency"  \
             "$(get_var innodb_commit_concurrency "$variables_file")"
    name_val "Txn Isolation Level" \
-            "$(get_var tx_isolation "$variables_file")"
+            "$(get_var $transaction_isolation_var "$variables_file")"
    name_val "Adaptive Flushing"   \
             "$(get_var innodb_adaptive_flushing "$variables_file")"
    name_val "Adaptive Checkpoint" \
@@ -1097,7 +1108,7 @@ section_noteworthy_variables () {
       name_val "${v}" "$(shorten $(get_var ${v} "$file") 0)"
    done
    for v in log log_error log_warnings log_slow_queries \
-         log_queries_not_using_indexes log_slave_updates;
+         log_queries_not_using_indexes log_${replica_name}_updates;
    do
       name_val "${v}" "$(get_var ${v} "$file")"
    done
@@ -1109,6 +1120,7 @@ section_noteworthy_variables () {
 _semi_sync_stats_for () {
    local target="$1"
    local file="$2"
+   local replica_name="$3"
 
    [ -e "$file" ] || return
 
@@ -1129,17 +1141,17 @@ _semi_sync_stats_for () {
          trace_extra="Unknown setting"
       fi
    fi
-   
+
    name_val "${target} semisync status" "${semisync_status}"
    name_val "${target} trace level" "${semisync_trace}, ${trace_extra}"
 
-   if [ "${target}" = "master" ]; then
+   if [ "${target}" = "source" ] || [ "${target}" = "master" ]; then
       name_val "${target} timeout in milliseconds" \
                "$(get_var "rpl_semi_sync_${target}_timeout" "${file}")"
-      name_val "${target} waits for slaves"        \
-               "$(get_var "rpl_semi_sync_${target}_wait_no_slave" "${file}")"
+      name_val "${target} waits for ${replica_name}s"        \
+               "$(get_var "rpl_semi_sync_${target}_wait_no_${replica_name}" "${file}")"
 
-      _d "Prepend Rpl_semi_sync_master_ to the following"
+      _d "Prepend Rpl_semi_sync_${target}_ to the following"
       for v in                                              \
          clients net_avg_wait_time net_wait_time net_waits  \
          no_times no_tx timefunc_failures tx_avg_wait_time  \
@@ -1147,7 +1159,7 @@ _semi_sync_stats_for () {
          wait_sessions yes_tx;
       do
          name_val "${target} ${v}" \
-                  "$( get_var "Rpl_semi_sync_master_${v}" "${file}" )"
+                  "$( get_var "Rpl_semi_sync_${target}_${v}" "${file}" )"
       done
    fi
 }
@@ -1171,7 +1183,7 @@ noncounters_pattern () {
       Not_flushed_delayed_rows Open_files Open_streams Open_tables \
       Prepared_stmt_count Qcache_free_blocks Qcache_free_memory \
       Qcache_queries_in_cache Qcache_total_blocks Rpl_status \
-      Slave_open_temp_tables Slave_running Ssl_cipher Ssl_cipher_list \
+      Slave_open_temp_tables Slave_running Replica_open_temp_tables Ssl_cipher Ssl_cipher_list \
       Ssl_ctx_verify_depth Ssl_ctx_verify_mode Ssl_default_timeout \
       Ssl_session_cache_mode Ssl_session_cache_size Ssl_verify_depth \
       Ssl_verify_mode Ssl_version Tc_log_max_pages_used Tc_log_page_size \
@@ -1202,16 +1214,17 @@ section_mysqld () {
    done < "$executables_file"
 }
 
-section_slave_hosts () {
-   local slave_hosts_file="$1"
+section_replica_hosts () {
+   local replica_hosts_file="$1"
+   local replica_name=`echo "$2" | sed 's/[^ ]*/\u&/'`
 
-   [ -e "$slave_hosts_file" ] || return
+   [ -e "$replica_hosts_file" ] || return
 
-   section "Slave Hosts"
-   if [ -s "$slave_hosts_file" ]; then
-       cat "$slave_hosts_file"
+   section "${replica_name} Hosts"
+   if [ -s "$replica_hosts_file" ]; then
+       cat "$replica_hosts_file"
    else
-       echo "No slaves found"
+       echo "No ${replica_name} found"
    fi
 }
 
@@ -1245,10 +1258,10 @@ section_percona_xtradb_cluster () {
 
    name_val "SST Method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
    name_val "Slave Threads"   "$(get_var "wsrep_slave_threads" "$mysql_var")"
-   
+
    name_val "Ignore Split Brain" "$( parse_wsrep_provider_options "pc.ignore_sb" "$mysql_var" )"
    name_val "Ignore Quorum" "$( parse_wsrep_provider_options "pc.ignore_quorum" "$mysql_var" )"
-   
+
    name_val "gcache Size"      "$( parse_wsrep_provider_options "gcache.size" "$mysql_var" )"
    name_val "gcache Directory" "$( parse_wsrep_provider_options "gcache.dir" "$mysql_var" )"
    name_val "gcache Name"      "$( parse_wsrep_provider_options "gcache.name" "$mysql_var" )"
@@ -1268,30 +1281,31 @@ parse_wsrep_provider_options () {
 }
 
 report_jemalloc_enabled() {
-  local JEMALLOC_STATUS=''
-  local GENERAL_JEMALLOC_STATUS=0
-  local JEMALLOC_LOCATION=''
+   local instances_file="$1"
+   local variables_file="$2"
+   local GENERAL_JEMALLOC_STATUS=0
 
-  for pid in $(pidof mysqld); do
-     grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
-     jemalloc_status=$?
-     if [ $jemalloc_status = 1 ]; then
-       echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
-     else
-       echo "jemalloc enabled in mysql config for process with id ${pid}"
-       GENERAL_JEMALLOC_STATUS=1
-     fi
-  done
+   for pid in $(grep '/mysqld\b' "$instances_file" | awk '{print $1;}'); do
+      local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
+      if [ -z $jemalloc_status ]; then
+         continue
+      elif [ $jemalloc_status = 0 ]; then
+         echo "jemalloc is not enabled in mysql config for process with id ${pid}"
+      else
+         echo "jemalloc enabled in mysql config for process with id ${pid}"
+         GENERAL_JEMALLOC_STATUS=1
+      fi
+   done
 
-  if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
-     JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
-     if [ -z "$JEMALLOC_LOCATION" ]; then
-       echo "Jemalloc library not found"
-     else
-       echo "Using jemalloc from $JEMALLOC_LOCATION"
-     fi
-  fi
- 
+   if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+      local jemalloc_location="$(get_var "pt-summary-internal-jemalloc_location" "${variables_file}")"
+      if [ -n "$jemalloc_location" ]; then
+         echo "Using jemalloc from $jemalloc_location"
+      else
+         echo "Jemalloc library not found"
+      fi
+   fi
+
 }
 
 report_mysql_summary () {
@@ -1299,6 +1313,27 @@ report_mysql_summary () {
 
    # Field width for name_val
    local NAME_VAL_LEN=25
+
+   # Local variables
+   local user="$(get_var "pt-summary-internal-user" "$dir/mysql-variables")"
+   local port="$(get_var port "$dir/mysql-variables")"
+   local now="$(get_var "pt-summary-internal-now" "$dir/mysql-variables")"
+   local mysql_version="$(get_var version "$dir/mysql-variables")"
+
+   local source_name='source'
+   local replica_name='replica'
+   local source_log='binary'
+   local source_status='binary log'
+   local source_logs_file="mysql-binary-logs"
+   local source_status_file="mysql-binary-log-status"
+   if [ "${mysql_version}" '<' "8.1" ]; then
+      source_name='master'
+      replica_name='slave'
+      source_log='master'
+      source_status='master'
+      source_logs_file='mysql-master-logs'
+      source_status_file='mysql-master-status'
+   fi
 
    # ########################################################################
    # Header for the whole thing, table of discovered instances
@@ -1311,13 +1346,11 @@ report_mysql_summary () {
 
    section_mysqld "$dir/mysqld-executables" "$dir/mysql-variables"
 
-   section_slave_hosts "$dir/mysql-slave-hosts"
+   section_replica_hosts "$dir/mysql-${replica_name}-hosts" ${replica_name}
    # ########################################################################
    # General date, hostname, etc
    # ########################################################################
-   local user="$(get_var "pt-summary-internal-user" "$dir/mysql-variables")"
-   local port="$(get_var port "$dir/mysql-variables")"
-   local now="$(get_var "pt-summary-internal-now" "$dir/mysql-variables")"
+
    section "Report On Port ${port}"
    name_val User "${user}"
    name_val Time "${now} ($(get_mysql_timezone "$dir/mysql-variables"))"
@@ -1336,10 +1369,10 @@ report_mysql_summary () {
    local fuzz_procr=$(fuzz $(get_var Threads_running "$dir/mysql-status"))
    name_val Processes "${fuzz_procs} connected, ${fuzz_procr} running"
 
-   local slave=""
-   if [ -s "$dir/mysql-slave" ]; then slave=""; else slave="not "; fi
-   local slavecount=$(grep -c 'Binlog Dump' "$dir/mysql-processlist")
-   name_val Replication "Is ${slave}a slave, has ${slavecount} slaves connected"
+   local replica=""
+   if [ -s "$dir/mysql-${replica_name}" ]; then replica=""; else replica="not "; fi
+   local replicacount=$(grep -c 'Binlog Dump' "$dir/mysql-processlist")
+   name_val Replication "Is ${replica}a ${replica_name}, has ${replicacount} ${replica_name}s connected"
 
 
    # TODO move this into a section with other files: error log, slow log and
@@ -1382,7 +1415,7 @@ report_mysql_summary () {
    # Percona Server features
    # ########################################################################
    section "Key Percona Server features"
-   section_percona_server_features "$dir/mysql-variables"
+   section_percona_server_features "$dir/mysql-variables" "${replica_name}"
 
    # ########################################################################
    # Percona XtraDB Cluster data
@@ -1420,19 +1453,20 @@ report_mysql_summary () {
       name_val HitToInsertRatio "${hrat}"
    fi
 
-   local semisync_enabled_master="$(get_var "rpl_semi_sync_master_enabled" "$dir/mysql-variables")"
-   if [ -n "${semisync_enabled_master}" ]; then
+   local semisync_enabled_source="$(get_var "rpl_semi_sync_${source_name}_enabled" "$dir/mysql-variables")"
+   if [ -n "${semisync_enabled_source}" ]; then
       section "Semisynchronous Replication"
-      if [ "$semisync_enabled_master" = "OFF" -o "$semisync_enabled_master" = "0" -o -z "$semisync_enabled_master" ]; then
-         name_val "Master" "Disabled"
+      if [ "$semisync_enabled_source" = "OFF" -o "$semisync_enabled_source" = "0" -o -z "$semisync_enabled_source" ]; then
+         name_val "Source" "Disabled"
       else
-         _semi_sync_stats_for "master" "$dir/mysql-variables"
+         _semi_sync_stats_for "${source_name}" "$dir/mysql-variables" "${replica_name}"
       fi
-      local semisync_enabled_slave="$(get_var rpl_semi_sync_slave_enabled "$dir/mysql-variables")"
-      if    [ "$semisync_enabled_slave" = "OFF" -o "$semisync_enabled_slave" = "0" -o -z "$semisync_enabled_slave" ]; then
-         name_val "Slave" "Disabled"
+      local semisync_enabled_replica="$(get_var rpl_semi_sync_${replica_name}_enabled "$dir/mysql-variables")"
+      if    [ "$semisync_enabled_replica" = "OFF" -o "$semisync_enabled_replica" = "0" -o -z "$semisync_enabled_replica" ]; then
+         local replica_name_cap=`echo "$replica_name" | sed 's/[^ ]*/\u&/'`
+         name_val "${replica_name_cap}" "Disabled"
       else
-         _semi_sync_stats_for "slave" "$dir/mysql-variables"
+         _semi_sync_stats_for "${replica_name}" "$dir/mysql-variables" "${replica_name}"
       fi
    fi
 
@@ -1542,7 +1576,7 @@ report_mysql_summary () {
       fi
    fi
 
-   local has_rocksdb=$($CMD_MYSQL $EXT_ARGV -ss -e 'SHOW ENGINES' 2>/dev/null | grep -i 'rocksdb')
+   local has_rocksdb="$(cat $dir/mysql-plugins | grep -i 'rocksdb.*active.*storage engine')"
    if [ ! -z "$has_rocksdb" ]; then
        section "RocksDB"
        section_rocksdb "$dir/mysql-variables" "$dir/mysql-status"
@@ -1576,12 +1610,17 @@ report_mysql_summary () {
    fi
 
    section "Encryption"
-   local keyring_plugins="$(collect_keyring_plugins)"
+   local keyring_plugins=""
    local encrypted_tables=""
    local encrypted_tablespaces=""
-   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then 
-       encrypted_tables="$(collect_encrypted_tables)"
-       encrypted_tablespaces="$(collect_encrypted_tablespaces)"
+   if [ -s "$dir/keyring-plugins" ]; then
+       keyring_plugins="$(cat $dir/keyring-plugins)"
+   fi
+   if [ -s "$dir/encrypted-tables" ]; then
+      encrypted_tables="$(cat $dir/encrypted-tables)"
+   fi
+   if [ -s "$dir/encrypted-tablespaces" ]; then
+      encrypted_tablespaces="$(cat $dir/encrypted-tablespaces)"
    fi
 
    format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
@@ -1593,19 +1632,19 @@ report_mysql_summary () {
    # ########################################################################
    section "Binary Logging"
 
-   if    [ -s "$dir/mysql-master-logs" ] \
-      || [ -s "$dir/mysql-master-status" ]; then
-      summarize_binlogs "$dir/mysql-master-logs"
+   if    [ -s "$dir/$source_logs_file" ] \
+      || [ -s "$dir/$source_status_file" ]; then
+      summarize_binlogs "$dir/$source_logs_file"
       local format="$(get_var binlog_format "$dir/mysql-variables")"
       name_val binlog_format "${format:-STATEMENT}"
       name_val expire_logs_days "$(get_var expire_logs_days "$dir/mysql-variables")"
       name_val sync_binlog "$(get_var sync_binlog "$dir/mysql-variables")"
       name_val server_id "$(get_var server_id "$dir/mysql-variables")"
-      format_binlog_filters "$dir/mysql-master-status"
+      format_binlog_filters "$dir/$source_status_file"
    fi
 
-# Replication: seconds behind, running, filters, skip_slave_start, skip_errors,
-# read_only, temp tables open, slave_net_timeout, slave_exec_mode
+# Replication: seconds behind, running, filters, skip_replica_start, skip_errors,
+# read_only, temp tables open, replica_net_timeout, replica_exec_mode
 
    # ########################################################################
    # Interesting things that you just ought to know about.
@@ -1627,7 +1666,7 @@ report_mysql_summary () {
    fi
 
    section "Memory management library"
-   report_jemalloc_enabled
+   report_jemalloc_enabled "$dir/mysqld-instances" "$dir/mysql-variables"
 
    # Make sure that we signal the end of the tool's output.
    section "The End"

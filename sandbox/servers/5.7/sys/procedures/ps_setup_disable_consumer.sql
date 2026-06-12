@@ -24,7 +24,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_setup_disable_consumer (
              Description
              -----------
 
-             Disables consumers within Performance Schema 
+             Disables consumers within Performance Schema
              matching the input pattern.
 
              Parameters

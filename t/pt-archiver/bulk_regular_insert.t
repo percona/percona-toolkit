@@ -17,10 +17,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;
@@ -32,7 +32,7 @@ my $cmd = "perl -I $trunk/t/pt-archiver/samples $trunk/bin/pt-archiver";
 # First run without the plugin to get a reference for how the tables should
 # be after a normal bulk insert run.
 # #############################################################################
-$sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
+$sb->load_file('source', "t/pt-archiver/samples/bulk_regular_insert.sql");
 $dbh->do('use bri');
 
 output(
@@ -67,7 +67,7 @@ is_deeply(
 # #############################################################################
 # Do it again with the plugin.  The tables should be identical.
 # #############################################################################
-$sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
+$sb->load_file('source', "t/pt-archiver/samples/bulk_regular_insert.sql");
 $dbh->do('use bri');
 
 `$cmd --source F=$cnf,D=bri,t=t,L=1 --dest t=t_arch,m=bulk_regular_insert --where "1=1" --bulk-insert --limit 3`;

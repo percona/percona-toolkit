@@ -11,6 +11,10 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+#if ( !$ENV{SLOW_TESTS} ) { 
+#   plan skip_all => "pt-table-checksum/pt-1616.t is one of the top slowest files; set SLOW_TESTS=1 to enable it.";
+#}
+
 use PerconaTest;
 use Sandbox;
 use SqlModes;
@@ -18,17 +22,17 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-    plan skip_all => 'Cannot connect to sandbox master';
+    plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
     plan tests => 4;
 }
 
 diag("loading samples");
-$sb->load_file('master', 't/pt-table-checksum/samples/pt-1616.sql');
+$sb->load_file('source', 't/pt-table-checksum/samples/pt-1616.sql');
 
 my $num_rows = 50000;
 diag("Loading $num_rows rows into the table. This might take some time.");
@@ -52,9 +56,9 @@ $dbh->do('INSERT INTO junk.pt_test_100 (id1, id2) VALUES(UNHEX("F96DD7"), UNHEX(
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
-my $master_dsn = $sb->dsn_for('master');
+my $source_dsn = $sb->dsn_for('source');
 
-my @args = ($master_dsn, "--set-vars", "innodb_lock_wait_timeout=50", 
+my @args = ($source_dsn, "--set-vars", "innodb_lock_wait_timeout=50", 
     "--ignore-databases", "mysql", "--no-check-binlog-format", 
     "--chunk-size", "1", 
     "--empty-replicate-table", "--run-time", "2s"
@@ -72,12 +76,12 @@ is(
     $exit_status,
     0,
     "PT-1616 pt-table-cheksum before --resume with binary fields exit status",
-);
+) or diag("$exit_status\n", $output);
 
 @args = ("--set-vars", "innodb_lock_wait_timeout=50", 
     "--ignore-databases", "mysql", "--no-check-binlog-format", 
     "--chunk-size", "1", 
-    "--resume", "--run-time", "5s", $master_dsn
+    "--resume", "--run-time", "5s", $source_dsn
 );
 
 $output = output(

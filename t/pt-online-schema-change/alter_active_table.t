@@ -24,18 +24,18 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 
 my $output;
-my $master_dsn = "h=127.1,P=12345,u=msandbox,p=msandbox";
+my $source_dsn = "h=127.1,P=12345,u=msandbox,p=msandbox";
 my $sample     = "t/pt-online-schema-change/samples";
 my $exit;
 my $rows;
@@ -100,7 +100,7 @@ sub check_ids {
    $n_deleted++ if $ids->{deleted};
    $n_inserted++ if $ids->{inserted};
 
-   $rows = $master_dbh->selectrow_arrayref(
+   $rows = $source_dbh->selectrow_arrayref(
       "SELECT COUNT($pkcol) FROM $db.$tbl");
    is(
       $rows->[0],
@@ -109,7 +109,7 @@ sub check_ids {
    ) or diag(Dumper($rows));
 
    my $where_ids = $ids->{inserted} ? $ids->{inserted} : '0';
-   $rows = $master_dbh->selectall_arrayref(
+   $rows = $source_dbh->selectall_arrayref(
       "SELECT $pkcol FROM $db.$tbl WHERE $pkcol > 500 AND $pkcol NOT IN ($where_ids)");
    is_deeply(
       $rows,
@@ -118,7 +118,7 @@ sub check_ids {
    ) or die(Dumper($rows));
 
    if ( $n_deleted ) {
-      $rows = $master_dbh->selectall_arrayref(
+      $rows = $source_dbh->selectall_arrayref(
          "SELECT $pkcol FROM $db.$tbl WHERE $pkcol IN ($ids->{deleted})");
       is_deeply(
          $rows,
@@ -136,7 +136,7 @@ sub check_ids {
    if ( $n_updated ) {
       my $sql = "SELECT $pkcol FROM $db.$tbl WHERE $pkcol IN ($ids->{updated}) "
               . "AND c NOT LIKE 'updated%'";
-      $rows = $master_dbh->selectall_arrayref($sql);
+      $rows = $source_dbh->selectall_arrayref($sql);
       is_deeply(
          $rows,
          [],
@@ -157,18 +157,18 @@ sub check_ids {
 # Attempt to alter a table while another process is changing it.
 # #############################################################################
 
-my $db_flavor = VersionParser->new($master_dbh)->flavor();
+my $db_flavor = VersionParser->new($source_dbh)->flavor();
 if ( $db_flavor =~ m/XtraDB Cluster/ ) {
-   $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+   $sb->load_file('source', "$sample/basic_no_fks_innodb.sql");
 }
 else {
-   $sb->load_file('master', "$sample/basic_no_fks.sql");
+   $sb->load_file('source', "$sample/basic_no_fks.sql");
 }
-$master_dbh->do("USE pt_osc");
-$master_dbh->do("TRUNCATE TABLE t");
-$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
-$master_dbh->do("ANALYZE TABLE t");
-$sb->wait_for_slaves();
+$source_dbh->do("USE pt_osc");
+$source_dbh->do("TRUNCATE TABLE t");
+$source_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
+$source_dbh->do("ANALYZE TABLE t");
+$sb->wait_for_replicas();
 
 # Start inserting, updating, and deleting rows at random.
 start_query_table(qw(pt_osc t id));
@@ -176,7 +176,7 @@ start_query_table(qw(pt_osc t id));
 # While that's ^ happening, alter the table.
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
-      "$master_dsn,D=pt_osc,t=t",
+      "$source_dsn,D=pt_osc,t=t",
       qw(--set-vars innodb_lock_wait_timeout=5),
       qw(--print --execute --chunk-size 100 --alter ENGINE=InnoDB --no-check-plan)) },
    stderr => 1,
@@ -191,7 +191,7 @@ like(
    'Change engine: altered OK'
 );
 
-$rows = $master_dbh->selectall_hashref('SHOW TABLE STATUS FROM pt_osc', 'name');
+$rows = $source_dbh->selectall_hashref('SHOW TABLE STATUS FROM pt_osc', 'name');
 is(
    $rows->{t}->{engine},
    'InnoDB',
@@ -214,11 +214,11 @@ is(
 # Check that triggers work when renaming a column
 # #############################################################################
 
-$master_dbh->do("USE pt_osc");
-$master_dbh->do("TRUNCATE TABLE t");
-$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
-$master_dbh->do("ANALYZE TABLE t");
-$sb->wait_for_slaves();
+$source_dbh->do("USE pt_osc");
+$source_dbh->do("TRUNCATE TABLE t");
+$source_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
+$source_dbh->do("ANALYZE TABLE t");
+$sb->wait_for_replicas();
 
 # Start inserting, updating, and deleting rows at random.
 start_query_table(qw(pt_osc t id));
@@ -226,7 +226,7 @@ start_query_table(qw(pt_osc t id));
 # While that's ^ happening, alter the table.
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
-      "$master_dsn,D=pt_osc,t=t",
+      "$source_dsn,D=pt_osc,t=t",
       qw(--set-vars innodb_lock_wait_timeout=5),
       qw(--print --execute --chunk-size 100 --no-check-alter),
       '--alter', 'CHANGE COLUMN d q date',
@@ -249,7 +249,7 @@ is(
    "Rename columnn: exit status 0"
 );
 
-$sb->wait_for_slaves();
+$sb->wait_for_replicas();
 
 check_ids(qw(pt_osc t id), get_ids(), "Rename column");
 
@@ -259,7 +259,7 @@ check_ids(qw(pt_osc t id), get_ids(), "Rename column");
 unlink $query_table_stop or warn $OS_ERROR;
 unlink $query_table_output or warn $OS_ERROR;
 unlink $query_table_pid or warn $OS_ERROR;
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
 exit;

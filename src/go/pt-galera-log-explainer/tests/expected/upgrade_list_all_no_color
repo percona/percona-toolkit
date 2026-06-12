@@ -1,0 +1,325 @@
+identifier                    node1                                      node2                                      node3                                   
+current path                  tests/logs/upgrade/node1.log               tests/logs/upgrade/node2.log               tests/logs/upgrade/node3.log            
+last known ip                 172.17.0.2                                 172.17.0.3                                 172.17.0.4                              
+last known name               node1                                      node2                                      node3                                   
+mysql version                 8.0.28                                     8.0.28                                     8.0.28                                  
+                                                                                                                                                            
+2023-03-12T07:24:13.733958Z   |                                          starting(5.7.40)                           |                                       
+2023-03-12T07:24:13.771126Z   |                                          started(cluster)                           |                                       
+2023-03-12T07:24:14.289375Z   |                                          node1 joined                               |                                       
+2023-03-12T07:24:14.289412Z   |                                          node3 joined                               |                                       
+2023-03-12T07:24:14.789002Z   |                                          CLOSED -> OPEN                             |                                       
+2023-03-12T07:24:14.789075Z   |                                          PRIMARY(n=3)                               |                                       
+2023-03-12T07:24:14.789560Z   |                                          (restored)OPEN -> JOINED                   |                                       
+2023-03-12T07:24:14.789785Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T07:34:47.289292Z   |                                          received shutdown                          |                                       
+2023-03-12T07:34:57.286990Z   |                                          node1 joined                               |                                       
+2023-03-12T07:34:57.287111Z   |                                          node3 left                                 |                                       
+2023-03-12T07:34:57.290903Z   |                                          node3 left                                 |                                       
+2023-03-12T07:35:02.791416Z   |                                          (repeated x17)node1 suspected to be down   |                                       
+2023-03-12T07:35:11.793101Z   |                                          node1 suspected to be down                 |                                       
+2023-03-12T07:35:12.293578Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T07:35:12.293705Z   |                                          NON-PRIMARY(n=1)                           |                                       
+2023-03-12T07:35:12.293723Z   |                                          SYNCED -> OPEN                             |                                       
+2023-03-12T07:35:12.293760Z   |                                          OPEN -> CLOSED                             |                                       
+2023-03-12T07:35:18.533851Z   |                                          shutdown complete                          |                                       
+2023-03-12T07:38:06.673334Z   |                                          starting(5.7.40)                           |                                       
+2023-03-12T07:38:06.680025Z   |                                          started(cluster)                           |                                       
+2023-03-12T07:38:06.681065Z   |                                          safe_to_bootstrap: 1                       |                                       
+2023-03-12T07:38:06.693619Z   |                                          bootstrapping                              |                                       
+2023-03-12T07:38:06.695987Z   |                                          CLOSED -> OPEN                             |                                       
+2023-03-12T07:38:06.696042Z   |                                          PRIMARY(n=1)                               |                                       
+2023-03-12T07:38:06.696187Z   |                                          (restored)OPEN -> JOINED                   |                                       
+2023-03-12T07:38:06.696210Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T07:39:27.162350Z   |                                          node3 joined                               |                                       
+2023-03-12T07:39:27.164824Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T07:43:09.063375Z   |                                          node1 joined                               |                                       
+2023-03-12T07:43:09.063430Z   |                                          node3 joined                               |                                       
+2023-03-12T07:43:09.065740Z   |                                          PRIMARY(n=3)                               |                                       
+2023-03-12T07:49:45.317891Z   |                                          received shutdown                          |                                       
+2023-03-12T07:49:55.319157Z   |                                          NON-PRIMARY(n=1)                           |                                       
+2023-03-12T07:49:55.319203Z   |                                          SYNCED -> OPEN                             |                                       
+2023-03-12T07:49:55.319230Z   |                                          OPEN -> CLOSED                             |                                       
+2023-03-12T07:50:00.605309Z   |                                          shutdown complete                          |                                       
+2023-03-12T08:46:48.943442Z   |                                          starting(5.7.40)                           |                                       
+2023-03-12T08:46:48.947933Z   |                                          started(cluster)                           |                                       
+2023-03-12T08:46:48.992365Z   |                                          node1 joined                               |                                       
+2023-03-12T08:46:49.463255Z   |                                          CLOSED -> OPEN                             |                                       
+2023-03-12T08:46:49.463334Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T08:46:49.463988Z   |                                          (restored)OPEN -> JOINED                   |                                       
+2023-03-12T08:46:49.464124Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T08:48:28.470198Z   |                                          node1 left                                 |                                       
+2023-03-12T08:48:28.477643Z   |                                          node1 left                                 |                                       
+2023-03-12T08:48:28.477680Z   |                                          PRIMARY(n=1)                               |                                       
+2023-03-12T08:49:41.706020Z   |                                          node1 joined                               |                                       
+2023-03-12T08:49:41.713788Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T09:41:30.759927Z   |                                          received shutdown                          |                                       
+2023-03-12T09:41:41.775338Z   |                                          NON-PRIMARY(n=1)                           |                                       
+2023-03-12T09:41:41.775413Z   |                                          SYNCED -> OPEN                             |                                       
+2023-03-12T09:41:41.775442Z   |                                          OPEN -> CLOSED                             |                                       
+2023-03-12T09:41:48.745926Z   |                                          shutdown complete                          |                                       
+                                                                         5.7.40                                                                             
+                                                                         (version)                                                                          
+                                                                          V                                                                                 
+                                                                         8.0.28                                                                             
+2023-03-12T09:55:30.928545Z   |                                          starting(8.0.28)                           |                                       
+2023-03-12T09:59:01.655066Z   |                                          started(standalone)                        |                                       
+2023-03-12T10:01:10.488475Z   |                                          shutdown complete                          |                                       
+2023-03-12T10:03:03.136053Z   |                                          starting(8.0.28)                           |                                       
+2023-03-12T10:03:03.139798Z   |                                          started(cluster)                           |                                       
+2023-03-12T10:03:03.157578Z   |                                          not safe to bootstrap                      |                                       
+2023-03-12T10:03:03.157601Z   |                                          ABORTING                                   |                                       
+2023-03-12T10:03:03.157774Z   |                                          shutdown complete                          |                                       
+2023-03-12T10:03:03.163682Z   |                                          CLOSED -> DESTROYED                        |                                       
+2023-03-12T10:04:12.603100Z   |                                          starting(8.0.28)                           |                                       
+2023-03-12T10:04:12.608219Z   |                                          started(cluster)                           |                                       
+2023-03-12T10:04:12.609639Z   |                                          safe_to_bootstrap: 1                       |                                       
+2023-03-12T10:04:12.623957Z   |                                          bootstrapping                              |                                       
+2023-03-12T10:04:12.628369Z   |                                          CLOSED -> OPEN                             |                                       
+2023-03-12T10:04:12.628477Z   |                                          PRIMARY(n=1)                               |                                       
+2023-03-12T10:04:12.628792Z   |                                          (restored)OPEN -> JOINED                   |                                       
+2023-03-12T10:04:12.628833Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T11:23:46.950430Z   |                                          received shutdown                          |                                       
+2023-03-12T11:23:56.953018Z   |                                          SYNCED -> CLOSED                           |                                       
+2023-03-12T11:24:03.294073Z   |                                          shutdown complete                          |                                       
+2023-03-12T11:24:33.315663Z   |                                          starting(8.0.28)                           |                                       
+2023-03-12T11:24:33.319800Z   |                                          started(cluster)                           |                                       
+2023-03-12T11:24:33.320989Z   |                                          safe_to_bootstrap: 1                       |                                       
+2023-03-12T11:24:33.332251Z   |                                          bootstrapping                              |                                       
+2023-03-12T11:24:33.334384Z   |                                          CLOSED -> OPEN                             |                                       
+2023-03-12T11:24:33.334467Z   |                                          PRIMARY(n=1)                               |                                       
+2023-03-12T11:24:33.334699Z   |                                          (restored)OPEN -> JOINED                   |                                       
+2023-03-12T11:24:33.334761Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T11:35:14.693312Z   |                                          node3 joined                               |                                       
+2023-03-12T11:35:14.695410Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T11:35:16.321586Z   |                                          local node will resync node3               |                                       
+2023-03-12T11:35:16.321642Z   |                                          SYNCED -> DONOR                            |                                       
+2023-03-12T11:35:16.342707Z   |                                          IST to node3(seqno:170403898)              |                                       
+2023-03-12T11:35:17.118100Z   |                                          IST will be used                           |                                       
+2023-03-12T11:35:18.140723Z   |                                          finished sending IST to node3              |                                       
+2023-03-12T11:35:18.140768Z   |                                          DESYNCED -> JOINED                         |                                       
+2023-03-12T11:35:18.141016Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T11:35:21.030164Z   |                                          node3 left                                 |                                       
+2023-03-12T11:35:21.035732Z   |                                          node3 left                                 |                                       
+2023-03-12T11:35:21.035794Z   |                                          PRIMARY(n=1)                               |                                       
+2023-03-12T11:39:20.681083Z   |                                          node3 joined                               |                                       
+2023-03-12T11:39:20.683800Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T11:39:21.948501Z   |                                          local node will resync node3               |                                       
+2023-03-12T11:39:21.948554Z   |                                          SYNCED -> DONOR                            |                                       
+2023-03-12T11:39:21.952242Z   |                                          IST to node3(seqno:170403900)              |                                       
+2023-03-12T11:39:33.420743Z   |                                          SST to node3                               |                                       
+2023-03-12T11:39:38.705565Z   |                                          node3 left                                 |                                       
+2023-03-12T11:39:38.707686Z   |                                          node3 left                                 |                                       
+2023-03-12T11:39:38.707695Z   |                                          PRIMARY(n=1)                               |                                       
+2023-03-12T11:39:38.734654Z   |                                          SST error                                  |                                       
+2023-03-12T11:39:38.738833Z   |                                          node2 failed to sync ??(node left)         |                                       
+2023-03-12T11:39:38.738842Z   |                                          DESYNCED -> JOINED                         |                                       
+2023-03-12T11:39:38.738942Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T12:22:48.704897Z   |                                          received shutdown                          |                                       
+2023-03-12T12:22:58.706338Z   |                                          SYNCED -> CLOSED                           |                                       
+2023-03-12T12:23:04.677082Z   |                                          shutdown complete                          |                                       
+2023-03-12T12:24:36.270274Z   |                                          starting(8.0.28)                           |                                       
+2023-03-12T12:24:36.274315Z   |                                          started(cluster)                           |                                       
+2023-03-12T12:24:36.275472Z   |                                          safe_to_bootstrap: 1                       |                                       
+2023-03-12T12:24:36.287220Z   |                                          bootstrapping                              |                                       
+2023-03-12T12:24:36.290286Z   |                                          CLOSED -> OPEN                             |                                       
+2023-03-12T12:24:36.290365Z   |                                          PRIMARY(n=1)                               |                                       
+2023-03-12T12:24:36.290625Z   |                                          (restored)OPEN -> JOINED                   |                                       
+2023-03-12T12:24:36.290667Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T12:29:49.319032Z   |                                          node1 joined                               |                                       
+2023-03-12T12:29:49.323505Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T12:29:51.443525Z   |                                          node1 left                                 |                                       
+2023-03-12T12:29:51.445280Z   |                                          node1 left                                 |                                       
+2023-03-12T12:29:51.445300Z   |                                          PRIMARY(n=1)                               |                                       
+2023-03-12T12:48:43.293802Z   |                                          |                                          starting(8.0.28)                        
+2023-03-12T12:48:43.297858Z   |                                          |                                          started(cluster)                        
+2023-03-12T12:48:43.521685Z   |                                          node3 joined                               |                                       
+2023-03-12T12:48:43.521846Z   |                                          |                                          node2 joined                            
+2023-03-12T12:48:43.526717Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T12:48:43.820825Z   |                                          |                                          CLOSED -> OPEN                          
+2023-03-12T12:48:43.820929Z   |                                          |                                          PRIMARY(n=2)                            
+2023-03-12T12:48:43.822001Z   |                                          |                                          OPEN -> PRIMARY                         
+2023-03-12T12:48:44.597299Z   |                                          |                                          will receive IST(seqno:170403905)       
+2023-03-12T12:48:44.599287Z   |                                          local node will resync node3               |                                       
+2023-03-12T12:48:44.599341Z   |                                          SYNCED -> DONOR                            |                                       
+2023-03-12T12:48:44.599346Z   |                                          |                                          node2 will resync local node            
+2023-03-12T12:48:44.599377Z   |                                          |                                          PRIMARY -> JOINER                       
+2023-03-12T12:48:44.616436Z   |                                          IST to node3(seqno:170403905)              |                                       
+2023-03-12T12:48:45.044873Z   |                                          IST will be used                           |                                       
+2023-03-12T12:48:46.064764Z   |                                          finished sending IST to node3              |                                       
+2023-03-12T12:48:46.064808Z   |                                          DESYNCED -> JOINED                         |                                       
+2023-03-12T12:48:46.065014Z   |                                          |                                          got IST from node2                      
+2023-03-12T12:48:46.065051Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T12:48:54.233973Z   |                                          |                                          wsrep recovery                          
+2023-03-12T12:48:54.269978Z   |                                          |                                          IST received(seqno:170403905)           
+2023-03-12T12:48:54.272037Z   |                                          |                                          JOINER -> JOINED                        
+2023-03-12T12:48:54.272256Z   |                                          |                                          JOINED -> SYNCED                        
+2023-03-12T13:04:24.476576Z   |                                          node3 joined                               |                                       
+2023-03-12T13:04:24.476642Z   |                                          node1 joined                               |                                       
+2023-03-12T13:04:24.476806Z   |                                          |                                          node1 joined                            
+2023-03-12T13:04:24.476863Z   |                                          |                                          node2 joined                            
+2023-03-12T13:04:24.478964Z   |                                          PRIMARY(n=3)                               |                                       
+2023-03-12T13:04:24.479206Z   |                                          |                                          PRIMARY(n=3)                            
+2023-03-12T13:04:25.731994Z   |                                          node3 will resync node1                    |                                       
+2023-03-12T13:04:25.732124Z   |                                          |                                          local node will resync node1            
+2023-03-12T13:04:25.732132Z   |                                          |                                          SYNCED -> DONOR                         
+2023-03-12T13:04:25.735999Z   |                                          |                                          IST to node1(seqno:170407335)           
+2023-03-12T13:04:37.415791Z   |                                          |                                          SST to node1                            
+2023-03-12T13:04:38.645597Z   |                                          node3 joined                               |                                       
+2023-03-12T13:04:38.645710Z   |                                          node1 left                                 |                                       
+2023-03-12T13:04:38.647921Z   |                                          |                                          node2 joined                            
+2023-03-12T13:04:38.647981Z   |                                          |                                          node1 left                              
+2023-03-12T13:04:38.650097Z   |                                          |                                          node1 left                              
+2023-03-12T13:04:38.650125Z   |                                          |                                          PRIMARY(n=2)                            
+2023-03-12T13:04:38.652812Z   |                                          node1 left                                 |                                       
+2023-03-12T13:04:38.652875Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T13:04:39.715275Z   |                                          |                                          SST error                               
+2023-03-12T13:04:39.720325Z   |                                          node3 failed to sync ??(node left)         |                                       
+2023-03-12T13:04:39.720379Z   |                                          |                                          node3 failed to sync ??(node left)      
+2023-03-12T13:04:39.720388Z   |                                          |                                          DESYNCED -> JOINED                      
+2023-03-12T13:04:39.720600Z   |                                          |                                          JOINED -> SYNCED                        
+2023-03-12T13:12:02.676601Z   |                                          received shutdown                          |                                       
+2023-03-12T13:12:13.679070Z   |                                          |                                          node2 left                              
+2023-03-12T13:12:13.681813Z   |                                          |                                          node2 left                              
+2023-03-12T13:12:13.681867Z   |                                          |                                          PRIMARY(n=1)                            
+2023-03-12T13:12:13.682286Z   |                                          NON-PRIMARY(n=1)                           |                                       
+2023-03-12T13:12:13.682450Z   |                                          SYNCED -> OPEN                             |                                       
+2023-03-12T13:12:13.682565Z   |                                          OPEN -> CLOSED                             |                                       
+2023-03-12T13:12:22.957837Z   |                                          shutdown complete                          |                                       
+2023-03-12T13:13:11.498126Z   |                                          starting(8.0.28)                           |                                       
+2023-03-12T13:13:11.501941Z   |                                          started(cluster)                           |                                       
+2023-03-12T13:13:12.015863Z   |                                          node3 joined                               |                                       
+2023-03-12T13:13:12.015998Z   |                                          |                                          node2 joined                            
+2023-03-12T13:13:12.020360Z   |                                          |                                          PRIMARY(n=2)                            
+2023-03-12T13:13:12.515546Z   |                                          CLOSED -> OPEN                             |                                       
+2023-03-12T13:13:12.515641Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T13:13:12.516249Z   |                                          OPEN -> PRIMARY                            |                                       
+2023-03-12T13:13:13.245723Z   |                                          will receive IST(seqno:170407338)          |                                       
+2023-03-12T13:13:13.247714Z   |                                          node3 will resync local node               |                                       
+2023-03-12T13:13:13.247750Z   |                                          PRIMARY -> JOINER                          |                                       
+2023-03-12T13:13:13.248015Z   |                                          |                                          local node will resync node2            
+2023-03-12T13:13:13.248065Z   |                                          |                                          SYNCED -> DONOR                         
+2023-03-12T13:13:13.262238Z   |                                          |                                          IST to node2(seqno:170407338)           
+2023-03-12T13:13:13.863959Z   |                                          |                                          IST will be used                        
+2023-03-12T13:13:14.886853Z   |                                          got IST from node3                         |                                       
+2023-03-12T13:13:14.886942Z   |                                          |                                          finished sending IST to node2           
+2023-03-12T13:13:14.887000Z   |                                          |                                          DESYNCED -> JOINED                      
+2023-03-12T13:13:14.887249Z   |                                          |                                          JOINED -> SYNCED                        
+2023-03-12T13:13:19.031367Z   |                                          wsrep recovery                             |                                       
+2023-03-12T13:13:19.156722Z   |                                          IST received(seqno:170407338)              |                                       
+2023-03-12T13:13:19.158840Z   |                                          JOINER -> JOINED                           |                                       
+2023-03-12T13:13:19.159057Z   |                                          JOINED -> SYNCED                           |                                       
+2023-03-12T19:35:05.840743Z   starting(8.0.28)                           |                                          |                                       
+2023-03-12T19:35:05.848542Z   started(cluster)                           |                                          |                                       
+2023-03-12T19:35:06.375917Z   |                                          |                                          node2 joined                            
+2023-03-12T19:35:06.375974Z   |                                          |                                          node1 joined                            
+2023-03-12T19:35:06.376012Z   node3 joined                               |                                          |                                       
+2023-03-12T19:35:06.376016Z   |                                          node3 joined                               |                                       
+2023-03-12T19:35:06.376026Z   node2 joined                               |                                          |                                       
+2023-03-12T19:35:06.376081Z   |                                          node1 joined                               |                                       
+2023-03-12T19:35:06.383186Z   |                                          PRIMARY(n=3)                               |                                       
+2023-03-12T19:35:06.385445Z   |                                          |                                          PRIMARY(n=3)                            
+2023-03-12T19:35:06.875619Z   CLOSED -> OPEN                             |                                          |                                       
+2023-03-12T19:35:06.875717Z   PRIMARY(n=3)                               |                                          |                                       
+2023-03-12T19:35:06.876501Z   OPEN -> PRIMARY                            |                                          |                                       
+2023-03-12T19:35:07.638676Z   will receive IST(seqno:178226774)          |                                          |                                       
+2023-03-12T19:35:07.644560Z   |                                          |                                          local node will resync node1            
+2023-03-12T19:35:07.644570Z   |                                          |                                          SYNCED -> DONOR                         
+2023-03-12T19:35:07.644668Z   node3 will resync local node               |                                          |                                       
+2023-03-12T19:35:07.644683Z   PRIMARY -> JOINER                          |                                          |                                       
+2023-03-12T19:35:07.644740Z   |                                          node3 will resync node1                    |                                       
+2023-03-12T19:36:48.567087Z   timeout from donor in gtid/keyring stage   |                                          |                                       
+2023-03-12T19:36:48.589084Z   SST error                                  |                                          |                                       
+2023-03-12T19:36:48.590054Z   |                                          |                                          node2 joined                            
+2023-03-12T19:36:48.590121Z   |                                          |                                          node1 left                              
+2023-03-12T19:36:48.590280Z   |                                          node3 joined                               |                                       
+2023-03-12T19:36:48.590338Z   NON-PRIMARY(n=1)                           |                                          |                                       
+2023-03-12T19:36:48.590388Z   |                                          node1 left                                 |                                       
+2023-03-12T19:36:48.590443Z   JOINER -> OPEN                             |                                          |                                       
+2023-03-12T19:36:48.590514Z   OPEN -> CLOSED                             |                                          |                                       
+2023-03-12T19:36:48.590632Z   terminated                                 |                                          |                                       
+2023-03-12T19:36:48.590647Z   former SST cancelled                       |                                          |                                       
+2023-03-12T19:36:48.597786Z   |                                          |                                          node1 left                              
+2023-03-12T19:36:48.597826Z   |                                          |                                          PRIMARY(n=2)                            
+2023-03-12T19:36:48.604279Z   |                                          node1 left                                 |                                       
+2023-03-12T19:36:48.604341Z   |                                          PRIMARY(n=2)                               |                                       
+                              wsrep recovery                             |                                          |                                       
+2023-03-12T19:41:28.493046Z   starting(8.0.28)                           |                                          |                                       
+2023-03-12T19:41:28.500789Z   started(cluster)                           |                                          |                                       
+2023-03-12T19:43:17.630191Z   |                                          node3 joined                               |                                       
+2023-03-12T19:43:17.630208Z   node3 joined                               |                                          |                                       
+2023-03-12T19:43:17.630221Z   node2 joined                               |                                          |                                       
+2023-03-12T19:43:17.630243Z   |                                          node1 joined                               |                                       
+2023-03-12T19:43:17.634138Z   |                                          |                                          node2 joined                            
+2023-03-12T19:43:17.634229Z   |                                          |                                          node1 joined                            
+2023-03-12T19:43:17.643210Z   |                                          PRIMARY(n=3)                               |                                       
+2023-03-12T19:43:17.648163Z   |                                          |                                          PRIMARY(n=3)                            
+2023-03-12T19:43:18.130088Z   CLOSED -> OPEN                             |                                          |                                       
+2023-03-12T19:43:18.130230Z   PRIMARY(n=3)                               |                                          |                                       
+2023-03-12T19:43:18.130916Z   OPEN -> PRIMARY                            |                                          |                                       
+2023-03-12T19:43:18.904410Z   will receive IST(seqno:178226792)          |                                          |                                       
+2023-03-12T19:43:18.913328Z   |                                          |                                          node1 cannot find donor                 
+2023-03-12T19:43:18.913429Z   cannot find donor                          |                                          |                                       
+2023-03-12T19:43:18.913565Z   |                                          node1 cannot find donor                    |                                       
+2023-03-12T19:43:19.914122Z   |                                          |                                          node1 cannot find donor                 
+2023-03-12T19:43:19.914259Z   cannot find donor                          |                                          |                                       
+2023-03-12T19:43:19.914362Z   |                                          node1 cannot find donor                    |                                       
+2023-03-12T19:43:20.914957Z   |                                          |                                          (repeated x97)node1 cannot find donor   
+2023-03-12T19:43:20.915143Z   (repeated x97)cannot find donor            |                                          |                                       
+2023-03-12T19:43:20.915262Z   |                                          (repeated x97)node1 cannot find donor      |                                       
+2023-03-12T19:44:58.999603Z   |                                          |                                          node1 cannot find donor                 
+2023-03-12T19:44:58.999791Z   cannot find donor                          |                                          |                                       
+2023-03-12T19:44:58.999891Z   |                                          node1 cannot find donor                    |                                       
+2023-03-12T19:44:59.817822Z   timeout from donor in gtid/keyring stage   |                                          |                                       
+2023-03-12T19:44:59.839692Z   SST error                                  |                                          |                                       
+2023-03-12T19:44:59.840669Z   |                                          |                                          node2 joined                            
+2023-03-12T19:44:59.840745Z   |                                          |                                          node1 left                              
+2023-03-12T19:44:59.840933Z   |                                          node3 joined                               |                                       
+2023-03-12T19:44:59.841034Z   |                                          node1 left                                 |                                       
+2023-03-12T19:44:59.841189Z   NON-PRIMARY(n=1)                           |                                          |                                       
+2023-03-12T19:44:59.841292Z   PRIMARY -> OPEN                            |                                          |                                       
+2023-03-12T19:44:59.841352Z   OPEN -> CLOSED                             |                                          |                                       
+2023-03-12T19:44:59.841515Z   terminated                                 |                                          |                                       
+2023-03-12T19:44:59.841529Z   former SST cancelled                       |                                          |                                       
+2023-03-12T19:44:59.848349Z   |                                          |                                          node1 left                              
+2023-03-12T19:44:59.848409Z   |                                          |                                          PRIMARY(n=2)                            
+2023-03-12T19:44:59.855443Z   |                                          node1 left                                 |                                       
+2023-03-12T19:44:59.855491Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T21:55:48.916323Z   |                                          received shutdown                          |                                       
+2023-03-12T21:55:59.918448Z   |                                          |                                          node2 left                              
+2023-03-12T21:55:59.924796Z   |                                          |                                          node2 left                              
+2023-03-12T21:55:59.924897Z   |                                          |                                          PRIMARY(n=1)                            
+2023-03-12T21:55:59.925551Z   |                                          NON-PRIMARY(n=1)                           |                                       
+2023-03-12T21:55:59.925682Z   |                                          SYNCED -> OPEN                             |                                       
+2023-03-12T21:55:59.925725Z   |                                          OPEN -> CLOSED                             |                                       
+2023-03-12T21:56:17.004067Z   |                                          shutdown complete                          |                                       
+2023-03-12T21:58:39.513891Z   |                                          starting(8.0.28)                           |                                       
+2023-03-12T21:58:39.523542Z   |                                          started(cluster)                           |                                       
+2023-03-12T21:58:44.885014Z   |                                          |                                          node2 joined                            
+2023-03-12T21:58:44.885179Z   |                                          node3 joined                               |                                       
+2023-03-12T21:58:44.887985Z   |                                          |                                          PRIMARY(n=2)                            
+2023-03-12T21:58:45.384740Z   |                                          CLOSED -> OPEN                             |                                       
+2023-03-12T21:58:45.384861Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T21:58:45.385505Z   |                                          OPEN -> PRIMARY                            |                                       
+2023-03-12T21:58:46.155159Z   |                                          will receive IST(seqno:178226798)          |                                       
+2023-03-12T21:58:46.160014Z   |                                          cannot find donor                          |                                       
+2023-03-12T21:58:46.160016Z   |                                          |                                          node2 cannot find donor                 
+2023-03-12T21:58:47.160736Z   |                                          |                                          node2 cannot find donor                 
+2023-03-12T21:58:47.160758Z   |                                          cannot find donor                          |                                       
+2023-03-12T21:58:48.161511Z   |                                          |                                          (repeated x97)node2 cannot find donor   
+2023-03-12T21:58:48.161544Z   |                                          (repeated x97)cannot find donor            |                                       
+2023-03-12T22:00:26.237092Z   |                                          |                                          node2 cannot find donor                 
+2023-03-12T22:00:26.237093Z   |                                          cannot find donor                          |                                       
+2023-03-12T22:00:27.067645Z   |                                          timeout from donor in gtid/keyring stage   |                                       
+2023-03-12T22:00:27.089809Z   |                                          SST error                                  |                                       
+2023-03-12T22:00:27.237470Z   |                                          terminated                                 |                                       
+2023-03-12T22:00:27.237486Z   |                                          former SST cancelled                       |                                       
+2023-03-12T22:00:28.090598Z   |                                          |                                          node2 left                              
+2023-03-12T22:00:28.094664Z   |                                          |                                          node2 left                              
+2023-03-12T22:00:28.094708Z   |                                          |                                          PRIMARY(n=1)                            
+                                                                                                                                                            
+identifier                    node1                                      node2                                      node3                                   
+current path                  tests/logs/upgrade/node1.log               tests/logs/upgrade/node2.log               tests/logs/upgrade/node3.log            
+last known ip                 172.17.0.2                                 172.17.0.3                                 172.17.0.4                              
+last known name               node1                                      node2                                      node3                                   
+mysql version                 8.0.28                                     8.0.28                                     8.0.28                                  

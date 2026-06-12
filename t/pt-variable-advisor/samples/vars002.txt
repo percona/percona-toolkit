@@ -18,3 +18,5 @@
 
 # WARN sync_binlog: Binary logging is enabled, but sync_binlog isn't configured so that every transaction is flushed to the binary log for durability.
 
+# NOTE end-of-life mysql version: Every release older than 8.0 is now officially end-of-life.
+

@@ -18,24 +18,24 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
-diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
-my $dbh2 = $sb->get_dbh_for('master1');
+diag(`$trunk/sandbox/start-sandbox source 12348 >/dev/null`);
+my $dbh2 = $sb->get_dbh_for('source1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( !$dbh2 ) {
-   plan skip_all => 'Cannot connect to second sandbox master';
+   plan skip_all => 'Cannot connect to second sandbox source';
 }
 else {
    plan tests => 3;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
-$sb->load_file('master', 't/pt-table-sync/samples/before.sql');
+$sb->wipe_clean($source_dbh);
+$sb->create_dbs($source_dbh, [qw(test)]);
+$sb->load_file('source', 't/pt-table-sync/samples/before.sql');
 
 # #############################################################################
 # Issue 40: mk-table-sync feature: sync to different db
@@ -45,7 +45,7 @@ $dbh2->do('DROP DATABASE IF EXISTS d2');
 $dbh2->do('CREATE DATABASE d2');
 $dbh2->do('CREATE TABLE d2.test2 (a INT NOT NULL, b char(2) NOT NULL, PRIMARY KEY  (`a`,`b`) )');
 
-$output = `$trunk/bin/pt-table-sync --no-check-slave --execute h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=test1  h=127.1,P=12348,D=d2,t=test2 2>&1`;
+$output = `$trunk/bin/pt-table-sync --no-check-replica --execute h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=test1  h=127.1,P=12348,D=d2,t=test2 2>&1`;
 is(
    $output,
    '',
@@ -63,7 +63,7 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

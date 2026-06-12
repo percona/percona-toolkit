@@ -1,0 +1,108 @@
+*************************** 1. row ***************************
+  Type: InnoDB
+  Name: 
+Status: 
+=====================================
+120330 22:33:19 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 1 seconds
+-----------------
+BACKGROUND THREAD
+-----------------
+srv_master_thread loops: 22 1_second, 22 sleeps, 2 10_second, 3 background, 3 flush
+srv_master_thread log flush and writes: 25
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 38, signal count 38
+Mutex spin waits 43, rounds 526, OS waits 12
+RW-shared spins 18, OS waits 18; RW-excl spins 0, OS waits 8
+Spin rounds per wait: 12.23 mutex, 30.00 RW-shared, 240.00 RW-excl
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for i/o request (insert buffer thread)
+I/O thread 1 state: waiting for i/o request (log thread)
+I/O thread 2 state: waiting for i/o request (read thread)
+I/O thread 3 state: waiting for i/o request (read thread)
+I/O thread 4 state: waiting for i/o request (read thread)
+I/O thread 5 state: waiting for i/o request (read thread)
+I/O thread 6 state: waiting for i/o request (write thread)
+I/O thread 7 state: waiting for i/o request (write thread)
+I/O thread 8 state: waiting for i/o request (write thread)
+I/O thread 9 state: waiting for i/o request (write thread)
+Pending normal aio reads: 0, aio writes: 0,
+ ibuf aio reads: 0, log i/o's: 0, sync i/o's: 0
+Pending flushes (fsync) log: 0; buffer pool: 0
+0 OS file reads, 177 OS file writes, 96 OS fsyncs
+0.00 reads/s, 0 avg bytes/read, 0.00 writes/s, 0.00 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 0, seg size 2,
+0 inserts, 0 merged recs, 0 merges
+Hash table size 138337, node heap has 7 buffer(s)
+0.00 hash searches/s, 0.00 non-hash searches/s
+---
+LOG
+---
+Log sequence number 7004601
+Log flushed up to   7004601
+Last checkpoint at  7004601
+Max checkpoint age    7782360
+Checkpoint age target 7539162
+Modified age          0
+Checkpoint age        0
+0 pending log writes, 0 pending chkp writes
+69 log i/o's done, 0.00 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total memory allocated 34193408; in additional pool allocated 0
+Internal hash tables (constant factor + variable factor)
+    Adaptive hash index 672196 	(553348 + 118848)
+    Page hash           17692
+    Dictionary cache    227638 	(139064 + 88574)
+    File system         41888 	(41336 + 552)
+    Lock system         42228 	(41908 + 320)
+    Recovery system     0 	(0 + 0)
+    Threads             41612 	(41348 + 264)
+Dictionary memory allocated 88574
+Buffer pool size        2047
+Buffer pool size, bytes 33538048
+Free buffers            1512
+Database pages          528
+Old database pages      209
+Modified db pages       0
+Pending reads 0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 0, not young 0
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 0, created 528, written 630
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+No buffer pool page gets since the last printout
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 528, unzip_LRU len: 0
+I/O sum[0]:cur[0], unzip sum[0]:cur[0]
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+1 read views open inside InnoDB
+Main thread process no. 2406, id 2894470000, state: waiting for server activity
+Number of rows inserted 46273, updated 0, deleted 0, read 0
+0.00 inserts/s, 0.00 updates/s, 0.00 deletes/s, 0.00 reads/s
+------------
+TRANSACTIONS
+------------
+Trx id counter 31C
+Purge done for trx's n:o < 0 undo n:o < 0
+History list length 0
+LIST OF TRANSACTIONS FOR EACH SESSION:
+---TRANSACTION 0, not started, process no 2406, OS thread id 2877283184
+MySQL thread id 445, query id 4428 localhost msandbox
+SHOW /*!50000 ENGINE*/ INNODB STATUS
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================
+

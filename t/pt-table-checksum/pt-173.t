@@ -18,21 +18,21 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 4;
 }
 
-$sb->load_file('master', 't/pt-table-checksum/samples/PT-173.sql');
+$sb->load_file('source', 't/pt-table-checksum/samples/PT-173.sql');
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = $sb->dsn_for('master');
-my @args       = ($master_dsn, "--resume", "--truncate-replicate-table"); 
+my $source_dsn = $sb->dsn_for('source');
+my @args       = ($source_dsn, "--resume", "--truncate-replicate-table"); 
 my $output;
 my $exit_status;
 
@@ -49,7 +49,7 @@ isnt(
 );
 
 # Test #2 
-@args       = ($master_dsn, "--truncate-replicate-table"); 
+@args       = ($source_dsn, "--truncate-replicate-table"); 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args) },
    stderr => 1,
@@ -64,9 +64,9 @@ is(
 );
 
 # Test #3 
-$sb->load_file('master', 't/pt-table-checksum/samples/PT-173.sql');
+$sb->load_file('source', 't/pt-table-checksum/samples/PT-173.sql');
 
-@args       = ($master_dsn, "--truncate-replicate-table", "--empty-replicate-table"); 
+@args       = ($source_dsn, "--truncate-replicate-table", "--empty-replicate-table"); 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args) },
    stderr => 1,

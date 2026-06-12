@@ -14,15 +14,16 @@ use Time::HiRes qw(time);
 
 use PerconaTest;
 use DSNParser;
+use VersionParser;
 use Sandbox;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 my $have_strace = `which strace 2>/dev/null`;
 
 if ( !$dbh ) {
-   plan skip_all => "Cannot connect to master sandbox";
+   plan skip_all => "Cannot connect to source sandbox";
 }
 elsif ( !$have_strace ) {
    plan skip_all => 'strace is not installed or not in PATH';

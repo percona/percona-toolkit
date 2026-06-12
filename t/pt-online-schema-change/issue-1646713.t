@@ -26,18 +26,18 @@ require "$trunk/bin/pt-online-schema-change";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
-if ($sandbox_version ge '8.0') {
-    plan skip_all => 'PXC 8 does not exist yet';
+if ( $sandbox_version ge '8.4') {
+   plan skip_all => 'PXC 8.4 does not exist yet';
 }
 
-our ($master_dbh, $master_dsn) = $sb->start_sandbox(
-   server => 'master',
-   type   => 'master',
+our ($source_dbh, $source_dsn) = $sb->start_sandbox(
+   server => 'source',
+   type   => 'source',
    env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 plan tests => 2;
@@ -50,18 +50,18 @@ my $output;
 my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
-$sb->load_file('master', "$sample/issue-1646713.sql");
+$sb->load_file('source', "$sample/issue-1646713.sql");
 my $num_rows = 1000;
-my $master_port = 12345;
+my $source_port = 12345;
 
-$master_dbh->do("FLUSH TABLES");
-$sb->wait_for_slaves();
+$source_dbh->do("FLUSH TABLES");
+$sb->wait_for_replicas();
 
 sub start_thread {
    my ($dsn_opts, $sleep_time) = @_;
    my $dp = new DSNParser(opts=>$dsn_opts);
    my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-   my $dbh = $sb->get_dbh_for('master');
+   my $dbh = $sb->get_dbh_for('source');
    diag("Thread started: Sleeping $sleep_time seconds before updating the PK field for row with id=1 in test.sbtest");
    # We need to lock the tables to prevent osc to really start before we are able to write the row to the table
    $dbh->do("LOCK TABLES `test`.`o1` WRITE");
@@ -78,7 +78,7 @@ threads->yield();
 diag("Starting osc. A row will be updated in a different thread.");
 my $dir = tempdir( CLEANUP => 1 );
 $output = output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+   sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=o1",
          '--execute', 
          '--alter', "ADD COLUMN c INT",
          '--chunk-size', '1',
@@ -93,7 +93,7 @@ like(
       "bug-1646713 duplicate rows in _t_new for UPDATE t set pk=0 where pk=1",
 );
 
-my $rows = $master_dbh->selectrow_arrayref(
+my $rows = $source_dbh->selectrow_arrayref(
    "SELECT COUNT(*) FROM `test`.`o1` WHERE id=0");
 is(
    $rows->[0],
@@ -103,12 +103,12 @@ is(
 
 threads->exit();
 
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+$source_dbh->do("DROP DATABASE IF EXISTS test");
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->stop_sandbox(qw(master)); 
+$sb->wipe_clean($source_dbh);
+$sb->stop_sandbox(qw(source)); 
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

@@ -17,10 +17,10 @@ require "$trunk/bin/pt-deadlock-logger";
 
 my $dp   = new DSNParser(opts=>$dsn_opts);
 my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh1 = $sb->get_dbh_for('master');
+my $dbh1 = $sb->get_dbh_for('source');
 
 if ( !$dbh1 ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;

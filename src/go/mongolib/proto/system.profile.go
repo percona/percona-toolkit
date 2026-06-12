@@ -1,3 +1,16 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package proto
 
 import (
@@ -8,85 +21,104 @@ import (
 )
 
 // docsExamined is renamed from nscannedObjects in 3.2.0
+// json tags are used for PMM purposes
 // https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
 type SystemProfile struct {
-	AllUsers        []interface{} `bson:"allUsers"`
-	Client          string        `bson:"client"`
-	CursorExhausted bool          `bson:"cursorExhausted"`
-	DocsExamined    int           `bson:"docsExamined"`
-	NscannedObjects int           `bson:"nscannedObjects"`
+	AllUsers        []interface{} `bson:"allUsers" json:"allUsers"`
+	Client          string        `bson:"client" json:"client"`
+	CursorExhausted bool          `bson:"cursorExhausted" json:"cursorExhausted"`
 	ExecStats       struct {
-		Advanced                    int `bson:"advanced"`
-		ExecutionTimeMillisEstimate int `bson:"executionTimeMillisEstimate"`
+		Advanced                    int `bson:"advanced" json:"advanced"`
+		ExecutionTimeMillisEstimate int `bson:"executionTimeMillisEstimate" json:"executionTimeMillisEstimate"`
 		InputStage                  struct {
-			Advanced                    int    `bson:"advanced"`
-			Direction                   string `bson:"direction"`
-			DocsExamined                int    `bson:"docsExamined"`
-			ExecutionTimeMillisEstimate int    `bson:"executionTimeMillisEstimate"`
+			Advanced                    int    `bson:"advanced" json:"advanced"`
+			Direction                   string `bson:"direction" json:"direction"`
+			DocsExamined                int    `bson:"docsExamined" json:"docsExamined"`
+			ExecutionTimeMillisEstimate int    `bson:"executionTimeMillisEstimate" json:"executionTimeMillisEstimate"`
 			Filter                      struct {
 				Date struct {
-					Eq string `bson:"$eq"`
-				} `bson:"date"`
-			} `bson:"filter"`
-			Invalidates  int    `bson:"invalidates"`
-			IsEOF        int    `bson:"isEOF"`
-			NReturned    int    `bson:"nReturned"`
-			NeedTime     int    `bson:"needTime"`
-			NeedYield    int    `bson:"needYield"`
-			RestoreState int    `bson:"restoreState"`
-			SaveState    int    `bson:"saveState"`
-			Stage        string `bson:"stage"`
-			Works        int    `bson:"works"`
-		} `bson:"inputStage"`
-		Invalidates  int    `bson:"invalidates"`
-		IsEOF        int    `bson:"isEOF"`
-		LimitAmount  int    `bson:"limitAmount"`
-		NReturned    int    `bson:"nReturned"`
-		NeedTime     int    `bson:"needTime"`
-		NeedYield    int    `bson:"needYield"`
-		RestoreState int    `bson:"restoreState"`
-		SaveState    int    `bson:"saveState"`
-		Stage        string `bson:"stage"`
-		Works        int    `bson:"works"`
-	} `bson:"execStats"`
-	KeyUpdates   int `bson:"keyUpdates"`
-	KeysExamined int `bson:"keysExamined"`
+					Eq string `bson:"$eq" json:"$eq"`
+				} `bson:"date" json:"date"`
+			} `bson:"filter" json:"filter"`
+			Invalidates  int    `bson:"invalidates" json:"invalidates"`
+			IsEOF        int    `bson:"isEOF" json:"isEOF"`
+			NReturned    int    `bson:"nReturned" json:"nReturned"`
+			NeedTime     int    `bson:"needTime" json:"needTime"`
+			NeedYield    int    `bson:"needYield" json:"needYield"`
+			RestoreState int    `bson:"restoreState" json:"restoreState"`
+			SaveState    int    `bson:"saveState" json:"saveState"`
+			Stage        string `bson:"stage" json:"stage"`
+			Works        int    `bson:"works" json:"works"`
+		} `bson:"inputStage" json:"inputStage"`
+		Invalidates  int    `bson:"invalidates" json:"invalidates"`
+		IsEOF        int    `bson:"isEOF" json:"isEOF"`
+		LimitAmount  int    `bson:"limitAmount" json:"limitAmount"`
+		NReturned    int    `bson:"nReturned" json:"nReturned"`
+		NeedTime     int    `bson:"needTime" json:"needTime"`
+		NeedYield    int    `bson:"needYield" json:"needYield"`
+		RestoreState int    `bson:"restoreState" json:"restoreState"`
+		SaveState    int    `bson:"saveState" json:"saveState"`
+		Stage        string `bson:"stage" json:"stage"`
+		Works        int    `bson:"works" json:"works"`
+		DocsExamined int    `bson:"docsExamined" json:"docsExamined"`
+	} `bson:"execStats" json:"execStats"`
+	KeyUpdates   int `bson:"keyUpdates" json:"keyUpdates"`
+	KeysExamined int `bson:"keysExamined" json:"keysExamined"`
 	Locks        struct {
 		Collection struct {
 			AcquireCount struct {
-				R int `bson:"R"`
-			} `bson:"acquireCount"`
-		} `bson:"Collection"`
+				Read       int `bson:"R" json:"R"`
+				ReadShared int `bson:"r" json:"r"`
+			} `bson:"acquireCount" json:"acquireCount"`
+		} `bson:"Collection" json:"Collection"`
 		Database struct {
 			AcquireCount struct {
-				R int `bson:"r"`
-			} `bson:"acquireCount"`
-		} `bson:"Database"`
+				ReadShared int `bson:"r" json:"r"`
+			} `bson:"acquireCount" json:"acquireCount"`
+			AcquireWaitCount struct {
+				ReadShared int `bson:"r" json:"r"`
+			} `bson:"acquireWaitCount" json:"acquireWaitCount"`
+			TimeAcquiringMicros struct {
+				ReadShared int64 `bson:"r" json:"r"`
+			} `bson:"timeAcquiringMicros" json:"timeAcquiringMicros"`
+		} `bson:"Database" json:"Database"`
 		Global struct {
 			AcquireCount struct {
-				R int `bson:"r"`
-			} `bson:"acquireCount"`
-		} `bson:"Global"`
+				ReadShared  int `bson:"r" json:"r"`
+				WriteShared int `bson:"w" json:"w"`
+			} `bson:"acquireCount" json:"acquireCount"`
+		} `bson:"Global" json:"Global"`
 		MMAPV1Journal struct {
 			AcquireCount struct {
-				R int `bson:"r"`
-			} `bson:"acquireCount"`
-		} `bson:"MMAPV1Journal"`
-	} `bson:"locks"`
-	Millis             int       `bson:"millis"`
-	Nreturned          int       `bson:"nreturned"`
-	Ns                 string    `bson:"ns"`
-	NumYield           int       `bson:"numYield"`
-	Op                 string    `bson:"op"`
-	Protocol           string    `bson:"protocol"`
-	Query              BsonD     `bson:"query"`
-	UpdateObj          BsonD     `bson:"updateobj"`
-	Command            BsonD     `bson:"command"`
-	OriginatingCommand BsonD     `bson:"originatingCommand"`
-	ResponseLength     int       `bson:"responseLength"`
-	Ts                 time.Time `bson:"ts"`
-	User               string    `bson:"user"`
-	WriteConflicts     int       `bson:"writeConflicts"`
+				ReadShared int `bson:"r" json:"r"`
+			} `bson:"acquireCount" json:"acquireCount"`
+		} `bson:"MMAPV1Journal" json:"MMAPV1Journal"`
+	} `bson:"locks" json:"locks"`
+	Millis             int       `bson:"millis" json:"durationMillis"`
+	Nreturned          int       `bson:"nreturned" json:"nreturned"`
+	Ns                 string    `bson:"ns" json:"ns"`
+	NumYield           int       `bson:"numYield" json:"numYield"`
+	Op                 string    `bson:"op" json:"op"`
+	PlanSummary        string    `bson:"planSummary" json:"planSummary"`
+	Protocol           string    `bson:"protocol" json:"protocol"`
+	Query              bson.D    `bson:"query" json:"query"`
+	UpdateObj          bson.D    `bson:"updateobj" json:"updateobj"`
+	Command            bson.D    `bson:"command" json:"command"`
+	OriginatingCommand bson.D    `bson:"originatingCommand" json:"originatingCommand"`
+	ResponseLength     int       `bson:"responseLength" json:"reslen"`
+	Ts                 time.Time `bson:"ts" json:"ts"`
+	User               string    `bson:"user" json:"user"`
+	WriteConflicts     int       `bson:"writeConflicts" json:"writeConflicts"`
+	DocsExamined       int       `bson:"docsExamined" json:"docsExamined"`
+	QueryHash          string    `bson:"queryHash" json:"queryHash"`
+	Storage            struct {
+		Data struct {
+			BytesRead         int64 `bson:"bytesRead" json:"bytesRead"`
+			TimeReadingMicros int64 `bson:"timeReadingMicros" json:"timeReadingMicros"`
+		} `bson:"data" json:"data"`
+	} `bson:"storage" json:"storage"`
+	AppName  string `bson:"appName" json:"appName"`
+	Comments string `bson:"comments" json:"comments"`
 }
 
 func NewExampleQuery(doc SystemProfile) ExampleQuery {
@@ -104,10 +136,10 @@ func NewExampleQuery(doc SystemProfile) ExampleQuery {
 type ExampleQuery struct {
 	Ns                 string `bson:"ns" json:"ns"`
 	Op                 string `bson:"op" json:"op"`
-	Query              BsonD  `bson:"query,omitempty" json:"query,omitempty"`
-	Command            BsonD  `bson:"command,omitempty" json:"command,omitempty"`
-	OriginatingCommand BsonD  `bson:"originatingCommand,omitempty" json:"originatingCommand,omitempty"`
-	UpdateObj          BsonD  `bson:"updateobj,omitempty" json:"updateobj,omitempty"`
+	Query              bson.D `bson:"query,omitempty" json:"query,omitempty"`
+	Command            bson.D `bson:"command,omitempty" json:"command,omitempty"`
+	OriginatingCommand bson.D `bson:"originatingCommand,omitempty" json:"originatingCommand,omitempty"`
+	UpdateObj          bson.D `bson:"updateobj,omitempty" json:"updateobj,omitempty"`
 }
 
 func (self ExampleQuery) Db() string {
@@ -124,7 +156,7 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 
 	switch self.Op {
 	case "query":
-		if cmd.Len() == 0 {
+		if len(cmd) == 0 {
 			cmd = self.Query
 		}
 
@@ -137,15 +169,15 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 		//	 "$explain" : true
 		// },
 		if _, ok := cmd.Map()["$explain"]; ok {
-			cmd = BsonD{
+			cmd = bson.D{
 				{"explain", ""},
 			}
 			break
 		}
 
-		if cmd.Len() == 0 || cmd[0].Key != "find" {
+		if len(cmd) == 0 || cmd[0].Key != "find" {
 			var filter interface{}
-			if cmd.Len() > 0 && cmd[0].Key == "query" {
+			if len(cmd) > 0 && cmd[0].Key == "query" {
 				filter = cmd[0].Value
 			} else {
 				filter = cmd
@@ -157,7 +189,7 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 				coll = s[1]
 			}
 
-			cmd = BsonD{
+			cmd = bson.D{
 				{"find", coll},
 				{"filter", filter},
 			}
@@ -178,7 +210,6 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 					} else {
 						cmd = append(cmd[:i], cmd[i+1:]...)
 					}
-					break
 				}
 			}
 		}
@@ -188,13 +219,13 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 		if len(s) == 2 {
 			coll = s[1]
 		}
-		if cmd.Len() == 0 {
-			cmd = BsonD{
+		if len(cmd) == 0 {
+			cmd = bson.D{
 				{Key: "q", Value: self.Query},
 				{Key: "u", Value: self.UpdateObj},
 			}
 		}
-		cmd = BsonD{
+		cmd = bson.D{
 			{Key: "update", Value: coll},
 			{Key: "updates", Value: []interface{}{cmd}},
 		}
@@ -204,34 +235,34 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 		if len(s) == 2 {
 			coll = s[1]
 		}
-		if cmd.Len() == 0 {
-			cmd = BsonD{
+		if len(cmd) == 0 {
+			cmd = bson.D{
 				{Key: "q", Value: self.Query},
 				// we can't determine if limit was 1 or 0 so we assume 0
 				{Key: "limit", Value: 0},
 			}
 		}
-		cmd = BsonD{
+		cmd = bson.D{
 			{Key: "delete", Value: coll},
 			{Key: "deletes", Value: []interface{}{cmd}},
 		}
 	case "insert":
-		if cmd.Len() == 0 {
+		if len(cmd) == 0 {
 			cmd = self.Query
 		}
-		if cmd.Len() == 0 || cmd[0].Key != "insert" {
+		if len(cmd) == 0 || cmd[0].Key != "insert" {
 			coll := ""
 			s := strings.SplitN(self.Ns, ".", 2)
 			if len(s) == 2 {
 				coll = s[1]
 			}
 
-			cmd = BsonD{
+			cmd = bson.D{
 				{"insert", coll},
 			}
 		}
 	case "getmore":
-		if self.OriginatingCommand.Len() > 0 {
+		if len(self.OriginatingCommand) > 0 {
 			cmd = self.OriginatingCommand
 			for i := range cmd {
 				// drop $db param as it is not supported in MongoDB 3.0
@@ -245,16 +276,18 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 				}
 			}
 		} else {
-			cmd = BsonD{
+			cmd = bson.D{
 				{Key: "getmore", Value: ""},
 			}
 		}
 	case "command":
-		if cmd.Len() == 0 || cmd[0].Key != "group" {
+		cmd = sanitizeCommand(cmd)
+
+		if len(cmd) == 0 || cmd[0].Key != "group" {
 			break
 		}
 
-		if group, ok := cmd[0].Value.(BsonD); ok {
+		if group, ok := cmd[0].Value.(bson.D); ok {
 			for i := range group {
 				// for MongoDB <= 3.2
 				// "$reduce" : function () {}
@@ -283,4 +316,29 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 			Value: cmd,
 		},
 	}
+}
+
+func sanitizeCommand(cmd bson.D) bson.D {
+	if len(cmd) < 1 {
+		return cmd
+	}
+
+	key := cmd[0].Key
+	if key != "count" && key != "distinct" {
+		return cmd
+	}
+
+	for i := range cmd {
+		// drop $db param as it is not supported in MongoDB 3.0
+		if cmd[i].Key == "$db" {
+			if len(cmd)-1 == i {
+				cmd = cmd[:i]
+			} else {
+				cmd = append(cmd[:i], cmd[i+1:]...)
+			}
+			break
+		}
+	}
+
+	return cmd
 }

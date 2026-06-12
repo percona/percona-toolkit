@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Ireland Ltd.
+# This program is copyright 2009-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # ReportFormatter package
 # ###########################################################################
@@ -27,7 +26,7 @@
 # Internally, all column widths are *first* treated as percentages of the
 # line width. Even if a column is specified with width=>N where N is some
 # length of characters, this is converted to a percent/line width (rounded up).
-# 
+#
 # Columns specified with width=>N or width_pct=>P (where P is some percent
 # of *total* line width, not remaining line width when used with other width=>N
 # columns) are fixed.  You get exactly what you specify even if this results
@@ -50,7 +49,7 @@
 # Extra space is distributed evenly among auto-width cols with print widths
 # less than the column's max val or header/name.  This widens auto-width cols
 # to either show longer values or truncate the column header/name less.
-# 
+#
 # After these adjustments, get_report() calls _truncate_headers() and
 # _truncate_line_values().  These truncate output to the columns' final,
 # calculated widths.
@@ -170,7 +169,7 @@ sub BUILDARGS {
    if ( ($args->{line_width} || '') eq 'auto' ) {
       die "Cannot auto-detect line width because the Term::ReadKey module "
          . "is not installed" unless $have_term;
-      ($args->{line_width}) = GetTerminalSize();
+      ($args->{line_width}) = Term::ReadKey::GetTerminalSize();
       PTDEBUG && _d('Line width:', $args->{line_width});
    }
 

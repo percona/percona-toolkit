@@ -1,3 +1,16 @@
+// This program is copyright 2019-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package tu // test utils
 
 import (
@@ -23,10 +36,10 @@ const (
 	ipv6PG11Port = "6432"
 	ipv6PG12Port = "6432"
 
-	pg9Container  = "pt-pg-summary_postgres9_1"
-	pg10Container = "pt-pg-summary_postgres10_1"
-	pg11Container = "pt-pg-summary_postgres11_1"
-	pg12Container = "pt-pg-summary_postgres12_1"
+	pg9Container  = "go_postgres9_1"
+	pg10Container = "go_postgres10_1"
+	pg11Container = "go_postgres11_1"
+	pg12Container = "go_postgres12_1"
 )
 
 var (
@@ -50,9 +63,9 @@ var (
 	IPv6PG12Port = getVar("PG_IPV6_12_PORT", ipv6PG12Port)
 
 	PG9DockerIP  = getContainerIP(pg9Container)
-	PG10DockerIP = getContainerIP(pg9Container)
-	PG11DockerIP = getContainerIP(pg9Container)
-	PG12DockerIP = getContainerIP(pg9Container)
+	PG10DockerIP = getContainerIP(pg10Container)
+	PG11DockerIP = getContainerIP(pg11Container)
+	PG12DockerIP = getContainerIP(pg12Container)
 
 	DefaultPGPort = "5432"
 )

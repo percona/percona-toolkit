@@ -1,4 +1,4 @@
-# This program is copyright 2012-2014 Percona LLC and/or its affiliates.
+# This program is copyright 2012-2026 Percona LLC and/or its affiliates.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -18,7 +18,7 @@
 # ###########################################################################
 package Percona::Toolkit;
 
-our $VERSION = '3.1.0';
+our $VERSION = '3.7.1';
 
 use strict;
 use warnings FATAL => 'all';

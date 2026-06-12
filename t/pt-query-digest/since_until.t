@@ -14,10 +14,11 @@ use Test::More;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-query-digest";
+require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 my @args       = (qw(--report-format query_report --limit 10));
 my $sample_in  = "$trunk/t/lib/samples/slowlogs";
@@ -115,9 +116,9 @@ ok(
 );
 
 SKIP: {
-   skip 'Cannot connect to sandbox master', 2 unless $dbh;
+   skip 'Cannot connect to sandbox source', 2 unless $dbh;
 
-   my $dsn = $sb->dsn_for('master');
+   my $dsn = $sb->dsn_for('source');
 
    # The result file is correct: it's the one that has all quries from
    # slow033.txt.

@@ -87,7 +87,7 @@ innodb_force_recovery	0
 innodb_lock_wait_timeout	3
 innodb_locks_unsafe_for_binlog	OFF
 innodb_log_buffer_size	1048576
-innodb_log_file_size	5242880
+innodb_log_file_size	50331648
 innodb_log_files_in_group	2
 innodb_log_group_home_dir	/tmp/12345/data
 innodb_max_dirty_pages_pct	90
@@ -241,7 +241,7 @@ ssl_capath
 ssl_cert	
 ssl_cipher	
 ssl_key	
-storage_engine	MyISAM
+storage_engine	InnoDB
 sync_binlog	0
 sync_frm	ON
 system_time_zone	MDT

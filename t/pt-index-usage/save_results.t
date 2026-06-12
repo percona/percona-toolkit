@@ -13,14 +13,15 @@ use Test::More;
 
 use PerconaTest;
 require "$trunk/bin/pt-index-usage";
+require VersionParser;
 
 use Sandbox;
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 if ( !@{ $dbh->selectall_arrayref("show databases like 'sakila'") } ) {
    plan skip_all => "Sakila database is not loaded";
@@ -151,15 +152,15 @@ $rows = $dbh->selectall_arrayref("select * from mk.queries order by query_id");
 is_deeply(
    $rows,
    [
-      [  "4950186562421969363",
+      [  "3608BDE3153F5A7544B298738912D1D3",
          "select * from sakila.actor where last_name like ?",
          "select * from sakila.actor where last_name like 'A%'",
       ],
-      [  "10334408417593890092",
+      [  "6305C691826EDFA28F6B31B3A67D952C",
          "select * from sakila.actor where last_name like ? order by actor_id",
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
       ],
-      [  "10891801448710051322",
+      [  "CAF7BE5C0CBA7D07972773B5DA7295FA",
          "select * from sakila.actor where actor_id>?",
          "select * from sakila.actor where actor_id>10",
       ],
@@ -172,19 +173,19 @@ $res = $exp_plan eq '5.1' ?
    # v5.1 and newer
    [
       [
-         "4950186562421969363",
+         "3608BDE3153F5A7544B298738912D1D3",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%'",
          1,
       ], 
       [
-         "10891801448710051322",
+         "6305C691826EDFA28F6B31B3A67D952C",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where actor_id>10",
          2,
       ],
       [
-         "10334408417593890092",
+         "CAF7BE5C0CBA7D07972773B5DA7295FA",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
          1,
@@ -194,19 +195,19 @@ $res = $exp_plan eq '5.1' ?
    # v5.0 and older
    [
       [
-         "4950186562421969363",
+         "3608BDE3153F5A7544B298738912D1D3",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%'",
          1,
       ], 
       [
-         "10334408417593890092",
+		 "6305C691826EDFA28F6B31B3A67D952C",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
          1,
       ],
       [
-         "10891801448710051322",
+         "CAF7BE5C0CBA7D07972773B5DA7295FA",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where actor_id>10",
          2,
@@ -273,15 +274,16 @@ $rows = $dbh->selectall_arrayref("select * from mk.queries order by query_id");
 is_deeply(
    $rows,
    [
-      [  "4950186562421969363",
+      [  "3608BDE3153F5A7544B298738912D1D3",
          "select * from sakila.actor where last_name like ?",
          "select * from sakila.actor where last_name like 'A%'",
       ],
-      [  "10334408417593890092",
+      [  "6305C691826EDFA28F6B31B3A67D952C",
          "select * from sakila.actor where last_name like ? order by actor_id",
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
       ],
-      [  "10891801448710051322",
+      [  
+         "CAF7BE5C0CBA7D07972773B5DA7295FA",
          "select * from sakila.actor where actor_id>?",
          "select * from sakila.actor where actor_id>10",
       ],
@@ -294,19 +296,19 @@ $res = $exp_plan eq '5.1' ?
    # v5.1 and newer
    [
       [
-         "4950186562421969363",
+         "3608BDE3153F5A7544B298738912D1D3",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%'",
          2,
       ], 
       [
-         "10891801448710051322",
+         "6305C691826EDFA28F6B31B3A67D952C",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where actor_id>10",
          4,
       ],
       [
-         "10334408417593890092",
+         "CAF7BE5C0CBA7D07972773B5DA7295FA",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
          2,
@@ -316,19 +318,19 @@ $res = $exp_plan eq '5.1' ?
    # v5.0 and older
    [
       [
-         "4950186562421969363",
+         "3608BDE3153F5A7544B298738912D1D3",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%'",
          2,
       ], 
       [
-         "10334408417593890092",
+         "6305C691826EDFA28F6B31B3A67D952C",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
          2,
       ],
       [
-         "10891801448710051322",
+         "CAF7BE5C0CBA7D07972773B5DA7295FA",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where actor_id>10",
          4,

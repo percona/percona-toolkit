@@ -1,0 +1,2 @@
+  PID TTY      STAT   TIME COMMAND
+ 1529 pts/0    Sl     0:00 /home/vagrant/mysql-5.1.49-barebones/bin/mysqld --defaults-file=/tmp/12345/my.sandbox.cnf --basedir=/home/vagrant/mysql-5.1.49-barebones --datadir=/tmp/12345/data --log-error=/tmp/12345/data/mysqld.log --pid-file=/tmp/12345/data/mysql_sandbox12345.pid --socket=/tmp/12345/mysql_sandbox12345.sock --port=12345

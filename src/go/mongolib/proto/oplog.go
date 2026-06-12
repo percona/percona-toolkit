@@ -1,3 +1,16 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package proto
 
 import (
@@ -34,9 +47,11 @@ type OpLogs []OplogInfo
 func (s OpLogs) Len() int {
 	return len(s)
 }
+
 func (s OpLogs) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
+
 func (s OpLogs) Less(i, j int) bool {
 	return s[i].TimeDiffHours < s[j].TimeDiffHours
 }
@@ -62,7 +77,7 @@ type OplogColStats struct {
 	MaxSize           int64
 	IndexSizes        bson.M
 	GleStats          struct {
-		LastOpTime int64
+		LastOpTime time.Time
 		ElectionId string
 	} `bson:"$gleStats"`
 	StorageSize    int64

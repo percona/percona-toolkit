@@ -1,3 +1,16 @@
+// This program is copyright 2019-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
@@ -8,20 +21,25 @@ import (
 	"text/template"
 
 	"github.com/alecthomas/kingpin"
-	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
-	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/templates"
+	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
-	_ "github.com/lib/pq"
+	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
+	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/templates"
 )
 
+const (
+	toolname = "pt-pg-summary"
+)
+
+// We do not set anything here, these variables are defined by the Makefile
 var (
-	Build     string = "01-01-1980" //nolint
-	Commit    string                //nolint
-	GoVersion string = "1.8"        //nolint
-	Version   string = "3.0.1"      //nolint
+	Build     string //nolint
+	GoVersion string //nolint
+	Version   string //nolint
+	Commit    string //nolint
 )
 
 type connOpts struct {
@@ -31,6 +49,7 @@ type connOpts struct {
 	Password   string
 	DisableSSL bool
 }
+
 type cliOptions struct {
 	app                 *kingpin.Application
 	connOpts            connOpts
@@ -110,7 +129,6 @@ func main() {
 	if err := masterTmpl.ExecuteTemplate(os.Stdout, "report", info); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func connect(dsn string) (*sql.DB, error) {
@@ -127,11 +145,32 @@ func connect(dsn string) (*sql.DB, error) {
 
 func funcsMap() template.FuncMap {
 	return template.FuncMap{
-		"trim": func(s string, size int) string {
+		"trim": func(size int, s string) string {
 			if len(s) < size {
 				return s
 			}
-			return s[:size]
+			return s[:size] + "..."
+		},
+		"convertnullstring": func(s sql.NullString) string {
+			if s.Valid {
+				return s.String
+			} else {
+				return ""
+			}
+		},
+		"convertnullint64": func(s sql.NullInt64) int64 {
+			if s.Valid {
+				return s.Int64
+			} else {
+				return 0
+			}
+		},
+		"convertnullfloat64": func(s sql.NullFloat64) float64 {
+			if s.Valid {
+				return s.Float64
+			} else {
+				return 0.0
+			}
 		},
 	}
 }
@@ -189,10 +228,11 @@ func safeConnString(opts connOpts, dbName string) string {
 }
 
 func parseCommandLineOpts(args []string) (cliOptions, error) {
-	app := kingpin.New("pt-pg-summary", "Percona Toolkit - PostgreSQL Summary")
+	app := kingpin.New(toolname, "Percona Toolkit - PostgreSQL Summary")
+	app.UsageWriter(os.Stdout)
 	// version, commit and date will be set at build time by the compiler -ldflags param
-	app.Version(fmt.Sprintf("%s version %s\nGIT commit %s\nDate: %s\nGo version: %s",
-		app.Name, Version, Commit, Build, GoVersion))
+	app.Version(fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
+		app.Name, Version, Build, GoVersion, Commit))
 	opts := cliOptions{app: app}
 
 	app.Flag("ask-pass", "Prompt for a password when connecting to PostgreSQL").
@@ -223,7 +263,7 @@ func parseCommandLineOpts(args []string) (cliOptions, error) {
 	app.Flag("username", "User for login if not current user").
 		Short('U').
 		StringVar(&opts.connOpts.User)
-	app.Flag("disable-ssl", "Diable SSL for the connection").
+	app.Flag("disable-ssl", "Disable SSL for the connection").
 		Default("true").BoolVar(&opts.connOpts.DisableSSL)
 	app.Flag("verbose", "Show verbose log").
 		Default("false").BoolVar(&opts.Verbose)

@@ -17,12 +17,12 @@ require "$trunk/bin/pt-table-sync";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
-plan skip_all => 'Pending solution';
+plan skip_all => 'Pending solution: waiting for the PT-2338 fix';
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 4;
@@ -33,7 +33,7 @@ else {
 # conflict when using Chunk or Nibble.
 # #############################################################################
 $sb->wipe_clean($dbh);
-$sb->load_file('master', 't/pt-table-sync/samples/issue_920.sql');
+$sb->load_file('source', 't/pt-table-sync/samples/issue_920.sql');
 
 pt_table_sync::main(qw(--execute -F /tmp/12345/my.sandbox.cnf),
    'D=issue_920,t=PK_UK_test', 'D=issue_920,t=PK_UK_test_2');

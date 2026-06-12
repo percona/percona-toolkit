@@ -1,0 +1,974 @@
+# dmidecode 3.2
+Getting SMBIOS data from sysfs.
+SMBIOS 2.7 present.
+77 structures occupying 4848 bytes.
+Table at 0x789A5020.
+
+Handle 0xDA00, DMI type 218, 11 bytes
+OEM-specific Type
+	Header and Data:
+		DA 0B 00 DA B2 00 17 20 0E 10 01
+
+Handle 0x0000, DMI type 0, 24 bytes
+BIOS Information
+	Vendor: Dell Inc.
+	Version: 2.3.3
+	Release Date: 07/10/2014
+	Address: 0xF0000
+	Runtime Size: 64 kB
+	ROM Size: 8192 kB
+	Characteristics:
+		ISA is supported
+		PCI is supported
+		PNP is supported
+		BIOS is upgradeable
+		BIOS shadowing is allowed
+		Boot from CD is supported
+		Selectable boot is supported
+		EDD is supported
+		Japanese floppy for Toshiba 1.2 MB is supported (int 13h)
+		5.25"/360 kB floppy services are supported (int 13h)
+		5.25"/1.2 MB floppy services are supported (int 13h)
+		3.5"/720 kB floppy services are supported (int 13h)
+		8042 keyboard services are supported (int 9h)
+		Serial services are supported (int 14h)
+		CGA/mono video services are supported (int 10h)
+		ACPI is supported
+		USB legacy is supported
+		BIOS boot specification is supported
+		Function key-initiated network boot is supported
+		Targeted content distribution is supported
+		UEFI is supported
+	BIOS Revision: 2.3
+
+Handle 0x0100, DMI type 1, 27 bytes
+System Information
+	Manufacturer: Dell Inc.
+	Product Name: PowerEdge R520
+	Version: Not Specified
+	Serial Number: 6J6X9Y1
+	UUID: 4c4c4544-004a-3610-8058-b6c04f395931
+	Wake-up Type: Power Switch
+	SKU Number: SKU=NotProvided;ModelName=PowerEdge R520
+	Family: Not Specified
+
+Handle 0x0200, DMI type 2, 9 bytes
+Base Board Information
+	Manufacturer: Dell Inc.
+	Product Name: 051XDX
+	Version: A06
+	Serial Number: ..CN1374035600RC.
+	Asset Tag: Not Specified
+
+Handle 0x0300, DMI type 3, 22 bytes
+Chassis Information
+	Manufacturer: Dell Inc.
+	Type: Rack Mount Chassis
+	Lock: Present
+	Version: Not Specified
+	Serial Number: 6J6X9Y1
+	Asset Tag: Not Specified
+	Boot-up State: Safe
+	Power Supply State: Safe
+	Thermal State: Safe
+	Security Status: Unknown
+	OEM Information: 0x00000000
+	Height: 2 U
+	Number Of Power Cords: Unspecified
+	Contained Elements: 0
+	SKU Number: Not Specified
+
+Handle 0x0400, DMI type 4, 40 bytes
+Processor Information
+	Socket Designation: CPU1
+	Type: Central Processor
+	Family: Xeon
+	Manufacturer: Intel
+	ID: D7 06 02 00 FF FB EB BF
+	Signature: Type 0, Family 6, Model 45, Stepping 7
+	Flags:
+		FPU (Floating-point unit on-chip)
+		VME (Virtual mode extension)
+		DE (Debugging extension)
+		PSE (Page size extension)
+		TSC (Time stamp counter)
+		MSR (Model specific registers)
+		PAE (Physical address extension)
+		MCE (Machine check exception)
+		CX8 (CMPXCHG8 instruction supported)
+		APIC (On-chip APIC hardware supported)
+		SEP (Fast system call)
+		MTRR (Memory type range registers)
+		PGE (Page global enable)
+		MCA (Machine check architecture)
+		CMOV (Conditional move instruction supported)
+		PAT (Page attribute table)
+		PSE-36 (36-bit page size extension)
+		CLFSH (CLFLUSH instruction supported)
+		DS (Debug store)
+		ACPI (ACPI supported)
+		MMX (MMX technology supported)
+		FXSR (FXSAVE and FXSTOR instructions supported)
+		SSE (Streaming SIMD extensions)
+		SSE2 (Streaming SIMD extensions 2)
+		SS (Self-snoop)
+		HTT (Multi-threading)
+		TM (Thermal monitor supported)
+		PBE (Pending break enabled)
+	Version:        Intel(R) Xeon(R) CPU E5-2430 0 @ 2.20GHz
+	Voltage: 1.2 V
+	External Clock: 7200 MHz
+	Max Speed: 3600 MHz
+	Current Speed: 2200 MHz
+	Status: Populated, Enabled
+	Upgrade: Socket LGA1356
+	L1 Cache Handle: 0x0700
+	L2 Cache Handle: 0x0701
+	L3 Cache Handle: 0x0702
+	Serial Number: Not Specified
+	Asset Tag: Not Specified
+	Part Number: Not Specified
+	Core Count: 6
+	Core Enabled: 6
+	Thread Count: 12
+	Characteristics:
+		64-bit capable
+		Multi-Core
+		Hardware Thread
+		Execute Protection
+		Enhanced Virtualization
+		Power/Performance Control
+
+Handle 0x0401, DMI type 4, 40 bytes
+Processor Information
+	Socket Designation: CPU2
+	Type: Central Processor
+	Family: Xeon
+	Manufacturer: Intel
+	ID: D7 06 02 00 FF FB EB BF
+	Signature: Type 0, Family 6, Model 45, Stepping 7
+	Flags:
+		FPU (Floating-point unit on-chip)
+		VME (Virtual mode extension)
+		DE (Debugging extension)
+		PSE (Page size extension)
+		TSC (Time stamp counter)
+		MSR (Model specific registers)
+		PAE (Physical address extension)
+		MCE (Machine check exception)
+		CX8 (CMPXCHG8 instruction supported)
+		APIC (On-chip APIC hardware supported)
+		SEP (Fast system call)
+		MTRR (Memory type range registers)
+		PGE (Page global enable)
+		MCA (Machine check architecture)
+		CMOV (Conditional move instruction supported)
+		PAT (Page attribute table)
+		PSE-36 (36-bit page size extension)
+		CLFSH (CLFLUSH instruction supported)
+		DS (Debug store)
+		ACPI (ACPI supported)
+		MMX (MMX technology supported)
+		FXSR (FXSAVE and FXSTOR instructions supported)
+		SSE (Streaming SIMD extensions)
+		SSE2 (Streaming SIMD extensions 2)
+		SS (Self-snoop)
+		HTT (Multi-threading)
+		TM (Thermal monitor supported)
+		PBE (Pending break enabled)
+	Version:        Intel(R) Xeon(R) CPU E5-2430 0 @ 2.20GHz
+	Voltage: 1.2 V
+	External Clock: 7200 MHz
+	Max Speed: 3600 MHz
+	Current Speed: 2200 MHz
+	Status: Populated, Idle
+	Upgrade: Socket LGA1356
+	L1 Cache Handle: 0x0703
+	L2 Cache Handle: 0x0704
+	L3 Cache Handle: 0x0705
+	Serial Number: Not Specified
+	Asset Tag: Not Specified
+	Part Number: Not Specified
+	Core Count: 6
+	Core Enabled: 6
+	Thread Count: 12
+	Characteristics:
+		64-bit capable
+		Multi-Core
+		Hardware Thread
+		Execute Protection
+		Enhanced Virtualization
+		Power/Performance Control
+
+Handle 0x0700, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: Not Specified
+	Configuration: Enabled, Not Socketed, Level 1
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 192 kB
+	Maximum Size: 192 kB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Data
+	Associativity: 8-way Set-associative
+
+Handle 0x0701, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: Not Specified
+	Configuration: Enabled, Not Socketed, Level 2
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 1536 kB
+	Maximum Size: 1536 kB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Unified
+	Associativity: 8-way Set-associative
+
+Handle 0x0702, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: Not Specified
+	Configuration: Enabled, Not Socketed, Level 3
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 15 MB
+	Maximum Size: 15 MB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Unified
+	Associativity: 20-way Set-associative
+
+Handle 0x0703, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: Not Specified
+	Configuration: Enabled, Not Socketed, Level 1
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 192 kB
+	Maximum Size: 192 kB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Data
+	Associativity: 8-way Set-associative
+
+Handle 0x0704, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: Not Specified
+	Configuration: Enabled, Not Socketed, Level 2
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 1536 kB
+	Maximum Size: 1536 kB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Unified
+	Associativity: 8-way Set-associative
+
+Handle 0x0705, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: Not Specified
+	Configuration: Enabled, Not Socketed, Level 3
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 15 MB
+	Maximum Size: 15 MB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Unified
+	Associativity: 20-way Set-associative
+
+Handle 0x0800, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: Not Specified
+	Internal Connector Type: None
+	External Reference Designator: Not Specified
+	External Connector Type: DB-15 female
+	Port Type: Video Port
+
+Handle 0x0801, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: Not Specified
+	Internal Connector Type: None
+	External Reference Designator: Not Specified
+	External Connector Type: DB-15 female
+	Port Type: Video Port
+
+Handle 0x0802, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: Not Specified
+	Internal Connector Type: None
+	External Reference Designator: Not Specified
+	External Connector Type: Access Bus (USB)
+	Port Type: USB
+
+Handle 0x0803, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: Not Specified
+	Internal Connector Type: None
+	External Reference Designator: Not Specified
+	External Connector Type: Access Bus (USB)
+	Port Type: USB
+
+Handle 0x0804, DMI type 126, 9 bytes
+Inactive
+
+Handle 0x0805, DMI type 126, 9 bytes
+Inactive
+
+Handle 0x0806, DMI type 126, 9 bytes
+Inactive
+
+Handle 0x0807, DMI type 126, 9 bytes
+Inactive
+
+Handle 0x0808, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: Not Specified
+	Internal Connector Type: None
+	External Reference Designator: Not Specified
+	External Connector Type: Access Bus (USB)
+	Port Type: USB
+
+Handle 0x0809, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: Not Specified
+	Internal Connector Type: None
+	External Reference Designator: Not Specified
+	External Connector Type: Access Bus (USB)
+	Port Type: USB
+
+Handle 0x080A, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: INT_USB
+	Internal Connector Type: Access Bus (USB)
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: USB
+
+Handle 0x080B, DMI type 126, 9 bytes
+Inactive
+
+Handle 0x080C, DMI type 126, 9 bytes
+Inactive
+
+Handle 0x080D, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: Not Specified
+	Internal Connector Type: None
+	External Reference Designator: Not Specified
+	External Connector Type: RJ-45
+	Port Type: Network Port
+
+Handle 0x080E, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: Not Specified
+	Internal Connector Type: None
+	External Reference Designator: Not Specified
+	External Connector Type: RJ-45
+	Port Type: Network Port
+
+Handle 0x080F, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: Not Specified
+	Internal Connector Type: None
+	External Reference Designator: Not Specified
+	External Connector Type: DB-9 male
+	Port Type: Serial Port 16550A Compatible
+
+Handle 0x0900, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI1
+	Type: x16 PCI Express 3
+	Current Usage: Available
+	Length: Long
+	ID: 1
+	Characteristics:
+		3.3 V is provided
+		PME signal is supported
+
+Handle 0x0901, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI2
+	Type: x8 PCI Express 3
+	Current Usage: In Use
+	Length: Long
+	ID: 2
+	Characteristics:
+		3.3 V is provided
+		PME signal is supported
+	Bus Address: 0000:08:00.0
+
+Handle 0x0902, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI3
+	Type: x8 PCI Express 3
+	Current Usage: In Use
+	Length: Long
+	ID: 3
+	Characteristics:
+		3.3 V is provided
+		PME signal is supported
+	Bus Address: 0000:09:00.0
+
+Handle 0x0903, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI4
+	Type: x8 PCI Express 3
+	Current Usage: Available
+	Length: Long
+	ID: 4
+	Characteristics:
+		3.3 V is provided
+		PME signal is supported
+
+Handle 0x0904, DMI type 126, 17 bytes
+Inactive
+
+Handle 0x0905, DMI type 126, 17 bytes
+Inactive
+
+Handle 0x0B00, DMI type 11, 5 bytes
+OEM Strings
+	String 1: Dell System
+	String 2: 5[0000]
+	String 3: 17[FFFFFFFFFFFFFFFF]
+	String 4: 17[FFFFFFFFFFFFFFFF]
+	String 5: 17[FFFFFFFFFFFFFFFF]
+	String 6: 17[FFFFFFFFFFFFFFFF]
+
+Handle 0x7E00, DMI type 126, 170 bytes
+Inactive
+
+Handle 0x0C00, DMI type 12, 5 bytes
+System Configuration Options
+	Option 1: NVRAM_CLR:  Clear user settable NVRAM areas and set defaults
+	Option 2: PWRD_EN:  Close to enable password
+
+Handle 0x0D00, DMI type 13, 22 bytes
+BIOS Language Information
+	Language Description Format: Long
+	Installable Languages: 1
+		en|US|iso8859-1
+	Currently Installed Language: en|US|iso8859-1
+
+Handle 0x1000, DMI type 16, 23 bytes
+Physical Memory Array
+	Location: System Board Or Motherboard
+	Use: System Memory
+	Error Correction Type: Multi-bit ECC
+	Maximum Capacity: 384 GB
+	Error Information Handle: Not Provided
+	Number Of Devices: 12
+
+Handle 0x1100, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 1
+	Locator: DIMM_A1 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2EA1C6F0
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1101, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 1
+	Locator: DIMM_A2 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E21C700
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1102, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 2
+	Locator: DIMM_A3 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E11C700
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1103, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 2
+	Locator: DIMM_A4 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E91C6FF
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1104, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 3
+	Locator: DIMM_A5 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E51C701
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1105, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 3
+	Locator: DIMM_A6 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E31C700
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1106, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 4
+	Locator: DIMM_B1 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2EA1C708
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1107, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 4
+	Locator: DIMM_B2 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E61C728
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1108, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 5
+	Locator: DIMM_B3 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E51C728
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1109, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 5
+	Locator: DIMM_B4 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E31C730
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x110A, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 6
+	Locator: DIMM_B5 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E21C709
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x110B, DMI type 17, 34 bytes
+Memory Device
+	Array Handle: 0x1000
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: 6
+	Locator: DIMM_B6 
+	Bank Locator: Not Specified
+	Type: DDR3
+	Type Detail: Synchronous Registered (Buffered)
+	Speed: 1333 MT/s
+	Manufacturer: 00AD04B300AD
+	Serial Number: 2E61C6F5
+	Asset Tag: 01131921
+	Part Number: HMT42GR7MFR4A-H9  
+	Rank: 2
+	Configured Memory Speed: 1333 MT/s
+
+Handle 0x1300, DMI type 19, 31 bytes
+Memory Array Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x0007FFFFFFF
+	Range Size: 2 GB
+	Physical Array Handle: 0x1000
+	Partition Width: 2
+
+Handle 0x1301, DMI type 19, 31 bytes
+Memory Array Mapped Address
+	Starting Address: 0x00100000000
+	Ending Address: 0x0307FFFFFFF
+	Range Size: 190 GB
+	Physical Array Handle: 0x1000
+	Partition Width: 2
+
+Handle 0x2000, DMI type 32, 11 bytes
+System Boot Information
+	Status: No errors detected
+
+Handle 0x2600, DMI type 38, 18 bytes
+IPMI Device Information
+	Interface Type: KCS (Keyboard Control Style)
+	Specification Version: 2.0
+	I2C Slave Address: 0x10
+	NV Storage Device: Not Present
+	Base Address: 0x0000000000000CA8 (I/O)
+	Register Spacing: 32-bit Boundaries
+	Interrupt Polarity: Active High
+	Interrupt Trigger Mode: Edge
+	Interrupt Number: 10
+
+Handle 0x2900, DMI type 41, 11 bytes
+Onboard Device
+	Reference Designation: Embedded NIC 1                          
+	Type: Ethernet
+	Status: Enabled
+	Type Instance: 1
+	Bus Address: 0000:02:00.0
+
+Handle 0x2901, DMI type 41, 11 bytes
+Onboard Device
+	Reference Designation: Embedded NIC 2                          
+	Type: Ethernet
+	Status: Enabled
+	Type Instance: 2
+	Bus Address: 0000:02:00.1
+
+Handle 0x2902, DMI type 126, 11 bytes
+Inactive
+
+Handle 0x2903, DMI type 41, 11 bytes
+Onboard Device
+	Reference Designation: Integrated RAID                         
+	Type: SAS Controller
+	Status: Enabled
+	Type Instance: 1
+	Bus Address: 0000:01:00.0
+
+Handle 0x2904, DMI type 41, 11 bytes
+Onboard Device
+	Reference Designation: Embedded Video                          
+	Type: Video
+	Status: Enabled
+	Type Instance: 1
+	Bus Address: 0000:06:00.0
+
+Handle 0x2905, DMI type 41, 11 bytes
+Onboard Device
+	Reference Designation:                                         
+	Type: SATA Controller
+	Status: Enabled
+	Type Instance: 1
+	Bus Address: 0000:00:1f.2
+
+Handle 0x2906, DMI type 126, 11 bytes
+Inactive
+
+Handle 0xB100, DMI type 177, 12 bytes
+OEM-specific Type
+	Header and Data:
+		B1 0C 00 B1 00 02 00 00 00 00 00 00
+
+Handle 0xD000, DMI type 208, 16 bytes
+OEM-specific Type
+	Header and Data:
+		D0 10 00 D0 02 00 FE 00 F6 04 00 00 00 01 00 00
+
+Handle 0xD200, DMI type 210, 12 bytes
+OEM-specific Type
+	Header and Data:
+		D2 0C 00 D2 F8 02 03 03 06 80 04 05
+
+Handle 0xC200, DMI type 194, 87 bytes
+OEM-specific Type
+	Header and Data:
+		C2 57 00 C2 70 00 71 00 00 10 2D 2E 42 00 11 FE
+		01 43 00 11 FE 00 00 00 11 9F 20 00 00 11 9F 00
+		6E 01 11 9F 20 6D 01 11 9F 00 31 40 11 FB 00 32
+		40 11 FB 04 9D 00 11 FD 02 9E 00 11 FD 00 9F 00
+		26 FE 01 A0 00 26 FE 00 28 40 26 DF 20 29 40 26
+		DF 00 FF FF 00 00 00
+
+Handle 0xC201, DMI type 194, 252 bytes
+OEM-specific Type
+	Header and Data:
+		C2 FC 01 C2 70 00 71 00 03 40 5A 6D 6C 01 57 FC
+		00 6B 01 57 FC 01 6A 01 57 FC 02 12 02 57 EF 00
+		11 02 57 EF 10 00 00 5B FB 04 00 00 5B FB 00 77
+		01 54 FC 00 78 01 54 FC 01 79 01 54 FC 02 7A 01
+		54 FC 03 33 40 54 CF 00 34 40 54 CF 10 35 40 54
+		CF 20 36 40 54 CF 30 1A 40 54 FB 04 1B 40 54 FB
+		00 1C 40 54 F7 08 1D 40 54 F7 00 43 40 58 DF 20
+		42 40 58 DF 00 22 40 58 EF 10 23 40 58 EF 00 24
+		40 58 BF 40 25 40 58 BF 00 00 00 58 FC 01 00 00
+		58 FC 02 00 00 58 FC 03 00 00 58 F3 04 00 00 58
+		F3 08 00 00 58 F3 0C 2D 02 55 FE 01 2E 02 55 FE
+		00 D8 00 55 7F 80 D9 00 55 7F 00 54 02 56 DF 00
+		57 02 56 DF 20 4D 02 56 BF 00 4E 02 56 BF 40 2D
+		01 56 7F 80 2E 01 56 7F 00 28 03 5B 7F 00 29 03
+		5B 7F 80 2A 03 5B 9F 00 2B 03 5B 9F 20 2C 03 5B
+		9F 40 00 C0 5C 00 0A FF FF 00 00 00
+
+Handle 0xC202, DMI type 194, 92 bytes
+OEM-specific Type
+	Header and Data:
+		C2 5C 02 C2 70 00 71 00 03 40 5A 6D 03 C0 67 00
+		05 83 00 76 00 00 84 00 77 00 00 05 03 5A FC 00
+		06 03 5A FC 01 31 03 5A FC 02 07 03 5A F3 00 08
+		03 5A F3 04 32 03 5A F3 08 09 03 5A CF 00 10 03
+		5A CF 10 33 03 5A CF 20 11 03 5A 3F 00 12 03 5A
+		3F 40 34 03 5A 3F 80 FF FF 00 00 00
+
+Handle 0xC203, DMI type 194, 252 bytes
+OEM-specific Type
+	Header and Data:
+		C2 FC 03 C2 72 00 73 00 00 40 5D 5E D3 00 00 00
+		02 D4 00 02 00 02 13 7C 28 F7 00 12 7C 28 F7 08
+		00 90 2C 00 00 01 90 2D 00 00 4A 01 46 BF 40 4B
+		01 46 BF 00 00 00 49 D7 28 00 00 49 DF 20 DA 00
+		49 F7 08 00 00 49 D7 00 00 00 49 7F 00 00 00 49
+		7F 80 5D 02 49 F8 00 5E 02 49 F8 01 00 00 49 F8
+		02 60 02 49 F8 03 62 02 49 F8 04 65 02 49 F8 05
+		DE 00 63 FE 01 DF 00 63 FE 00 26 40 42 FE 01 27
+		40 42 FE 00 FF 02 42 F7 08 00 03 42 F7 00 01 03
+		42 EF 10 02 03 42 EF 00 0B 7C 42 DF 00 0A 7C 42
+		DF 20 0C 7C 42 BF 40 0D 7C 42 BF 00 17 01 4A FE
+		00 18 01 4A FE 01 19 01 4A FD 00 1A 01 4A FD 02
+		1B 01 4A FB 00 1C 01 4A FB 04 1D 01 4A F7 00 1E
+		01 4A F7 08 1F 01 44 FE 00 20 01 44 FE 01 00 00
+		44 FD 00 00 00 44 FD 02 35 01 4B FC 00 37 01 4B
+		FC 01 38 01 4B FC 02 FF FF 00 00 00
+
+Handle 0xC204, DMI type 194, 252 bytes
+OEM-specific Type
+	Header and Data:
+		C2 FC 04 C2 72 00 73 00 00 40 5D 5E 39 01 4B FC
+		03 F7 02 4B 7F 80 F8 02 4B 7F 00 02 40 46 DF 00
+		01 40 46 DF 20 CF 01 40 FD 02 D0 01 40 FD 00 FC
+		01 45 BF 00 FD 01 45 BF 40 00 00 45 7F 80 00 00
+		45 7F 00 A1 02 45 FB 00 A2 02 45 FB 04 D1 00 46
+		FE 00 D2 00 46 FE 01 71 01 46 FB 04 72 01 46 FB
+		00 73 01 46 F7 08 74 01 46 F7 00 40 01 47 EF 10
+		41 01 47 EF 00 EB 01 47 FD 00 EA 01 47 FD 02 33
+		02 40 07 08 32 02 40 07 10 31 02 40 07 20 00 00
+		40 07 30 00 00 40 07 40 00 00 40 07 50 00 00 40
+		07 60 6E 02 40 07 00 4B 02 47 DF 00 4C 02 47 DF
+		20 10 7C 47 7F 80 11 7C 47 7F 00 C5 02 48 BF 00
+		C6 02 48 BF 40 CB 02 48 DF 00 CC 02 48 DF 20 C4
+		01 50 FE 00 C5 01 50 FE 01 99 02 5C F7 00 98 02
+		5C F7 08 AE 02 5C FB 00 AD 02 5C FB 04 B6 02 5C
+		3F 40 B7 02 5C 3F 80 FF FF 00 00 00
+
+Handle 0xC205, DMI type 194, 252 bytes
+OEM-specific Type
+	Header and Data:
+		C2 FC 05 C2 72 00 73 00 00 40 5D 5E B8 02 5C 3F
+		00 E9 02 41 E7 00 EA 02 41 E7 08 EB 02 41 E7 10
+		ED 02 41 BF 00 EE 02 41 BF 40 D8 02 4F F8 00 D9
+		02 4F F8 01 DA 02 4F F8 02 DC 02 4F F8 04 DD 02
+		4F F8 03 DE 02 4F E7 00 DF 02 4F E7 08 E0 02 4F
+		E7 18 E1 02 4F 1F 00 00 00 4F 1F C0 E2 02 4F 1F
+		A0 E3 02 4F 1F 20 E4 02 4F 1F 40 E5 02 4F 1F 60
+		E6 02 4F 1F 80 F2 02 47 F3 00 00 00 47 F3 04 F4
+		02 47 F3 08 F5 02 47 F3 0C 06 7C 47 BF 40 07 7C
+		47 BF 00 19 03 4E CF 00 1A 03 4E CF 10 1B 03 4E
+		CF 20 1E 03 4E F3 00 1C 03 4E F3 08 1D 03 4E F3
+		04 1F 03 4E BF 00 20 03 4E BF 40 2D 03 60 BF 00
+		2E 03 60 BF 40 00 00 19 F3 00 00 00 19 F3 04 00
+		00 19 F3 08 00 00 19 CF 00 00 00 19 CF 10 00 00
+		19 CF 20 3A 03 4B F3 00 3B 03 4B F3 04 3C 03 4B
+		F3 08 3D 03 4B F3 0C FF FF 00 00 00
+
+Handle 0xC206, DMI type 194, 77 bytes
+OEM-specific Type
+	Header and Data:
+		C2 4D 06 C2 72 00 73 00 00 40 5D 5E 14 7C 53 FE
+		01 15 7C 53 FE 00 50 03 77 7F 00 51 03 77 7F 80
+		00 7C 7F FE 01 01 7C 7F FE 00 02 7C 7F F9 00 03
+		7C 7F F9 02 04 7C 7F F9 04 05 7C 7F F9 06 3E 03
+		48 EF 00 3F 03 48 EF 10 FF FF 00 00 00
+
+Handle 0xD800, DMI type 216, 9 bytes
+OEM-specific Type
+	Header and Data:
+		D8 09 00 D8 01 02 01 F0 03
+	Strings:
+		MATROX
+		VGA/VBE BIOS, Version V3.8WO
+
+Handle 0xDE00, DMI type 222, 16 bytes
+OEM-specific Type
+	Header and Data:
+		DE 10 00 DE 00 20 FF FF 00 00 00 00 00 00 00 00
+
+Handle 0xE100, DMI type 225, 61 bytes
+OEM-specific Type
+	Header and Data:
+		E1 3D 00 E1 01 01 00 04 00 02 01 04 00 03 00 11
+		00 04 01 11 00 05 02 11 00 06 03 11 00 07 04 11
+		00 08 05 11 00 09 06 11 00 0A 07 11 00 0B 08 11
+		00 0C 09 11 00 0D 0A 11 00 0E 00 00 00
+	Strings:
+		CPU.Socket.1
+		CPU.Socket.2
+		DIMM.Socket.A1
+		DIMM.Socket.A2
+		DIMM.Socket.A3
+		DIMM.Socket.A4
+		DIMM.Socket.A5
+		DIMM.Socket.A6
+		DIMM.Socket.B1
+		DIMM.Socket.B2
+		DIMM.Socket.B3
+		DIMM.Socket.B4
+		DIMM.Socket.B5
+		DIMM.Socket.B6
+
+Handle 0x7F00, DMI type 127, 4 bytes
+End Of Table
+

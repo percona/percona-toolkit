@@ -1,0 +1,453 @@
+PID 3441765 - process
+TID 3441765:
+#0  0x00007f2763f18bcf __poll - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/poll.c:29:10
+#1  0x000055be68a34432 Mysqld_socket_listener::listen_for_connection_event() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/x86_64-linux-gnu/bits/poll2.h:39:10
+#2  0x000055be68770708 mysqld_main(int, char**) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_acceptor.h:64:75
+#3  0x00007f2763e29d90 __libc_start_call_main - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/nptl/libc_start_call_main.h:58:16
+#4  0x00007f2763e29e40 __libc_start_main@@GLIBC_2.34 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../csu/libc-start.c:392:3
+#5  0x000055be6859cfb5 _start - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld
+TID 3441805:
+#0  0x00007f2763f1e88d syscall - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 io_getevents - /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2  0x000055be69b962cb LinuxAIOHandler::collect() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383:28
+#3  0x000055be69b96712 LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529:14
+#4  0x000055be69b99874 os_aio_handler(unsigned long, fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579:29
+#5  0x000055be69e0f9cd fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979:28
+#6  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#7  0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#8  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#10 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441806:
+#0  0x00007f2763f1e88d syscall - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 io_getevents - /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2  0x000055be69b962cb LinuxAIOHandler::collect() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383:28
+#3  0x000055be69b96712 LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529:14
+#4  0x000055be69b99874 os_aio_handler(unsigned long, fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579:29
+#5  0x000055be69e0f9cd fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979:28
+#6  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#7  0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#8  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#10 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441807:
+#0  0x00007f2763f1e88d syscall - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 io_getevents - /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2  0x000055be69b962cb LinuxAIOHandler::collect() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383:28
+#3  0x000055be69b96712 LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529:14
+#4  0x000055be69b99874 os_aio_handler(unsigned long, fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579:29
+#5  0x000055be69e0f9cd fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979:28
+#6  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#7  0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#8  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#10 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441808:
+#0  0x00007f2763f1e88d syscall - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 io_getevents - /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2  0x000055be69b962cb LinuxAIOHandler::collect() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383:28
+#3  0x000055be69b96712 LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529:14
+#4  0x000055be69b99874 os_aio_handler(unsigned long, fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579:29
+#5  0x000055be69e0f9cd fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979:28
+#6  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#7  0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#8  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#10 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441809:
+#0  0x00007f2763f1e88d syscall - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 io_getevents - /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2  0x000055be69b962cb LinuxAIOHandler::collect() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383:28
+#3  0x000055be69b96712 LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529:14
+#4  0x000055be69b99874 os_aio_handler(unsigned long, fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579:29
+#5  0x000055be69e0f9cd fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979:28
+#6  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#7  0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#8  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#10 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441810:
+#0  0x00007f2763f1e88d syscall - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 io_getevents - /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2  0x000055be69b962cb LinuxAIOHandler::collect() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383:28
+#3  0x000055be69b96712 LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529:14
+#4  0x000055be69b99874 os_aio_handler(unsigned long, fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579:29
+#5  0x000055be69e0f9cd fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979:28
+#6  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#7  0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#8  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#10 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441811:
+#0  0x00007f2763f1e88d syscall - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 io_getevents - /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2  0x000055be69b962cb LinuxAIOHandler::collect() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383:28
+#3  0x000055be69b96712 LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529:14
+#4  0x000055be69b99874 os_aio_handler(unsigned long, fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579:29
+#5  0x000055be69e0f9cd fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979:28
+#6  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#7  0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#8  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#10 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441812:
+#0  0x000055be69ca3725 ut_delay(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/ut/ut0ut.cc:109:3
+#1  0x000055be69a96047 void mutex_enter_inline<PolicyMutex<TTASEventMutex<GenericPolicy> > >(PolicyMutex<TTASEventMutex<GenericPolicy> >*, ut::Location) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ib0mutex.h:494:15
+#2  0x000055be69d0b54e buf_page_io_complete(buf_page_t*, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc:5928:7
+#3  0x000055be69e0fb06 fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:8020:29
+#4  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#5  0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441813:
+#0  0x00007f2763f1b8ab fsync - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/fsync.c:27:10
+#1  0x000055be69b8b83d os_file_fsync_posix(int) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2994:65
+#2  0x000055be69b8f658 os_file_flush_func(int) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:3137:28
+#3  0x000055be69e113f3 Fil_shard::space_flush(unsigned int) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0file.ic:468:35
+#4  0x000055be69e11791 Fil_shard::flush_file_spaces() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:8263:16
+#5  0x000055be69e118bc Fil_system::flush_file_spaces() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:8271:29
+#6  0x000055be69d0e48c Double_write::write_complete(buf_page_t*, buf_flush_t) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:2622:32
+#7  0x000055be69d0b568 buf_page_io_complete(buf_page_t*, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc:5976:31
+#8  0x000055be69e0fb06 fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:8020:29
+#9  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#10 0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#11 0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#12 0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#13 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441814:
+#0  0x00007f2763f1e88d syscall - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 io_getevents - /usr/lib/x86_64-linux-gnu/libaio.so.1.0.1
+#2  0x000055be69b962cb LinuxAIOHandler::collect() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383:28
+#3  0x000055be69b96712 LinuxAIOHandler::poll(fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529:14
+#4  0x000055be69b99874 os_aio_handler(unsigned long, fil_node_t**, void**, IORequest*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579:29
+#5  0x000055be69e0f9cd fil_aio_wait(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979:28
+#6  0x000055be69c47aa8 io_handler_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250:17
+#7  0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#8  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#9  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#10 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441815:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69d28abb buf_flush_page_coordinator_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:2832:35
+#5  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441816:
+#0  0x00007f2763f1b8ab fsync - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/fsync.c:27:10
+#1  0x000055be69b8b83d os_file_fsync_posix(int) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2994:65
+#2  0x000055be69b8f658 os_file_flush_func(int) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:3137:28
+#3  0x000055be69d0dc40 Double_write::write_dblwr_pages(buf_flush_t) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0file.ic:468:35
+#4  0x000055be69d11448 Double_write::write_pages(buf_flush_t) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:2264:46
+#5  0x000055be69d1c779 Double_write::enqueue(buf_flush_t, buf_page_t*, file::Block const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:563:16
+#6  0x000055be69d1cb92 dblwr::write(buf_flush_t, buf_page_t*, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:678:19
+#7  0x000055be69d22eb7 buf_flush_page(buf_pool_t*, buf_page_t*, buf_flush_t, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1255:29
+#8  0x000055be69d258c3 buf_flush_page_and_try_neighbors(buf_page_t*, buf_flush_t, unsigned long, unsigned long*) [clone .isra.0] - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1592:27
+#9  0x000055be69d26b1f buf_flush_do_batch(buf_pool_t*, buf_flush_t, unsigned long, unsigned long, unsigned long*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1813:41
+#10 0x000055be69d27372 buf_lru_manager_thread(unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:2272:21
+#11 0x000055be69c480e6 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#12 0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#13 0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#14 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441817:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69c447e0 srv_monitor_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:121:32
+#5  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441818:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69b32bac log_checkpointer(log_t*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0chkp.cc:1025:37
+#5  0x000055be69b50bae std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441819:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69b819eb log_flush_notifier(log_t*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.ic:135:29
+#5  0x000055be69b50bae std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441820:
+#0  0x00007f2763f1b8ab fsync - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/fsync.c:27:10
+#1  0x000055be69b8b83d os_file_fsync_posix(int) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2994:65
+#2  0x000055be69b8f658 os_file_flush_func(int) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:3137:28
+#3  0x000055be69b48b64 Log_file_handle::fsync() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0file.ic:468:35
+#4  0x000055be69b7afb8 log_flush_low(log_t&) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:2443:36
+#5  0x000055be69b80b8c log_flusher(log_t*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:2534:22
+#6  0x000055be69b50bae std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#7  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#8  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#9  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441821:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69b8139b log_write_notifier(log_t*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.ic:135:29
+#5  0x000055be69b50bae std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441822:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69b804e3 log_writer(log_t*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.ic:135:29
+#5  0x000055be69b50bae std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441823:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69b47d0d log_files_governor(log_t*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0files_governor.cc:1372:27
+#5  0x000055be69b50bae std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441828:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69b2ccae lock_wait_timeout_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/lock/lock0wait.cc:1534:27
+#5  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441829:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69c3b73d srv_error_monitor_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:2084:25
+#5  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441830:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93a41 pthread_cond_wait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9f096 os_event::wait_low(long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185:30
+#3  0x000055be69d06dde buf_resize_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103:67
+#4  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#5  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#7  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441831:
+#0  0x00007f2763ee57f8 clock_nanosleep@GLIBC_2.2.5 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/clock_nanosleep.c:78:7
+#1  0x00007f2763eea677 __nanosleep - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/nanosleep.c:25:13
+#2  0x000055be69c451b5 srv_master_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/this_thread_sleep.h:82:20
+#3  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#4  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#5  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#6  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441832:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69dd5487 dict_stats_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:121:32
+#5  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441833:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69ca525c ib_wqueue_timedwait(ib_wqueue_t*, std::chrono::duration<long, std::ratio<1l, 1000000l> >) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/ut/ut0wqueue.cc:128:35
+#5  0x000055be69e57c9a fts_optimize_thread(ib_wqueue_t*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fts/fts0opt.cc:2850:57
+#6  0x000055be69e4f42e std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(ib_wqueue_t*), ib_wqueue_t*> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#7  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#8  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#9  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441834:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be6a257885 xpl::Cond::timed_wait(xpl::Mutex&, unsigned long long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:99:32
+#3  0x000055be6a27e5cd ngs::Scheduler_dynamic::wait_if_idle_then_delete_worker(unsigned long long&) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:196:56
+#4  0x000055be6a27fb9c ngs::Scheduler_dynamic::worker() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:243:44
+#5  0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#6  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#7  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441835:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be6a257885 xpl::Cond::timed_wait(xpl::Mutex&, unsigned long long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:99:32
+#3  0x000055be6a27e5cd ngs::Scheduler_dynamic::wait_if_idle_then_delete_worker(unsigned long long&) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:196:56
+#4  0x000055be6a27fb9c ngs::Scheduler_dynamic::worker() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:243:44
+#5  0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#6  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#7  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441836:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93a41 pthread_cond_wait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be6a26affc xpl::Broker_task::wait_for_data_and_swap_queues(std::queue<ngs::Notice_descriptor, std::__cxx11::list<ngs::Notice_descriptor, std::allocator<ngs::Notice_descriptor> > >*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/helper/multithread/synchronize.h:49:38
+#3  0x000055be6a26b791 xpl::Broker_task::loop() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/mq/broker_task.cc:92:32
+#4  0x000055be6a2098b2 ngs::Server::run_task(std::shared_ptr<xpl::iface::Server_task>) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/server/server.cc:83:18
+#5  0x000055be6a20a494 std::_Function_handler<void (), ngs::Server::start_tasks()::{lambda()#1}>::_M_invoke(std::_Any_data const&) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/server/server.cc:148:57
+#6  0x000055be6a27fe95 ngs::Scheduler_dynamic::worker() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/std_function.h:590:9
+#7  0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#8  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#9  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441874:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93a41 pthread_cond_wait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9f096 os_event::wait_low(long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185:30
+#3  0x000055be69d1f343 buf_dump_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103:67
+#4  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#5  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#7  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441875:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69d6e459 Clone_persist_gtid::periodic_write() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:121:32
+#5  0x000055be69d6ae4e std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(Clone_persist_gtid*), Clone_persist_gtid*> > >::_M_run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441876:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69c46523 srv_purge_coordinator_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:3356:33
+#5  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#6  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441877:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93a41 pthread_cond_wait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9f096 os_event::wait_low(long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185:30
+#3  0x000055be69c45a9c srv_worker_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103:67
+#4  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#5  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#7  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441878:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93a41 pthread_cond_wait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9f096 os_event::wait_low(long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185:30
+#3  0x000055be69c45a9c srv_worker_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103:67
+#4  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#5  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#7  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441879:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93a41 pthread_cond_wait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9f096 os_event::wait_low(long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185:30
+#3  0x000055be69c45a9c srv_worker_thread() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103:67
+#4  0x000055be69b662fa void Detached_thread::operator()<void (*)()>(void (*&&)()) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/invoke.h:61:36
+#5  0x00007f27642dc253 ??() - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+#6  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#7  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441880:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93a41 pthread_cond_wait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be68c3ee21 Event_queue::cond_wait(THD*, timespec*, PSI_stage_info_v1 const*, char const*, char const*, unsigned int) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:108:27
+#3  0x000055be68c3f92f Event_queue::get_top_for_execution_if_time(THD*, Event_queue_element_for_exec**) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/event_queue.cc:556:16
+#4  0x000055be68c41e5b Event_scheduler::run(THD*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/event_scheduler.cc:577:45
+#5  0x000055be68c42517 event_scheduler_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/event_scheduler.cc:280:21
+#6  0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441881:
+#0  0x00007f2763e4321a __sigtimedwait - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/sigtimedwait.c:61:28
+#1  0x000055be6875631b signal_hand - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/mysqld.cc:3833:29
+#2  0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#3  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#4  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441883:
+#0  0x00007f2763f25e2e epoll_wait - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/epoll_wait.c:30:10
+#1  0x000055be6a2cc925 epoll_dispatch - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/extra/libevent/libevent-2.1.11-stable/epoll.c:465:8
+#2  0x000055be6a2c2238 event_base_loop - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/extra/libevent/libevent-2.1.11-stable/event.c:1998:9
+#3  0x000055be6a2098b2 ngs::Server::run_task(std::shared_ptr<xpl::iface::Server_task>) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/server/server.cc:83:18
+#4  0x000055be6a20a494 std::_Function_handler<void (), ngs::Server::start_tasks()::{lambda()#1}>::_M_invoke(std::_Any_data const&) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/server/server.cc:148:57
+#5  0x000055be6a27fe95 ngs::Scheduler_dynamic::worker() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /usr/include/c++/11/bits/std_function.h:590:9
+#6  0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#7  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#8  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441885:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93a41 pthread_cond_wait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69608553 compress_gtid_table - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:108:27
+#3  0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#4  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#5  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3441888:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be695b8173 MYSQL_BIN_LOG::wait_for_update(std::chrono::duration<long, std::ratio<1l, 1000000000l> > const&) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:99:32
+#3  0x000055be6963f417 Binlog_sender::wait_new_events(unsigned long long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_binlog_sender.cc:821:34
+#4  0x000055be6963f7e9 Binlog_sender::get_binlog_end_pos(Basic_binlog_file_reader<Binlog_ifile, Binlog_event_data_istream, Binlog_event_object_istream, Binlog_sender::Event_allocator>&) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_binlog_sender.cc:539:33
+#5  0x000055be69640cbb Binlog_sender::send_binlog(Basic_binlog_file_reader<Binlog_ifile, Binlog_event_data_istream, Binlog_event_object_istream, Binlog_sender::Event_allocator>&, unsigned long long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_binlog_sender.cc:510:46
+#6  0x000055be69641cb6 Binlog_sender::run() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_binlog_sender.cc:413:20
+#7  0x000055be69638f58 mysql_binlog_send(THD*, char*, unsigned long long, Gtid_set*, unsigned int) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_source.cc:997:13
+#8  0x000055be6963ba5e com_binlog_dump(THD*, char*, unsigned long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_source.cc:924:20
+#9  0x000055be688bdbe6 dispatch_command(THD*, COM_DATA const*, enum_server_command) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:2349:30
+#10 0x000055be688bfd92 do_command(THD*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:1501:34
+#11 0x000055be68a2e000 handle_connection - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_handler_per_thread.cc:308:23
+#12 0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#13 0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#14 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3442446:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93a41 pthread_cond_wait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be68a2dba7 Per_thread_connection_handler::block_until_new_connection() - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:108:27
+#3  0x000055be68a2de4f handle_connection - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_handler_per_thread.cc:340:77
+#4  0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#5  0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#6  0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TID 3772082:
+#0  0x00007f2763e91117 __GI___futex_abstimed_wait_cancelable64 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/futex-internal.c:57:12
+#1  0x00007f2763e93e9b pthread_cond_timedwait@@GLIBC_2.3.2 - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_cond_wait.c:503:10
+#2  0x000055be69b9fd1a os_event::timed_wait(timespec const*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:315:31
+#3  0x000055be69b9feb9 os_event::wait_time_low(std::chrono::duration<long, std::ratio<1l, 1000000l> >, long) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488:27
+#4  0x000055be69b7f8aa log_write_up_to(log_t&, unsigned long, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.ic:135:29
+#5  0x000055be69a7a0ae innobase_flush_logs(handlerton*, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/handler/ha_innodb.cc:6113:27
+#6  0x000055be688dae45 plugin_foreach_with_mask(THD*, bool (**)(THD*, st_plugin_int*, void*), int, unsigned int, void*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_plugin.cc:2765:29
+#7  0x000055be688db160 plugin_foreach_with_mask(THD*, bool (*)(THD*, st_plugin_int*, void*), int, unsigned int, void*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_plugin.cc:2778:34
+#8  0x000055be685af8dc ha_flush_logs(bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/handler.cc:2543:7
+#9  0x000055be695b880a MYSQL_BIN_LOG::fetch_and_process_flush_stage_queue(bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/binlog.cc:8747:18
+#10 0x000055be695ccfb0 MYSQL_BIN_LOG::process_flush_stage_queue(unsigned long long*, bool*, THD**) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/binlog.cc:8772:56
+#11 0x000055be695cd264 MYSQL_BIN_LOG::ordered_commit(THD*, bool, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/binlog.cc:9241:32
+#12 0x000055be695cee62 MYSQL_BIN_LOG::commit(THD*, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/binlog.cc:8609:28
+#13 0x000055be685ae496 ha_commit_trans(THD*, bool, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/handler.cc:1772:39
+#14 0x000055be689ea493 trans_commit(THD*, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/transaction.cc:246:24
+#15 0x000055be688b990a mysql_execute_command(THD*, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:4506:23
+#16 0x000055be688eaec0 Prepared_statement::execute(THD*, String*, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_prepare.cc:3646:33
+#17 0x000055be688efbad Prepared_statement::execute_loop(THD*, String*, bool) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_prepare.cc:3058:18
+#18 0x000055be688f0224 mysqld_stmt_execute(THD*, Prepared_statement*, bool, unsigned long, PS_PARAM*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_prepare.cc:1914:23
+#19 0x000055be688bdced dispatch_command(THD*, COM_DATA const*, enum_server_command) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:2024:28
+#20 0x000055be688bfd92 do_command(THD*) - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:1501:34
+#21 0x000055be68a2e000 handle_connection - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_handler_per_thread.cc:308:23
+#22 0x000055be69ee42e9 pfs_spawn_thread - /home/sveta/mysqlpackages/Percona-Server-8.0.32-24-Linux.x86_64.glibc2.35/bin/mysqld   /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987:24
+#23 0x00007f2763e94ac3 start_thread - /usr/lib/x86_64-linux-gnu/libc.so.6   ./nptl/pthread_create.c:442:8
+#24 0x00007f2763f26850 __clone3 - /usr/lib/x86_64-linux-gnu/libc.so.6   ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+TS 051545631.1705596346 2024-01-18 19:45:46

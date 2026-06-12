@@ -1,0 +1,961 @@
+[New LWP 3441805]
+[New LWP 3441806]
+[New LWP 3441807]
+[New LWP 3441808]
+[New LWP 3441809]
+[New LWP 3441810]
+[New LWP 3441811]
+[New LWP 3441812]
+[New LWP 3441813]
+[New LWP 3441814]
+[New LWP 3441815]
+[New LWP 3441816]
+[New LWP 3441817]
+[New LWP 3441818]
+[New LWP 3441819]
+[New LWP 3441820]
+[New LWP 3441821]
+[New LWP 3441822]
+[New LWP 3441823]
+[New LWP 3441828]
+[New LWP 3441829]
+[New LWP 3441830]
+[New LWP 3441831]
+[New LWP 3441832]
+[New LWP 3441833]
+[New LWP 3441834]
+[New LWP 3441835]
+[New LWP 3441836]
+[New LWP 3441874]
+[New LWP 3441875]
+[New LWP 3441876]
+[New LWP 3441877]
+[New LWP 3441878]
+[New LWP 3441879]
+[New LWP 3441880]
+[New LWP 3441881]
+[New LWP 3441883]
+[New LWP 3441885]
+[New LWP 3441888]
+[New LWP 3442446]
+[New LWP 3772082]
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+0x00007f2763f18bcf in __GI___poll (fds=0x7f276343f110, nfds=2, timeout=-1) at ../sysdeps/unix/sysv/linux/poll.c:29
+
+Thread 42 (Thread 0x7f274d19f640 (LWP 3772082) "connection"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x7f274e40e144) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x7f274e40e144) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f274e40e144, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7f274e40e0f0, cond=0x7f274e40e118) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7f274e40e118, mutex=0x7f274e40e0f0) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be69b9f096 in os_event::wait (this=0x7f274e40e0e0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185
+#6  os_event::wait_low (this=0x7f274e40e0e0, reset_sig_count=3683) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:365
+#7  0x000055be69b9f459 in os_event_wait_low (event=<optimized out>, reset_sig_count=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:589
+#8  0x000055be69c5aca9 in sync_array_wait_event (arr=arr@entry=0x7f27508537c0, cell=@0x7f274d199088: 0x7f2750000020) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/sync/sync0arr.cc:338
+#9  0x000055be69a95ec2 in TTASEventMutex<GenericPolicy>::wait (this=this@entry=0x7f2750bec050, filename=filename@entry=0x55be6ad35338 "/mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc", line=line@entry=4936, spin=spin@entry=4) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ut0mutex.ic:222
+#10 0x000055be69a9610b in TTASEventMutex<GenericPolicy>::spin_and_try_lock (line=<optimized out>, filename=<optimized out>, max_delay=<optimized out>, max_spins=60, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ib0mutex.h:541
+#11 TTASEventMutex<GenericPolicy>::enter (line=<optimized out>, filename=<optimized out>, max_delay=<optimized out>, max_spins=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ib0mutex.h:442
+#12 PolicyMutex<TTASEventMutex<GenericPolicy> >::enter (line=<optimized out>, name=<optimized out>, n_delay=<optimized out>, n_spins=<optimized out>, this=0x7f2750bec050) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ib0mutex.h:636
+#13 mutex_enter_inline<PolicyMutex<TTASEventMutex<GenericPolicy> > > (m=0x7f2750bec050, loc=...) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ut0mutex.h:114
+#14 0x000055be69d083c0 in buf_page_init_for_read (err=err@entry=0x7f274d1999ac, mode=mode@entry=132, page_id=..., page_size=..., unzip=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc:4936
+#15 0x000055be69d3490b in buf_read_page_low (err=0x7f274d1999ac, sync=true, type=0, mode=132, page_id=..., page_size=..., unzip=false, trx=0x0, should_buffer=false) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0rea.cc:93
+#16 0x000055be69d350bd in buf_read_page (page_id=..., page_size=..., trx=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0rea.cc:292
+#17 0x000055be69cfd00c in Buf_fetch<Buf_fetch_normal>::read_page (this=this@entry=0x7f274d199eb0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc:4086
+#18 0x000055be69d09200 in Buf_fetch_normal::get (this=this@entry=0x7f274d199eb0, block=@0x7f274d199e08: 0x0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc:3709
+#19 0x000055be69d092e5 in Buf_fetch<Buf_fetch_normal>::single_page (this=this@entry=0x7f274d199eb0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc:4281
+#20 0x000055be69d0a329 in buf_page_get_gen (page_id=..., page_size=..., rw_latch=rw_latch@entry=1, guess=0x0, mode=mode@entry=Page_fetch::NORMAL, location=..., mtr=mtr@entry=0x7f274d19b7f0, dirty_with_no_latch=false) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc:4478
+#21 0x000055be69ce87f4 in btr_cur_search_to_nth_level (index=index@entry=0x7f272ebd9f08, level=<optimized out>, tuple=tuple@entry=0x7f272bd284d0, mode=mode@entry=PAGE_CUR_GE, latch_mode=<optimized out>, latch_mode@entry=1, cursor=cursor@entry=0x7f272bd282c0, has_search_latch=<optimized out>, file=<optimized out>, line=<optimized out>, mtr=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/btr/btr0cur.cc:975
+#22 0x000055be69c201c2 in btr_pcur_t::open_no_init (location=..., mtr=0x7f274d19b7f0, has_search_latch=0, latch_mode=1, mode=PAGE_CUR_GE, tuple=0x7f272bd284d0, index=0x7f272ebd9f08, this=0x7f272bd282c0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/btr0pcur.h:616
+#23 row_search_mvcc (buf=buf@entry=0x7f272bc88030 "\377\272\027", mode=mode@entry=PAGE_CUR_GE, prebuilt=0x7f272bd28088, match_mode=match_mode@entry=1, direction=direction@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/row/row0sel.cc:4954
+#24 0x000055be69aa9b57 in ha_innobase::index_read (this=0x7f272bd26030, buf=0x7f272bc88030 "\377\272\027", key_ptr=<optimized out>, key_len=<optimized out>, find_flag=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/handler/ha_innodb.cc:10897
+#25 0x000055be685b8001 in handler::index_read_map (find_flag=HA_READ_KEY_EXACT, keypart_map=1, key=0x7f272bd05330 "\337\006", buf=0x7f272bc88030 "\377\272\027", this=0x7f272bd26030) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/handler.h:5467
+#26 handler::ha_index_read_map (this=0x7f272bd26030, buf=0x7f272bc88030 "\377\272\027", key=0x7f272bd05330 "\337\006", keypart_map=1, find_flag=find_flag@entry=HA_READ_KEY_EXACT) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/handler.cc:3393
+#27 0x000055be6886e31e in read_const (table=0x7f272bc29220, ref=0x7f272bd04838) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_executor.cc:3662
+#28 0x000055be6886e3fb in join_read_const_table (tab=tab@entry=0x7f272bd04758, pos=0x7f272bd04910) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_executor.cc:3566
+#29 0x000055be6889949c in JOIN::extract_func_dependent_tables (this=this@entry=0x7f272bd04098) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_optimizer.cc:5824
+#30 0x000055be688ad578 in JOIN::make_join_plan (this=0x7f272bd04098) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_optimizer.cc:5352
+#31 0x000055be688af1dc in JOIN::optimize (this=0x7f272bd04098, finalize_access_paths=finalize_access_paths@entry=true) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_optimizer.cc:716
+#32 0x000055be68917b81 in Query_block::optimize (this=this@entry=0x7f272bd23ed8, thd=thd@entry=0x7f272bc1f000, finalize_access_paths=finalize_access_paths@entry=true) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_select.cc:1814
+#33 0x000055be6899b9b9 in Query_expression::optimize (this=this@entry=0x7f272bd23df8, thd=thd@entry=0x7f272bc1f000, materialize_destination=materialize_destination@entry=0x0, create_iterators=create_iterators@entry=true, finalize_access_paths=finalize_access_paths@entry=true) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_union.cc:1007
+#34 0x000055be68916954 in Sql_cmd_dml::execute_inner (this=0x7f272bc816f8, thd=0x7f272bc1f000) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_select.cc:763
+#35 0x000055be68916019 in Sql_cmd_dml::execute (this=0x7f272bc816f8, thd=0x7f272bc1f000) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_select.cc:578
+#36 0x000055be688b87f7 in mysql_execute_command (thd=0x7f272bc1f000, first_level=first_level@entry=true) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:4944
+#37 0x000055be688eaec0 in Prepared_statement::execute (this=0x7f272bd19600, thd=<optimized out>, expanded_query=<optimized out>, open_cursor=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_prepare.cc:3646
+#38 0x000055be688efbad in Prepared_statement::execute_loop (this=this@entry=0x7f272bd19600, thd=thd@entry=0x7f272bc1f000, expanded_query=expanded_query@entry=0x7f274d19d8f0, open_cursor=open_cursor@entry=false) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_prepare.cc:3058
+#39 0x000055be688f0224 in mysqld_stmt_execute (thd=thd@entry=0x7f272bc1f000, stmt=0x7f272bd19600, has_new_types=<optimized out>, execute_flags=8, parameters=parameters@entry=0x7f272bd04030) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_prepare.cc:1914
+#40 0x000055be688bdced in dispatch_command (thd=0x7f272bc1f000, com_data=<optimized out>, command=COM_STMT_EXECUTE) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:2024
+#41 0x000055be688bfd92 in do_command (thd=thd@entry=0x7f272bc1f000) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:1501
+#42 0x000055be68a2e000 in handle_connection (arg=arg@entry=0x7f2751b7bf80) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_handler_per_thread.cc:308
+#43 0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345c6a0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#44 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#45 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 41 (Thread 0x7f274d3a2640 (LWP 3442446) "connection"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x55be6bb33808 <Per_thread_connection_handler::COND_thread_cache+40>) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x55be6bb33808 <Per_thread_connection_handler::COND_thread_cache+40>) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x55be6bb33808 <Per_thread_connection_handler::COND_thread_cache+40>, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x55be6bb33820 <Per_thread_connection_handler::LOCK_thread_cache>, cond=0x55be6bb337e0 <Per_thread_connection_handler::COND_thread_cache>) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x55be6bb337e0 <Per_thread_connection_handler::COND_thread_cache>, mutex=0x55be6bb33820 <Per_thread_connection_handler::LOCK_thread_cache>) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be68a2dba7 in native_cond_wait (mutex=0x55be6bb33820 <Per_thread_connection_handler::LOCK_thread_cache>, cond=0x55be6bb337e0 <Per_thread_connection_handler::COND_thread_cache>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:108
+#6  my_cond_wait (mp=0x55be6bb33820 <Per_thread_connection_handler::LOCK_thread_cache>, cond=0x55be6bb337e0 <Per_thread_connection_handler::COND_thread_cache>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:161
+#7  inline_mysql_cond_wait (mutex=0x55be6bb33820 <Per_thread_connection_handler::LOCK_thread_cache>, src_file=0x55be6ab989a0 "/mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_handler_per_thread.cc", src_line=162, that=0x55be6bb337e0 <Per_thread_connection_handler::COND_thread_cache>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/mysql/psi/mysql_cond.h:198
+#8  Per_thread_connection_handler::block_until_new_connection () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_handler_per_thread.cc:162
+#9  0x000055be68a2de4f in handle_connection (arg=arg@entry=0x7f2751b7bbc0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_handler_per_thread.cc:340
+#10 0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345c4e0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#11 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#12 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 40 (Thread 0x7f274e9fc640 (LWP 3441888) "connection"):
+#0  __futex_abstimed_wait_common64 (private=6734, cancel=true, abstime=0x7f274e9f9610, op=393, expected=0, futex_word=0x55be6bb4ad64 <mysql_bin_log+1156>) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=6734, abstime=0x7f274e9f9610, clockid=0, expected=0, futex_word=0x55be6bb4ad64 <mysql_bin_log+1156>) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x55be6bb4ad64 <mysql_bin_log+1156>, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x7f274e9f9610, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f274e9f9610, clockid=0, mutex=0x55be6bb4acd8 <mysql_bin_log+1016>, cond=0x55be6bb4ad38 <mysql_bin_log+1112>) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x55be6bb4ad38 <mysql_bin_log+1112>, mutex=0x55be6bb4acd8 <mysql_bin_log+1016>, abstime=0x7f274e9f9610) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be695b8173 in native_cond_timedwait (abstime=0x7f274e9f9610, mutex=0x55be6bb4acd8 <mysql_bin_log+1016>, cond=0x55be6bb4ad38 <mysql_bin_log+1112>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:99
+#6  my_cond_timedwait (abstime=0x7f274e9f9610, mp=0x55be6bb4acd8 <mysql_bin_log+1016>, cond=0x55be6bb4ad38 <mysql_bin_log+1112>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:148
+#7  inline_mysql_cond_timedwait (src_file=0x55be6ac798a8 "/mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/binlog.cc", src_line=7966, abstime=0x7f274e9f9610, mutex=0x55be6bb4acd8 <mysql_bin_log+1016>, that=0x55be6bb4ad38 <mysql_bin_log+1112>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/mysql/psi/mysql_cond.h:242
+#8  MYSQL_BIN_LOG::wait_for_update (this=this@entry=0x55be6bb4a8e0 <mysql_bin_log>, timeout=...) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/binlog.cc:7966
+#9  0x000055be6963f417 in Binlog_sender::wait_with_heartbeat (log_pos=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_binlog_sender.cc:821
+#10 Binlog_sender::wait_new_events (this=0x7f274e9f9f60, log_pos=14956969) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_binlog_sender.cc:796
+#11 0x000055be6963f7e9 in Binlog_sender::get_binlog_end_pos (this=this@entry=0x7f274e9f9f60, reader=...) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_binlog_sender.cc:539
+#12 0x000055be69640cbb in Binlog_sender::send_binlog (this=this@entry=0x7f274e9f9f60, reader=..., start_pos=126, start_pos@entry=4) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_binlog_sender.cc:510
+#13 0x000055be69641cb6 in Binlog_sender::run (this=this@entry=0x7f274e9f9f60) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_binlog_sender.cc:413
+#14 0x000055be69638f58 in mysql_binlog_send (thd=<optimized out>, log_ident=<optimized out>, pos=<optimized out>, slave_gtid_executed=<optimized out>, flags=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_source.cc:997
+#15 0x000055be6963ba5e in com_binlog_dump (thd=thd@entry=0x7f273081e000, packet=0x7f2730877021 "", packet_length=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_source.cc:924
+#16 0x000055be688bdbe6 in dispatch_command (thd=0x7f273081e000, com_data=<optimized out>, command=COM_BINLOG_DUMP) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:2349
+#17 0x000055be688bfd92 in do_command (thd=thd@entry=0x7f273081e000) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/sql_parse.cc:1501
+#18 0x000055be68a2e000 in handle_connection (arg=arg@entry=0x7f2751b7baa0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_handler_per_thread.cc:308
+#19 0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345bde0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#20 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#21 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 39 (Thread 0x7f2731fff640 (LWP 3441885) "gtid_zip"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x55be6ba8e1c8 <COND_compress_gtid_table+40>) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x55be6ba8e1c8 <COND_compress_gtid_table+40>) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x55be6ba8e1c8 <COND_compress_gtid_table+40>, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x55be6ba8e1e0 <LOCK_compress_gtid_table>, cond=0x55be6ba8e1a0 <COND_compress_gtid_table>) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x55be6ba8e1a0 <COND_compress_gtid_table>, mutex=0x55be6ba8e1e0 <LOCK_compress_gtid_table>) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be69608553 in native_cond_wait (mutex=<optimized out>, cond=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:108
+#6  my_cond_wait (mp=<optimized out>, cond=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:161
+#7  inline_mysql_cond_wait (that=<optimized out>, mutex=<optimized out>, src_file=0x55be6ac7e060 "/mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_gtid_persist.cc", src_line=776) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/mysql/psi/mysql_cond.h:198
+#8  compress_gtid_table (p_thd=p_thd@entry=0x7f27519e2000) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/rpl_gtid_persist.cc:776
+#9  0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345bc20) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#10 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#11 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 38 (Thread 0x7f274ebfe640 (LWP 3441883) "xpl_accept-2"):
+#0  0x00007f2763f25e2e in epoll_wait (epfd=15, events=events@entry=0x7f274f4d4000, maxevents=32, timeout=timeout@entry=1000) at ../sysdeps/unix/sysv/linux/epoll_wait.c:30
+#1  0x000055be6a2cc925 in epoll_dispatch (base=0x7f27577fd400, tv=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/extra/libevent/libevent-2.1.11-stable/epoll.c:465
+#2  0x000055be6a2c2238 in event_base_loop (base=0x7f27577fd400, flags=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/extra/libevent/libevent-2.1.11-stable/event.c:1998
+#3  0x000055be6a2098b2 in ngs::Server::run_task (this=0x7f2763421420, handler=std::shared_ptr<xpl::iface::Server_task> (use count 3, weak count 0) = {...}) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/server/server.cc:83
+#4  0x000055be6a20a494 in operator() (__closure=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/server/server.cc:148
+#5  std::__invoke_impl<void, ngs::Server::start_tasks()::<lambda()>&> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#6  std::__invoke_r<void, ngs::Server::start_tasks()::<lambda()>&> (__fn=...) at /usr/include/c++/11/bits/invoke.h:111
+#7  std::_Function_handler<void(), ngs::Server::start_tasks()::<lambda()> >::_M_invoke(const std::_Any_data &) (__functor=...) at /usr/include/c++/11/bits/std_function.h:290
+#8  0x000055be6a27fe95 in std::function<void ()>::operator()() const (this=0x7f27324e61a0) at /usr/include/c++/11/bits/std_function.h:590
+#9  ngs::Scheduler_dynamic::worker (this=0x7f276346f8b0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:234
+#10 0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345c320) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#11 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#12 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 37 (Thread 0x7f2750dfb640 (LWP 3441881) "sig_handler"):
+#0  0x00007f2763e4321a in __GI___sigtimedwait (set=0x7f2750dfaaa0, info=0x7f2750dfab20, timeout=0x0) at ../sysdeps/unix/sysv/linux/sigtimedwait.c:61
+#1  0x000055be6875631b in signal_hand (arg=arg@entry=0x0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/mysqld.cc:3833
+#2  0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345bc20) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#3  0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#4  0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 36 (Thread 0x7f2750efd640 (LWP 3441880) "evt_sched"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x7f2751921038) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x7f2751921038) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f2751921038, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7f2751920fe0, cond=0x7f2751921010) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7f2751921010, mutex=0x7f2751920fe0) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be68c3ee21 in native_cond_wait (mutex=0x7f2751920fe0, cond=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:108
+#6  my_cond_wait (mp=0x7f2751920fe0, cond=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:161
+#7  inline_mysql_cond_wait (src_file=0x55be6ac136a0 "/mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/event_queue.cc", src_line=718, mutex=0x7f2751920fe0, that=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/mysql/psi/mysql_cond.h:198
+#8  Event_queue::cond_wait (this=this@entry=0x7f2751920fe0, thd=thd@entry=0x7f27324e1000, abstime=abstime@entry=0x0, stage=<optimized out>, src_func=src_func@entry=0x55be6ac1383e "get_top_for_execution_if_time", src_file=src_file@entry=0x55be6ac136a0 "/mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/event_queue.cc", src_line=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/event_queue.cc:718
+#9  0x000055be68c3f92f in Event_queue::get_top_for_execution_if_time (this=0x7f2751920fe0, thd=thd@entry=0x7f27324e1000, event_name=event_name@entry=0x7f2750efc7e8) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/event_queue.cc:556
+#10 0x000055be68c41e5b in Event_scheduler::run (this=0x7f27547fe800, thd=0x7f27324e1000) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/event_scheduler.cc:577
+#11 0x000055be68c42517 in event_scheduler_thread (arg=arg@entry=0x7f2751a6eed0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/event_scheduler.cc:280
+#12 0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345ba60) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#13 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#14 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 35 (Thread 0x7f27333fb640 (LWP 3441879) "ib_srv_wkr-3"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x7f275087d8c4) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x7f275087d8c4) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f275087d8c4, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7f275087d870, cond=0x7f275087d898) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7f275087d898, mutex=0x7f275087d870) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be69b9f096 in os_event::wait (this=0x7f275087d860) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185
+#6  os_event::wait_low (this=0x7f275087d860, reset_sig_count=8517, reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:365
+#7  0x000055be69b9f459 in os_event_wait_low (event=<optimized out>, reset_sig_count=reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:589
+#8  0x000055be69c45a9c in os_event_wait (e=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103
+#9  srv_worker_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:3212
+#10 0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)()> (this=0x7f27519c92f0, f=@0x7f27519c92e8: 0x55be69c45900 <srv_worker_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#16 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#17 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 34 (Thread 0x7f2733bfc640 (LWP 3441878) "ib_srv_wkr-2"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x7f275087d824) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x7f275087d824) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f275087d824, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7f275087d7d0, cond=0x7f275087d7f8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7f275087d7f8, mutex=0x7f275087d7d0) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be69b9f096 in os_event::wait (this=0x7f275087d7c0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185
+#6  os_event::wait_low (this=0x7f275087d7c0, reset_sig_count=9478, reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:365
+#7  0x000055be69b9f459 in os_event_wait_low (event=<optimized out>, reset_sig_count=reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:589
+#8  0x000055be69c45a9c in os_event_wait (e=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103
+#9  srv_worker_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:3212
+#10 0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)()> (this=0x7f27519c9250, f=@0x7f27519c9248: 0x55be69c45900 <srv_worker_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#16 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#17 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 33 (Thread 0x7f27343fd640 (LWP 3441877) "ib_srv_wkr-1"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x7f275087d784) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x7f275087d784) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f275087d784, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7f275087d730, cond=0x7f275087d758) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7f275087d758, mutex=0x7f275087d730) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be69b9f096 in os_event::wait (this=0x7f275087d720) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185
+#6  os_event::wait_low (this=0x7f275087d720, reset_sig_count=11454, reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:365
+#7  0x000055be69b9f459 in os_event_wait_low (event=<optimized out>, reset_sig_count=reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:589
+#8  0x000055be69c45a9c in os_event_wait (e=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103
+#9  srv_worker_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:3212
+#10 0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)()> (this=0x7f27519c9200, f=@0x7f27519c91f8: 0x55be69c45900 <srv_worker_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#16 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#17 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 32 (Thread 0x7f2734bfe640 (LWP 3441876) "ib_srv_purge"):
+#0  __futex_abstimed_wait_common64 (private=1915880577, cancel=true, abstime=0x7f2734bfd890, op=137, expected=0, futex_word=0x7f275087d6e0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=1915880577, abstime=0x7f2734bfd890, clockid=0, expected=0, futex_word=0x7f275087d6e0) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f275087d6e0, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f2734bfd890, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f2734bfd890, clockid=1, mutex=0x7f275087d690, cond=0x7f275087d6b8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f275087d6b8, mutex=0x7f275087d690, abstime=0x7f2734bfd890) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f2734bfd890) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=0x7f275087d680, timeout=..., reset_sig_count=reset_sig_count@entry=457) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=<optimized out>, timeout=..., timeout@entry=..., reset_sig_count=reset_sig_count@entry=457) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69c46523 in srv_purge_coordinator_suspend (rseg_history_len=<optimized out>, slot=0x7f2750875508) at /usr/include/c++/11/chrono:537
+#9  srv_purge_coordinator_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:3475
+#10 0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)()> (this=0x7f27519c91b0, f=@0x7f27519c91a8: 0x55be69c46120 <srv_purge_coordinator_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#16 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#17 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 31 (Thread 0x7f27353ff640 (LWP 3441875) "ib_clone_gtid"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x7f27353fe8e0, op=137, expected=0, futex_word=0x7f2750bc9a40) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x7f27353fe8e0, clockid=21, expected=0, futex_word=0x7f2750bc9a40) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f2750bc9a40, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f27353fe8e0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f27353fe8e0, clockid=1, mutex=0x7f2750bc99f0, cond=0x7f2750bc9a18) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f2750bc9a18, mutex=0x7f2750bc99f0, abstime=0x7f27353fe8e0) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f27353fe8e0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=0x7f2750bc99e0, timeout=..., reset_sig_count=1, reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=<optimized out>, timeout=..., timeout@entry=..., reset_sig_count=reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69d6e459 in os_event_wait_time (t=..., e=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:121
+#9  Clone_persist_gtid::periodic_write (this=0x7f275087f390) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/clone/clone0repl.cc:608
+#10 0x000055be69d6ae4e in std::__invoke_impl<void, void (*&)(Clone_persist_gtid*), Clone_persist_gtid*&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)(Clone_persist_gtid*), Clone_persist_gtid*&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*(Clone_persist_gtid*))(Clone_persist_gtid*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*(Clone_persist_gtid*))(Clone_persist_gtid*)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)(Clone_persist_gtid*), Clone_persist_gtid*> (f=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 std::__invoke_impl<void, Detached_thread, void (*)(Clone_persist_gtid*), Clone_persist_gtid*> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#16 std::__invoke<Detached_thread, void (*)(Clone_persist_gtid*), Clone_persist_gtid*> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#17 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(Clone_persist_gtid*), Clone_persist_gtid*> >::_M_invoke<0ul, 1ul, 2ul> (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:253
+#18 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(Clone_persist_gtid*), Clone_persist_gtid*> >::operator() (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:260
+#19 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(Clone_persist_gtid*), Clone_persist_gtid*> > >::_M_run (this=0x7f2736c3e980) at /usr/include/c++/11/bits/std_thread.h:211
+#20 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#21 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#22 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 30 (Thread 0x7f27517ff640 (LWP 3441874) "ib_buf_dump"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x7f275087daa0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x7f275087daa0) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f275087daa0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7f275087da50, cond=0x7f275087da78) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7f275087da78, mutex=0x7f275087da50) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be69b9f096 in os_event::wait (this=0x7f275087da40) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185
+#6  os_event::wait_low (this=0x7f275087da40, reset_sig_count=1, reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:365
+#7  0x000055be69b9f459 in os_event_wait_low (event=<optimized out>, reset_sig_count=reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:589
+#8  0x000055be69d1f343 in os_event_wait (e=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103
+#9  buf_dump_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dump.cc:686
+#10 0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)()> (this=0x7f27519c9070, f=@0x7f27519c9068: 0x55be69d1f2d0 <buf_dump_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#16 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#17 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 29 (Thread 0x7f2750ffe640 (LWP 3441836) "xpl_accept-1"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x7f2751a1c098) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x7f2751a1c098) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f2751a1c098, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7f2751a1c040, cond=0x7f2751a1c070) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7f2751a1c070, mutex=0x7f2751a1c040) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be6a26affc in xpl::Synchronize::Block::wait (this=0x7f2750ffd9c0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/helper/multithread/synchronize.h:49
+#6  xpl::Broker_task::wait_for_data_and_swap_queues (this=0x7f27519d2420, out_workers_queue=0x7f2750ffda50) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/mq/broker_task.cc:118
+#7  0x000055be6a26b791 in xpl::Broker_task::loop (this=0x7f27519d2420) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/mq/broker_task.cc:92
+#8  0x000055be6a2098b2 in ngs::Server::run_task (this=0x7f2763421420, handler=std::shared_ptr<xpl::iface::Server_task> (use count 3, weak count 0) = {...}) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/server/server.cc:83
+#9  0x000055be6a20a494 in operator() (__closure=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/server/server.cc:148
+#10 std::__invoke_impl<void, ngs::Server::start_tasks()::<lambda()>&> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#11 std::__invoke_r<void, ngs::Server::start_tasks()::<lambda()>&> (__fn=...) at /usr/include/c++/11/bits/invoke.h:111
+#12 std::_Function_handler<void(), ngs::Server::start_tasks()::<lambda()> >::_M_invoke(const std::_Any_data &) (__functor=...) at /usr/include/c++/11/bits/std_function.h:290
+#13 0x000055be6a27fe95 in std::function<void ()>::operator()() const (this=0x7f27324e66a0) at /usr/include/c++/11/bits/std_function.h:590
+#14 ngs::Scheduler_dynamic::worker (this=0x7f276346f8b0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:234
+#15 0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345b1a0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#16 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#17 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 28 (Thread 0x7f2763dff640 (LWP 3441835) "xpl_worker-2"):
+#0  __futex_abstimed_wait_common64 (private=1662156848, cancel=true, abstime=0x7f2763dfe9d0, op=393, expected=0, futex_word=0x7f276346f6b0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=1662156848, abstime=0x7f2763dfe9d0, clockid=1690637152, expected=0, futex_word=0x7f276346f6b0) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f276346f6b0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x7f2763dfe9d0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f2763dfe9d0, clockid=0, mutex=0x7f276346f658, cond=0x7f276346f688) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f276346f688, mutex=0x7f276346f658, abstime=0x7f2763dfe9d0) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be6a257885 in native_cond_timedwait (abstime=0x7f2763dfe9d0, mutex=<optimized out>, cond=0x7f276346f688) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:99
+#6  my_cond_timedwait (abstime=0x7f2763dfe9d0, mp=<optimized out>, cond=0x7f276346f688) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:148
+#7  inline_mysql_cond_timedwait (src_file=0x55be6b11e198 "/mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/helper/multithread/cond.cc", src_line=42, abstime=0x7f2763dfe9d0, mutex=<optimized out>, that=0x7f276346f688) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/mysql/psi/mysql_cond.h:242
+#8  xpl::Cond::timed_wait (this=this@entry=0x7f276346f688, mutex=..., nanoseconds=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/helper/multithread/cond.cc:42
+#9  0x000055be6a27e5cd in ngs::Scheduler_dynamic::wait_if_idle_then_delete_worker (this=0x7f276346f630, thread_waiting_started=@0x7f2763dfeb50: 1705596232371) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:196
+#10 0x000055be6a27fb9c in ngs::Scheduler_dynamic::worker (this=0x7f276346f630) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:243
+#11 0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345ac60) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#12 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#13 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 27 (Thread 0x7f27641ff640 (LWP 3441834) "xpl_worker-1"):
+#0  __futex_abstimed_wait_common64 (private=1662152432, cancel=true, abstime=0x7f27641fe9d0, op=393, expected=0, futex_word=0x7f276346f6b0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=1662152432, abstime=0x7f27641fe9d0, clockid=1690637152, expected=0, futex_word=0x7f276346f6b0) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f276346f6b0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x7f27641fe9d0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f27641fe9d0, clockid=0, mutex=0x7f276346f658, cond=0x7f276346f688) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f276346f688, mutex=0x7f276346f658, abstime=0x7f27641fe9d0) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be6a257885 in native_cond_timedwait (abstime=0x7f27641fe9d0, mutex=<optimized out>, cond=0x7f276346f688) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:99
+#6  my_cond_timedwait (abstime=0x7f27641fe9d0, mp=<optimized out>, cond=0x7f276346f688) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/thr_cond.h:148
+#7  inline_mysql_cond_timedwait (src_file=0x55be6b11e198 "/mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/helper/multithread/cond.cc", src_line=42, abstime=0x7f27641fe9d0, mutex=<optimized out>, that=0x7f276346f688) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/include/mysql/psi/mysql_cond.h:242
+#8  xpl::Cond::timed_wait (this=this@entry=0x7f276346f688, mutex=..., nanoseconds=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/helper/multithread/cond.cc:42
+#9  0x000055be6a27e5cd in ngs::Scheduler_dynamic::wait_if_idle_then_delete_worker (this=0x7f276346f630, thread_waiting_started=@0x7f27641feb50: 1705596232371) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:196
+#10 0x000055be6a27fb9c in ngs::Scheduler_dynamic::worker (this=0x7f276346f630) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/plugin/x/src/ngs/scheduler.cc:243
+#11 0x000055be69ee42e9 in pfs_spawn_thread (arg=0x7f276345afe0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/perfschema/pfs.cc:2987
+#12 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#13 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 26 (Thread 0x7f2738ffe640 (LWP 3441833) "ib_fts_opt"):
+#0  __futex_abstimed_wait_common64 (private=1690408045, cancel=true, abstime=0x7f2738ffd850, op=137, expected=0, futex_word=0x7f274f568720) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=1690408045, abstime=0x7f2738ffd850, clockid=1, expected=0, futex_word=0x7f274f568720) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f274f568720, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f2738ffd850, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f2738ffd850, clockid=1, mutex=0x7f274f5686d0, cond=0x7f274f5686f8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f274f5686f8, mutex=0x7f274f5686d0, abstime=0x7f2738ffd850) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f2738ffd850) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=0x7f274f5686c0, timeout=..., reset_sig_count=1) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=<optimized out>, timeout=..., timeout@entry=..., reset_sig_count=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69ca525c in ib_wqueue_timedwait (wq=wq@entry=0x7f273a26cf10, wait=wait@entry=...) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/ut/ut0wqueue.cc:128
+#9  0x000055be69e57c9a in fts_optimize_thread (wq=<optimized out>) at /usr/include/c++/11/chrono:537
+#10 0x000055be69e4f42e in std::__invoke_impl<void, void (*&)(ib_wqueue_t*), ib_wqueue_t*&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)(ib_wqueue_t*), ib_wqueue_t*&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*(ib_wqueue_t*))(ib_wqueue_t*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*(ib_wqueue_t*))(ib_wqueue_t*)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)(ib_wqueue_t*), ib_wqueue_t*> (f=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 std::__invoke_impl<void, Detached_thread, void (*)(ib_wqueue_t*), ib_wqueue_t*> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#16 std::__invoke<Detached_thread, void (*)(ib_wqueue_t*), ib_wqueue_t*> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#17 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(ib_wqueue_t*), ib_wqueue_t*> >::_M_invoke<0ul, 1ul, 2ul> (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:253
+#18 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(ib_wqueue_t*), ib_wqueue_t*> >::operator() (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:260
+#19 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(ib_wqueue_t*), ib_wqueue_t*> > >::_M_run (this=0x7f273a1fd820) at /usr/include/c++/11/bits/std_thread.h:211
+#20 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#21 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#22 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 25 (Thread 0x7f27397ff640 (LWP 3441832) "ib_dict_stats"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x7f27397fea90, op=137, expected=0, futex_word=0x7f274f5685e0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x7f27397fea90, clockid=21, expected=0, futex_word=0x7f274f5685e0) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f274f5685e0, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f27397fea90, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f27397fea90, clockid=1, mutex=0x7f274f568590, cond=0x7f274f5685b8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f274f5685b8, mutex=0x7f274f568590, abstime=0x7f27397fea90) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f27397fea90) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=0x7f274f568580, timeout=..., reset_sig_count=23, reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=<optimized out>, timeout=..., timeout@entry=..., reset_sig_count=reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69dd5487 in os_event_wait_time (t=..., e=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:121
+#9  dict_stats_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/dict/dict0stats_bg.cc:365
+#10 0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)()> (this=0x7f274f70a6b0, f=@0x7f274f70a6a8: 0x55be69dd5360 <dict_stats_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#16 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#17 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 24 (Thread 0x7f273cbfd640 (LWP 3441831) "ib_src_main"):
+#0  0x00007f2763ee57f8 in __GI___clock_nanosleep (clock_id=clock_id@entry=0, flags=flags@entry=0, req=0x7f273cbfcae0, rem=0x7f273cbfcae0) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:78
+#1  0x00007f2763eea677 in __GI___nanosleep (req=<optimized out>, rem=<optimized out>) at ../sysdeps/unix/sysv/linux/nanosleep.c:25
+#2  0x000055be69c451b5 in std::this_thread::sleep_for<long, std::ratio<1l, 1l> > (__rtime=..., __rtime=...) at /usr/include/c++/11/bits/this_thread_sleep.h:82
+#3  srv_master_sleep () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:2973
+#4  srv_master_main_loop (slot=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:3015
+#5  srv_master_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:3087
+#6  0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#7  std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#8  std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#9  std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#10 Detached_thread::operator()<void (*)()> (this=0x7f273a15d5c0, f=@0x7f273a15d5b8: 0x55be69c44e50 <srv_master_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#11 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#12 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#13 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 23 (Thread 0x7f273d3fe640 (LWP 3441830) "ib_buf_resize"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x7f275087dc80) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x7f275087dc80) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f275087dc80, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7f275087dc30, cond=0x7f275087dc58) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7f275087dc58, mutex=0x7f275087dc30) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be69b9f096 in os_event::wait (this=0x7f275087dc20) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185
+#6  os_event::wait_low (this=0x7f275087dc20, reset_sig_count=1, reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:365
+#7  0x000055be69b9f459 in os_event_wait_low (event=<optimized out>, reset_sig_count=reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:589
+#8  0x000055be69d06dde in os_event_wait (e=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:103
+#9  buf_resize_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc:2667
+#10 0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)()> (this=0x7f275087c0c0, f=@0x7f275087c0b8: 0x55be69d06d90 <buf_resize_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#16 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#17 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 22 (Thread 0x7f273dbff640 (LWP 3441829) "ib_srv_err"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x7f273dbfc880, op=137, expected=0, futex_word=0x7f275087d960) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x7f273dbfc880, clockid=0, expected=0, futex_word=0x7f275087d960) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f275087d960, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f273dbfc880, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f273dbfc880, clockid=1, mutex=0x7f275087d910, cond=0x7f275087d938) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f275087d938, mutex=0x7f275087d910, abstime=0x7f273dbfc880) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f273dbfc880) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=0x7f275087d900, timeout=..., reset_sig_count=1) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=<optimized out>, timeout=..., timeout@entry=..., reset_sig_count=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69c3b73d in srv_error_monitor_thread () at /usr/include/c++/11/chrono:537
+#9  0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#10 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#11 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#12 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#13 Detached_thread::operator()<void (*)()> (this=0x7f2744bfa930, f=@0x7f2744bfa928: 0x55be69c3b620 <srv_error_monitor_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#14 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#15 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#16 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 21 (Thread 0x7f273c3fc640 (LWP 3441828) "ib_srv_lock_to"):
+#0  __futex_abstimed_wait_common64 (private=6, cancel=true, abstime=0x7f273c3fb950, op=137, expected=0, futex_word=0x7f274c439180) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=6, abstime=0x7f273c3fb950, clockid=0, expected=0, futex_word=0x7f274c439180) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f274c439180, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f273c3fb950, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f273c3fb950, clockid=1, mutex=0x7f274c439130, cond=0x7f274c439158) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f274c439158, mutex=0x7f274c439130, abstime=0x7f273c3fb950) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f273c3fb950) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=this@entry=0x7f274c439120, timeout=..., reset_sig_count=reset_sig_count@entry=1) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=event@entry=0x7f274c439120, timeout=..., timeout@entry=..., reset_sig_count=reset_sig_count@entry=1) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69b2ccae in lock_wait_timeout_thread () at /usr/include/c++/11/chrono:537
+#9  0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#10 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#11 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#12 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#13 Detached_thread::operator()<void (*)()> (this=0x7f2744bfa8e0, f=@0x7f2744bfa8d8: 0x55be69b2c440 <lock_wait_timeout_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#14 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#15 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#16 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 20 (Thread 0x7f273ebf9640 (LWP 3441823) "ib_log_files_g"):
+#0  __futex_abstimed_wait_common64 (private=1690351710, cancel=true, abstime=0x7f273ebf8a80, op=137, expected=0, futex_word=0x7f2744bfb280) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=1690351710, abstime=0x7f273ebf8a80, clockid=0, expected=0, futex_word=0x7f2744bfb280) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f2744bfb280, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f273ebf8a80, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f273ebf8a80, clockid=1, mutex=0x7f2744bfb230, cond=0x7f2744bfb258) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f2744bfb258, mutex=0x7f2744bfb230, abstime=0x7f273ebf8a80) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f273ebf8a80) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=0x7f2744bfb220, timeout=..., reset_sig_count=reset_sig_count@entry=138) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=<optimized out>, timeout=..., timeout@entry=..., reset_sig_count=reset_sig_count@entry=138) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69b47d0d in log_files_governor (log_ptr=0x7f274465ee80) at /usr/include/c++/11/chrono:537
+#9  0x000055be69b50bae in std::__invoke_impl<void, void (*&)(log_t*), log_t*&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#10 std::__invoke<void (*&)(log_t*), log_t*&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#11 std::_Bind<void (*(log_t*))(log_t*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#12 std::_Bind<void (*(log_t*))(log_t*)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#13 Detached_thread::operator()<void (*)(log_t*), log_t*> (f=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#14 std::__invoke_impl<void, Detached_thread, void (*)(log_t*), log_t*> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#15 std::__invoke<Detached_thread, void (*)(log_t*), log_t*> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::_M_invoke<0ul, 1ul, 2ul> (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:253
+#17 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::operator() (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:260
+#18 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run (this=0x7f2750871640) at /usr/include/c++/11/bits/std_thread.h:211
+#19 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#20 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#21 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 19 (Thread 0x7f273f3fa640 (LWP 3441822) "ib_log_writer"):
+#0  __futex_abstimed_wait_common64 (private=1777206613, cancel=true, abstime=0x7f273f3f9a20, op=137, expected=0, futex_word=0x7f274c439f44) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=1777206613, abstime=0x7f273f3f9a20, clockid=1061132472, expected=0, futex_word=0x7f274c439f44) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f274c439f44, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f273f3f9a20, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f273f3f9a20, clockid=1, mutex=0x7f274c439ef0, cond=0x7f274c439f18) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f274c439f18, mutex=0x7f274c439ef0, abstime=0x7f273f3f9a20) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f273f3f9a20) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=this@entry=0x7f274c439ee0, timeout=..., reset_sig_count=reset_sig_count@entry=9967) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=event@entry=0x7f274c439ee0, timeout=..., timeout@entry=..., reset_sig_count=reset_sig_count@entry=9967) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69b804e3 in os_event_wait_for<log_writer(log_t*)::<lambda(bool)> > (condition=..., timeout=..., spins_limit=<optimized out>, event=<synthetic pointer>: <optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.ic:135
+#9  Log_thread_waiting::wait<log_writer(log_t*)::<lambda(bool)> > (stop_condition=..., this=<synthetic pointer>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:1256
+#10 log_writer (log_ptr=0x7f274465ee80) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:2276
+#11 0x000055be69b50bae in std::__invoke_impl<void, void (*&)(log_t*), log_t*&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#12 std::__invoke<void (*&)(log_t*), log_t*&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#13 std::_Bind<void (*(log_t*))(log_t*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#14 std::_Bind<void (*(log_t*))(log_t*)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#15 Detached_thread::operator()<void (*)(log_t*), log_t*> (f=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#16 std::__invoke_impl<void, Detached_thread, void (*)(log_t*), log_t*> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#17 std::__invoke<Detached_thread, void (*)(log_t*), log_t*> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#18 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::_M_invoke<0ul, 1ul, 2ul> (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:253
+#19 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::operator() (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:260
+#20 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run (this=0x7f27508715e0) at /usr/include/c++/11/bits/std_thread.h:211
+#21 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#22 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#23 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 18 (Thread 0x7f273fbfb640 (LWP 3441821) "ib_log_wr_notif"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x7f273fbfaa60, op=137, expected=0, futex_word=0x7f274c439e04) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x7f273fbfaa60, clockid=0, expected=0, futex_word=0x7f274c439e04) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f274c439e04, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f273fbfaa60, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f273fbfaa60, clockid=1, mutex=0x7f274c439db0, cond=0x7f274c439dd8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f274c439dd8, mutex=0x7f274c439db0, abstime=0x7f273fbfaa60) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f273fbfaa60) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=this@entry=0x7f274c439da0, timeout=..., reset_sig_count=reset_sig_count@entry=13163) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=event@entry=0x7f274c439da0, timeout=..., timeout@entry=..., reset_sig_count=reset_sig_count@entry=13163) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69b8139b in os_event_wait_for<log_write_notifier(log_t*)::<lambda(bool)> > (condition=..., timeout=..., spins_limit=<optimized out>, event=<synthetic pointer>: <optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.ic:135
+#9  Log_thread_waiting::wait<log_write_notifier(log_t*)::<lambda(bool)> > (stop_condition=..., this=<synthetic pointer>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:1256
+#10 log_write_notifier (log_ptr=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:2703
+#11 0x000055be69b50bae in std::__invoke_impl<void, void (*&)(log_t*), log_t*&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#12 std::__invoke<void (*&)(log_t*), log_t*&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#13 std::_Bind<void (*(log_t*))(log_t*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#14 std::_Bind<void (*(log_t*))(log_t*)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#15 Detached_thread::operator()<void (*)(log_t*), log_t*> (f=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#16 std::__invoke_impl<void, Detached_thread, void (*)(log_t*), log_t*> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#17 std::__invoke<Detached_thread, void (*)(log_t*), log_t*> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#18 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::_M_invoke<0ul, 1ul, 2ul> (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:253
+#19 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::operator() (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:260
+#20 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run (this=0x7f2750871580) at /usr/include/c++/11/bits/std_thread.h:211
+#21 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#22 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#23 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 17 (Thread 0x7f27403fc640 (LWP 3441820) "ib_log_flush"):
+#0  0x00007f2763f1b8ab in __GI_fsync (fd=10) at ../sysdeps/unix/sysv/linux/fsync.c:27
+#1  0x000055be69b8b83d in os_file_fsync_posix (file=10) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2994
+#2  0x000055be69b8f658 in os_file_flush_func (file=file@entry=10) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:3137
+#3  0x000055be69b48b64 in pfs_os_file_flush_func (file=..., file=..., src_location=...) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0file.ic:468
+#4  Log_file_handle::fsync (this=0x55be6bb5ae58 <meb::redo_log_archive_tmp_block+952>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0files_io.cc:315
+#5  Log_file_handle::fsync (this=this@entry=0x7f274465f350) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0files_io.cc:304
+#6  0x000055be69b7afb8 in log_flush_low (log=...) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:2443
+#7  0x000055be69b80b8c in operator() (wait=<optimized out>, __closure=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:2534
+#8  os_event_wait_for<log_flusher(log_t*)::<lambda(bool)> > (condition=..., timeout=..., spins_limit=<optimized out>, event=<synthetic pointer>: <optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.ic:83
+#9  Log_thread_waiting::wait<log_flusher(log_t*)::<lambda(bool)> > (stop_condition=..., this=<synthetic pointer>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:1256
+#10 log_flusher (log_ptr=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:2602
+#11 0x000055be69b50bae in std::__invoke_impl<void, void (*&)(log_t*), log_t*&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#12 std::__invoke<void (*&)(log_t*), log_t*&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#13 std::_Bind<void (*(log_t*))(log_t*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#14 std::_Bind<void (*(log_t*))(log_t*)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#15 Detached_thread::operator()<void (*)(log_t*), log_t*> (f=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#16 std::__invoke_impl<void, Detached_thread, void (*)(log_t*), log_t*> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#17 std::__invoke<Detached_thread, void (*)(log_t*), log_t*> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#18 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::_M_invoke<0ul, 1ul, 2ul> (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:253
+#19 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::operator() (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:260
+#20 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run (this=0x7f2750871520) at /usr/include/c++/11/bits/std_thread.h:211
+#21 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#22 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#23 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 16 (Thread 0x7f2740bfd640 (LWP 3441819) "ib_log_fl_notif"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x7f2740bfca60, op=137, expected=0, futex_word=0x7f274c439ea4) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x7f2740bfca60, clockid=0, expected=0, futex_word=0x7f274c439ea4) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f274c439ea4, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f2740bfca60, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f2740bfca60, clockid=1, mutex=0x7f274c439e50, cond=0x7f274c439e78) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f274c439e78, mutex=0x7f274c439e50, abstime=0x7f2740bfca60) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f2740bfca60) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=this@entry=0x7f274c439e40, timeout=..., reset_sig_count=reset_sig_count@entry=14918) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=event@entry=0x7f274c439e40, timeout=..., timeout@entry=..., reset_sig_count=reset_sig_count@entry=14918) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69b819eb in os_event_wait_for<log_flush_notifier(log_t*)::<lambda(bool)> > (condition=..., timeout=..., spins_limit=<optimized out>, event=<synthetic pointer>: <optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.ic:135
+#9  Log_thread_waiting::wait<log_flush_notifier(log_t*)::<lambda(bool)> > (stop_condition=..., this=<synthetic pointer>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:1256
+#10 log_flush_notifier (log_ptr=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0write.cc:2825
+#11 0x000055be69b50bae in std::__invoke_impl<void, void (*&)(log_t*), log_t*&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#12 std::__invoke<void (*&)(log_t*), log_t*&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#13 std::_Bind<void (*(log_t*))(log_t*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#14 std::_Bind<void (*(log_t*))(log_t*)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#15 Detached_thread::operator()<void (*)(log_t*), log_t*> (f=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#16 std::__invoke_impl<void, Detached_thread, void (*)(log_t*), log_t*> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#17 std::__invoke<Detached_thread, void (*)(log_t*), log_t*> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#18 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::_M_invoke<0ul, 1ul, 2ul> (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:253
+#19 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::operator() (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:260
+#20 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run (this=0x7f27508714c0) at /usr/include/c++/11/bits/std_thread.h:211
+#21 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#22 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#23 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 15 (Thread 0x7f27413fe640 (LWP 3441818) "ib_log_checkpt"):
+#0  __futex_abstimed_wait_common64 (private=1666429440, cancel=true, abstime=0x7f27413fda80, op=137, expected=0, futex_word=0x7f274c439cc0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=1666429440, abstime=0x7f27413fda80, clockid=1767894272, expected=0, futex_word=0x7f274c439cc0) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f274c439cc0, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f27413fda80, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f27413fda80, clockid=1, mutex=0x7f274c439c70, cond=0x7f274c439c98) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f274c439c98, mutex=0x7f274c439c70, abstime=0x7f27413fda80) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f27413fda80) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=0x7f274c439c60, timeout=..., reset_sig_count=reset_sig_count@entry=7) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=<optimized out>, timeout=..., reset_sig_count=reset_sig_count@entry=7) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69b32bac in log_checkpointer (log_ptr=0x7f274465ee80) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/log/log0chkp.cc:1025
+#9  0x000055be69b50bae in std::__invoke_impl<void, void (*&)(log_t*), log_t*&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#10 std::__invoke<void (*&)(log_t*), log_t*&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#11 std::_Bind<void (*(log_t*))(log_t*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#12 std::_Bind<void (*(log_t*))(log_t*)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#13 Detached_thread::operator()<void (*)(log_t*), log_t*> (f=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#14 std::__invoke_impl<void, Detached_thread, void (*)(log_t*), log_t*> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#15 std::__invoke<Detached_thread, void (*)(log_t*), log_t*> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::_M_invoke<0ul, 1ul, 2ul> (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:253
+#17 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> >::operator() (this=<optimized out>) at /usr/include/c++/11/bits/std_thread.h:260
+#18 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(log_t*), log_t*> > >::_M_run (this=0x7f2750871460) at /usr/include/c++/11/bits/std_thread.h:211
+#19 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#20 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#21 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 14 (Thread 0x7f2741bff640 (LWP 3441817) "ib_srv_mon"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x7f2741bfeab0, op=137, expected=0, futex_word=0x7f275087da00) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x7f2741bfeab0, clockid=0, expected=0, futex_word=0x7f275087da00) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f275087da00, expected=expected@entry=0, clockid=clockid@entry=1, abstime=abstime@entry=0x7f2741bfeab0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93e9b in __pthread_cond_wait_common (abstime=0x7f2741bfeab0, clockid=1, mutex=0x7f275087d9b0, cond=0x7f275087d9d8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_timedwait64 (cond=0x7f275087d9d8, mutex=0x7f275087d9b0, abstime=0x7f2741bfeab0) at ./nptl/pthread_cond_wait.c:652
+#5  0x000055be69b9fd1a in os_event::timed_wait (this=<optimized out>, abstime=0x7f2741bfeab0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/sync0types.h:556
+#6  0x000055be69b9feb9 in os_event::wait_time_low (this=0x7f275087d9a0, timeout=..., reset_sig_count=1, reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:488
+#7  0x000055be69b9ff99 in os_event_wait_time_low (event=<optimized out>, timeout=..., timeout@entry=..., reset_sig_count=reset_sig_count@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:575
+#8  0x000055be69c447e0 in os_event_wait_time (t=..., e=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0event.h:121
+#9  srv_monitor_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0srv.cc:1969
+#10 0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#11 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#12 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#13 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#14 Detached_thread::operator()<void (*)()> (this=0x7f2744bfa390, f=@0x7f2744bfa388: 0x55be69c44780 <srv_monitor_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#15 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#16 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#17 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 13 (Thread 0x7f27473f5640 (LWP 3441816) "ib_buf_lru-0"):
+#0  __futex_abstimed_wait_common64 (private=0, cancel=true, abstime=0x0, op=393, expected=0, futex_word=0x7f274e40e144) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (cancel=true, private=0, abstime=0x0, clockid=0, expected=0, futex_word=0x7f274e40e144) at ./nptl/futex-internal.c:87
+#2  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7f274e40e144, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#3  0x00007f2763e93a41 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7f274e40e0f0, cond=0x7f274e40e118) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7f274e40e118, mutex=0x7f274e40e0f0) at ./nptl/pthread_cond_wait.c:627
+#5  0x000055be69b9f096 in os_event::wait (this=0x7f274e40e0e0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:185
+#6  os_event::wait_low (this=0x7f274e40e0e0, reset_sig_count=3683) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:365
+#7  0x000055be69b9f459 in os_event_wait_low (event=<optimized out>, reset_sig_count=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0event.cc:589
+#8  0x000055be69c5aca9 in sync_array_wait_event (arr=arr@entry=0x7f27508537c0, cell=@0x7f27473f47a8: 0x7f27500000b0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/sync/sync0arr.cc:338
+#9  0x000055be69a95ec2 in TTASEventMutex<GenericPolicy>::wait (this=this@entry=0x7f2750bec050, filename=filename@entry=0x55be6ad37d10 "/mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc", line=line@entry=1677, spin=spin@entry=4) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ut0mutex.ic:222
+#10 0x000055be69a9610b in TTASEventMutex<GenericPolicy>::spin_and_try_lock (line=<optimized out>, filename=<optimized out>, max_delay=<optimized out>, max_spins=60, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ib0mutex.h:541
+#11 TTASEventMutex<GenericPolicy>::enter (line=<optimized out>, filename=<optimized out>, max_delay=<optimized out>, max_spins=<optimized out>, this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ib0mutex.h:442
+#12 PolicyMutex<TTASEventMutex<GenericPolicy> >::enter (line=<optimized out>, name=<optimized out>, n_delay=<optimized out>, n_spins=<optimized out>, this=0x7f2750bec050) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ib0mutex.h:636
+#13 mutex_enter_inline<PolicyMutex<TTASEventMutex<GenericPolicy> > > (m=0x7f2750bec050, loc=...) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/ut0mutex.h:114
+#14 0x000055be69d26b1f in buf_flush_LRU_list_batch (max=<optimized out>, buf_pool=0x7f2750bec020) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1813
+#15 buf_do_LRU_batch (max=<optimized out>, buf_pool=0x7f2750bec020) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1874
+#16 buf_flush_batch (lsn_limit=<optimized out>, min_n=<optimized out>, flush_type=<optimized out>, buf_pool=0x7f2750bec020) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1984
+#17 buf_flush_do_batch (buf_pool=buf_pool@entry=0x7f2750bec020, type=type@entry=BUF_FLUSH_LRU, min_n=<optimized out>, lsn_limit=lsn_limit@entry=0, n_processed=n_processed@entry=0x7f27473f49f0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:2093
+#18 0x000055be69d27372 in buf_flush_LRU_list (buf_pool=0x7f2750bec020) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:2272
+#19 buf_lru_manager_thread (buf_pool_instance=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:3763
+#20 0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#21 std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#22 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#23 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#24 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750871230: 0x55be69d26fc0 <buf_lru_manager_thread(size_t)>, this=0x7f2750871238) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#25 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#26 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#27 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750871228) at /usr/include/c++/11/bits/std_thread.h:253
+#28 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750871228) at /usr/include/c++/11/bits/std_thread.h:260
+#29 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750871220) at /usr/include/c++/11/bits/std_thread.h:211
+#30 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#31 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#32 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 12 (Thread 0x7f2747bf6640 (LWP 3441815) "ib_pg_flush_co"):
+#0  __memmove_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:708
+#1  0x000055be69d1c694 in memcpy (__len=<optimized out>, __src=<optimized out>, __dest=<optimized out>) at /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29
+#2  dblwr::Buffer::append (n_bytes=<optimized out>, ptr=<optimized out>, this=0x7f2750859030) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/buf0dblwr.h:94
+#3  Double_write::enqueue (this=0x7f2750858fe0, flush_type=<optimized out>, bpage=<optimized out>, e_block=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:621
+#4  0x000055be69d1cb92 in Double_write::submit (e_block=0x0, bpage=0x7f274d3db410, flush_type=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:678
+#5  Double_write::submit (e_block=0x0, bpage=0x7f274d3db410, flush_type=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:671
+#6  dblwr::write (flush_type=flush_type@entry=BUF_FLUSH_LIST, bpage=bpage@entry=0x7f274d3db410, sync=sync@entry=false) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:2560
+#7  0x000055be69d22eb7 in buf_flush_write_block_low (sync=<optimized out>, flush_type=<optimized out>, bpage=0x7f274d3db410) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1255
+#8  buf_flush_page (buf_pool=buf_pool@entry=0x7f2750bec020, bpage=bpage@entry=0x7f274d3db410, flush_type=flush_type@entry=BUF_FLUSH_LIST, sync=sync@entry=false) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1393
+#9  0x000055be69d258c3 in buf_flush_try_neighbors (n_to_flush=<optimized out>, n_flushed=<optimized out>, flush_type=<optimized out>, page_id=<synthetic pointer>...) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1592
+#10 buf_flush_page_and_try_neighbors (bpage=<optimized out>, flush_type=<optimized out>, n_to_flush=<optimized out>, count=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1674
+#11 0x000055be69d2606b in buf_do_flush_list_batch (lsn_limit=9223372036854775807, min_n=37, buf_pool=0x7f2750bec020) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1924
+#12 buf_flush_batch (lsn_limit=9223372036854775807, min_n=37, flush_type=<optimized out>, buf_pool=0x7f2750bec020) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:1988
+#13 buf_flush_do_batch (buf_pool=buf_pool@entry=0x7f2750bec020, type=type@entry=BUF_FLUSH_LIST, min_n=37, lsn_limit=<optimized out>, n_processed=n_processed@entry=0x7f27508711f0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:2093
+#14 0x000055be69d2774e in pc_flush_slot () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:3010
+#15 0x000055be69d2875d in buf_flush_page_coordinator_thread () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:3399
+#16 0x000055be69b662fa in std::__invoke_impl<void, void (*&)()> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#17 std::__invoke<void (*&)()> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#18 std::_Bind<void (*())()>::__call<void>(std::tuple<>&&, std::_Index_tuple<>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#19 std::_Bind<void (*())()>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#20 Detached_thread::operator()<void (*)()> (this=0x7f275087c1b0, f=@0x7f275087c1a8: 0x55be69d277b0 <buf_flush_page_coordinator_thread()>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#21 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#22 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#23 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 11 (Thread 0x7f27483f7640 (LWP 3441814) "ib_io_wr-4"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x000055be69b962cb in LinuxAIOHandler::collect (this=0x7f27483f6900) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383
+#3  0x000055be69b96712 in LinuxAIOHandler::poll (this=0x7f27483f6900, m1=0x7f27483f6978, m2=0x7f27483f6970, request=0x7f27483f6980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529
+#4  0x000055be69b99874 in os_aio_linux_handler (request=0x7f27483f6980, m2=0x7f27483f6970, m1=0x7f27483f6978, global_segment=9) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579
+#5  os_aio_handler (segment=9, m1=0x7f27483f6978, m2=0x7f27483f6970, request=0x7f27483f6980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:6299
+#6  0x000055be69e0f9cd in fil_aio_wait (segment=segment@entry=9) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979
+#7  0x000055be69c47aa8 in io_handler_thread (segment=9) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#8  0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#9  std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#10 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#11 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#12 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750871170: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f2750871178) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#13 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#15 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750871168) at /usr/include/c++/11/bits/std_thread.h:253
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750871168) at /usr/include/c++/11/bits/std_thread.h:260
+#17 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750871160) at /usr/include/c++/11/bits/std_thread.h:211
+#18 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#19 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#20 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 10 (Thread 0x7f2748bf8640 (LWP 3441813) "ib_io_wr-3"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x000055be69b962cb in LinuxAIOHandler::collect (this=0x7f2748bf7900) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383
+#3  0x000055be69b96712 in LinuxAIOHandler::poll (this=0x7f2748bf7900, m1=0x7f2748bf7978, m2=0x7f2748bf7970, request=0x7f2748bf7980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529
+#4  0x000055be69b99874 in os_aio_linux_handler (request=0x7f2748bf7980, m2=0x7f2748bf7970, m1=0x7f2748bf7978, global_segment=8) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579
+#5  os_aio_handler (segment=8, m1=0x7f2748bf7978, m2=0x7f2748bf7970, request=0x7f2748bf7980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:6299
+#6  0x000055be69e0f9cd in fil_aio_wait (segment=segment@entry=8) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979
+#7  0x000055be69c47aa8 in io_handler_thread (segment=8) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#8  0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#9  std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#10 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#11 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#12 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750871110: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f2750871118) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#13 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#15 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750871108) at /usr/include/c++/11/bits/std_thread.h:253
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750871108) at /usr/include/c++/11/bits/std_thread.h:260
+#17 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750871100) at /usr/include/c++/11/bits/std_thread.h:211
+#18 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#19 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#20 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 9 (Thread 0x7f27493f9640 (LWP 3441812) "ib_io_wr-2"):
+#0  0x00007f2763f1b8ab in __GI_fsync (fd=11) at ../sysdeps/unix/sysv/linux/fsync.c:27
+#1  0x000055be69b8b83d in os_file_fsync_posix (file=11) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2994
+#2  0x000055be69b8f658 in os_file_flush_func (file=file@entry=11) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:3137
+#3  0x000055be69e113f3 in pfs_os_file_flush_func (file=..., file=..., src_location=...) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0file.ic:468
+#4  Fil_shard::space_flush (this=this@entry=0x7f2750bd5920, space_id=space_id@entry=4294967278) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:8200
+#5  0x000055be69e11791 in Fil_shard::flush_file_spaces (this=0x7f2750bd5920) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:8263
+#6  0x000055be69e118bc in Fil_system::flush_file_spaces (this=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:8271
+#7  0x000055be69e12200 in fil_flush_file_spaces () at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:8275
+#8  0x000055be69d0e48c in Double_write::write_complete (bpage=bpage@entry=0x7f274d3f5210, flush_type=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:2622
+#9  0x000055be69d0e55d in dblwr::write_complete (bpage=bpage@entry=0x7f274d3f5210, flush_type=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0dblwr.cc:2638
+#10 0x000055be69d29c75 in buf_flush_write_complete (bpage=bpage@entry=0x7f274d3f5210) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0flu.cc:945
+#11 0x000055be69d0b568 in buf_page_io_complete (bpage=0x7f274d3f5210, evict=<optimized out>, evict@entry=false) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/buf/buf0buf.cc:5976
+#12 0x000055be69e0fb06 in fil_aio_wait (segment=segment@entry=7) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:8020
+#13 0x000055be69c47aa8 in io_handler_thread (segment=7) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#14 0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#15 std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#16 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#17 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#18 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f27508710b0: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f27508710b8) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#19 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#20 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#21 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f27508710a8) at /usr/include/c++/11/bits/std_thread.h:253
+#22 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f27508710a8) at /usr/include/c++/11/bits/std_thread.h:260
+#23 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f27508710a0) at /usr/include/c++/11/bits/std_thread.h:211
+#24 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#25 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#26 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 8 (Thread 0x7f2749bfa640 (LWP 3441811) "ib_io_wr-1"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x000055be69b962cb in LinuxAIOHandler::collect (this=0x7f2749bf9900) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383
+#3  0x000055be69b96712 in LinuxAIOHandler::poll (this=0x7f2749bf9900, m1=0x7f2749bf9978, m2=0x7f2749bf9970, request=0x7f2749bf9980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529
+#4  0x000055be69b99874 in os_aio_linux_handler (request=0x7f2749bf9980, m2=0x7f2749bf9970, m1=0x7f2749bf9978, global_segment=6) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579
+#5  os_aio_handler (segment=6, m1=0x7f2749bf9978, m2=0x7f2749bf9970, request=0x7f2749bf9980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:6299
+#6  0x000055be69e0f9cd in fil_aio_wait (segment=segment@entry=6) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979
+#7  0x000055be69c47aa8 in io_handler_thread (segment=6) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#8  0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#9  std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#10 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#11 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#12 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750871050: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f2750871058) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#13 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#15 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750871048) at /usr/include/c++/11/bits/std_thread.h:253
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750871048) at /usr/include/c++/11/bits/std_thread.h:260
+#17 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750871040) at /usr/include/c++/11/bits/std_thread.h:211
+#18 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#19 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#20 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 7 (Thread 0x7f274a3fb640 (LWP 3441810) "ib_io_rd-4"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x000055be69b962cb in LinuxAIOHandler::collect (this=0x7f274a3fa900) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383
+#3  0x000055be69b96712 in LinuxAIOHandler::poll (this=0x7f274a3fa900, m1=0x7f274a3fa978, m2=0x7f274a3fa970, request=0x7f274a3fa980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529
+#4  0x000055be69b99874 in os_aio_linux_handler (request=0x7f274a3fa980, m2=0x7f274a3fa970, m1=0x7f274a3fa978, global_segment=5) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579
+#5  os_aio_handler (segment=5, m1=0x7f274a3fa978, m2=0x7f274a3fa970, request=0x7f274a3fa980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:6299
+#6  0x000055be69e0f9cd in fil_aio_wait (segment=segment@entry=5) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979
+#7  0x000055be69c47aa8 in io_handler_thread (segment=5) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#8  0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#9  std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#10 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#11 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#12 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750870ff0: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f2750870ff8) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#13 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#15 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750870fe8) at /usr/include/c++/11/bits/std_thread.h:253
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750870fe8) at /usr/include/c++/11/bits/std_thread.h:260
+#17 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750870fe0) at /usr/include/c++/11/bits/std_thread.h:211
+#18 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#19 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#20 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 6 (Thread 0x7f274abfc640 (LWP 3441809) "ib_io_rd-3"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x000055be69b962cb in LinuxAIOHandler::collect (this=0x7f274abfb900) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383
+#3  0x000055be69b96712 in LinuxAIOHandler::poll (this=0x7f274abfb900, m1=0x7f274abfb978, m2=0x7f274abfb970, request=0x7f274abfb980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529
+#4  0x000055be69b99874 in os_aio_linux_handler (request=0x7f274abfb980, m2=0x7f274abfb970, m1=0x7f274abfb978, global_segment=4) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579
+#5  os_aio_handler (segment=4, m1=0x7f274abfb978, m2=0x7f274abfb970, request=0x7f274abfb980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:6299
+#6  0x000055be69e0f9cd in fil_aio_wait (segment=segment@entry=4) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979
+#7  0x000055be69c47aa8 in io_handler_thread (segment=4) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#8  0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#9  std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#10 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#11 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#12 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750870f90: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f2750870f98) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#13 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#15 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750870f88) at /usr/include/c++/11/bits/std_thread.h:253
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750870f88) at /usr/include/c++/11/bits/std_thread.h:260
+#17 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750870f80) at /usr/include/c++/11/bits/std_thread.h:211
+#18 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#19 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#20 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 5 (Thread 0x7f274b3fd640 (LWP 3441808) "ib_io_rd-2"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x000055be69b962cb in LinuxAIOHandler::collect (this=0x7f274b3fc900) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383
+#3  0x000055be69b96712 in LinuxAIOHandler::poll (this=0x7f274b3fc900, m1=0x7f274b3fc978, m2=0x7f274b3fc970, request=0x7f274b3fc980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529
+#4  0x000055be69b99874 in os_aio_linux_handler (request=0x7f274b3fc980, m2=0x7f274b3fc970, m1=0x7f274b3fc978, global_segment=3) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579
+#5  os_aio_handler (segment=3, m1=0x7f274b3fc978, m2=0x7f274b3fc970, request=0x7f274b3fc980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:6299
+#6  0x000055be69e0f9cd in fil_aio_wait (segment=segment@entry=3) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979
+#7  0x000055be69c47aa8 in io_handler_thread (segment=3) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#8  0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#9  std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#10 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#11 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#12 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750870f30: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f2750870f38) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#13 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#15 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750870f28) at /usr/include/c++/11/bits/std_thread.h:253
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750870f28) at /usr/include/c++/11/bits/std_thread.h:260
+#17 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750870f20) at /usr/include/c++/11/bits/std_thread.h:211
+#18 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#19 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#20 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 4 (Thread 0x7f274bbfe640 (LWP 3441807) "ib_io_rd-1"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x000055be69b962cb in LinuxAIOHandler::collect (this=0x7f274bbfd900) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383
+#3  0x000055be69b96712 in LinuxAIOHandler::poll (this=0x7f274bbfd900, m1=0x7f274bbfd978, m2=0x7f274bbfd970, request=0x7f274bbfd980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529
+#4  0x000055be69b99874 in os_aio_linux_handler (request=0x7f274bbfd980, m2=0x7f274bbfd970, m1=0x7f274bbfd978, global_segment=2) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579
+#5  os_aio_handler (segment=2, m1=0x7f274bbfd978, m2=0x7f274bbfd970, request=0x7f274bbfd980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:6299
+#6  0x000055be69e0f9cd in fil_aio_wait (segment=segment@entry=2) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979
+#7  0x000055be69c47aa8 in io_handler_thread (segment=2) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#8  0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#9  std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#10 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#11 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#12 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750870ed0: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f2750870ed8) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#13 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#15 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750870ec8) at /usr/include/c++/11/bits/std_thread.h:253
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750870ec8) at /usr/include/c++/11/bits/std_thread.h:260
+#17 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750870ec0) at /usr/include/c++/11/bits/std_thread.h:211
+#18 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#19 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#20 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 3 (Thread 0x7f274c3ff640 (LWP 3441806) "ib_io_log"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x000055be69b962cb in LinuxAIOHandler::collect (this=0x7f274c3fe900) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383
+#3  0x000055be69b96712 in LinuxAIOHandler::poll (this=0x7f274c3fe900, m1=0x7f274c3fe978, m2=0x7f274c3fe970, request=0x7f274c3fe980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529
+#4  0x000055be69b99874 in os_aio_linux_handler (request=0x7f274c3fe980, m2=0x7f274c3fe970, m1=0x7f274c3fe978, global_segment=1) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579
+#5  os_aio_handler (segment=1, m1=0x7f274c3fe978, m2=0x7f274c3fe970, request=0x7f274c3fe980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:6299
+#6  0x000055be69e0f9cd in fil_aio_wait (segment=segment@entry=1) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979
+#7  0x000055be69c47aa8 in io_handler_thread (segment=1) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#8  0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#9  std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#10 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#11 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#12 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750870e70: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f2750870e78) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#13 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#15 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750870e68) at /usr/include/c++/11/bits/std_thread.h:253
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750870e68) at /usr/include/c++/11/bits/std_thread.h:260
+#17 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750870e60) at /usr/include/c++/11/bits/std_thread.h:211
+#18 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#19 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#20 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 2 (Thread 0x7f274f3ff640 (LWP 3441805) "ib_io_ibuf"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x000055be69b962cb in LinuxAIOHandler::collect (this=0x7f274f3fe900) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2383
+#3  0x000055be69b96712 in LinuxAIOHandler::poll (this=0x7f274f3fe900, m1=0x7f274f3fe978, m2=0x7f274f3fe970, request=0x7f274f3fe980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2529
+#4  0x000055be69b99874 in os_aio_linux_handler (request=0x7f274f3fe980, m2=0x7f274f3fe970, m1=0x7f274f3fe978, global_segment=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:2579
+#5  os_aio_handler (segment=0, m1=0x7f274f3fe978, m2=0x7f274f3fe970, request=0x7f274f3fe980) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/os/os0file.cc:6299
+#6  0x000055be69e0f9cd in fil_aio_wait (segment=segment@entry=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/fil/fil0fil.cc:7979
+#7  0x000055be69c47aa8 in io_handler_thread (segment=0) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/srv/srv0start.cc:250
+#8  0x000055be69c480e6 in std::__invoke_impl<void, void (*&)(unsigned long), unsigned long&> (__f=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:60
+#9  std::__invoke<void (*&)(unsigned long), unsigned long&> (__fn=<synthetic pointer>: <optimized out>) at /usr/include/c++/11/bits/invoke.h:96
+#10 std::_Bind<void (*(unsigned long))(unsigned long)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (__args=..., this=<synthetic pointer>) at /usr/include/c++/11/functional:420
+#11 std::_Bind<void (*(unsigned long))(unsigned long)>::operator()<, void>() (this=<synthetic pointer>) at /usr/include/c++/11/functional:503
+#12 Detached_thread::operator()<void (*)(unsigned long), unsigned long> (f=@0x7f2750870e10: 0x55be69c47a30 <io_handler_thread(ulint)>, this=0x7f2750870e18) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/storage/innobase/include/os0thread-create.h:194
+#13 std::__invoke_impl<void, Detached_thread, void (*)(unsigned long), unsigned long> (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 std::__invoke<Detached_thread, void (*)(unsigned long), unsigned long> (__fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#15 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::_M_invoke<0ul, 1ul, 2ul> (this=0x7f2750870e08) at /usr/include/c++/11/bits/std_thread.h:253
+#16 std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> >::operator() (this=0x7f2750870e08) at /usr/include/c++/11/bits/std_thread.h:260
+#17 std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run (this=0x7f2750870e00) at /usr/include/c++/11/bits/std_thread.h:211
+#18 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#19 0x00007f2763e94ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#20 0x00007f2763f26850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+
+Thread 1 (Thread 0x7f2764a89980 (LWP 3441765) "mysqld"):
+#0  0x00007f2763f18bcf in __GI___poll (fds=0x7f276343f110, nfds=2, timeout=-1) at ../sysdeps/unix/sysv/linux/poll.c:29
+#1  0x000055be68a34432 in poll (__timeout=-1, __nfds=<optimized out>, __fds=<optimized out>) at /usr/include/x86_64-linux-gnu/bits/poll2.h:39
+#2  Mysqld_socket_listener::listen_for_connection_event (this=0x7f2752fb7d00) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/socket_connection.cc:1347
+#3  0x000055be68770708 in Connection_acceptor<Mysqld_socket_listener>::connection_event_loop (this=0x7f2763440080) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/conn_handler/connection_acceptor.h:64
+#4  mysqld_main (argc=<optimized out>, argv=<optimized out>) at /mnt/jenkins/workspace/ps8.0-autobuild-RELEASE/test/percona-server-8.0.32-24/sql/mysqld.cc:8570
+#5  0x00007f2763e29d90 in __libc_start_call_main (main=main@entry=0x55be685624c0 <main(int, char**)>, argc=argc@entry=9, argv=argv@entry=0x7fff8dffe7b8) at ../sysdeps/nptl/libc_start_call_main.h:58
+#6  0x00007f2763e29e40 in __libc_start_main_impl (main=0x55be685624c0 <main(int, char**)>, argc=9, argv=0x7fff8dffe7b8, init=<optimized out>, fini=<optimized out>, rtld_fini=<optimized out>, stack_end=0x7fff8dffe7a8) at ../csu/libc-start.c:392
+#7  0x000055be6859cfb5 in _start ()
+[Inferior 1 (process 3441765) detached]
+TS 218002183.1705596301 2024-01-18 19:45:01

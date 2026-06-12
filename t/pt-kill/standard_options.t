@@ -14,10 +14,11 @@ use Test::More tests => 6;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
+require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
 my $output;
 my $cnf='/tmp/12345/my.sandbox.cnf';
@@ -28,7 +29,7 @@ my $cmd = "$trunk/bin/pt-kill -F $cnf -h 127.1";
 # #########################################################################
 
 SKIP: {
-   skip 'Cannot connect to sandbox master', 4 unless $master_dbh;
+   skip 'Cannot connect to sandbox source', 4 unless $source_dbh;
 
    # There's no hung queries so we'll just make sure it outputs anything,
    # its debug stuff in this case.
@@ -64,7 +65,7 @@ diag(`touch /tmp/pt-script.pid`);
 $output = `$cmd --test-matching $trunk/t/lib/samples/pl/recset006.txt --match-state Locked  --print --pid /tmp/pt-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/pt-script.pid already exists},
+   qr{PID file /tmp/pt-script.pid exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 diag(`rm -rf /tmp/pt-script.pid 2>/dev/null`);
@@ -72,6 +73,6 @@ diag(`rm -rf /tmp/pt-script.pid 2>/dev/null`);
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh) if $master_dbh;
+$sb->wipe_clean($source_dbh) if $source_dbh;
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

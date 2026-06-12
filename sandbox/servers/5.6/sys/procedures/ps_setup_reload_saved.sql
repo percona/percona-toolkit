@@ -23,10 +23,10 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_setup_reload_saved ()
              -----------
 
              Reloads a saved Performance Schema configuration,
-             so that you can alter the setup for debugging purposes, 
+             so that you can alter the setup for debugging purposes,
              but restore it to a previous state.
-             
-             Use the companion procedure - ps_setup_save(), to 
+
+             Use the companion procedure - ps_setup_save(), to
              save a configuration.
 
              Requires the SUPER privilege for "SET sql_log_bin = 0;".
@@ -140,7 +140,7 @@ BEGIN
 
     SELECT RELEASE_LOCK('sys.ps_setup_save') INTO v_lock_result;
 
-    SET sql_log_bin = @log_bin; 
+    SET sql_log_bin = @log_bin;
 END$$
 
 DELIMITER ;

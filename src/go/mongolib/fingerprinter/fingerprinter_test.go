@@ -1,3 +1,16 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package fingerprinter
 
 import (
@@ -5,16 +18,21 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
-	samples = "/src/go/tests/"
+	samples = "/testdata/"
 )
 
 type testVars struct {
@@ -29,30 +47,15 @@ func TestMain(m *testing.M) {
 		log.Printf("cannot get root path: %s", err.Error())
 		os.Exit(1)
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	os.Exit(code)
 }
 
-func ExampleFingerprint() {
-	doc := proto.SystemProfile{}
-	err := tutil.LoadBson(vars.RootPath+samples+"fingerprinter_doc.json", &doc)
-	if err != nil {
-		panic(err)
-	}
-
-	fp := NewFingerprinter(DEFAULT_KEY_FILTERS)
-	got, err := fp.Fingerprint(doc)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(got.Fingerprint)
-	// Output: FIND sbtest3 c,k,pad
-}
-
-func TestFingerprint(t *testing.T) {
+func TestSingleFingerprint(t *testing.T) {
 	doc := proto.SystemProfile{}
 	doc.Ns = "db.feedback"
 	doc.Op = "query"
-	doc.Query = proto.BsonD{
+	doc.Query = bson.D{
 		{"find", "feedback"},
 		{"filter", bson.M{
 			"tool":  "Atlas",
@@ -77,8 +80,8 @@ func TestFingerprint(t *testing.T) {
 func TestFingerprints(t *testing.T) {
 	t.Parallel()
 
-	dir := vars.RootPath + samples + "/doc/out/"
-	dirExpect := vars.RootPath + samples + "/expect/fingerprints/"
+	dir := filepath.Join(vars.RootPath, "/src/go/tests/doc/profiles")
+	dirExpect := filepath.Join(vars.RootPath, "/src/go/tests/expect/fingerprints/")
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("cannot list samples: %s", err)
@@ -87,16 +90,19 @@ func TestFingerprints(t *testing.T) {
 	for _, file := range files {
 		t.Run(file.Name(), func(t *testing.T) {
 			doc := proto.SystemProfile{}
-			err = tutil.LoadBson(dir+file.Name(), &doc)
-			if err != nil {
-				t.Fatalf("cannot load sample %s: %s", dir+file.Name(), err)
-			}
-			fp := NewFingerprinter(DEFAULT_KEY_FILTERS)
+			err = tutil.LoadBson(filepath.Join(dir, file.Name()), &doc)
+			assert.NoError(t, err)
+
+			fp := NewFingerprinter(DefaultKeyFilters())
 			got, err := fp.Fingerprint(doc)
+			require.NoError(t, err)
 			if err != nil {
 				t.Errorf("cannot create fingerprint: %s", err)
 			}
-			fExpect := dirExpect + file.Name()
+
+			fExpect := filepath.Join(dirExpect, file.Name())
+			fExpect = strings.TrimSuffix(fExpect, ".bson")
+
 			if tutil.ShouldUpdateSamples() {
 				err := tutil.WriteJson(fExpect, got)
 				if err != nil {
@@ -105,6 +111,7 @@ func TestFingerprints(t *testing.T) {
 			}
 			var expect Fingerprint
 			err = tutil.LoadJson(fExpect, &expect)
+
 			if err != nil {
 				t.Fatalf("cannot load expected data %s: %s", fExpect, err)
 			}

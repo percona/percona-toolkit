@@ -1,0 +1,1 @@
+../src/go/pt-pg-summary/README.rst

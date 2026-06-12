@@ -27,7 +27,7 @@ ok(
       "t/pt-variable-advisor/samples/vars001.txt",
    ),
    "vars001.txt"
-);
+) or diag($test_diff);
 
 ok(
    no_diff(
@@ -36,7 +36,7 @@ ok(
       "t/pt-variable-advisor/samples/vars002.txt",
    ),
    "vars002.txt"
-);
+) or diag($test_diff);
 
 ok(
    no_diff(
@@ -45,7 +45,7 @@ ok(
       "t/pt-variable-advisor/samples/vars001-verbose.txt",
    ),
    "vars001.txt --verbose"
-);
+) or diag($test_diff);
 
 ok(
    no_diff(
@@ -54,7 +54,7 @@ ok(
       "t/pt-variable-advisor/samples/vars001-verbose-verbose.txt",
    ),
    "vars001.txt --verbose --verbose"
-);
+) or diag($test_diff);
 
 ok(
    no_diff(
@@ -64,7 +64,7 @@ ok(
       "t/pt-variable-advisor/samples/vars001-ignore-rules.txt",
    ),
    "--ignore-rules"
-);
+) or diag($test_diff);
 
 my ($output) = full_output(sub {
     pt_variable_advisor::main(@args,
@@ -73,7 +73,7 @@ my ($output) = full_output(sub {
 
 like(
    $output,
-   qr/\Qdual-master or ring replication configuration?\E$/sm,
+   qr/\Qdual-source or ring replication configuration?\E$/sm,
    "Sentences are delimited by . or ?"
 );
 

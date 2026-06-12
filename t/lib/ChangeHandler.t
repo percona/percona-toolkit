@@ -7,6 +7,7 @@ BEGIN {
 };
 
 use strict;
+use utf8;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
@@ -14,13 +15,14 @@ use Test::More;
 use ChangeHandler;
 use Quoter;
 use DSNParser;
+use VersionParser;
 use Sandbox;
 use PerconaTest;
 
 my $dp  = new DSNParser(opts => $dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $master_dbh = $sb->get_dbh_for('source');
+my $slave1_dbh = $sb->get_dbh_for('replica1');
 
 throws_ok(
    sub { new ChangeHandler() },
@@ -339,6 +341,85 @@ SKIP: {
 };
 
 # #############################################################################
+# PT-2375: pt-table-sync must handle generated columns correctly
+# #############################################################################
+$row = {
+   id  => 1,
+   foo => 'foo',
+   bar => 'bar',
+};
+$tbl_struct = {
+   col_posn => { id=>0, foo=>1, bar=>2 },
+   is_generated => {foo=>1}
+};
+$ch = new ChangeHandler(
+   Quoter     => $q,
+   right_db   => 'test',       # dst
+   right_tbl  => 'pt-2375',
+   left_db    => 'test',       # src
+   left_tbl   => 'pt-2375',
+   actions    => [ sub { push @rows, @_ } ],
+   replace    => 0,
+   queue      => 0,
+   tbl_struct => $tbl_struct,
+);
+
+@rows = ();
+@dbhs = ();
+
+is(
+   $ch->make_INSERT($row, [qw(id foo bar)]),
+   "INSERT INTO `test`.`pt-2375`(`id`, `bar`) VALUES ('1', 'bar')",
+   'make_INSERT() omits generated columns'
+);
+
+is(
+   $ch->make_REPLACE($row, [qw(id foo bar)]),
+   "REPLACE INTO `test`.`pt-2375`(`id`, `bar`) VALUES ('1', 'bar')",
+   'make_REPLACE() omits generated columns'
+);
+
+is(
+   $ch->make_UPDATE($row, [qw(id foo)]),
+   "UPDATE `test`.`pt-2375` SET `bar`='bar' WHERE `id`='1' AND `foo`='foo' LIMIT 1",
+   'make_UPDATE() omits generated columns from SET phrase but includes in WHERE phrase'
+);
+
+is(
+   $ch->make_DELETE($row, [qw(id foo bar)]),
+   "DELETE FROM `test`.`pt-2375` WHERE `id`='1' AND `foo`='foo' AND `bar`='bar' LIMIT 1",
+   'make_DELETE() includes generated columns in WHERE phrase'
+);
+
+SKIP: {
+   skip 'Cannot connect to sandbox master', 3 unless $master_dbh;
+
+   $master_dbh->do('DROP TABLE IF EXISTS test.`pt-2375`');
+   $master_dbh->do('CREATE TABLE test.`pt-2375` (id INT, foo varchar(16) as ("foo"), bar char)');
+   $master_dbh->do("INSERT INTO test.`pt-2375` (`id`, `bar`) VALUES (1,'a'),(2,'b')");
+
+   $ch->fetch_back($master_dbh);
+
+   is(
+      $ch->make_INSERT($row, [qw(id foo)]),
+      "INSERT INTO `test`.`pt-2375`(`id`, `bar`) VALUES ('1', 'a')",
+      'make_INSERT() omits generated columns, with fetch-back'
+   );
+
+   is(
+      $ch->make_REPLACE($row, [qw(id foo)]),
+      "REPLACE INTO `test`.`pt-2375`(`id`, `bar`) VALUES ('1', 'a')",
+      'make_REPLACE() omits generated columns, with fetch-back'
+   );
+
+   is(
+      $ch->make_UPDATE($row, [qw(id foo)]),
+      "UPDATE `test`.`pt-2375` SET `bar`='a' WHERE `id`='1' AND `foo`='foo' LIMIT 1",
+      'make_UPDATE() omits generated columns from SET phrase, with fetch-back'
+   );
+};
+
+# #############################################################################
 # Issue 641: Make mk-table-sync use hex for binary/blob data
 # #############################################################################
 $tbl_struct = {
@@ -439,7 +520,7 @@ is(
 
 SKIP: {
    skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
-   $sb->load_file('master', "t/lib/samples/issue_641.sql");
+   $sb->load_file('source', "t/lib/samples/issue_641.sql");
 
    @rows = ();
    $tbl_struct = {
@@ -503,7 +584,7 @@ is_deeply(
 # #############################################################################
 SKIP: {
    skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
-   $sb->load_file('master', "t/lib/samples/bug_1038276.sql");
+   $sb->load_file('source', "t/lib/samples/bug_1038276.sql");
 
    @rows = ();
    $tbl_struct = {
@@ -538,11 +619,57 @@ SKIP: {
 }
 
 # #############################################################################
+# PT-2377: pt-table-sync must handle utf8 in JSON columns correctly
+# #############################################################################
+SKIP: {
+   skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
+   $master_dbh->do('DROP TABLE IF EXISTS `test`.`pt-2377`');
+   $master_dbh->do('CREATE TABLE `test`.`pt-2377` (id INT, data JSON)');
+   $master_dbh->do(q/INSERT INTO `test`.`pt-2377` VALUES (1, '{"name": "Müller"}')/);
+   $master_dbh->do(q/INSERT INTO `test`.`pt-2377` VALUES (2, NULL)/);
+
+   @rows = ();
+   $tbl_struct = {
+      cols      => [qw(id data)],
+      col_posn  => {id=>0, data=>1},
+      type_for  => {id=>'int', data=>'json'},
+   };
+   $ch = new ChangeHandler(
+      Quoter     => $q,
+      left_db    => 'test',
+      left_tbl   => 'pt-2377',
+      right_db   => 'test',
+      right_tbl  => 'pt-2377',
+      actions    => [ sub { push @rows, $_[0]; } ],
+      replace    => 0,
+      queue      => 0,
+      tbl_struct => $tbl_struct,
+   );
+   $ch->fetch_back($master_dbh);
+
+   $ch->change('UPDATE', {id=>1}, [qw(id)] );
+   $ch->change('INSERT', {id=>1}, [qw(id)] );
+   $ch->change('UPDATE', {id=>2}, [qw(id)] );
+   $ch->change('INSERT', {id=>2}, [qw(id)] );
+
+   is_deeply(
+      \@rows,
+      [
+         q/UPDATE `test`.`pt-2377` SET `data`='{"name": "Müller"}' WHERE `id`='1' LIMIT 1/,
+         q/INSERT INTO `test`.`pt-2377`(`id`, `data`) VALUES ('1', '{"name": "Müller"}')/,
+         q/UPDATE `test`.`pt-2377` SET `data`=NULL WHERE `id`='2' LIMIT 1/,
+         q/INSERT INTO `test`.`pt-2377`(`id`, `data`) VALUES ('2', NULL)/
+      ],
+      "UPDATE and INSERT quote data regardless of how it looks if tbl_struct->quote_val is true"
+   );
+}
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave1_dbh);
+$sb->ok();
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 
-done_testing;
-   
+done_testing; 

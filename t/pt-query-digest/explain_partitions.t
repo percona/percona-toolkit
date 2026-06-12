@@ -18,13 +18,13 @@ use Sandbox;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( VersionParser->new($dbh) < '5.1' ) {
-   plan skip_all => 'Sandbox master version not >= 5.1';
+   plan skip_all => 'Sandbox source version not >= 5.1';
 }
 else {
    plan tests => 2;

@@ -1,3 +1,16 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package stats
 
 import (
@@ -14,6 +27,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
@@ -40,8 +54,8 @@ func TestMain(m *testing.M) {
 		log.Printf("cannot get root path: %s", err.Error())
 		os.Exit(1)
 	}
-	// TODO: Review with the new sandbox
-	// os.Exit(m.Run())
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestTimesLen(t *testing.T) {
@@ -138,7 +152,7 @@ func TestStats(t *testing.T) {
 		t.Fatalf("cannot load samples: %s", err.Error())
 	}
 
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters())
 	s := New(fp)
 
 	err = s.Add(docs[1])
@@ -158,9 +172,9 @@ func TestStats(t *testing.T) {
 		BlockedTime:    nil,
 		LockTime:       nil,
 		NReturned:      []float64{0},
-		NScanned:       []float64{10000},
 		QueryTime:      []float64{7},
 		ResponseLength: []float64{215},
+		DocsExamined:   []float64{10000},
 	}
 
 	want := Queries{
@@ -184,7 +198,7 @@ func TestStatsSingle(t *testing.T) {
 		t.Fatalf("cannot list samples: %s", err)
 	}
 
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters())
 
 	for _, file := range files {
 		f := file.Name()
@@ -217,7 +231,6 @@ func TestStatsSingle(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestStatsAll(t *testing.T) {
@@ -231,7 +244,7 @@ func TestStatsAll(t *testing.T) {
 		t.Fatalf("cannot list samples: %s", err)
 	}
 
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters())
 	s := New(fp)
 
 	for _, file := range files {
@@ -440,7 +453,7 @@ func TestAvailableMetrics(t *testing.T) {
 
 			fExpect := dirExpect + "cmd_metric.md"
 			if tutil.ShouldUpdateSamples() {
-				err = ioutil.WriteFile(fExpect, bufGot.Bytes(), 0777)
+				err = ioutil.WriteFile(fExpect, bufGot.Bytes(), os.ModePerm)
 				if err != nil {
 					fmt.Printf("cannot update samples: %s", err.Error())
 				}

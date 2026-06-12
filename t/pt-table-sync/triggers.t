@@ -18,44 +18,44 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
-elsif ( VersionParser->new($master_dbh) < '5.0.2' ) {
+elsif ( VersionParser->new($source_dbh) < '5.0.2' ) {
    plan skip_all => 'Sever does not support triggers (< 5.0.2)';
 }
 else {
    plan tests => 11;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
+$sb->create_dbs($source_dbh, [qw(test)]);
 
 # #############################################################################
 # Issue 37: mk-table-sync should warn about triggers
 # #############################################################################
-$sb->load_file('master', 't/pt-table-sync/samples/issue_37.sql');
-$sb->use('master', '-e "SET SQL_LOG_BIN=0; INSERT INTO test.issue_37 VALUES (1), (2);"');
+$sb->load_file('source', 't/pt-table-sync/samples/issue_37.sql');
+$sb->use('source', '-e "SET SQL_LOG_BIN=0; INSERT INTO test.issue_37 VALUES (1), (2);"');
 
 `$trunk/bin/pt-table-checksum h=127.0.0.1,P=12345,u=msandbox,p=msandbox --replicate test.checksum -d test --set-vars innodb_lock_wait_timeout=3 2>&1 > /dev/null`;
 
-$output = `$trunk/bin/pt-table-sync --no-check-slave --execute u=msandbox,p=msandbox,h=127.0.0.1,P=12345,D=test,t=issue_37 h=127.1,P=12346 2>&1`;
+$output = `$trunk/bin/pt-table-sync --no-check-replica --execute u=msandbox,p=msandbox,h=127.0.0.1,P=12345,D=test,t=issue_37 h=127.1,P=12346 2>&1`;
 like($output,
    qr/Triggers are defined/,
    'Die on trigger tbl write with one table (1/4, issue 37)'
 );
 
-$output = `$trunk/bin/pt-table-sync --replicate test.checksum --sync-to-master --execute h=127.1,P=12346,u=msandbox,p=msandbox -d test -t issue_37 2>&1`;
+$output = `$trunk/bin/pt-table-sync --replicate test.checksum --sync-to-source --execute h=127.1,P=12346,u=msandbox,p=msandbox -d test -t issue_37 2>&1`;
 like($output,
    qr/Triggers are defined/,
-   'Die on trigger tbl write with --replicate --sync-to-master (2/4, issue 37)'
+   'Die on trigger tbl write with --replicate --sync-to-source (2/4, issue 37)'
 );
 
 $output = `$trunk/bin/pt-table-sync --replicate test.checksum --execute h=127.1,P=12345,u=msandbox,p=msandbox -d test -t issue_37 2>&1`;
@@ -78,7 +78,7 @@ ok(
    'Table with trigger was not written'
 );
 
-$output = `$trunk/bin/pt-table-sync --no-check-slave --execute u=msandbox,p=msandbox,h=127.0.0.1,P=12345,D=test,t=issue_37 h=127.1,P=12346 --no-check-triggers 2>&1`;
+$output = `$trunk/bin/pt-table-sync --no-check-replica --execute u=msandbox,p=msandbox,h=127.0.0.1,P=12345,D=test,t=issue_37 h=127.1,P=12346 --no-check-triggers 2>&1`;
 unlike(
    $output,
    qr/Triggers are defined/,
@@ -96,11 +96,11 @@ like(
 # #############################################################################
 
 diag('Loading file and waiting for replication');
-$sb->load_file('master', 't/pt-table-sync/samples/issue_367.sql');
+$sb->load_file('source', 't/pt-table-sync/samples/issue_367.sql');
 
-# Make slave db1.t1 and db2.t1 differ from master.
-$slave_dbh->do('INSERT INTO db1.t1 VALUES (9)');
-$slave_dbh->do('DELETE FROM db2.t1 WHERE i > 4');
+# Make replica db1.t1 and db2.t1 differ from source.
+$replica_dbh->do('INSERT INTO db1.t1 VALUES (9)');
+$replica_dbh->do('DELETE FROM db2.t1 WHERE i > 4');
 
 # Replicate checksum of db2.t1.
 $output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --replicate db1.checksum --create-replicate-table --databases db1,db2 --set-vars innodb_lock_wait_timeout=3 2>&1`;
@@ -110,7 +110,7 @@ like(
    'Replicated checksums (issue 367)'
 );
 
-# Sync db2, which has no triggers, between master and slave using
+# Sync db2, which has no triggers, between source and replica using
 # --replicate which has entries for both db1 and db2.  db1 has a
 # trigger but since we also specify --databases db2, then db1 should
 # be ignored.
@@ -121,8 +121,8 @@ unlike(
    "Doesn't warn about trigger on db1 (issue 367)"
 );
 
-$sb->wait_for_slaves();
-my $r = $slave_dbh->selectrow_array('SELECT * FROM db2.t1 WHERE i = 5');
+$sb->wait_for_replicas();
+my $r = $replica_dbh->selectrow_array('SELECT * FROM db2.t1 WHERE i = 5');
 is(
    $r,
    '5',
@@ -132,7 +132,7 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

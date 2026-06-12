@@ -17,10 +17,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 2;
@@ -36,7 +36,7 @@ $sb->create_dbs($dbh, ['test']);
 # Issue 131: mk-archiver fails to insert records if destination table columns
 # in different order than source table
 # #############################################################################
-$sb->load_file('master', 't/pt-archiver/samples/issue_131.sql');
+$sb->load_file('source', 't/pt-archiver/samples/issue_131.sql');
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1), "--source", "F=$cnf,D=test,t=issue_131_src", qw(--statistics --dest t=issue_131_dst)) },
 );

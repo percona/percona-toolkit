@@ -18,14 +18,14 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 4;
@@ -34,16 +34,16 @@ else {
 # #############################################################################
 # Issue 634: Cannot nibble table because MySQL chose no index
 # #############################################################################
-$sb->load_file('master', "t/pt-table-sync/samples/issue_634.sql");
-$slave_dbh->do('insert into issue_634.t values (1)');
+$sb->load_file('source', "t/pt-table-sync/samples/issue_634.sql");
+$replica_dbh->do('insert into issue_634.t values (1)');
 
 $output = output(
    sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
-      qw(--sync-to-master -d issue_634 --print --execute --algorithms Nibble))
+      qw(--sync-to-source -d issue_634 --print --execute --algorithms Nibble))
    },
    stderr => 1,
 );
-$sb->wait_for_slaves();
+$sb->wait_for_replicas();
 
 like(
    $output,
@@ -58,7 +58,7 @@ unlike(
 );
 
 is_deeply(
-   $slave_dbh->selectall_arrayref('select * from issue_634.t'),
+   $replica_dbh->selectall_arrayref('select * from issue_634.t'),
    [],
    '1-row table was synced (issue 634)'
 );
@@ -66,6 +66,6 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

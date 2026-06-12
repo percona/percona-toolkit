@@ -17,10 +17,10 @@ require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 else {
    plan tests => 3;
@@ -34,7 +34,7 @@ my $cmd = "$trunk/bin/pt-archiver";
 # ###########################################################################
 # Test the custom plugin gt_n.
 # ###########################################################################
-$sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
+$sb->load_file('source', 't/pt-archiver/samples/gt_n.sql');
 my $sql = 'select status, count(*) from gt_n.t1 group by status';
 is_deeply(
    $dbh->selectall_arrayref($sql),

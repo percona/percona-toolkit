@@ -18,29 +18,29 @@ require "$trunk/bin/pt-archiver";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
+my $source_dbh = $sb->get_dbh_for('source');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
 
 my $output;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
 my $cmd = "$trunk/bin/pt-archiver";
 
-$sb->create_dbs($master_dbh, ['test']);
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->create_dbs($source_dbh, ['test']);
+$sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
 
 # ###########################################################################
 # pt-archiver deletes data despite --dry-run
 # https://bugs.launchpad.net/percona-toolkit/+bug/1199589
 # ###########################################################################
 
-my $rows_before = $master_dbh->selectall_arrayref("SELECT * FROM test.table_1 ORDER BY a");
+my $rows_before = $source_dbh->selectall_arrayref("SELECT * FROM test.table_1 ORDER BY a");
 
 $output = `$cmd --optimize --dry-run --purge --where 1=1 --source D=test,t=table_1,F=$cnf 2>&1`;
 
-my $rows_after = $master_dbh->selectall_arrayref("SELECT * FROM test.table_1 ORDER BY a");
+my $rows_after = $source_dbh->selectall_arrayref("SELECT * FROM test.table_1 ORDER BY a");
 
 is_deeply(
    $rows_after,
@@ -51,6 +51,6 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

@@ -30,7 +30,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$ps_digest_95th_percentile_by_avg_us (
   avg_us,
   percentile

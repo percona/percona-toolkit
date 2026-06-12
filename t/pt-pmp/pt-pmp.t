@@ -21,7 +21,7 @@ while ( my $file = readdir $dh ) {
    (my $outfile = $file) =~ s/\.in/.out/;
    ok(
       no_diff(
-         "$trunk/bin/pt-pmp $sample/$file",
+         "LOCALE=en_US.utf8 LANG=en_US.UTF-8 $trunk/bin/pt-pmp $sample/$file",
          "t/pt-pmp/samples/$outfile",
       ),
       "$file"
@@ -31,10 +31,26 @@ closedir $dh;
 
 ok(
    no_diff(
-      "$trunk/bin/pt-pmp -l 2 $sample/stacktrace003.in",
+      "LOCALE=en_US.utf8 LANG=en_US.UTF-8 $trunk/bin/pt-pmp -l 2 $sample/stacktrace003.in",
       "t/pt-pmp/samples/stacktrace003-limit2.out",
    ),
    "Limit 2 (stacktrace003-limit2.out)"
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "LOCALE=en_US.utf8 LANG=en_US.UTF-8 $trunk/bin/pt-pmp -d eu $sample/stacktrace006-eu.in",
+      "t/pt-pmp/samples/stacktrace006-eu-deu.out",
+   ),
+   "eu-stack dump read correctly if option -d eu specified"
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "LOCALE=en_US.utf8 LANG=en_US.UTF-8 $trunk/bin/pt-pmp -d pteu $sample/stacktrace006-pteu.in",
+      "t/pt-pmp/samples/stacktrace006-pteu-dpteu.out",
+   ),
+   "pt-eustack-resolver dump read correctly if option -d pteu specified"
 ) or diag($test_diff);
 
 done_testing;

@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Ireland Ltd.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # Cxn package
 # ###########################################################################
@@ -39,8 +38,8 @@ use Scalar::Util qw(blessed);
 use constant {
    PTDEBUG => $ENV{PTDEBUG} || 0,
    # Hostnames make testing less accurate.  Tests need to see
-   # that such-and-such happened on specific slave hosts, but
-   # the sandbox servers are all on one host so all slaves have
+   # that such-and-such happened on specific replica hosts, but
+   # the sandbox servers are all on one host so all replicas have
    # the same hostname.
    PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
 };
@@ -55,7 +54,7 @@ use constant {
 # Optional Arguments:
 #   dbh - Pre-created, uninitialized dbh
 #   set - Callback to set vars on dbh when dbh is first connected
-# 
+#
 # Returns:
 #   Cxn object
 sub new {
@@ -123,7 +122,8 @@ sub connect {
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
-   if ( !$dbh || !$dbh->ping() ) {
+   # We cannot use $dbh->ping() here due to https://github.com/perl5-dbi/DBD-mysql/issues/306
+   if ( !$dbh || ( $dbh && $self->{dbh_set} && !$self->_ping($dbh) ) ) {
       # Ask for password once.
       if ( $self->{ask_pass} && !$self->{asked_for_pass} && !defined $dsn->{p} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
@@ -153,18 +153,6 @@ sub connect {
 sub set_dbh {
    my ($self, $dbh) = @_;
 
-   # If we already have a dbh, and that dbh is the same as this dbh,
-   # and the dbh has already been set, then do not re-set the same
-   # dbh.  dbh_set is required so that if this obj was created with
-   # a dbh, we set that dbh when connect() is called because whoever
-   # created the dbh probably didn't set what we set here.  For example,
-   # MasterSlave makes dbhs when finding slaves, but it doesn't set
-   # anything.
-   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
-      PTDEBUG && _d($dbh, 'Already set dbh');
-      return $dbh;
-   }
-
    PTDEBUG && _d($dbh, 'Setting dbh');
 
    # Set stuff for this dbh (i.e. initialize it).
@@ -172,10 +160,26 @@ sub set_dbh {
 
    # Update the cxn's name.  Until we connect, the DSN parts
    # h and P are used.  Once connected, use @@hostname.
-   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/';
+   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/, CONNECTION_ID() as connection_id';
    PTDEBUG && _d($dbh, $sql);
-   my ($server_id, $hostname) = $dbh->selectrow_array($sql);
+   my ($server_id, $hostname, $connection_id) = $dbh->selectrow_array($sql);
    PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+
+   # If we already have a dbh, and that dbh is the same as this dbh,
+   # and the dbh has already been set, then do not re-set the same
+   # dbh.  dbh_set is required so that if this obj was created with
+   # a dbh, we set that dbh when connect() is called because whoever
+   # created the dbh probably didn't set what we set here.  For example,
+   # MasterSlave makes dbhs when finding replicas, but it doesn't set
+   # anything.
+   # Due to https://github.com/perl5-dbi/DBD-mysql/issues/306 we assigning
+   # connection_id to $self->{dbh_set} and compare it with current connection_id.
+   # This is required to set variable values again after disconnect.
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} && $self->{dbh_set} == $connection_id) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
    if ( $hostname ) {
       $self->{hostname} = $hostname;
    }
@@ -191,7 +195,7 @@ sub set_dbh {
    }
 
    $self->{dbh}     = $dbh;
-   $self->{dbh_set} = 1;
+   $self->{dbh_set} = $connection_id;
    return $dbh;
 }
 
@@ -199,7 +203,9 @@ sub lost_connection {
    my ($self, $e) = @_;
    return 0 unless $e;
    return $e =~ m/MySQL server has gone away/
+       || $e =~ m/Server has gone away/
        || $e =~ m/Lost connection to MySQL server/
+       || $e =~ m/Lost connection to server/
        || $e =~ m/Server shutdown in progress/;
       # The 1st pattern means that MySQL itself died or was stopped.
       # The 2nd pattern means that our cxn was killed (KILL <id>).
@@ -233,8 +239,8 @@ sub description {
    return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h} || 'localhost' , $self->{dsn}->{P} || 'socket');
 }
 
-# This returns the server_id. 
-# For cluster nodes, since server_id is unreliable, we use a combination of 
+# This returns the server_id.
+# For cluster nodes, since server_id is unreliable, we use a combination of
 # variables to create an id string that is unique.
 sub get_id {
    my ($self, $cxn) = @_;
@@ -246,7 +252,7 @@ sub get_id {
       my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
       my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
       PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
-      $unique_id = $wsrep_local_index."|"; 
+      $unique_id = $wsrep_local_index."|";
       foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
          my $sql = "SHOW VARIABLES LIKE '$val'";
          PTDEBUG && _d($cxn->name, $sql);
@@ -280,7 +286,7 @@ sub is_cluster_node {
       PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
    }
    else {
-      $dbh = $cxn->dbh();      
+      $dbh = $cxn->dbh();
       PTDEBUG && _d($cxn->name, $sql);
    }
 
@@ -290,12 +296,12 @@ sub is_cluster_node {
 }
 
 # There's two reasons why there might be dupes:
-# If the "master" is a cluster node, then a DSN table might have been
+# If the "source" is a cluster node, then a DSN table might have been
 # used, and it may have all nodes' DSNs so the user can run the tool
-# on any node, in which case it has the "master" node, the DSN given
+# on any node, in which case it has the "source" node, the DSN given
 # on the command line.
 # On the other hand, maybe find_cluster_nodes worked, in which case
-# we definitely have a dupe for the master cxn, but we may also have a
+# we definitely have a dupe for the source cxn, but we may also have a
 # dupe for every other node if this was used in conjunction with a
 # DSN table.
 # So try to detect and remove those.
@@ -341,6 +347,19 @@ sub DESTROY {
    }
 
    return;
+}
+
+# We have to create a wrapper around $dbh->ping() here due to
+# https://github.com/perl5-dbi/DBD-mysql/issues/306
+sub _ping() {
+   my ( $self, $dbh ) = @_;
+   if (!$dbh->ping()) {
+      return 0;
+   }
+   my $sql = 'SELECT CONNECTION_ID() as connection_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($connection_id) = $dbh->selectrow_array($sql);
+   return $self->{dbh_set} == $connection_id;
 }
 
 sub _d {

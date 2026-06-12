@@ -18,27 +18,27 @@ require "$trunk/bin/pt-table-sync";
 my $output;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 else {
    plan tests => 2;
 }
 
-$sb->load_file('master', 't/lib/samples/issue_804.sql');
+$sb->load_file('source', 't/lib/samples/issue_804.sql');
 
 # #############################################################################
 # Issue 804: mk-table-sync: can't nibble because index name isn't lower case?
 # #############################################################################
-$master_dbh->do('set sql_log_bin=0');
-$master_dbh->do('insert into issue_804.t values (999,999)');
-$output = `$trunk/bin/pt-table-sync --sync-to-master h=127.1,P=12346,u=msandbox,p=msandbox -d issue_804 --print --algorithms Nibble 2>&1`;
+$source_dbh->do('set sql_log_bin=0');
+$source_dbh->do('insert into issue_804.t values (999,999)');
+$output = `$trunk/bin/pt-table-sync --sync-to-source h=127.1,P=12346,u=msandbox,p=msandbox -d issue_804 --print --algorithms Nibble 2>&1`;
 $output = remove_traces($output);
 is(
    $output,
@@ -50,7 +50,8 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$source_dbh->do('set sql_log_bin=1');
+$sb->wipe_clean($source_dbh);
+$sb->wait_for_replicas();
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

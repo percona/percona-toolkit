@@ -31,9 +31,10 @@ ok(
          '--create-table-definitions',
             "$trunk/t/lib/samples/mysqldump-no-data/all-dbs.txt") },
       "$out/create-table-defs-001.txt",
+      keep_output => 1,
    ),
    '--create-table-definitions'
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
 
 # #############################################################################
 # Done.

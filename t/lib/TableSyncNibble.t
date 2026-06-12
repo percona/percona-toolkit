@@ -28,7 +28,7 @@ use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('source');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -37,7 +37,7 @@ else {
    plan tests => 37;
 }
 
-my $mysql = $sb->_use_for('master');
+my $mysql = $sb->_use_for('source');
 
 my $q  = new Quoter();
 my $ms = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
@@ -355,7 +355,7 @@ like(
 # #########################################################################
 # Issue 96: mk-table-sync: Nibbler infinite loop
 # #########################################################################
-$sb->load_file('master', 't/lib/samples/issue_96.sql');
+$sb->load_file('source', 't/lib/samples/issue_96.sql');
 $tbl_struct = $tp->parse($tp->get_create_table($dbh, 'issue_96', 't'));
 $t->prepare_to_sync(
    ChangeHandler  => $ch,
@@ -455,7 +455,7 @@ SKIP: {
 # chunk 2:
 my $where = '`player_id` >= 201 AND `player_id` < 301';
 
-$sb->load_file('master', 't/pt-table-sync/samples/issue_560.sql');
+$sb->load_file('source', 't/pt-table-sync/samples/issue_560.sql');
 $tbl_struct = $tp->parse($tp->get_create_table($dbh, 'issue_560', 'buddy_list'));
 (undef, %plugin_args) = $t->can_sync(tbl_struct => $tbl_struct);
 $t->prepare_to_sync(
@@ -566,7 +566,7 @@ is(
 # #############################################################################
 # Issue 804: mk-table-sync: can't nibble because index name isn't lower case?
 # #############################################################################
-$sb->load_file('master', 't/lib/samples/issue_804.sql');
+$sb->load_file('source', 't/lib/samples/issue_804.sql');
 $tbl_struct = $tp->parse($tp->get_create_table($dbh, 'issue_804', 't'));
 ($can_sync, %plugin_args) = $t->can_sync(tbl_struct => $tbl_struct);
 is(

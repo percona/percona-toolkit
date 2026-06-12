@@ -28,11 +28,11 @@ require "$trunk/bin/pt-online-schema-change";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
-my $master_dbh = $sb->get_dbh_for('node1');
-my $master_dsn = $sb->dsn_for('node1');
+my $source_dbh = $sb->get_dbh_for('node1');
+my $source_dsn = $sb->dsn_for('node1');
 
-if ( !$master_dbh ) {
-    plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+    plan skip_all => 'Cannot connect to sandbox source';
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -42,13 +42,13 @@ my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-$sb->load_file('master', "t/pt-online-schema-change/samples/pt-229.sql");
+$sb->load_file('source', "t/pt-online-schema-change/samples/pt-229.sql");
 
 my $num_rows = 40000;
 diag("Loading $num_rows into the table. This might take some time.");
 diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test test_a $num_rows`);
 diag("$num_rows rows loaded. Starting tests.");
-$master_dbh->do("FLUSH TABLES");
+$source_dbh->do("FLUSH TABLES");
 
 my $threads = [];
 
@@ -101,7 +101,7 @@ threads->yield();
 
 diag("Starting osc. Random rows will be updated in other threads.");
 ($output, $exit_status) = full_output(
-    sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=test_a",
+    sub { pt_online_schema_change::main(@args, "$source_dsn,D=test,t=test_a",
             '--execute', 
             '--alter', "ADD COLUMN zzz INT",
         ),
@@ -121,14 +121,15 @@ like(
     "PT-229 Got successfully altered message.",
 );
 
-my $rows = $master_dbh->selectrow_arrayref('SHOW CREATE TABLE test.test_a');
+my $rows = $source_dbh->selectrow_arrayref('SHOW CREATE TABLE test.test_a');
 like(
     @$rows[1],
-    qr/  `zzz` int\(11\) DEFAULT NULL,/im,
+    ($sandbox_version ge '8.0') ? qr/  `zzz` int DEFAULT NULL,/im :
+       qr/  `zzz` int\(11\) DEFAULT NULL,/im,
     "PT-229 New field was added",
 );
 
-$rows = $master_dbh->selectrow_arrayref('SELECT COUNT(*) FROM test.test_a');
+$rows = $source_dbh->selectrow_arrayref('SELECT COUNT(*) FROM test.test_a');
 is(
     @$rows[0],
     $num_rows,
@@ -141,11 +142,11 @@ for (@$threads) {
     $s->down(); # Wait until all threads are really stopped
 }
 
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+$source_dbh->do("DROP DATABASE IF EXISTS test");
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

@@ -31,7 +31,7 @@ CREATE DEFINER='root'@'localhost' FUNCTION ps_is_consumer_enabled (
              Parameters
              -----------
 
-             in_consumer VARCHAR(64): 
+             in_consumer VARCHAR(64):
                The name of the consumer to check.
 
              Returns
@@ -51,8 +51,8 @@ CREATE DEFINER='root'@'localhost' FUNCTION ps_is_consumer_enabled (
              1 row in set (0.00 sec)
             '
     SQL SECURITY INVOKER
-    DETERMINISTIC 
-    READS SQL DATA 
+    DETERMINISTIC
+    READS SQL DATA
 BEGIN
     RETURN (
         SELECT (CASE

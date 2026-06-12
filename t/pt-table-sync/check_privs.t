@@ -18,21 +18,21 @@ require "$trunk/bin/pt-table-sync";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica_dbh  = $sb->get_dbh_for('replica1');
 
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
+if ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox slave';
+elsif ( !$replica_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
 
 my $output;
-my @args = ('h=127.1,P=12345,u=test_907,p=msandbox', 'P=12346,u=msandbox', qw(--print --no-check-slave -d issue_907));
+my @args = ('h=127.1,P=12345,u=test_907,p=msandbox,s=1', 'P=12346,u=msandbox,s=1', qw(--print --no-check-replica -d issue_907));
 
 # #############################################################################
 # Issue 907: Add --[no]check-privileges 
@@ -40,14 +40,14 @@ my @args = ('h=127.1,P=12345,u=test_907,p=msandbox', 'P=12346,u=msandbox', qw(--
 
 #1) get the script to create the underprivileged user  
 
-$master_dbh->do('drop database if exists issue_907');
-$master_dbh->do('create database issue_907');
-$master_dbh->do('create table issue_907.t (i int)');
-PerconaTest::wait_for_table($slave_dbh, "issue_907.t");
-$slave_dbh->do('drop database if exists issue_907');
-$slave_dbh->do('create database issue_907');
-$slave_dbh->do('create table issue_907.t (i int)');
-$slave_dbh->do('insert into issue_907.t values (1)');
+$source_dbh->do('drop database if exists issue_907');
+$source_dbh->do('create database issue_907');
+$source_dbh->do('create table issue_907.t (i int)');
+PerconaTest::wait_for_table($replica_dbh, "issue_907.t");
+$replica_dbh->do('drop database if exists issue_907');
+$replica_dbh->do('create database issue_907');
+$replica_dbh->do('create table issue_907.t (i int)');
+$replica_dbh->do('insert into issue_907.t values (1)');
 
 # On 5.1 user needs SUPER to set binlog_format, which mk-table-sync does.
 `/tmp/12345/use -uroot -e "CREATE USER 'test_907'\@'localhost' IDENTIFIED BY 'msandbox'"`;
@@ -65,13 +65,13 @@ is(
 );
 
 #3) clean up user
-$master_dbh->do('DROP USER \'test_907\'@\'localhost\'');
+$source_dbh->do('DROP USER \'test_907\'@\'localhost\'');
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+$sb->wipe_clean($source_dbh);
+$sb->wipe_clean($replica_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 
 done_testing;

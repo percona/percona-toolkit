@@ -7,7 +7,7 @@ before:
     # you may remove this if you don't need go generate
     - go generate ./...
 builds:
-  - 
+  -
     binary: pt-pg-summary
     env:
       - CGO_ENABLED=0
