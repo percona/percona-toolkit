@@ -28,6 +28,10 @@ if ( $sandbox_version eq '5.7' ) {
    plan skip_all => 'Test requires 8.0 or newer';
 }
 
+if ( not `which ts` ) {
+   plan skip_all => 'Test requires ts from the moreutils package';
+}
+
 my $output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --set-vars innodb_lock_wait_timeout=3 --chunk-size=50 -d sakila --buffer-stdout 2>&1 | tee | ts '%m-%dT%H:%M:%S'`;
 
 my @lines = split(/\n/, $output);

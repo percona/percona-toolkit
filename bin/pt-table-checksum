@@ -6045,6 +6045,8 @@ sub get_cxn_from_dsn_table {
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
    my @cxn;
+   my $o = $self->{OptionParser};
+   my $prev_dsn;
    use Data::Dumper;
    DSN:
    do {
@@ -6053,21 +6055,17 @@ sub get_cxn_from_dsn_table {
       if ( $dsn_strings ) {
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-            if ($args{wait_no_die}) {
-               my $lcxn;
-               eval {
-                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
-               };
-               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+            my $lcxn;
+            eval {
+               $lcxn = $make_cxn->(dsn_string => $dsn_string, parent => $parent);
+            };
+            if ($args{wait_no_die} && $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
                      || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
-                  PTDEBUG && _d("Server is not accessible, waiting when it is online again");
-                  sleep(1);
-                  goto DSN;
-               }
-               push @cxn, $lcxn;
-            } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
+               PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+               sleep(1);
+               goto DSN;
             }
+            push @cxn, $lcxn;
          }
       }
       $done = 1;
