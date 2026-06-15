@@ -1079,7 +1079,8 @@ sub get_cxn_from_dsn_table {
    PTDEBUG && _d($sql);
    my @cxn;
    my $o = $self->{OptionParser};
-   my $prev_dsn;
+   my $my_dsn;
+   my $lcxn;
    use Data::Dumper;
    DSN:
    do {
@@ -1088,9 +1089,20 @@ sub get_cxn_from_dsn_table {
       if ( $dsn_strings ) {
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-            my $lcxn;
+
+            $my_dsn = $dp->parse($dsn_string);
+
+            if ( $o->got('replica-user') && !defined $my_dsn->{u} ) {
+               PTDEBUG && _d('DSN - username set from --replica-user');
+               $my_dsn->{u} = $o->get('replica-user');
+            }
+            if ( $o->got('replica-password') && !defined $my_dsn->{p} ) {
+               PTDEBUG && _d('DSN - password set from --replica-password');
+               $my_dsn->{p} = $o->get('replica-password');
+            }
+
             eval {
-               $lcxn = $make_cxn->(dsn_string => $dsn_string, parent => $parent);
+               $lcxn = $make_cxn->(dsn => $my_dsn, parent => $parent);
             };
             if ($args{wait_no_die} && $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
                      || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
