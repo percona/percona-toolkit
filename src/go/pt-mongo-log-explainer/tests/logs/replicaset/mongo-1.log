@@ -1,0 +1,17 @@
+2024-06-01T12:00:00.120+0000 I  CONTROL  [initandlisten] MongoDB starting : pid=1002 port=27017 dbpath=/data/db 64-bit host=mongo-rs0-1
+2024-06-01T12:00:00.125+0000 I  CONTROL  [initandlisten] db version v6.0.12
+2024-06-01T12:00:00.130+0000 I  CONTROL  [initandlisten] options: { net: { bindIp: "192.168.1.11", port: 27017 } }
+2024-06-01T12:00:01.250+0000 I  NETWORK  [listener] waiting for connections on port 27017
+2024-06-01T12:00:01.400+0000 I  NETWORK  [listener] connection accepted from 192.168.1.10:46100
+2024-06-01T12:00:02.500+0000 I  REPL     [initandlisten] replica set rs0 starting up
+2024-06-01T12:00:03.000+0000 I  REPL     [initialSync] initial sync source chosen: mongo-rs0-0:27017
+2024-06-01T12:00:04.000+0000 I  REPL     [initialSync] initial sync in progress: cloning collection local.oplog.rs
+2024-06-01T12:00:08.000+0000 I  REPL     [initialSync] initial sync complete
+2024-06-01T12:00:08.100+0000 I  REPL     [initialSync] finished initial sync, transitioning to steady replication
+2024-06-01T12:00:08.500+0000 I  REPL     [rsBackgroundSync] Replica Set Member State: SECONDARY
+2024-06-01T12:00:09.000+0000 I  REPL     [rsBackgroundSync] Applying batch of operations from oplog
+2024-06-01T12:00:15.500+0000 I  ELECTION [conn3] election succeeded for term 2
+2024-06-01T12:00:15.700+0000 I  REPL     [conn3] transition to primary complete; database writes are now permitted
+2024-06-01T12:00:15.800+0000 I  REPL     [conn3] Replica Set Member State: PRIMARY
+2024-06-01T12:00:18.000+0000 W  REPL     [rsBackgroundSync] heartbeat to mongo-rs0-2:27017 failed after 3 attempts: timeout
+2024-06-01T12:00:25.000+0000 I  REPL     [rsBackgroundSync] Changed sync source from mongo-rs0-0:27017 to mongo-rs0-2:27017
