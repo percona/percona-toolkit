@@ -31,7 +31,7 @@ var IdentsMap = types.RegexMap{
 	// RegexMongoVersion captures the SERVER version only from authoritative
 	// contexts: the legacy "db version vX.Y.Z" startup line and the structured
 	// (JSON) Build Info field "buildInfo":{"version":"X.Y.Z"}. It deliberately
-	// anchors to those prefixes so it cannot mis-capture unrelated number triples
+	// anchors to those prefixes so it cannot incorrectly capture unrelated number triples
 	// such as the 127.0.0.1 loopback IP, an OS release (e.g. 2023.9.20250929),
 	// or a client driver version ("driver":{"version":"1.17.4"}).
 	"RegexMongoVersion": &types.LogRegex{
