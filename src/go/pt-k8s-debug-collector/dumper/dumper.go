@@ -67,10 +67,10 @@ type Dumper struct {
 
 // individualFile struct is used to dump the necessary files from the containers
 type individualFile struct {
-	resourceName  string
-	containerName string
-	filepaths     []string
-	dirpaths      map[string][]string // map[tarFolder][]dirPaths
+	resourceName   string
+	containerNames []string
+	filepaths      []string
+	dirpaths       map[string][]string // map[tarFolder][]dirPaths
 }
 
 // resourceMap struct is used to dump the resources from namespace scope or cluster scope
@@ -91,7 +91,7 @@ func New(location, namespace, kubeconfig, clusterName, forwardport, resource str
 	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
 
 	if clusterName == "" {
-		_,  clusterName = parseResourceSpec(resource)
+		_, clusterName = parseResourceSpec(resource)
 	}
 
 	config, err := buildRestConfig(kubeconfig, clusterName)
