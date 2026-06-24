@@ -480,7 +480,7 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 	if err == nil {
 		i.ProcessName = ss.Process
 		i.Version = ss.Version
-		if ss.Repl != nil {
+		if ss.Repl != nil && ss.Repl.SetName != "" {
 			i.ReplicasetName = ss.Repl.SetName
 		}
 
