@@ -3554,13 +3554,15 @@ sub get_cxn_from_dsn_table {
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
 
-            $my_dsn = $dp->parse($dsn_string);
+            my $raw_dsn      = $dp->parse($dsn_string);
+            my $dsn_defaults = $dp->parse_options($o);
+            $my_dsn = $dp->parse($dsn_string, undef, $dsn_defaults);
 
-            if ( $o->got('replica-user') && !defined $my_dsn->{u} ) {
+            if ( $o->got('replica-user') && !defined $raw_dsn->{u} ) {
                PTDEBUG && _d('DSN - username set from --replica-user');
                $my_dsn->{u} = $o->get('replica-user');
             }
-            if ( $o->got('replica-password') && !defined $my_dsn->{p} ) {
+            if ( $o->got('replica-password') && !defined $raw_dsn->{p} ) {
                PTDEBUG && _d('DSN - password set from --replica-password');
                $my_dsn->{p} = $o->get('replica-password');
             }

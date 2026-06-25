@@ -28,7 +28,7 @@ if ( $sandbox_version eq '5.7' ) {
    plan skip_all => 'Test requires 8.0 or newer';
 }
 
-if ( not `which ts` ) {
+if ( not `which ts 2>/dev/null` ) {
    plan skip_all => 'Test requires ts from the moreutils package';
 }
 
