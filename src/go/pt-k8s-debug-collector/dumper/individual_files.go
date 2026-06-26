@@ -57,7 +57,7 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 
 		container, ok := selectContainer(job.Pod, indf.containerNames)
 		if !ok {
-			log.Warnf("None of the containers %v found in pod %s/%s, skipping", indf.containerNames, job.Pod.Namespace, job.Pod.Name)
+			log.Warnf("None of the containers %v were found in pod %s/%s, skipping", indf.containerNames, job.Pod.Namespace, job.Pod.Name)
 			continue
 		}
 
