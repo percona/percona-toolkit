@@ -86,7 +86,7 @@ func (d *Dumper) processToolOutput(
 ) error {
 	out, stderr, err := d.executeInPod(ctx, cmd.args, job.Pod, container, nil)
 	if err != nil {
-		return fmt.Errorf("exec %s: %w (stderr: %s)", cmd, err, stderr.String())
+		return fmt.Errorf("exec %v: %w (stderr: %s)", cmd.args, err, stderr.String())
 	}
 
 	dst := d.PodIndividualFilesPath(job.Pod.Namespace, job.Pod.Name, path.Join(tarFolder, cmd.filename))
