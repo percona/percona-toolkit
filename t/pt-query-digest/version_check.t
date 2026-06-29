@@ -118,7 +118,7 @@ ok(
 ) or diag(`cat $vc_file`);
 
 # Since this is a test, VersionCheck should detect the .bzr dir
-# and disble itself even without --no-version-check.
+# and disable itself even without --no-version-check.
 
 $output = `PTDEBUG=1 $cmd 2>&1`;
 
