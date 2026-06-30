@@ -300,6 +300,7 @@ func (s *CollectorSuite) TestIndividualFiles() {
 		name         string
 		cmd          []string
 		want         []string
+		skipForNone  bool
 		preprocessor func(string) string
 	}{
 		{
@@ -307,8 +308,9 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			// If the tool collects required log files
 			name: "pxc_logs_list",
 			// tar -tf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/*'
-			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/*"},
-			want: []string{"auto.cnf", "grastate.dat", "gvwstate.dat", "innobackup.backup.log", "innobackup.move.log", "innobackup.prepare.log", "mysqld-error.log", "mysqld.post.processing.log"},
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/*"},
+			want:        []string{"auto.cnf", "grastate.dat", "gvwstate.dat", "innobackup.backup.log", "innobackup.move.log", "innobackup.prepare.log", "mysqld-error.log", "mysqld.post.processing.log"},
+			skipForNone: true,
 			preprocessor: func(in string) string {
 				files := strings.Split(in, "\n")
 				var result []string
@@ -331,8 +333,9 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			// If MySQL error log is not empty
 			name: "pxc_mysqld_error_log",
 			// tar --to-command="grep -m 1 -o Version:" -xzf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/mysqld-error.log'
-			cmd:  []string{"tar", "--to-command", "grep -m 1 -o Version:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/mysqld-error.log"},
-			want: []string{"Version:"},
+			cmd:         []string{"tar", "--to-command", "grep -m 1 -o Version:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/mysqld-error.log"},
+			want:        []string{"Version:"},
+			skipForNone: true,
 			preprocessor: func(in string) string {
 				nl := strings.Index(in, "\n")
 				if nl == -1 {
@@ -346,8 +349,9 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			// If the tool collects PostgreSQL log files
 			name: "pgo_pg_logs_exist",
 			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/*/pg_log/*.log'
-			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
-			want: []string{".log"},
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
+			want:        []string{".log"},
+			skipForNone: true,
 			preprocessor: func(in string) string {
 				files := strings.Split(in, "\n")
 				var result []string
@@ -365,8 +369,9 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			// If the tool collects PostgreSQL log files for pgv2
 			name: "pgv2_pg_logs_exist",
 			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/*/pg_log/*.log'
-			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
-			want: []string{".log"},
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
+			want:        []string{".log"},
+			skipForNone: true,
 			preprocessor: func(in string) string {
 				files := strings.Split(in, "\n")
 				var result []string
@@ -380,10 +385,11 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			},
 		},
 		{
-			namespace: "pgv2",
-			name:      "pgv2_pgbackrest_log_list",
-			cmd:       []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/pgbackrest_log/*"},
-			want:      []string{"db-archive-push-async.log", "db-stanza-create.log"},
+			namespace:   "pgv2",
+			name:        "pgv2_pgbackrest_log_list",
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/pgbackrest_log/*"},
+			want:        []string{"db-archive-push-async.log", "db-stanza-create.log"},
+			skipForNone: true,
 			preprocessor: func(in string) string {
 				required := map[string]struct{}{
 					"db-archive-push-async.log": {},
@@ -407,10 +413,11 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			},
 		},
 		{
-			namespace: "pgv2",
-			name:      "pgv2_tools_log_list",
-			cmd:       []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/*"},
-			want:      []string{"patronictl-list.log", "pgbackrest-info.log"},
+			namespace:   "pgv2",
+			name:        "pgv2_tools_log_list",
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/*"},
+			want:        []string{"patronictl-list.log", "pgbackrest-info.log"},
+			skipForNone: true,
 			preprocessor: func(in string) string {
 				required := map[string]struct{}{
 					"patronictl-list.log": {},
@@ -438,8 +445,9 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			// If pod logs are exported as one file per container
 			name: "pxc_container_logs_split_by_container",
 			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/pxc/*/*.log'
-			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/*.log"},
-			want: []string{"logrotate.log", "logs.log", "pxc-init.log", "pxc.log"},
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/*.log"},
+			want:        []string{"logrotate.log", "logs.log", "pxc-init.log", "pxc.log"},
+			skipForNone: false,
 			preprocessor: func(in string) string {
 				required := map[string]struct{}{
 					"logrotate.log": {},
@@ -478,6 +486,7 @@ func (s *CollectorSuite) TestIndividualFiles() {
 		name         string
 		cmd          []string
 		want         []string
+		skipForNone  bool
 		preprocessor func(string) string
 	}{}
 
@@ -498,10 +507,11 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			s.NoError(err)
 
 			for _, test := range nsTests {
-				out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
-				if err != nil && resource == "none" {
+				if resource == "none" && test.skipForNone {
 					continue
 				}
+
+				out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
 				s.NoError(err)
 				if test.preprocessor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
 					s.Failf("Preprocessor Check", "test %s\nresource:%s\nnamespace: %s\noutput is not as expected\nOutput: %s\nWanted: %s", test.name, resource, test.namespace, test.preprocessor(bytes.NewBuffer(out).String()), test.want)
