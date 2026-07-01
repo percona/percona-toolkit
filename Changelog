@@ -1,5 +1,11 @@
 Changelog for Percona Toolkit
 
+v3.7.1-4 released 2026-07-02
+
+This release addresses multiple important security vulnerabilities in Go libraries (CVE-2026-25680, CVE-2026-25681, CVE-2026-27136, CVE-2026-27136, CVE-2026-33811, CVE-2026-33814, CVE-2026-39820, CVE-2026-39821, CVE-2026-39827, CVE-2026-39828, CVE-2026-39829, CVE-2026-39830, CVE-2026-39832, CVE-2026-39835, CVE-2026-39836, CVE-2026-42499, CVE-2026-42502, CVE-2026-42504, CVE-2026-42508, CVE-2026-46595, CVE-2026-46597
+
+* Fixed bug PT-2546: CVEs found in percona/percona-toolkit:3.7.1-3 docker image
+
 v3.7.1-3 released 2026-04-17
 
 This release addresses multiple important security vulnerabilities affecting libarchive (CVE-2026-4424, CVE-2026-4111), libnghttp2 (CVE-2026-27135), gnupg2 (CVE-2025-68973), and openssl-libs (CVE-2025-15467).
