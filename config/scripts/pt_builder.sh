@@ -33,6 +33,30 @@ switch_to_vault_repo() {
     sed -i 's|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
 }
 
+update_changelog_date() {
+    local spec_file="$1"
+
+    if [ ! -f "$spec_file" ]; then
+        echo "update_changelog_date: $spec_file not found, skipping" >&2
+        return
+    fi
+
+    if ! grep -q '^%changelog' "$spec_file"; then
+        echo "%changelog" >> "$spec_file"
+    fi
+
+    local changelog_date
+    changelog_date=$(LC_ALL=C date -u "+%a %b %d %Y")
+    local changelog_entry
+    changelog_entry=$(printf '* %s Percona Development Team <info@percona.com>\n- Automated release build (%s)\n' \
+        "${changelog_date}" "${VERSION:-unknown}")
+
+    awk -v entry="${changelog_entry}" '
+        { print }
+        /^%changelog/ && !inserted { print entry; inserted=1 }
+    ' "$spec_file" > "${spec_file}.tmp" && mv "${spec_file}.tmp" "$spec_file"
+}
+
 parse_arguments() {
     pick_args=
     if test "$1" = PICK-ARGS-FROM-ARGV
@@ -119,6 +143,7 @@ get_sources(){
     fi
     sed -i 's:> 9:> 8:g' config/rpm/percona-toolkit.spec
     sed -i 's:perl(English):perl-English perl-sigtrap perl-Sys-Hostname perl-FindBin:g' config/rpm/percona-toolkit.spec
+    update_changelog_date config/rpm/percona-toolkit.spec
     REVISION=$(git rev-parse --short HEAD)
     cd ../
     if [ -z "${DESTINATION}" ]; then
@@ -321,6 +346,7 @@ build_srpm(){
     cd ${WORKDIR}/rpmbuild/SPECS
     echo '%undefine _missing_build_ids_terminate_build' | cat - percona-toolkit.spec > pt.spec && mv pt.spec percona-toolkit.spec
     echo '%define debug_package %{nil}' | cat - percona-toolkit.spec > pt.spec && mv pt.spec percona-toolkit.spec
+    update_changelog_date percona-toolkit.spec
 
     cd ${WORKDIR}/${PRODUCT_FULL}
     rm -rf bin/govendor
