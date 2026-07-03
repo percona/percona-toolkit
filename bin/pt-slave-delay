@@ -41,7 +41,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.1';
+our $VERSION = '3.7.1-4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -5291,6 +5291,6 @@ along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 
-pt-slave-delay 3.7.1
+pt-slave-delay 3.7.1-4
 
 =cut
