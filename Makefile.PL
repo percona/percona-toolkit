@@ -30,7 +30,7 @@ WriteMakefile(
          my $file_name = $_;
          if ( $file_name =~ m/(mongo|pg|galera|k8s|secure)/ ) {
             # We have to put empty line here to avoid the MAN1PODS hash corruption
-            '3.7.1-4' => '',
+            '' => '',
          }
          else {
              $_ => "blib/man1/$name.1p";
