@@ -48,7 +48,7 @@ copyright = u'2026, Percona LLC and/or its affiliates'
 # built documents.
 #
 # The short X.Y version.
-version = '3.7.1-4'
+version = '3.7'
 # The full version, including alpha/beta/rc tags.
 release = '3.7.1-4'
 
