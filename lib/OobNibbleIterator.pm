@@ -80,7 +80,7 @@ sub new {
       PTDEBUG && _d('Past lower statement:', $past_lower_sql);
 
       my $explain_past_lower_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT "
          . ($args{past_select}
             || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
          . " FROM "  . $self->{sql}->{from}
@@ -97,7 +97,7 @@ sub new {
       PTDEBUG && _d('Past upper statement:', $past_upper_sql);
 
       my $explain_past_upper_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT "
          . ($args{past_select}
             || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
          . " FROM "  . $self->{sql}->{from}

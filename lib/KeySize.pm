@@ -76,7 +76,7 @@ sub get_key_size {
    # For 2), we have to break normal index usage which normally
    # allows MySQL to access only the limited number of rows needed
    # to satisfy the query because we want to know total table rows.
-   my $sql = 'EXPLAIN SELECT ' . join(', ', @cols)
+   my $sql = 'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT ' . join(', ', @cols)
            . ' FROM ' . $args{tbl_name}
            . ($key_exists ? " FORCE INDEX (`$name`)" : '')
            . ' WHERE ';

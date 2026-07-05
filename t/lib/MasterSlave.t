@@ -847,7 +847,7 @@ like(
 
 SKIP: {
 
-   skip "Only test on mysql 5.7",6 if ( $sandbox_version lt '5.7' );
+   skip "Only test on mysql 5.7 or newer", if ( $sandbox_version lt '5.7' );
 
    my ($master1_dbh, $master1_dsn) = $sb->start_sandbox(
       server => 'chan_source1',
@@ -868,8 +868,11 @@ SKIP: {
       $sb->load_file('chan_source2', "sandbox/gtid_on-legacy.sql", undef, no_wait => 1);
       $sb->load_file('chan_replica1', "sandbox/replica_channels-legacy.sql", undef, no_wait => 1);
    } else {
-      $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
-      $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+      if ( $sandbox_version lt '9.7' ) {
+         $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+         $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+         $sb->load_file('chan_replica1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+      }
       $sb->load_file('chan_replica1', "sandbox/replica_channels.sql", undef, no_wait => 1);
    }
                                                              
@@ -902,7 +905,7 @@ SKIP: {
        $css,
        undef,
        'Cannot determine slave in a multi source config without --channel param'
-   );
+   ) or diag(Dumper($css));
 
    like (
        $EVAL_ERROR,

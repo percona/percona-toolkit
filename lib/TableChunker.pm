@@ -55,6 +55,9 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+# Default length for SHA2 function
+my $sha2_length = 256;
+
 # Sub: new
 #
 # Parameters:
@@ -908,7 +911,7 @@ sub get_range_statistics {
 
    # Finally get the total number of rows in range, usually the whole
    # table unless there's a where arg restricting the range.
-   my $sql = "EXPLAIN SELECT * FROM $db_tbl"
+   my $sql = "EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT * FROM $db_tbl"
            . ($args{index_hint} ? " $args{index_hint}" : "")
            . ($where ? " WHERE $where" : '');
    PTDEBUG && _d($sql);
@@ -1014,7 +1017,7 @@ sub value_to_number {
    elsif ( $col_type =~ m/^(?:timestamp|date|time)$/ ) {
       # These are temporal values.  Convert them using a MySQL func.
       my $func = $mysql_conv_func_for{$col_type};
-      my $sql = "SELECT $func(?)";
+      my $sql = "SELECT $func(?" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
       PTDEBUG && _d($dbh, $sql, $val);
       my $sth = $dbh->prepare($sql);
       $sth->execute($val);

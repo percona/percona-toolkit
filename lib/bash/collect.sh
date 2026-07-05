@@ -287,11 +287,10 @@ collect_system_data() {
 }
 
 collect_mysql_data_loop() {
-
    # SHOW FULL PROCESSLIST duplicates information in performance_schema.threads we collecting now
    # Keeping it for backward compatibility and may remove in the future
    if ! _should_skip "processlist"; then
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+      (echo $ts; $CMD_MYSQL $EXT_ARGV -Ee "SHOW FULL PROCESSLIST") \
       >> "$d/$p-processlist" &
    fi
 

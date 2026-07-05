@@ -26,14 +26,14 @@ my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ } glob("$trunk/bin/*"
 
 foreach my $tool ( @vc_tools ) {
    my $output = `$tool --version 2>/dev/null`;
-   my ($tool_version) = $output =~ /(\b[0-9]\.[0-9]\.[0-9]\b)/;
+   my ($tool_version) = $output =~ /(\b[0-9]\.[0-9]\.[0-9](\-[0-9])?\b)/;
    next unless $tool_version; # Some tools don't have --version implemented
    my $base = basename($tool);
    is(
       $tool_version,
       $version,
       "$base --version and Percona::Toolkit::VERSION agree"
-   );
+   ) or diag("Tool version: $tool_version, Base version: $version, output: $output");
 
    # Now let's check that lib/Percona/Toolkit.pm and each tool's
    # $Percona::Toolkit::VERSION agree, sow e can avoid the 2.1.4 pt-table-sync
