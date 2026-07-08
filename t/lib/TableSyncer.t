@@ -644,13 +644,14 @@ is(
 # ###########################################################################
 # Test that the calback gives us the src and dst sql.
 # ###########################################################################
-make_plugins;
 # Re-using issue_96.t from above.  The tables are already in sync so there
 # should only be 1 sync cycle.
-my @sqls;
 
 SKIP: {
    skip 'There is no function SHA1 in MySQL 9.7', 1 if $sandbox_version ge '9.7';
+
+   make_plugins;
+   my @sqls;
 
    sync_table(
       src        => "issue_96.t",
@@ -678,6 +679,8 @@ SKIP: {
    );
 }
 
+make_plugins;
+my @sqls;
 sync_table(
    src        => "issue_96.t",
    dst        => "issue_96.t2",

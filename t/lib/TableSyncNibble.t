@@ -356,9 +356,12 @@ SKIP: {
    );
 }
 
+@rows = ();
+$t->prepare_to_sync(%args);
 $t->set_checksum_queries(
    $syncer->make_checksum_queries(%args, function => 'SHA2')
 );
+
 is(
    $t->get_sql(
       database => 'test',
