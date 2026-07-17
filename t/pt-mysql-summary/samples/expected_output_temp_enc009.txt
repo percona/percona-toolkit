@@ -252,7 +252,7 @@ Specify --databases or --all-databases to dump and summarize schemas
         Buffer Pool Dirty | 0%
            File Per Table | ON
                 Page Size | 16k
-            Log File Size | 2 * 5.0M = 10.0M
+            Log File Size | 100.0M
           Log Buffer Size | 16M
              Flush Method | fsync
       Flush Log At Commit | 1
