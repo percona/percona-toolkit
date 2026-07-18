@@ -2729,13 +2729,15 @@ TOOL="pt-mysql-summary"
 [ "$CMD_MYSQLDUMP" ] || CMD_MYSQLDUMP="$( _which mysqldump )"
 
 check_mysql () {
-   # Check that mysql and mysqldump are in PATH.  If not, we're
-   # already dead in the water, so don't bother with cmd line opts,
-   # just error and exit.
+   # mysql is always required for live collection.
    [ -n "$(${CMD_MYSQL} --help 2>/dev/null)" ] \
       || die "Cannot execute mysql.  Check that it is in PATH."
-   [ -n "$(${CMD_MYSQLDUMP} --help 2>/dev/null)" ] \
-      || die "Cannot execute mysqldump.  Check that it is in PATH."
+
+   # mysqldump is only used for the optional schema analysis.
+   if [ "$OPT_DATABASES" -o "$OPT_ALL_DATABASES" ]; then
+      [ -n "$(${CMD_MYSQLDUMP} --help 2>/dev/null)" ] \
+         || die "Cannot execute mysqldump.  Check that it is in PATH."
+   fi
 
    # Now that we have the cmd line opts, check that we can actually
    # connect to MySQL.
