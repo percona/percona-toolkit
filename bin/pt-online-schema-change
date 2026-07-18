@@ -56,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.1';
+our $VERSION = '3.7.1-4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2293,7 +2293,7 @@ sub get_cxn_params {
       $dsn = 'DBI:mysql:' . ( $info->{D} || '' ) . ';'
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
-                     qw(F h P S A s))
+                     qw(F h P S A s o))
          . ';mysql_read_default_group=client'
          . ($info->{L} ? ';mysql_local_infile=1' : '');
    }
@@ -4529,9 +4529,7 @@ sub _find_replicas_by_hosts {
 sub get_connected_replicas {
    my ( $self, $dbh ) = @_;
 
-   my $show = "SHOW GRANTS FOR ";
-   my $user = 'CURRENT_USER()';
-   my $sql = $show . $user;
+   my $sql = "SHOW GRANTS";
    PTDEBUG && _d($dbh, $sql);
 
    my $proc;
@@ -4540,23 +4538,9 @@ sub get_connected_replicas {
          m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
       } @{$dbh->selectcol_arrayref($sql)};
    };
-   if ( $EVAL_ERROR ) {
-
-      if ( $EVAL_ERROR =~ m/no such grant defined for user/ ) {
-         PTDEBUG && _d('Retrying SHOW GRANTS without host; error:',
-            $EVAL_ERROR);
-         ($user) = split('@', $user);
-         $sql    = $show . $user;
-         PTDEBUG && _d($sql);
-         eval {
-            $proc = grep {
-               m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
-            } @{$dbh->selectcol_arrayref($sql)};
-         };
-      }
-
-      die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
-   }
+   
+   die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
+   
    if ( !$proc ) {
       die "You do not have the PROCESS privilege";
    }
@@ -5106,6 +5090,9 @@ sub get_cxn_from_dsn_table {
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
    my @cxn;
+   my $o = $self->{OptionParser};
+   my $my_dsn;
+   my $lcxn;
    use Data::Dumper;
    DSN:
    do {
@@ -5114,21 +5101,33 @@ sub get_cxn_from_dsn_table {
       if ( $dsn_strings ) {
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-            if ($args{wait_no_die}) {
-               my $lcxn;
-               eval {
-                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
-               };
-               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
-                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+
+            my $raw_dsn      = $dp->parse($dsn_string);
+            my $dsn_defaults = $dp->parse_options($o);
+            $my_dsn = $dp->parse($dsn_string, undef, $dsn_defaults);
+
+            if ( $o->got('replica-user') && !defined $raw_dsn->{u} ) {
+               PTDEBUG && _d('DSN - username set from --replica-user');
+               $my_dsn->{u} = $o->get('replica-user');
+            }
+            if ( $o->got('replica-password') && !defined $raw_dsn->{p} ) {
+               PTDEBUG && _d('DSN - password set from --replica-password');
+               $my_dsn->{p} = $o->get('replica-password');
+            }
+
+            eval {
+               $lcxn = $make_cxn->(dsn => $my_dsn, parent => $parent);
+            };
+            if ( $EVAL_ERROR ) {
+               if ( $args{wait_no_die} && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/) ) {
                   PTDEBUG && _d("Server is not accessible, waiting when it is online again");
                   sleep(1);
                   goto DSN;
                }
-               push @cxn, $lcxn;
-            } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
+               die $EVAL_ERROR;
             }
+            push @cxn, $lcxn;
          }
       }
       $done = 1;
@@ -9844,6 +9843,7 @@ sub main {
             Quoter           => $q,
             OptionParser     => $o,
             TableParser      => $tp,
+            server_version   => $server_version,
          );
       };
       if ( $EVAL_ERROR ) {
@@ -11378,6 +11378,7 @@ sub create_new_table {
    }
    my ($new_table_name, $orig_tbl, $cxn, $q, $o, $tp) = @args{@required_args};
    my $new_table_prefix = $args{new_table_prefix};
+   my $server_version = $args{server_version};
 
    # Get the original table struct.
    my $ddl = $tp->get_create_table(
@@ -11444,13 +11445,37 @@ sub create_new_table {
          $sql =~ s/\s+ENGINE=\S+//;
       }
       if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
-          if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
-             $sql = insert_data_directory($sql, $o->get('data-dir'));
-             PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
-             PTDEBUG && _d("New query\n$sql\n");
-          } else {
-              die $o->get('data-dir') . " is not a directory or it is not writable";
-          }
+         # Starting from 8.0, the directory must be known to InnoDB.
+
+         my $innodb_dirs = '';
+
+         my (undef, $innodb_data_home_dir) = $cxn->dbh->selectrow_array("SHOW VARIABLES LIKE 'innodb_data_home_dir'");
+         if ( $innodb_data_home_dir ) {
+            _d("InnoDB data home dir: $innodb_data_home_dir");
+            $innodb_dirs .= $innodb_data_home_dir;
+         }
+
+         my (undef, $innodb_directories) = $cxn->dbh->selectrow_array("SHOW VARIABLES LIKE 'innodb_directories'");
+         if ( $innodb_directories ) {
+            _d("InnoDB directories: $innodb_directories");
+            $innodb_dirs .= ';' . $innodb_directories;
+         }
+
+         my @dirs = map {
+            my $dir = $_;
+            $dir =~ s{(?<!^)/\z}{};
+            $dir;
+         } split(/\s*;\s*/, $innodb_dirs);
+         my %dirs_lookup = map { $_ => 1 } @dirs;
+         my $data_dir = $o->get('data-dir');
+         $data_dir =~ s{(?<!^)/\z}{};
+         if ($dirs_lookup{$data_dir} || $server_version < '8.0') {
+            $sql = insert_data_directory($sql, $data_dir);
+            PTDEBUG && _d("adding data dir " . $data_dir);
+            PTDEBUG && _d("New query\n$sql\n");
+         } else {
+            die "Data directory " . $data_dir . " is not known to InnoDB.\nDirectories known to InnoDB are: " . $innodb_dirs . "\n";
+         }
       }
       if ( $o->got('remove-data-dir') ) {
          $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//;
@@ -13445,6 +13470,12 @@ short form: -s; type: int
 
 Create SSL MySQL connection.
 
+=item --mysql_ssl_optional
+
+short form: -o; type: int
+
+Disables strict SSL enforcement and makes SSL connection optional.
+
 =item --preserve-triggers
 
 Preserves old triggers when specified.
@@ -14167,6 +14198,12 @@ dsn: mysql_ssl; copy: yes
 
 Create SSL connection
 
+=item * o
+
+dsn: mysql_ssl_optional; copy: yes
+
+Disables strict SSL enforcement and makes SSL connection optional
+
 =back
 
 =head1 ENVIRONMENT
@@ -14285,7 +14322,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2024 Percona LLC and/or its affiliates.
+This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -14297,12 +14334,11 @@ Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
 systems, you can issue `man perlgpl' or `man perlartistic' to read these
 licenses.
 
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA  02111-1307  USA.
+You should have received a copy of the GNU General Public License, version 2
+along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 
-pt-online-schema-change 3.7.1
+pt-online-schema-change 3.7.1-4
 
 =cut

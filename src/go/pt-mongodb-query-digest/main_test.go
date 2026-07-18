@@ -1,3 +1,16 @@
+// This program is copyright 2017-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
@@ -28,7 +41,8 @@ import (
 )
 
 const (
-	samples = "/src/go/tests/"
+	samples   = "/src/go/tests/"
+	TOOL_PATH = "../../../bin/pt-mongodb-query-digest"
 )
 
 type testVars struct {
@@ -241,6 +255,24 @@ Build: <Build> using <GoVersion>
 Commit: <Commit>`
 	//
 	assertRegexpLines(t, expected, string(output))
+}
+
+// semVerRE is the SemVer pattern from https://semver.org (RE2-compatible
+// variant), used to validate the version line printed by --version.
+const semVerRE = `(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)` +
+	`(?:-(?:(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?` +
+	`(?:\+(?:[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
+
+func TestVersionOption(t *testing.T) {
+	out, err := exec.Command(TOOL_PATH, "--version").Output()
+	if err != nil {
+		t.Errorf("error executing %s --version: %s", toolname, err.Error())
+	}
+	// We are using MustCompile here, because hard-coded RE should not fail
+	re := regexp.MustCompile(toolname + `\n.*Version v?` + semVerRE + `\n`)
+	if !re.Match(out) {
+		t.Errorf("%s --version returns wrong result:\n%s", toolname, out)
+	}
 }
 
 func testEmptySystemProfile(t *testing.T, data Data) {

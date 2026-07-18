@@ -19,18 +19,28 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
-if ( !$dbh ) {
+my ($output, $exit_code);
+my $cnf = '/tmp/12345/my.sandbox.cnf';
+
+# Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
+($output, $exit_code) = full_output(
+   sub { pt_table_usage::main("--explain-extended=F=$cnf,h=127.1,P=12345,D=sakila,u=msandbox,p=msandbox,s=1", 
+      '--query', 'select * from foo, bar where id=1') },
+   stderr => 1,
+);
+
+if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+}
+elsif ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
 }
 else {
-   plan tests => 13;
+   plan tests => 19;
 }
-
-my ($output, $exit_code);
-my $cnf = '/tmp/12345/my.sandbox.cnf';
 
 my $in   = "$trunk/t/pt-table-usage/samples/in";
 my $out  = "t/pt-table-usage/samples/out";
@@ -144,6 +154,60 @@ like(
    qr/SSL connection error: Unable to get private key at/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
+
+# #############################################################################
+# Test mysql_ssl_optional option
+# #############################################################################
+
+($output, $exit_code) = full_output(
+   sub { pt_table_usage::main('--explain-extended', "F=$cnf,h=127.1,P=12345,D=sakila,u=sha256_user,p=sha256_user%password,s=1,o=1", 
+      '--query', 'select * from foo, bar where id=1') },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl_optional (short version -o)"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl_optional (short version -o)'
+) or diag($output);
+
+is(
+   $output,
+   "",
+   "No error if table doesn't exist with option --mysql_ssl_optional (short version -o)"
+);
+
+($output, $exit_code) = full_output(
+   sub { pt_table_usage::main('--explain-extended', 
+         qw(127.1 --port 12345 --database sakila --user sha256_user),
+         qw(--password sha256_user%password --mysql_ssl 1 --mysql_ssl_optional 1), 
+      '--query', 'select * from foo, bar where id=1') },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl and --mysql_ssl_optional"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl and --mysql_ssl_optional'
+) or diag($output);
+
+is(
+   $output,
+   "",
+   "No error if table doesn't exist with option --mysql_ssl and --mysql_ssl_optional"
+);
 
 # #############################################################################
 # Done.

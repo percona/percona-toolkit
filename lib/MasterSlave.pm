@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011-2012 Percona Ireland Ltd.
+# This program is copyright 2007-2011 Baron Schwartz, 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # MasterSlave package
 # ###########################################################################
@@ -382,9 +381,7 @@ sub get_connected_replicas {
    my ( $self, $dbh ) = @_;
 
    # Check for the PROCESS privilege.
-   my $show = "SHOW GRANTS FOR ";
-   my $user = 'CURRENT_USER()';
-   my $sql = $show . $user;
+   my $sql = "SHOW GRANTS";
    PTDEBUG && _d($dbh, $sql);
 
    my $proc;
@@ -393,26 +390,9 @@ sub get_connected_replicas {
          m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
       } @{$dbh->selectcol_arrayref($sql)};
    };
-   if ( $EVAL_ERROR ) {
-
-      if ( $EVAL_ERROR =~ m/no such grant defined for user/ ) {
-         # Try again without a host.
-         PTDEBUG && _d('Retrying SHOW GRANTS without host; error:',
-            $EVAL_ERROR);
-         ($user) = split('@', $user);
-         $sql    = $show . $user;
-         PTDEBUG && _d($sql);
-         eval {
-            $proc = grep {
-               m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
-            } @{$dbh->selectcol_arrayref($sql)};
-         };
-      }
-
-      # The 2nd try above might have cleared $EVAL_ERROR.
-      # If not, die now.
-      die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
-   }
+   
+   die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
+   
    if ( !$proc ) {
       die "You do not have the PROCESS privilege";
    }
@@ -1098,6 +1078,9 @@ sub get_cxn_from_dsn_table {
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
    my @cxn;
+   my $o = $self->{OptionParser};
+   my $my_dsn;
+   my $lcxn;
    use Data::Dumper;
    DSN:
    do {
@@ -1106,21 +1089,33 @@ sub get_cxn_from_dsn_table {
       if ( $dsn_strings ) {
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-            if ($args{wait_no_die}) {
-               my $lcxn;
-               eval {
-                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
-               };
-               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
-                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+
+            my $raw_dsn      = $dp->parse($dsn_string);
+            my $dsn_defaults = $dp->parse_options($o);
+            $my_dsn = $dp->parse($dsn_string, undef, $dsn_defaults);
+
+            if ( $o->got('replica-user') && !defined $raw_dsn->{u} ) {
+               PTDEBUG && _d('DSN - username set from --replica-user');
+               $my_dsn->{u} = $o->get('replica-user');
+            }
+            if ( $o->got('replica-password') && !defined $raw_dsn->{p} ) {
+               PTDEBUG && _d('DSN - password set from --replica-password');
+               $my_dsn->{p} = $o->get('replica-password');
+            }
+
+            eval {
+               $lcxn = $make_cxn->(dsn => $my_dsn, parent => $parent);
+            };
+            if ( $EVAL_ERROR ) {
+               if ( $args{wait_no_die} && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/) ) {
                   PTDEBUG && _d("Server is not accessible, waiting when it is online again");
                   sleep(1);
                   goto DSN;
                }
-               push @cxn, $lcxn;
-            } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
+               die $EVAL_ERROR;
             }
+            push @cxn, $lcxn;
          }
       }
       $done = 1;

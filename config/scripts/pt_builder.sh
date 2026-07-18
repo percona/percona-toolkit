@@ -33,6 +33,30 @@ switch_to_vault_repo() {
     sed -i 's|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
 }
 
+update_changelog_date() {
+    local spec_file="$1"
+
+    if [ ! -f "$spec_file" ]; then
+        echo "update_changelog_date: $spec_file not found, skipping" >&2
+        return
+    fi
+
+    if ! grep -q '^%changelog' "$spec_file"; then
+        echo "%changelog" >> "$spec_file"
+    fi
+
+    local changelog_date
+    changelog_date=$(LC_ALL=C date -u "+%a %b %d %Y")
+    local changelog_entry
+    changelog_entry=$(printf '* %s Percona Development Team <info@percona.com>\n- Automated release build (%s)\n' \
+        "${changelog_date}" "${VERSION:-unknown}")
+
+    awk -v entry="${changelog_entry}" '
+        { print }
+        /^%changelog/ && !inserted { print entry; inserted=1 }
+    ' "$spec_file" > "${spec_file}.tmp" && mv "${spec_file}.tmp" "$spec_file"
+}
+
 parse_arguments() {
     pick_args=
     if test "$1" = PICK-ARGS-FROM-ARGV
@@ -119,6 +143,7 @@ get_sources(){
     fi
     sed -i 's:> 9:> 8:g' config/rpm/percona-toolkit.spec
     sed -i 's:perl(English):perl-English perl-sigtrap perl-Sys-Hostname perl-FindBin:g' config/rpm/percona-toolkit.spec
+    update_changelog_date config/rpm/percona-toolkit.spec
     REVISION=$(git rev-parse --short HEAD)
     cd ../
     if [ -z "${DESTINATION}" ]; then
@@ -170,7 +195,7 @@ install_go() {
     #rm -rf /usr/local/go /usr/local/go1.8 /usr/local/go1.9
     #mv go1.9 /usr/local/
     #ln -s /usr/local/go1.9 /usr/local/go
-    GO_VERSION=1.25.5
+    GO_VERSION=1.26.2
     if [ x"$ARCH" = "xx86_64" ]; then
       GO_ARCH="amd64"
     elif [ x"$ARCH" = "xaarch64" ]; then
@@ -321,6 +346,7 @@ build_srpm(){
     cd ${WORKDIR}/rpmbuild/SPECS
     echo '%undefine _missing_build_ids_terminate_build' | cat - percona-toolkit.spec > pt.spec && mv pt.spec percona-toolkit.spec
     echo '%define debug_package %{nil}' | cat - percona-toolkit.spec > pt.spec && mv pt.spec percona-toolkit.spec
+    update_changelog_date percona-toolkit.spec
 
     cd ${WORKDIR}/${PRODUCT_FULL}
     rm -rf bin/govendor
@@ -430,16 +456,16 @@ build_source_deb(){
     cd ../
     mkdir -p $WORKDIR/source_deb
     mkdir -p $CURDIR/source_deb
-    #cp *.tar.xz* $WORKDIR/source_deb
+    cp *.tar.xz* $WORKDIR/source_deb
     cp *_source.changes $WORKDIR/source_deb
     cp *.dsc $WORKDIR/source_deb
     cp *.orig.tar.gz $WORKDIR/source_deb
-    cp *.diff.gz $WORKDIR/source_deb
-   # cp *.tar.xz* $CURDIR/source_deb
+    #cp *.diff.gz $WORKDIR/source_deb
+    cp *.tar.xz* $CURDIR/source_deb
     cp *_source.changes $CURDIR/source_deb
     cp *.dsc $CURDIR/source_deb
     cp *.orig.tar.gz $CURDIR/source_deb
-    cp *.diff.gz $CURDIR/source_deb
+    #cp *.diff.gz $CURDIR/source_deb
 }
 
 build_tarball(){
@@ -509,7 +535,6 @@ build_deb(){
     dpkg-source -x ${DSC}
     #
     cd ${PRODUCT}-${VERSION}
-    echo 9 > debian/compat
     if [ x"$ARCH" = "xaarch64" ]; then
         sed -i 's/@@ARCHITECTURE@@/arm64/' debian/control
     else
@@ -568,8 +593,8 @@ OS_NAME=
 ARCH=
 OS=
 INSTALL=0
-RPM_RELEASE=2
-DEB_RELEASE=2
+RPM_RELEASE=3
+DEB_RELEASE=3
 REVISION=0
 GIT_BRANCH=${GIT_BRANCH}
 GIT_REPO=https://github.com/percona/percona-toolkit.git

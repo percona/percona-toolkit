@@ -1,5 +1,5 @@
 # This program is copyright 2007-2011 Baron Schwartz,
-# 2011-2013 Percona Ireland Ltd.
+# 2011-2013 Percona LLC and/or its affiliates.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -243,7 +243,7 @@ sub get_cxn_params {
       $dsn = 'DBI:mysql:' . ( $info->{D} || '' ) . ';'
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
-                     qw(F h P S A s))
+                     qw(F h P S A s o))
          . ';mysql_read_default_group=client'
          . ($info->{L} ? ';mysql_local_infile=1' : '');
    }
