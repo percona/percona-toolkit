@@ -2142,8 +2142,6 @@ section_innodb () {
 
    local redo_capacity="$(get_var innodb_redo_log_capacity "$variables_file")"
    if [ -n "${redo_capacity}" ] && [ "${redo_capacity}" -gt 0 ] 2>/dev/null; then
-      # MySQL 8.0.30 and newer manage redo files dynamically and expose their
-      # total capacity instead of the legacy file size/count variables.
       name_val "Log File Size" "$(shorten ${redo_capacity} 1)"
    else
       local log_size="$(get_var innodb_log_file_size "$variables_file")"

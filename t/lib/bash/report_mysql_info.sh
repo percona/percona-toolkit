@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 47
+plan 48
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -680,6 +680,24 @@ EOF
 }
 
 test_format_innodb
+
+test_format_innodb_redo_capacity () {
+   local NAME_VAL_LEN=25
+   cp "$samples/temp001/mysql-variables" "$PT_TMPDIR/mysql-variables-redo-capacity"
+   printf 'innodb_redo_log_capacity\t104857600\n' >> "$PT_TMPDIR/mysql-variables-redo-capacity"
+
+   cat <<EOF > $PT_TMPDIR/expected
+            Log File Size | 100.0M
+EOF
+
+   section_innodb "$PT_TMPDIR/mysql-variables-redo-capacity" \
+      "$samples/temp001/mysql-status" \
+      | grep "Log File Size" > "$PT_TMPDIR/got"
+   no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" \
+      "Format InnoDB redo log capacity"
+}
+
+test_format_innodb_redo_capacity
 
 # ###########################################################################
 # format_innodb_filters
