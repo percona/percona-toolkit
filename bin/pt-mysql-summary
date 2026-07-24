@@ -2743,7 +2743,7 @@ check_mysql () {
       || die "Cannot execute mysql.  Check that it is in PATH."
 
    # mysqldump is only used for the optional schema analysis.
-   if [ "$OPT_DATABASES" -o "$OPT_ALL_DATABASES" ]; then
+   if [ -n "$OPT_DATABASES" ] || [ -n "$OPT_ALL_DATABASES" ]; then
       [ -n "$(${CMD_MYSQLDUMP} --help 2>/dev/null)" ] \
          || die "Cannot execute mysqldump.  Check that it is in PATH."
    fi
