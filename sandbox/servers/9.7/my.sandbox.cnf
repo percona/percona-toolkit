@@ -34,11 +34,11 @@ log_slow_admin_statements  = 1
 long_query_time            = 0
 
 # fkc test
-binlog_format              = STATEMENT
-#performance_schema         = ON
+binlog_format              = MIXED #STATEMENT
+#performance_schema        = ON
 #performance-schema-instrument='wait/lock/metadata/sql/mdl=ON'
 #performance-schema-instrument='transaction=ON'
 secure-file-priv           =
 
 # wait_for_replica buggy on multi-threaded replica
-replica-parallel-workers=0
+replica-parallel-workers=1

@@ -144,16 +144,9 @@ like(
    'Deprecation warning printed when option --no-check-master provided'
 ) or diag($output);
 
-$replica1_dbh->do("STOP ${replica_name}");
-$replica1_dbh->do("CHANGE ${source_change} TO ${source_name}_port=12345, ${source_name}_user='msandbox'");
-$source_dbh->do("RESET ${source_reset}");
-$replica1_dbh->do("RESET ${replica_name}");
-$replica1_dbh->do("START ${replica_name}");
-
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($source_dbh);
-$sb->wait_for_replicas();
+diag(`$trunk/sandbox/test-env restart`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

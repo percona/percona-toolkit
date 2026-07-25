@@ -7799,12 +7799,12 @@ sub explain_report {
          }
          my $sth;
          eval {
-             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ $query");
+             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ /*!90700 FORMAT=TRADITIONAL */ $query");
              $sth->execute();
          };
          if ($EVAL_ERROR) { # MySQL 8.0+ doesn't support PARTITIONS
              $self->{no_partitions} = 1;
-             $sth = $dbh->prepare("EXPLAIN $query");
+             $sth = $dbh->prepare("EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $query");
              $sth->execute();
          }
          $sth->execute();
@@ -9023,7 +9023,7 @@ sub find_best_index {
 sub find_possible_keys {
    my ( $self, $dbh, $database, $table, $quoter, $where ) = @_;
    return () unless $where;
-   my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
+   my $sql = 'EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT * FROM ' . $quoter->quote($database, $table)
       . ' WHERE ' . $where;
    PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);

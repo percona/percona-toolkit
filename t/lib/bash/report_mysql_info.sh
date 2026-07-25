@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 47
+plan 48
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -687,6 +687,38 @@ EOF
 }
 
 test_format_innodb
+
+test_format_innodb_9_7 () {
+   local NAME_VAL_LEN=25
+   cat <<EOF > $PT_TMPDIR/expected
+                  Version | 9.7.1
+         Buffer Pool Size | 16.0M
+         Buffer Pool Fill | 25%
+        Buffer Pool Dirty | 0%
+           File Per Table | ON
+                Page Size | 16k
+        Redo Log Capacity | 100M
+          Log Buffer Size | 64M
+             Flush Method | O_DIRECT
+      Flush Log At Commit | 1
+               XA Support | 
+                Checksums | 
+              Doublewrite | ON
+          R/W I/O Threads | 7 4
+             I/O Capacity | 10000
+       Thread Concurrency | 0
+      Concurrency Tickets | 5000
+       Commit Concurrency | 0
+      Txn Isolation Level | REPEATABLE-READ
+        Adaptive Flushing | ON
+      Adaptive Checkpoint | 
+EOF
+
+   section_innodb "$samples/temp010/mysql-variables" "$samples/temp010/mysql-status" > "$PT_TMPDIR/got"
+   no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "Format InnoDB 9.7"
+}
+
+test_format_innodb_9_7
 
 # ###########################################################################
 # format_innodb_filters

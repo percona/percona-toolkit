@@ -18,7 +18,7 @@ use Sandbox;
 require "$trunk/bin/pt-replica-restart";
 
 diag('Restarting the sandbox');
-diag(`SAKILA=0 REPLICATION_THREADS=0 $trunk/sandbox/test-env restart`);
+diag(`SAKILA=0 REPLICATION_THREADS=0 GTID=0 $trunk/sandbox/test-env restart`);
 diag("Sandbox restarted");
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -106,8 +106,14 @@ $replica1_dbh->do('DROP TABLE test.t');
 $source_dbh->do('INSERT INTO test.t SELECT 1');
 wait_repl_broke($replica1_dbh) or die "Failed to break replication";
 
-my $r = $replica1_dbh->selectrow_hashref("show ${replica_name} status");
-like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
+my $db_flavor = VersionParser->new($source_dbh)->flavor();
+my $r;
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $r = $replica1_dbh->selectrow_hashref("select * from performance_schema.replication_applier_status_by_worker")->{last_error_message};
+} else {
+   $r = $replica1_dbh->selectrow_hashref("show ${replica_name} status")->{last_error};
+}
+like($r, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
 
 $source_dbh->do('INSERT INTO test.t SELECT 2');
 $r = $source_dbh->selectrow_hashref("show ${source_status} status");
@@ -168,8 +174,14 @@ $replica1_dbh->do('DROP TABLE test.t');
 $source_dbh->do('INSERT INTO test.t SELECT 1');
 wait_repl_broke($replica1_dbh) or die "Failed to break replication";
 
-$r = $replica1_dbh->selectrow_hashref("show ${replica_name} status");
-like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $r = $replica1_dbh->selectrow_hashref("select * from performance_schema.replication_applier_status_by_worker")->{last_error_message};
+} else {
+   $r = $replica1_dbh->selectrow_hashref("show ${replica_name} status")->{last_error};
+}
+like($r, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
+
+like($r, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
 
 $source_dbh->do('INSERT INTO test.t SELECT 2');
 $r = $source_dbh->selectrow_hashref("show ${source_status} status");
@@ -224,22 +236,52 @@ $sb->wait_for_replicas;
 $source_dbh->do('DROP DATABASE IF EXISTS test');
 $source_dbh->do('CREATE DATABASE test');
 $source_dbh->do('CREATE TABLE test.t (a INT)');
-$sb->wait_for_replicas;
+$sb->wait_for_replicas(replica => 'replica1');
+sleep(5);
 
 # Bust replication
 $replica1_dbh->do('DROP TABLE test.t');
 $source_dbh->do('INSERT INTO test.t SELECT 1');
 wait_repl_broke($replica1_dbh) or die "Failed to break replication";
 
-$r = $replica1_dbh->selectrow_hashref("show ${replica_name} status");
-like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $r = $replica1_dbh->selectrow_hashref("select * from performance_schema.replication_applier_status_by_worker")->{last_error_message};
+} else {
+   $r = $replica1_dbh->selectrow_hashref("show ${replica_name} status")->{last_error};
+}
+like($r, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
 
 $r = $replica1_dbh->selectrow_hashref("show ${replica_name} status");
 $until_file = $r->{relay_log_file};
 my $rm1 = $source_dbh->selectrow_hashref("show ${source_status} status");
 $source_dbh->do('INSERT INTO test.t SELECT 2');
 my $rm2 = $source_dbh->selectrow_hashref("show ${source_status} status");
-$until_pos = $r->{relay_log_pos} + $rm2->{position} - $rm1->{position};
+
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   my $relay_log_path = "/tmp/12346/data/$until_file";
+   my $mysqlbinlog;
+   if ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
+      $mysqlbinlog = "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog";
+   } elsif ( $mysqlbinlog = `which mysqlbinlog` ) {
+      chomp $mysqlbinlog;
+   }
+   my $relay_log_text = `$mysqlbinlog "$relay_log_path" 2>&1`;
+   die "Failed to run $mysqlbinlog on $relay_log_path: $relay_log_text" if $CHILD_ERROR;
+
+   my @relay_lines = split /\n/, $relay_log_text;
+   my $until_pos_from_relay;
+   for ( my $i = 1; $i < scalar @relay_lines; $i++ ) {
+      next if $relay_lines[$i] !~ /server id 12345\b.*\bend_log_pos\s+$rm1->{position}\b/;
+      next if $relay_lines[$i + 2] !~ /^# at (\d+)/;
+      $until_pos_from_relay = $1;
+      last;
+   }
+   
+   $until_pos = $until_pos_from_relay + $rm2->{position} - $rm1->{position};
+} else {
+   $until_pos = $r->{relay_log_pos} + $rm2->{position} - $rm1->{position};
+}
+
 $source_dbh->do('INSERT INTO test.t SELECT 3');
 
 (undef, $tempfile) = tempfile();

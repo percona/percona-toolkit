@@ -92,7 +92,7 @@ is(
    $retval,
    0,
    "my.sandbox.cnf doesn't differ with active config"
-);
+) or diag($output);
 
 is(
    $output,

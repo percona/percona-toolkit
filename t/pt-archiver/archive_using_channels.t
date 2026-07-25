@@ -50,8 +50,10 @@ if ( $sandbox_version lt '8.1' ) {
    $sb->load_file('chan_source2', "sandbox/gtid_on-legacy.sql", undef, no_wait => 1);
    $sb->load_file('chan_replica1', "sandbox/replica_channels-legacy.sql", undef, no_wait => 1);
 } else {
-   $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
-   $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+   if ( $sandbox_version lt '9.7' ) {
+      $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+      $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+   }
    $sb->load_file('chan_replica1', "sandbox/replica_channels.sql", undef, no_wait => 1);
 }
 

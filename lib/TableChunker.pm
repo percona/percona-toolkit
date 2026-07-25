@@ -593,7 +593,7 @@ sub _chunk_char {
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
       my $col_def = $args{tbl_struct}->{defs}->{$chunk_col};
-      $sql        = "CREATE TEMPORARY TABLE $tmp_db_tbl ($col_def) "
+      $sql        = "CREATE TABLE $tmp_db_tbl ($col_def) "
                   . "ENGINE=MEMORY DEFAULT CHARSET = utf8";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
