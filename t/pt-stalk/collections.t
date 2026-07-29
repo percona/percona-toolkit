@@ -23,7 +23,7 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('replica1');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox source';
+   plan skip_all => 'Cannot connect to sandbox replica1';
 }
 
 my $cnf      = '/tmp/12346/my.sandbox.cnf';
