@@ -7376,7 +7376,7 @@ sub new {
       PTDEBUG && _d('Past lower statement:', $past_lower_sql);
 
       my $explain_past_lower_sql
-         = "EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args{past_select}
             || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
          . " FROM "  . $self->{sql}->{from}
@@ -7393,7 +7393,7 @@ sub new {
       PTDEBUG && _d('Past upper statement:', $past_upper_sql);
 
       my $explain_past_upper_sql
-         = "EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args{past_select}
             || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
          . " FROM "  . $self->{sql}->{from}
@@ -9913,7 +9913,7 @@ sub _make_range_query {
    my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
    push @where, $q->quote($col) . " >= " . $condition;
 
-   my $sql = "EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT /*!40001 SQL_NO_CACHE */ * "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
            . "WHERE " . join(' AND ', @where)
            . " /*key_len*/";

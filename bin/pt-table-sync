@@ -4154,11 +4154,17 @@ sub _chunk_char {
       $sql = "DROP TABLE IF EXISTS $tmp_db_tbl";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
+
+      my $old_autocommit = $dbh->{AutoCommit};
+      if ( !$dbh->{AutoCommit} ) {
+         $dbh->{AutoCommit} = 1;
+      }
       my $col_def = $args{tbl_struct}->{defs}->{$chunk_col};
-      $sql        = "CREATE TABLE $tmp_db_tbl ($col_def) "
+      $sql        = "CREATE TEMPORARY TABLE $tmp_db_tbl ($col_def) "
                   . "ENGINE=MEMORY DEFAULT CHARSET = utf8";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
+      $dbh->{AutoCommit} = $old_autocommit;
 
       $sql = "INSERT INTO $tmp_db_tbl VALUES (CHAR(?))";
       PTDEBUG && _d($dbh, $sql);
@@ -4359,7 +4365,7 @@ sub get_range_statistics {
          . "on column $col: $EVAL_ERROR";
    }
 
-   my $sql = "EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT * FROM $db_tbl"
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM $db_tbl"
            . ($args{index_hint} ? " $args{index_hint}" : "")
            . ($where ? " WHERE $where" : '');
    PTDEBUG && _d($sql);
