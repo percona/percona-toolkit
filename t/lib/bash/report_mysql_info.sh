@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 48
+plan 51
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -681,23 +681,67 @@ EOF
 
 test_format_innodb
 
-test_format_innodb_redo_capacity () {
+# Drives section_innodb against one InnoDB redo log variable layout and compares
+# only the "Log File Size" line.
+#   $1 test name
+#   $2 expected value
+#   $3 extended regex of variables to drop from the temp001 sample, or ""
+#   $4.. "name\tvalue" lines to append
+# get_var prints every matching line, so anything appended here must also be
+# named in $3 - a duplicate would make it return two values.
+test_format_innodb_log_size () {
+   local test_name="$1"
+   local expected="$2"
+   local strip="$3"
+   shift 3
+
    local NAME_VAL_LEN=25
-   cp "$samples/temp001/mysql-variables" "$PT_TMPDIR/mysql-variables-redo-capacity"
-   printf 'innodb_redo_log_capacity\t104857600\n' >> "$PT_TMPDIR/mysql-variables-redo-capacity"
+   local vars="$PT_TMPDIR/mysql-variables-log-size"
+
+   if [ -n "$strip" ]; then
+      grep -vE "$strip" "$samples/temp001/mysql-variables" > "$vars"
+   else
+      cp "$samples/temp001/mysql-variables" "$vars"
+   fi
+   local line
+   for line in "$@"; do
+      printf '%b\n' "$line" >> "$vars"
+   done
 
    cat <<EOF > $PT_TMPDIR/expected
-            Log File Size | 100.0M
+            Log File Size | $expected
 EOF
 
-   section_innodb "$PT_TMPDIR/mysql-variables-redo-capacity" \
-      "$samples/temp001/mysql-status" \
+   section_innodb "$vars" "$samples/temp001/mysql-status" \
       | grep "Log File Size" > "$PT_TMPDIR/got"
-   no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" \
-      "Format InnoDB redo log capacity"
+   no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "$test_name"
 }
 
-test_format_innodb_redo_capacity
+# MySQL 8.0.30 through 8.4: the capacity and both legacy variables are present,
+# so this pins the precedence - the capacity is what the server actually honours.
+test_format_innodb_log_size \
+   "Format InnoDB redo log capacity" "100.0M" \
+   '^innodb_redo_log_capacity' \
+   'innodb_redo_log_capacity\t104857600'
+
+# MySQL 9.x: the legacy variables were removed, only the capacity remains. This
+# is the layout the MySQL 9.7 work is actually about.
+test_format_innodb_log_size \
+   "Format InnoDB redo log capacity without legacy variables" "100.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_redo_log_capacity\t104857600'
+
+# MariaDB 10.5+: innodb_log_files_in_group was dropped and the redo capacity
+# never existed, so innodb_log_file_size alone is the total.
+test_format_innodb_log_size \
+   "Format InnoDB log file size without a file count" "96.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_log_file_size\t100663296'
+
+# No redo size variable of any spelling: say so rather than print a malformed one.
+test_format_innodb_log_size \
+   "Format InnoDB log file size when unknown" "Unknown" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity'
 
 # ###########################################################################
 # format_innodb_filters
