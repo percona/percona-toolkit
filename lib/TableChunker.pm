@@ -911,7 +911,7 @@ sub get_range_statistics {
 
    # Finally get the total number of rows in range, usually the whole
    # table unless there's a where arg restricting the range.
-   my $sql = "EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT * FROM $db_tbl"
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM $db_tbl"
            . ($args{index_hint} ? " $args{index_hint}" : "")
            . ($where ? " WHERE $where" : '');
    PTDEBUG && _d($sql);
