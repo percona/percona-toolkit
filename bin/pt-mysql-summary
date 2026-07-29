@@ -2150,6 +2150,8 @@ section_innodb () {
          local log_total=$(awk "BEGIN {printf \"%.2f\n\", ${log_size}*${log_file}}" )
          name_val "Log File Size" \
                   "${log_file} * $(shorten ${log_size} 1) = $(shorten ${log_total} 1)"
+      elif [ -n "${log_size}" ]; then
+         name_val "Log File Size" "$(shorten ${log_size} 1)"
       else
          name_val "Log File Size" "Unknown"
       fi
