@@ -181,8 +181,6 @@ if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
 }
 like($r, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
 
-like($r, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
-
 $source_dbh->do('INSERT INTO test.t SELECT 2');
 $r = $source_dbh->selectrow_hashref("show ${source_status} status");
 $until_file = $r->{file};
