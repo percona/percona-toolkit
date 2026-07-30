@@ -1326,7 +1326,6 @@ sub explain_report {
              $sth = $dbh->prepare("EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $query");
              $sth->execute();
          }
-         $sth->execute();
          my $i = 1;
          while ( my @row = $sth->fetchrow_array() ) {
             $explain .= "# *************************** $i. "

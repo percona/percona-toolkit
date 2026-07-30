@@ -15,6 +15,12 @@ use Test::More;
 
 my $sample = "$trunk/t/pt-pmp/samples";
 
+# We need to perform this check, because uutils is default in Ubuntu 26
+my $sort_uutils = `sort --version | grep -q uutils`;
+if ( $? >> 8 == 0 ) {
+   plan skip_all => "Tests will fail due to https://github.com/uutils/coreutils/issues/13319"
+}
+
 opendir my $dh, $sample or die "Error opening $sample: $OS_ERROR";
 while ( my $file = readdir $dh ) {
    next unless -f "$sample/$file" && "$sample/$file" =~ m/\.in$/;

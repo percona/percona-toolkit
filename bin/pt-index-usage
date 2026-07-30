@@ -3272,7 +3272,7 @@ sub find_best_index {
 sub find_possible_keys {
    my ( $self, $dbh, $database, $table, $quoter, $where ) = @_;
    return () unless $where;
-   my $sql = 'EXPLAIN /*! FORMAT=TRADITIONAL */ SELECT * FROM ' . $quoter->quote($database, $table)
+   my $sql = 'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM ' . $quoter->quote($database, $table)
       . ' WHERE ' . $where;
    PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);

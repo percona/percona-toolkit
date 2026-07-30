@@ -76,7 +76,7 @@ is(
     "All rows were loaded into source 1",
 );
 
-my @args = ('--source', $source1_dsn.',D=test,t=t1', '--purge', '--where', sprintf('id >= %d', $num_rows / 2), "--check-replica-lag", $replica1_dsn);
+my @args = ('--source', $source1_dsn.',D=test,t=t1', '--purge', '--where', sprintf('id >= %d', $num_rows / 2), "--check-replica-lag", $replica1_dsn.',s=1');
 
 my ($exit_status, $output);
 
