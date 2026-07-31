@@ -26,7 +26,7 @@ my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ } glob("$trunk/bin/*"
 
 foreach my $tool ( @vc_tools ) {
    my $output = `$tool --version 2>/dev/null`;
-   my ($tool_version) = $output =~ /(\b[0-9]\.[0-9]\.[0-9](\-[0-9])?\b)/;
+   my ($tool_version) = $output =~ /(\b[0-9]\.[0-9]\.[0-9](\-[0-9]+)?\b)/;
    next unless $tool_version; # Some tools don't have --version implemented
    my $base = basename($tool);
    is(
