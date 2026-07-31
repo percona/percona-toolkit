@@ -593,18 +593,21 @@ sub _chunk_char {
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
 
-      # We need to enable autocommit here, so CREATE TEMPORARY TABLE
-      # does not fail when GTIDS are enabled
-      my $old_autocommit = $dbh->{AutoCommit};
-      if ( !$dbh->{AutoCommit} ) {
-         $dbh->{AutoCommit} = 1;
+      # We need to enable autocommit here only when GTID is enabled, so
+      # CREATE TEMPORARY TABLE does not fail inside a transaction.
+      my $old_autocommit   = $dbh->{AutoCommit};
+      my $need_autocommit  = 0;
+      if ( !$old_autocommit ) {
+         my $gtid_mode = eval { $dbh->selectrow_array('SELECT @@GLOBAL.gtid_mode') };
+         $need_autocommit = !$EVAL_ERROR && defined $gtid_mode && uc($gtid_mode) ne 'OFF';
       }
+      $dbh->{AutoCommit} = 1 if $need_autocommit;
       my $col_def = $args{tbl_struct}->{defs}->{$chunk_col};
       $sql        = "CREATE TEMPORARY TABLE $tmp_db_tbl ($col_def) "
                   . "ENGINE=MEMORY DEFAULT CHARSET = utf8";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
-      $dbh->{AutoCommit} = $old_autocommit;
+      $dbh->{AutoCommit} = $old_autocommit if $need_autocommit;
 
       # Populate the temp table with all the characters between the min and max
       # max character codes.  This is our character-to-number map.
