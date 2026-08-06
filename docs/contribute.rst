@@ -39,17 +39,6 @@ Documentation contributions of any size are welcome. You can help by:
 Documentation updates can be submitted as GitHub pull requests.
 
 Submit a pull request
-===========================
-
-Before submitting a pull request:
-
-* Keep each pull request focused on a single issue or feature.
-* Write clear and descriptive commit messages.
-* Add or update tests where appropriate.
-* Ensure existing tests pass.
-* Follow the project's coding style and conventions.
-
-Create a pull request
 -------------------------
 
 * Fork the `Percona Toolkit GitHub repository <https://github.com/percona/percona-toolkit>`_.
