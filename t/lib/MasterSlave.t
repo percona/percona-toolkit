@@ -847,7 +847,7 @@ like(
 
 SKIP: {
 
-   skip "Only test on mysql 5.7 or newer", if ( $sandbox_version lt '5.7' );
+   skip "Only test on mysql 5.7 or newer" if ( $sandbox_version lt '5.7' );
 
    my ($master1_dbh, $master1_dsn) = $sb->start_sandbox(
       server => 'chan_source1',
