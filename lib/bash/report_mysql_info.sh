@@ -1029,14 +1029,14 @@ section_innodb () {
 
    local log_size="$(get_var innodb_log_file_size "$variables_file")"
    local log_file="$(get_var innodb_log_files_in_group "$variables_file")"
-   if [ -n "$log_size" -a -n "$log_file" ]; then
+   if [ -n "$log_size" ] && [ -n "$log_file" ]; then
       local log_total=$(awk "BEGIN {printf \"%.2f\n\", ${log_size}*${log_file}}" )
       name_val "Log File Size"       \
                "${log_file} * $(shorten ${log_size} 1) = $(shorten ${log_total} 1)"
    else
       local log_total="$(get_var innodb_redo_log_capacity "$variables_file")"
       name_val "Redo Log Capacity"       \
-               "$(shorten $(get_var innodb_redo_log_capacity "$variables_file") 0)"
+               "$(shorten ${log_total} 0)"
    fi
    name_val "Log Buffer Size"     \
             "$(shorten $(get_var innodb_log_buffer_size "$variables_file") 0)"
