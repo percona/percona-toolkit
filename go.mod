@@ -1,6 +1,6 @@
 module github.com/percona/percona-toolkit
 
-go 1.25.8
+go 1.26.5
 
 require (
 	github.com/AlekSi/pointer v1.2.0
@@ -27,7 +27,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/xlab/treeprint v1.2.0
 	go.mongodb.org/mongo-driver v1.17.6
-	golang.org/x/crypto v0.53.0
+	golang.org/x/crypto v0.54.0
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 	gopkg.in/yaml.v2 v2.4.0
@@ -60,11 +60,11 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/term v0.44.0 // indirect
-	golang.org/x/text v0.38.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apimachinery v0.34.2 // indirect
