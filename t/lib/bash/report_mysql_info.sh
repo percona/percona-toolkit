@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 51
+plan 54
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -724,14 +724,15 @@ test_format_innodb_log_size \
    '^innodb_redo_log_capacity' \
    'innodb_redo_log_capacity\t104857600'
 
-# MySQL 9.x: the legacy variables were removed, only the capacity remains. This
-# is the layout the MySQL 9.7 work is actually about.
+# MySQL 9.3 and newer: the legacy variables were removed, only the capacity
+# remains. This is the layout the MySQL 9.7 work is actually about. 9.0, 9.1
+# and 9.2 still expose all three.
 test_format_innodb_log_size \
    "Format InnoDB redo log capacity without legacy variables" "100.0M" \
    '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
    'innodb_redo_log_capacity\t104857600'
 
-# MariaDB 10.5+: innodb_log_files_in_group was dropped and the redo capacity
+# MariaDB 10.6+: innodb_log_files_in_group was dropped and the redo capacity
 # never existed, so innodb_log_file_size alone is the total.
 test_format_innodb_log_size \
    "Format InnoDB log file size without a file count" "96.0M" \
@@ -742,6 +743,29 @@ test_format_innodb_log_size \
 test_format_innodb_log_size \
    "Format InnoDB log file size when unknown" "Unknown" \
    '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity'
+
+# MariaDB 10.5: the file count is still there with value 1 (deprecated and
+# ignored from 10.5.2, removed in 10.6.0), so this takes the legacy branch and
+# keeps the count * per-file = total form rather than the bare total above.
+test_format_innodb_log_size \
+   "Format InnoDB log file size with a file count of one" "1 * 96.0M = 96.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_log_file_size\t100663296' 'innodb_log_files_in_group\t1'
+
+# The capacity guard is [ "$redo_capacity" -gt 0 ] 2>/dev/null, which relies on
+# [ returning non-zero for a non-numeric operand with the error suppressed. Pin
+# both degradation paths so a shell-behaviour change cannot slip through: a zero
+# capacity and a non-numeric one must both fall through to the legacy variables
+# rather than being reported or turning into Unknown.
+test_format_innodb_log_size \
+   "Format InnoDB log file size when the capacity is zero" "2 * 48.0M = 96.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_log_file_size\t50331648' 'innodb_log_files_in_group\t2' 'innodb_redo_log_capacity\t0'
+
+test_format_innodb_log_size \
+   "Format InnoDB log file size when the capacity is not a number" "2 * 48.0M = 96.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_log_file_size\t50331648' 'innodb_log_files_in_group\t2' 'innodb_redo_log_capacity\tNULL'
 
 # ###########################################################################
 # format_innodb_filters

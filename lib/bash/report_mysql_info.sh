@@ -1040,9 +1040,11 @@ section_innodb () {
          name_val "Log File Size" \
                   "${log_file} * $(shorten ${log_size} 1) = $(shorten ${log_total} 1)"
       elif [ -n "${log_size}" ]; then
-         # MariaDB 10.5 dropped innodb_log_files_in_group and never had
+         # MariaDB 10.6 dropped innodb_log_files_in_group and never had
          # innodb_redo_log_capacity, leaving innodb_log_file_size as the total.
          # Report it rather than discarding a size the server does expose.
+         # 10.5 still reports the file count with value 1, so it takes the
+         # legacy branch above and renders 1 * 96.0M = 96.0M.
          name_val "Log File Size" "$(shorten ${log_size} 1)"
       else
          name_val "Log File Size" "Unknown"

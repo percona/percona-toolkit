@@ -3172,10 +3172,11 @@ that this output will change in the future to become more useful.
 The C<Log File Size> line above shows C<count * per-file = total>, which is how
 it is reported on servers exposing C<innodb_log_file_size> and
 C<innodb_log_files_in_group>. MySQL 8.0.30 replaced both with a single
-C<innodb_redo_log_capacity> and MySQL 9.0 removed them, so on those versions the
-line shows that capacity as a bare total instead. MariaDB 10.5 dropped
+C<innodb_redo_log_capacity> and MySQL 9.3 removed them, so on those versions the
+line shows that capacity as a bare total instead. MariaDB 10.6 dropped
 C<innodb_log_files_in_group> without adding a capacity variable, so there the
-line shows C<innodb_log_file_size> as a bare total. When none of these variables
+line shows C<innodb_log_file_size> as a bare total. MariaDB 10.5 still exposes
+the file count with value 1, so it keeps the C<count * per-file = total> form. When none of these variables
 is available the line reads C<Unknown>.
 
   # MyISAM #####################################################
