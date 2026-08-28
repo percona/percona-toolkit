@@ -16,7 +16,7 @@ require (
 	github.com/hashicorp/go-version v1.9.0
 	github.com/lib/pq v1.12.3
 	github.com/mattn/go-shellwords v1.0.14
-	github.com/montanaflynn/stats v0.9.0
+	github.com/montanaflynn/stats v0.12.4
 	github.com/pborman/getopt v1.1.0
 	github.com/percona/go-mysql v0.0.0-20251202083530-b3e1c16efc74
 	github.com/pkg/errors v0.9.1
