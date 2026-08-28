@@ -22,7 +22,9 @@ require "$trunk/bin/pt-table-sync";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $source_dbh = $sb->get_dbh_for('source');
-my $replica_dbh  = $sb->get_dbh_for('replica1');
+my $replica1_dbh = $sb->get_dbh_for('replica1');
+my $replica2_dbh = $sb->get_dbh_for('replica2');
+my $replica_dbh  = $replica1_dbh;
 
 my $mysqlbinlog = `which mysqlbinlog`;
 if ( $mysqlbinlog ) {
@@ -35,8 +37,11 @@ elsif ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
 if ( !$source_dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$replica_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox replica';
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica1';
+}
+elsif ( !$replica2_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica2';
 }
 elsif ( !$mysqlbinlog ) {
    plan skip_all => 'Cannot find mysqlbinlog';
@@ -44,6 +49,21 @@ elsif ( !$mysqlbinlog ) {
 else {
    plan tests => 2;
 }
+
+my ($orig_binlog_format_source) = $source_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica1) = $replica1_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica2) = $replica2_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+
+$source_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$source_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica1_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica2_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica2_dbh->do("START ${replica_name}");
 
 # We execute the test by changing a table so pt-table-sync will find something
 # to modify.  Then we examine the binary log to find the SQL in it, and check
@@ -74,6 +94,13 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
+$source_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_source}'");
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica1}'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica2}'");
+$replica2_dbh->do("START ${replica_name}");
 $sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

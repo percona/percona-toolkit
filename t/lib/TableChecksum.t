@@ -27,7 +27,7 @@ if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
 }
 else {
-   plan tests => 52;
+   plan tests => 57;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -592,44 +592,85 @@ like(
    'SHA99 does not exist so I get CRC32 or friends',
 );
 
+SKIP: {
+   skip 'There is no function MD5 in MySQL 9.7', 4 if $sandbox_version ge '9.7';
+   
+   is(
+      $c->choose_hash_func(
+         dbh      => $dbh,
+         function => 'MD5',
+      ),
+      'MD5',
+      'MD5 requested and MD5 granted',
+   );
+
+   is(
+      $c->optimize_xor(
+         dbh      => $dbh,
+         function => 'SHA1',
+      ),
+      '2',
+      'SHA1 slice is 2',
+   );
+
+   is(
+      $c->optimize_xor(
+         dbh      => $dbh,
+         function => 'MD5',
+      ),
+      '1',
+      'MD5 slice is 1',
+   );
+
+   my $want = $sandbox_version ge '8.0' ? [qw(varchar 128)] : [qw(varchar 96)];
+   is_deeply(
+      [$c->get_crc_type($dbh, 'MD5')],
+      $want,
+      'Type and length of MD5'
+   );
+}
+
 is(
    $c->choose_hash_func(
       dbh      => $dbh,
-      function => 'MD5',
+      function => 'SHA2',
    ),
-   'MD5',
-   'MD5 requested and MD5 granted',
+   'SHA2',
+   'SHA2 requested and SHA2 granted',
 );
 
 is(
    $c->optimize_xor(
       dbh      => $dbh,
-      function => 'SHA1',
+      function => 'SHA2',
    ),
-   '2',
-   'SHA1 slice is 2',
+   '3',
+   'SHA2 slice is 3',
 );
 
-is(
-   $c->optimize_xor(
-      dbh      => $dbh,
-      function => 'MD5',
-   ),
-   '1',
-   'MD5 slice is 1',
+my $want = [qw(varchar 256)];
+is_deeply(
+   [$c->get_crc_type($dbh, 'SHA2')],
+   $want,
+   'Type and length of SHA2'
+);
+
+is_deeply(
+   $c->get_crc_wid($dbh, 'SHA2'),
+   64,
+   'Width of SHA2 in characters'
+);
+
+is_deeply(
+   $c->get_crc_wid($dbh, 'CRC32'),
+   16,
+   'Width of CRC32 in characters'
 );
 
 is_deeply(
    [$c->get_crc_type($dbh, 'CRC32')],
    [qw(int 10)],
    'Type and length of CRC32'
-);
-
-my $want = $sandbox_version ge '8.0' ? [qw(varchar 128)] : [qw(varchar 96)];
-is_deeply(
-   [$c->get_crc_type($dbh, 'MD5')],
-   $want,
-   'Type and length of MD5'
 );
 
 # #############################################################################

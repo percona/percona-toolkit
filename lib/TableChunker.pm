@@ -55,6 +55,9 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+# Default length for SHA2 function
+my $sha2_length = 256;
+
 # Sub: new
 #
 # Parameters:
@@ -589,11 +592,22 @@ sub _chunk_char {
       $sql = "DROP TABLE IF EXISTS $tmp_db_tbl";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
+
+      # We need to enable autocommit here only when GTID is enabled, so
+      # CREATE TEMPORARY TABLE does not fail inside a transaction.
+      my $old_autocommit   = $dbh->{AutoCommit};
+      my $need_autocommit  = 0;
+      if ( !$old_autocommit ) {
+         my $gtid_mode = eval { $dbh->selectrow_array('SELECT @@GLOBAL.gtid_mode') };
+         $need_autocommit = !$EVAL_ERROR && defined $gtid_mode && uc($gtid_mode) ne 'OFF';
+      }
+      $dbh->{AutoCommit} = 1 if $need_autocommit;
       my $col_def = $args{tbl_struct}->{defs}->{$chunk_col};
       $sql        = "CREATE TEMPORARY TABLE $tmp_db_tbl ($col_def) "
                   . "ENGINE=MEMORY DEFAULT CHARSET = utf8";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
+      $dbh->{AutoCommit} = $old_autocommit if $need_autocommit;
 
       # Populate the temp table with all the characters between the min and max
       # max character codes.  This is our character-to-number map.
@@ -908,7 +922,7 @@ sub get_range_statistics {
 
    # Finally get the total number of rows in range, usually the whole
    # table unless there's a where arg restricting the range.
-   my $sql = "EXPLAIN SELECT * FROM $db_tbl"
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM $db_tbl"
            . ($args{index_hint} ? " $args{index_hint}" : "")
            . ($where ? " WHERE $where" : '');
    PTDEBUG && _d($sql);
@@ -1014,7 +1028,7 @@ sub value_to_number {
    elsif ( $col_type =~ m/^(?:timestamp|date|time)$/ ) {
       # These are temporal values.  Convert them using a MySQL func.
       my $func = $mysql_conv_func_for{$col_type};
-      my $sql = "SELECT $func(?)";
+      my $sql = "SELECT $func(?" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
       PTDEBUG && _d($dbh, $sql, $val);
       my $sth = $dbh->prepare($sql);
       $sth->execute($val);

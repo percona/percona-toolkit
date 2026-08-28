@@ -46,8 +46,14 @@ wait_until(
    }
 );
 
-my $r = $replica_dbh->selectrow_hashref("show ${replica_name} status");
-like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'It is busted');
+my $db_flavor = VersionParser->new($source_dbh)->flavor();
+my $r;
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $r = $replica_dbh->selectrow_hashref("select * from performance_schema.replication_applier_status_by_worker")->{last_error_message};
+} else {
+   $r = $replica_dbh->selectrow_hashref("show ${replica_name} status")->{last_error};
+}
+like($r, qr/Table 'test.t' doesn't exist'/, 'It is busted');
 
 # Start an instance
 diag(`$trunk/bin/pt-replica-restart --max-sleep 0.25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/pt-replica-restart.pid --log /tmp/pt-replica-restart.log`);
@@ -80,72 +86,77 @@ like($output, qr{Successfully created file /tmp/pt-replica-restartup}, '--error-
 
 diag(`rm -f /tmp/pt-replica-re*`);
 
-# #############################################################################
-# Issue 459: mk-slave-restart --error-text is broken
-# #############################################################################
-# Bust replication again.  At this point, the source has test.t but
-# the replica does not.
-$source_dbh->do('DROP TABLE IF EXISTS test.t');
-$source_dbh->do('CREATE TABLE test.t (a INT)');
-sleep 1;
-$replica_dbh->do('DROP TABLE test.t');
-$source_dbh->do('INSERT INTO test.t SELECT 1');
-$output = `/tmp/12346/use -e "show ${replica_name} status"`;
-like(
-   $output,
-   qr/Table 'test.t' doesn't exist'/,
-   'It is busted again'
-);
+SKIP: {
+   skip "No meaningful error message in SHOW REPLICA STATUS in 9.7 even with single-threaded replica"
+   . "Re-enable after https://perconadev.atlassian.net/browse/PT-2553" if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ );
 
-# Start an instance
-$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --error-text "doesn't exist" --run-time 1s 2>&1`;
-unlike(
-   $output,
-   qr/Error does not match/,
-   '--error-text works (issue 459)'
-);
+   # #############################################################################
+   # Issue 459: mk-slave-restart --error-text is broken
+   # #############################################################################
+   # Bust replication again.  At this point, the source has test.t but
+   # the replica does not.
+   $source_dbh->do('DROP TABLE IF EXISTS test.t');
+   $source_dbh->do('CREATE TABLE test.t (a INT)');
+   sleep 1;
+   $replica_dbh->do('DROP TABLE test.t');
+   $source_dbh->do('INSERT INTO test.t SELECT 1');
+   $output = `/tmp/12346/use -e "show ${replica_name} status"`;
 
-$replica_dbh->do('CREATE TABLE test.t (a INT)');
-$replica_dbh->do("start ${replica_name}");
-$sb->wait_for_replicas;
+   like(
+      $output,
+      qr/Table 'test.t' doesn't exist'/,
+      'It is busted again'
+   );
 
-# #############################################################################
-# Testing --recurse option
-# #############################################################################
-# Bust replication again.
-$source_dbh->do('DROP TABLE IF EXISTS test.t');
-$source_dbh->do('CREATE TABLE test.t (a INT)');
-sleep 1;
-$replica_dbh->do('DROP TABLE test.t');
-$source_dbh->do('INSERT INTO test.t SELECT 1');
-$output = `/tmp/12346/use -e "show ${replica_name} status"`;
-like(
-   $output,
-   qr/Table 'test.t' doesn't exist'/,
-   'It is busted again'
-);
+   # Start an instance
+   $output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --error-text "doesn't exist" --run-time 1s 2>&1`;
+   unlike(
+      $output,
+      qr/Error does not match/,
+      '--error-text works (issue 459)'
+   ) or diag($output);
 
-# Start an instance
-$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 -h 127.0.0.1 -P 12345 -u msandbox -p msandbox --error-text "doesn't exist" --run-time 1s --recurse 1 2>&1`;
+   $replica_dbh->do('CREATE TABLE test.t (a INT)');
+   $replica_dbh->do("start ${replica_name}");
+   $sb->wait_for_replicas;
 
-like(
-   $output,
-   qr/P=12346/,
-   'Replica discovered'
-);
+   # #############################################################################
+   # Testing --recurse option
+   # #############################################################################
+   # Bust replication again.
+   $source_dbh->do('DROP TABLE IF EXISTS test.t');
+   $source_dbh->do('CREATE TABLE test.t (a INT)');
+   sleep 1;
+   $replica_dbh->do('DROP TABLE test.t');
+   $source_dbh->do('INSERT INTO test.t SELECT 1');
+   $output = `/tmp/12346/use -e "show ${replica_name} status"`;
+   like(
+      $output,
+      qr/Table 'test.t' doesn't exist'/,
+      'It is busted again'
+   );
 
-$replica_dbh->do('CREATE TABLE test.t (a INT)');
-$replica_dbh->do("start ${replica_name}");
-$sb->wait_for_replicas;
+   # Start an instance
+   $output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 -h 127.0.0.1 -P 12345 -u msandbox -p msandbox --error-text "doesn't exist" --run-time 1s --recurse 1 2>&1`;
 
+   like(
+      $output,
+      qr/P=12346/,
+      'Replica discovered'
+   );
+
+   $replica_dbh->do('CREATE TABLE test.t (a INT)');
+   $replica_dbh->do("start ${replica_name}");
+   $sb->wait_for_replicas;
+}
 # #############################################################################
 # Testing --recurse option with --replica-user/--replica-password
 # #############################################################################
 # Create a new user that is going to be replicated on replicas.
 if ($sandbox_version eq '8.0') {
-    $sb->do_as_root("replica1", q/CREATE USER 'replica_user'@'localhost' IDENTIFIED WITH mysql_native_password BY 'replica_password'/);
+   $sb->do_as_root("replica1", q/CREATE USER 'replica_user'@'localhost' IDENTIFIED WITH mysql_native_password BY 'replica_password'/);
 } else {
-    $sb->do_as_root("replica1", q/CREATE USER 'replica_user'@'localhost' IDENTIFIED BY 'replica_password'/);
+   $sb->do_as_root("replica1", q/CREATE USER 'replica_user'@'localhost' IDENTIFIED BY 'replica_password'/);
 }
 $sb->do_as_root("replica1", q/GRANT REPLICATION CLIENT ON *.* TO 'replica_user'@'localhost'/);
 $sb->do_as_root("replica1", q/GRANT REPLICATION SLAVE ON *.* TO 'replica_user'@'localhost'/);
@@ -159,7 +170,11 @@ $source_dbh->do('CREATE TABLE test.t (a INT)');
 sleep 1;
 $replica_dbh->do('DROP TABLE test.t');
 $source_dbh->do('INSERT INTO test.t SELECT 1');
-$output = `/tmp/12346/use -e "show ${replica_name} status"`;
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $output = `/tmp/12346/use -e "select * from performance_schema.replication_applier_status_by_worker"`;
+} else {
+   $output = `/tmp/12346/use -e "show ${replica_name} status"`;
+}
 like(
    $output,
    qr/Table 'test.t' doesn't exist'/,
@@ -174,7 +189,7 @@ $sb->do_as_root("replica1", q/FLUSH PRIVILEGES/);
 $sb->do_as_root("replica1", q/FLUSH TABLES/);
 
 # Start an instance
-$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 -h 127.0.0.1 -P 12345 -u msandbox -p msandbox --error-text "doesn't exist" --run-time 1s --recurse 1 --replica-user replica_user --replica-password replica_password 2>&1`;
+$output = `$trunk/bin/pt-replica-restart --max-sleep 0.25 -h 127.0.0.1 -P 12345 -u msandbox -p msandbox --error-number 1062 --run-time 1s --recurse 1 --replica-user replica_user --replica-password replica_password 2>&1`;
 
 like(
    $output,
@@ -206,7 +221,6 @@ $sb->do_as_root("source", q/FLUSH TABLES/);
 $replica_dbh->do('CREATE TABLE test.t (a INT)');
 $replica_dbh->do("start ${replica_name}");
 $sb->wait_for_replicas;
-
 # ###########################################################################
 # Issue 391: Add --pid option to all scripts
 # ###########################################################################
