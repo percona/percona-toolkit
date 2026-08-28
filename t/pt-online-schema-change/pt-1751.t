@@ -436,6 +436,228 @@ is(
    'Exit code 1 with --where and child tables'
 );
 
+
+# #############################################################################
+# Option --where and foreign keys different ids
+# #############################################################################
+
+$sb->load_file('master', "$sample/basic_with_fks_diff_ids.sql");
+
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=city",
+      '--alter', 'drop column last_update', '--where', 'city_id >= 3', '--execute',
+      '--alter-foreign-keys-method', 'rebuild_constraints', '--force') }
+);
+
+like(
+   $output,
+   qr/Successfully altered/i,
+   'Option --where runs with --force and --alter-foreign-keys-method=rebuild_constraints'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.city"`;
+is(
+   $output + 0,
+   3,
+   'Only 3 rows copied'
+);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.city where city_id < 3"`;
+is(
+   $output + 0,
+   0,
+   'Rows, satisfying --where condition are not copied'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.country"`;
+is(
+   $output + 0,
+   5,
+   'Table country not corrupted'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.address"`;
+is(
+   $output + 0,
+   5,
+   'Table address not modified'
+) or diag($output);
+
+$sb->load_file('master', "$sample/basic_with_fks.sql");
+
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=city",
+      '--alter', 'drop column last_update', '--where', 'city_id >= 3', '--execute',
+      '--alter-foreign-keys-method', 'auto', '--force') }
+);
+
+like(
+   $output,
+   qr/Successfully altered/i,
+   'Option --where runs with --force and --alter-foreign-keys-method=auto'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.city"`;
+is(
+   $output + 0,
+   3,
+   'Only 3 rows copied'
+);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.city where city_id < 3"`;
+is(
+   $output + 0,
+   0,
+   'Rows, satisfying --where condition are not copied'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.country"`;
+is(
+   $output + 0,
+   5,
+   'Table country not corrupted'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.address"`;
+is(
+   $output + 0,
+   5,
+   'Table address not modified'
+) or diag($output);
+
+$sb->load_file('master', "$sample/basic_with_fks_diff_ids.sql");
+
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=city",
+      '--alter', 'drop column last_update', '--where', 'city_id >= 3', '--execute',
+      '--alter-foreign-keys-method', 'drop_swap', '--force') }
+);
+
+like(
+   $output,
+   qr/Successfully altered/i,
+   'Option --where runs with --force and --alter-foreign-keys-method=drop_swap'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.city"`;
+is(
+   $output + 0,
+   3,
+   'Only 3 rows copied'
+);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.city where city_id < 3"`;
+is(
+   $output + 0,
+   0,
+   'Rows, satisfying --where condition are not copied'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.country"`;
+is(
+   $output + 0,
+   5,
+   'Table country not corrupted'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.address"`;
+is(
+   $output + 0,
+   5,
+   'Table address not modified'
+) or diag($output);
+
+$sb->load_file('master', "$sample/basic_with_fks.sql");
+
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=city",
+      '--alter', 'drop column last_update', '--where', 'city_id >= 3', '--execute',
+      '--alter-foreign-keys-method', 'none', '--force') }
+);
+
+like(
+   $output,
+   qr/Successfully altered/i,
+   'Option --where runs with --force and --alter-foreign-keys-method=none'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.city"`;
+is(
+   $output + 0,
+   3,
+   'Only 3 rows copied'
+);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.city where city_id < 3"`;
+is(
+   $output + 0,
+   0,
+   'Rows, satisfying --where condition are not copied'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.country"`;
+is(
+   $output + 0,
+   5,
+   'Table country not corrupted'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.address"`;
+is(
+   $output + 0,
+   5,
+   'Table address not modified'
+) or diag($output);
+
+$sb->load_file('master', "$sample/basic_with_fks_diff_ids.sql");
+
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=city",
+      '--alter', 'drop column last_update', '--where', 'city_id >= 3', '--execute',
+      '--alter-foreign-keys-method', 'rebuild_constraints', 
+      '--no-drop-new-table', '--no-swap-tables') }
+);
+
+like(
+   $output,
+   qr/Child tables found and option --where specified. Rebuilding foreign key constraints may lead to errors./i,
+   'Option --where does not run without --force and --alter-foreign-keys-method=rebuild_constraints when child tables are found'
+) or diag($output);
+
+is(
+   $exit,
+   1,
+   'Exit code 1 with --where and child tables'
+);
+
+$output = `/tmp/12345/use -N -e "select count(*) from pt_osc.address"`;
+is(
+   $output + 0,
+   5,
+   'Table address not modified'
+) or diag($output);
+
+$sb->load_file('master', "$sample/basic_with_fks_diff_ids.sql");
+
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=city",
+      '--alter', 'drop column last_update', '--where', 'city_id >= 3', '--execute',
+      '--alter-foreign-keys-method', 'auto',
+      '--no-drop-new-table', '--no-swap-tables') }
+);
+
+like(
+   $output,
+   qr/Child tables found and option --where specified. Rebuilding foreign key constraints may lead to errors./i,
+   'Option --where does not run without --force and --alter-foreign-keys-method=auto when child tables are found'
+) or diag($output);
+
+is(
+   $exit,
+   1,
+   'Exit code 1 with --where and child tables'
+);
+
 # #############################################################################
 # Done.
 # #############################################################################

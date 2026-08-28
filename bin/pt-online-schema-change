@@ -9551,7 +9551,6 @@ sub main {
          Cxn    => $cxn,
          Quoter => $q,
          only_same_schema_fks => $o->get('only-same-schema-fks'),
-         where  => $o->get('where'),
       );
       if ( !$child_tables ) {
          if ( $alter_fk_method ) {
@@ -10651,7 +10650,6 @@ sub main {
          max_rows     => $max_rows,
          Cxn          => $cxn,
          OptionParser => $o,
-         where        => $o->get('where'),
       );
 
       if ( $alter_fk_method eq 'drop_swap' ) {
