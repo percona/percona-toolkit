@@ -26,13 +26,28 @@ func (d *Dumper) addPg1() error {
 
 func (d *Dumper) addPg2() error {
 	dirpaths := map[string][]string{
-		"pg_log": {"$PGDATA/log"},
+		"pg_log":         {"$PGDATA/log"},
+		"pgbackrest_log": {"pgdata/pgbackrest/log"},
+	}
+
+	tools := map[string][]toolLog{
+		"": {
+			{
+				filename: "patronictl-list.log",
+				args:     []string{"patronictl", "list"},
+			},
+			{
+				filename: "pgbackrest-info.log",
+				args:     []string{"pgbackrest", "info"},
+			},
+		},
 	}
 
 	d.individualFiles = append(d.individualFiles, individualFile{
 		resourceName:  "pgv2",
 		containerName: "database",
 		dirpaths:      dirpaths,
+		toolCmds:      tools,
 	})
 	return nil
 }
