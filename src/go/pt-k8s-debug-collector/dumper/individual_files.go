@@ -36,6 +36,17 @@ func replaceEnvVars(input string, envMap map[string]string) string {
 	return result
 }
 
+func selectContainer(pod corev1.Pod, candidates []string) (string, bool) {
+	for _, candidate := range candidates {
+		for _, c := range pod.Spec.Containers {
+			if c.Name == candidate {
+				return candidate, true
+			}
+		}
+	}
+	return "", false
+}
+
 func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType string) {
 	normalizedCRType := resourceType(crType)
 
@@ -44,17 +55,23 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 			continue
 		}
 
+		container, ok := selectContainer(job.Pod, indf.containerNames)
+		if !ok {
+			log.Warnf("None of the containers %v were found in pod %s/%s, skipping", indf.containerNames, job.Pod.Namespace, job.Pod.Name)
+			continue
+		}
+
 		// Parse environment variables once for this container
-		envMap, err := d.getContainerEnvMap(job.Pod, indf.containerName)
+		envMap, err := d.getContainerEnvMap(job.Pod, container)
 		if err != nil {
-			log.Warnf("Failed to get env for container %q: %v", indf.containerName, err)
+			log.Warnf("Failed to get env for container %q: %v", container, err)
 			continue
 		}
 
 		// Process individual files
 		for _, indPath := range indf.filepaths {
 			resolvedPath := replaceEnvVars(indPath, envMap)
-			if err := d.processSingleFile(ctx, job, indf.containerName, "", resolvedPath); err != nil {
+			if err := d.processSingleFile(ctx, job, container, "", resolvedPath); err != nil {
 				log.Warnf("Failed to process file %q: %v", resolvedPath, err)
 			}
 		}
@@ -63,7 +80,7 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 		for tarFolder, dirPaths := range indf.dirpaths {
 			for _, dirPath := range dirPaths {
 				resolvedPath := replaceEnvVars(dirPath, envMap)
-				if err := d.processDir(ctx, job, indf.containerName, tarFolder, resolvedPath); err != nil {
+				if err := d.processDir(ctx, job, container, tarFolder, resolvedPath); err != nil {
 					log.Warnf("Skipping directory %q: %v", resolvedPath, err)
 				}
 			}
@@ -71,7 +88,7 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 
 		for tarFolder, cmds := range indf.toolCmds {
 			for _, cmd := range cmds {
-				if err := d.processToolOutput(ctx, job, indf.containerName, tarFolder, cmd); err != nil {
+				if err := d.processToolOutput(ctx, job, container, tarFolder, cmd); err != nil {
 					log.Warnf("Skipping tool cmd %v: %v", cmd.args, err)
 				}
 			}
