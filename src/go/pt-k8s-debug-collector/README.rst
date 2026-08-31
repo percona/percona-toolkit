@@ -117,6 +117,22 @@ Summary, collected for PostgreSQL (available in file summary.txt)
 
    "pg_gather"
 
+Individual files, collected for PostgreSQL (PostgreSQL Operator v2)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   "$PGDATA/log"
+   "pgdata/pgbackrest/log"
+
+Command outputs, collected for PostgreSQL (PostgreSQL Operator v2)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   "patronictl list"
+   "pgbackrest info"
+
 Usage
 =====
 

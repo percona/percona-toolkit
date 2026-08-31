@@ -20,17 +20,32 @@ require VersionParser;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
+my $db_flavor = VersionParser->new($dbh)->flavor();
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
 }
 
-$sb->create_dbs($dbh, [qw(test)]);
-
 my $output;
 my $cnf  = '/tmp/12345/my.sandbox.cnf';
 my $cmd  = "$trunk/bin/pt-fk-error-logger -F $cnf ";
 my @args = qw(--iterations 1);
+
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   # We need innodb_native_foreign_keys=1 to have foreign key errors in the SHOW ENGINE INNODB STATUS
+   my $cnf = '/tmp/12345/my.sandbox.cnf';
+   diag(`cp $cnf $cnf.bak`);
+   diag(`echo "[mysqld]" > /tmp/12345/my.sandbox.2.cnf`);
+   diag(`echo "innodb_native_foreign_keys=1" >> /tmp/12345/my.sandbox.2.cnf`);
+   diag(`echo "!include /tmp/12345/my.sandbox.2.cnf" >> $cnf`);
+   diag(`/tmp/12345/stop >/dev/null`);
+   sleep 1;
+   diag(`/tmp/12345/start >/dev/null`);
+   $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+   $dbh = $sb->get_dbh_for('source');
+}
+
+$sb->create_dbs($dbh, [qw(test)]);
 
 $sb->load_file('source', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
 
@@ -203,6 +218,14 @@ unlink $pid_file;
 # #############################################################################
 # Done.
 # #############################################################################
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   diag(`mv $cnf.bak $cnf`);
+
+   diag(`/tmp/12345/stop >/dev/null`);
+   diag(`/tmp/12345/start >/dev/null`);
+   $dbh = $sb->get_dbh_for('source');
+}
+
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

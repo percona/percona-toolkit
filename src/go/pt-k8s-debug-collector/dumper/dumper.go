@@ -65,12 +65,18 @@ type Dumper struct {
 	restConfig      *rest.Config
 }
 
+type toolLog struct {
+	filename string
+	args     []string
+}
+
 // individualFile struct is used to dump the necessary files from the containers
 type individualFile struct {
 	resourceName   string
 	containerNames []string
 	filepaths      []string
 	dirpaths       map[string][]string // map[tarFolder][]dirPaths
+	toolCmds       map[string][]toolLog
 }
 
 // resourceMap struct is used to dump the resources from namespace scope or cluster scope

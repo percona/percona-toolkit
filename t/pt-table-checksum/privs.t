@@ -36,6 +36,9 @@ if ( !$source_dbh ) {
 elsif ( !$replica1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox replica1';
 }
+elsif ( !$replica2_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica2';
+}
 elsif ( !@{$source_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
 }
@@ -48,6 +51,21 @@ my $row;
 my $output;
 my $exit_status;
 my $sample  = "t/pt-table-checksum/samples/";
+
+my ($orig_binlog_format_source) = $source_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica1) = $replica1_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica2) = $replica2_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+
+$source_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$source_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica1_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica2_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica2_dbh->do("START ${replica_name}");
 
 # ############################################################################
 # Should always create schema and tables with IF NOT EXISTS
@@ -241,6 +259,13 @@ wait_until(
 # #############################################################################
 # Done.
 # #############################################################################
+$source_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_source}'");
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica1}'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica2}'");
+$replica2_dbh->do("START ${replica_name}");
 $sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

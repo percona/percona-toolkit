@@ -85,7 +85,30 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 				}
 			}
 		}
+
+		for tarFolder, cmds := range indf.toolCmds {
+			for _, cmd := range cmds {
+				if err := d.processToolOutput(ctx, job, container, tarFolder, cmd); err != nil {
+					log.Warnf("Skipping tool cmd %v: %v", cmd.args, err)
+				}
+			}
+		}
 	}
+}
+
+func (d *Dumper) processToolOutput(
+	ctx context.Context,
+	job exportJob,
+	container, tarFolder string, cmd toolLog,
+) error {
+	out, stderr, err := d.executeInPod(ctx, cmd.args, job.Pod, container, nil)
+	if err != nil {
+		return fmt.Errorf("exec %v: %w (stderr: %s)", cmd.args, err, stderr.String())
+	}
+
+	dst := d.PodIndividualFilesPath(job.Pod.Namespace, job.Pod.Name, path.Join(tarFolder, cmd.filename))
+
+	return d.archive.WriteVirtualFile(dst, out.Bytes())
 }
 
 func (d *Dumper) processSingleFile(

@@ -21,7 +21,7 @@ MAKE_GOTOOLS
 
 WriteMakefile(
     NAME      => 'Percona::Toolkit',
-    VERSION   => '3.7.1-3',
+    VERSION   => '3.7.1-4',
     EXE_FILES => [ <bin/*> ],
     MAN1PODS  => {
       'docs/percona-toolkit.pod' => 'blib/man1/percona-toolkit.1p',

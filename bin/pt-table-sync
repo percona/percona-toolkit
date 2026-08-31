@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.1';
+our $VERSION = '3.7.1-4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3000,7 +3000,7 @@ sub find_best_index {
 sub find_possible_keys {
    my ( $self, $dbh, $database, $table, $quoter, $where ) = @_;
    return () unless $where;
-   my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
+   my $sql = 'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM ' . $quoter->quote($database, $table)
       . ' WHERE ' . $where;
    PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);
@@ -3820,6 +3820,8 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+my $sha2_length = 256;
+
 sub new {
    my ( $class, %args ) = @_;
    foreach my $arg ( qw(Quoter TableParser) ) {
@@ -4152,11 +4154,20 @@ sub _chunk_char {
       $sql = "DROP TABLE IF EXISTS $tmp_db_tbl";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
+
+      my $old_autocommit   = $dbh->{AutoCommit};
+      my $need_autocommit  = 0;
+      if ( !$old_autocommit ) {
+         my $gtid_mode = eval { $dbh->selectrow_array('SELECT @@GLOBAL.gtid_mode') };
+         $need_autocommit = !$EVAL_ERROR && defined $gtid_mode && uc($gtid_mode) ne 'OFF';
+      }
+      $dbh->{AutoCommit} = 1 if $need_autocommit;
       my $col_def = $args{tbl_struct}->{defs}->{$chunk_col};
       $sql        = "CREATE TEMPORARY TABLE $tmp_db_tbl ($col_def) "
                   . "ENGINE=MEMORY DEFAULT CHARSET = utf8";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
+      $dbh->{AutoCommit} = $old_autocommit if $need_autocommit;
 
       $sql = "INSERT INTO $tmp_db_tbl VALUES (CHAR(?))";
       PTDEBUG && _d($dbh, $sql);
@@ -4357,7 +4368,7 @@ sub get_range_statistics {
          . "on column $col: $EVAL_ERROR";
    }
 
-   my $sql = "EXPLAIN SELECT * FROM $db_tbl"
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM $db_tbl"
            . ($args{index_hint} ? " $args{index_hint}" : "")
            . ($where ? " WHERE $where" : '');
    PTDEBUG && _d($sql);
@@ -4426,7 +4437,7 @@ sub value_to_number {
    }
    elsif ( $col_type =~ m/^(?:timestamp|date|time)$/ ) {
       my $func = $mysql_conv_func_for{$col_type};
-      my $sql = "SELECT $func(?)";
+      my $sql = "SELECT $func(?" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
       PTDEBUG && _d($dbh, $sql, $val);
       my $sth = $dbh->prepare($sql);
       $sth->execute($val);
@@ -4757,6 +4768,8 @@ our %ALGOS = (
    ACCUM    => { pref => 3, hash => 1 },
 );
 
+my $sha2_length = 256;
+
 sub new {
    my ( $class, %args ) = @_;
    foreach my $arg ( qw(Quoter) ) {
@@ -4785,7 +4798,7 @@ sub get_crc_wid {
    my $crc_wid = 16;
    if ( uc $func ne 'FNV_64' && uc $func ne 'FNV1A_64' ) {
       eval {
-         my ($val) = $dbh->selectrow_array("SELECT $func('a')");
+         my ($val) = $dbh->selectrow_array("SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"));
          $crc_wid = max(16, length($val));
       };
    }
@@ -4796,7 +4809,7 @@ sub get_crc_type {
    my ( $self, $dbh, $func ) = @_;
    my $type   = '';
    my $length = 0;
-   my $sql    = "SELECT $func('a')";
+   my $sql    = "SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
    my $sth    = $dbh->prepare($sql);
    eval {
       $sth->execute();
@@ -4852,16 +4865,17 @@ sub is_hash_algorithm {
 
 sub choose_hash_func {
    my ( $self, %args ) = @_;
-   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1);
+   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1 SHA2);
    if ( $args{function} ) {
       unshift @funcs, $args{function};
    }
    my ($result, $error);
    do {
       my $func;
+      my $sql;
       eval {
          $func = shift(@funcs);
-         my $sql = "SELECT $func('test-string')";
+         $sql = "SELECT $func('test-string'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")" );
          PTDEBUG && _d($sql);
          $args{dbh}->do($sql);
          $result = $func;
@@ -4885,7 +4899,7 @@ sub optimize_xor {
       if $func =~ m/^(?:FNV1A_64|FNV_64|CRC32)$/i;
 
    my $opt_slice = 0;
-   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a')")->[0]->[0];
+   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"))->[0]->[0];
    my $sliced    = '';
    my $start     = 1;
    my $crc_wid   = length($unsliced) < 16 ? 16 : length($unsliced);
@@ -4894,7 +4908,7 @@ sub optimize_xor {
       PTDEBUG && _d('Trying slice', $opt_slice);
       $dbh->do(q{SET @crc := '', @cnt := 0});
       my $slices = $self->make_xor_slices(
-         query     => "\@crc := $func('a')",
+         query     => "\@crc := $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"),
          crc_wid   => $crc_wid,
          opt_slice => $opt_slice,
       );
@@ -5017,8 +5031,8 @@ sub make_row_checksum {
       }
 
       $query .= @cols > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @cols) . '))'
-              : "$func($cols[0])";
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @cols) . ")" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")")
+              : "$func($cols[0]" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
    }
    else {
       my $fnv_func = uc $func;
@@ -5684,7 +5698,7 @@ sub __get_explain_index {
    return unless $sql;
    my $explain;
    eval {
-      $explain = $self->{dbh}->selectall_arrayref("EXPLAIN $sql",{Slice => {}});
+      $explain = $self->{dbh}->selectall_arrayref("EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $sql",{Slice => {}});
    };
    if ( $EVAL_ERROR ) {
       PTDEBUG && _d($EVAL_ERROR);
@@ -7575,6 +7589,9 @@ sub get_cxn_from_dsn_table {
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
    my @cxn;
+   my $o = $self->{OptionParser};
+   my $my_dsn;
+   my $lcxn;
    use Data::Dumper;
    DSN:
    do {
@@ -7583,21 +7600,33 @@ sub get_cxn_from_dsn_table {
       if ( $dsn_strings ) {
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-            if ($args{wait_no_die}) {
-               my $lcxn;
-               eval {
-                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
-               };
-               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
-                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+
+            my $raw_dsn      = $dp->parse($dsn_string);
+            my $dsn_defaults = $dp->parse_options($o);
+            $my_dsn = $dp->parse($dsn_string, undef, $dsn_defaults);
+
+            if ( $o->got('replica-user') && !defined $raw_dsn->{u} ) {
+               PTDEBUG && _d('DSN - username set from --replica-user');
+               $my_dsn->{u} = $o->get('replica-user');
+            }
+            if ( $o->got('replica-password') && !defined $raw_dsn->{p} ) {
+               PTDEBUG && _d('DSN - password set from --replica-password');
+               $my_dsn->{p} = $o->get('replica-password');
+            }
+
+            eval {
+               $lcxn = $make_cxn->(dsn => $my_dsn, parent => $parent);
+            };
+            if ( $EVAL_ERROR ) {
+               if ( $args{wait_no_die} && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/) ) {
                   PTDEBUG && _d("Server is not accessible, waiting when it is online again");
                   sleep(1);
                   goto DSN;
                }
-               push @cxn, $lcxn;
-            } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
+               die $EVAL_ERROR;
             }
+            push @cxn, $lcxn;
          }
       }
       $done = 1;
@@ -13483,6 +13512,6 @@ along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 
-pt-table-sync 3.7.1
+pt-table-sync 3.7.1-4
 
 =cut

@@ -18,7 +18,9 @@ require "$trunk/bin/pt-table-sync";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $source_dbh = $sb->get_dbh_for('source');
-my $replica_dbh  = $sb->get_dbh_for('replica1');
+my $replica1_dbh = $sb->get_dbh_for('replica1');
+my $replica2_dbh = $sb->get_dbh_for('replica2');
+my $replica_dbh  = $replica1_dbh;
 
 my ($output, $exit_code);
 my @args = (qw(--sync-to-source -t sakila.actor -v -v --print --chunk-size 100));
@@ -35,8 +37,11 @@ if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encrypti
 elsif ( !$source_dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
 }
-elsif ( !$replica_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox replica';
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica1';
+}
+elsif ( !$replica2_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica2';
 }
 elsif ( $sandbox_version lt '8.0' ) {
    plan skip_all => "Requires MySQL 8.0 or newer";
@@ -44,6 +49,21 @@ elsif ( $sandbox_version lt '8.0' ) {
 else {
    plan tests => 19;
 }
+
+my ($orig_binlog_format_source) = $source_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica1) = $replica1_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica2) = $replica2_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+
+$source_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$source_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica1_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica2_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica2_dbh->do("START ${replica_name}");
 
 $sb->do_as_root(
    'source',
@@ -228,6 +248,14 @@ like(
 # Done.
 # #############################################################################
 $sb->do_as_root('source', q/DROP USER 'sha256_user'@'%'/);
+
+$source_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_source}'");
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica1}'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica2}'");
+$replica2_dbh->do("START ${replica_name}");
 
 $sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");

@@ -45,7 +45,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.1';
+our $VERSION = '3.7.1-4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3272,7 +3272,7 @@ sub find_best_index {
 sub find_possible_keys {
    my ( $self, $dbh, $database, $table, $quoter, $where ) = @_;
    return () unless $where;
-   my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
+   my $sql = 'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM ' . $quoter->quote($database, $table)
       . ' WHERE ' . $where;
    PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);
@@ -4663,7 +4663,7 @@ sub explain_query {
          (length $query <= 100 ? $query : substr($query, 0, 100) . "..."));
       return;
    }
-   my $sql = "EXPLAIN $query";
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $query";
    PTDEBUG && _d($dbh, $sql);
    my $explain = $dbh->selectall_arrayref($sql, { Slice => {} });
    PTDEBUG && _d("Result of EXPLAIN:", Dumper($explain));
@@ -7787,6 +7787,6 @@ along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 
-pt-index-usage 3.7.1
+pt-index-usage 3.7.1-4
 
 =cut
