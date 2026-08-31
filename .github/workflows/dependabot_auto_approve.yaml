@@ -3,7 +3,9 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 name: Dependabot auto-approve
-on: pull_request
+on:
+  pull_request:
+    branches: [ "3.x" ]
 
 permissions:
   pull-requests: write
