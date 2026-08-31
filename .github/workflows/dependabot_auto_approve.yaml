@@ -15,9 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'percona/percona-toolkit'
     steps:
-      - name: Approve a PR
-        run: gh pr review --approve "$PR_URL"
+      - name: Approve PR (if not already approved)
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          existing=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '[.[] | select(.user.login=="github-actions[bot]" and .state=="APPROVED")] | length')
+          if [ "$existing" -eq 0 ]; then
+            gh pr review --repo "$REPO" --approve "$PR_NUMBER"
+          else
+            echo "Already approved by github-actions[bot]; skipping."
+          fi
 
