@@ -4,7 +4,7 @@
 # documentation.
 name: Dependabot auto-approve
 on:
-  pull_request:
+  pull_request_target:
     branches: [ "3.x" ]
 
 permissions:
