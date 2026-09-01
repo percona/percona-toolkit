@@ -511,6 +511,9 @@ no_diff \
 # format_innodb_status
 # ###########################################################################
 
+sort --version | grep -q uutils
+if [ $? -eq 1 ]; then
+
 cat <<EOF > $PT_TMPDIR/expected
       Checkpoint Age | 619k
         InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
@@ -560,8 +563,12 @@ Mutexes/Locks Waited For
 EOF
 
 format_innodb_status $samples/innodb-status.001.txt > $PT_TMPDIR/got
-no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.001.txt" \
+LC_COLLATE='POSIX' no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.001.txt" \
    || cat "$PT_TMPDIR/got" "$PT_TMPDIR/expected" >&2
+
+else
+   skip 1 1 "Test fails due to https://github.com/uutils/coreutils/issues/13319"
+fi
 
 cat <<'EOF' > $PT_TMPDIR/expected
       Checkpoint Age | 348M

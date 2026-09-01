@@ -55,7 +55,12 @@ $source_dbh->do('CREATE TABLE test.t (a INT)');
 sleep 1;
 $replica_dbh->do('DROP TABLE test.t');
 $source_dbh->do('INSERT INTO test.t SELECT 1');
-$output = `/tmp/12346/use -e "show ${replica_name} status"`;
+my $db_flavor = VersionParser->new($source_dbh)->flavor();
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $output = $replica_dbh->selectrow_hashref("select * from performance_schema.replication_applier_status_by_worker")->{last_error_message};
+} else {
+   $output = $replica_dbh->selectrow_hashref("show ${replica_name} status")->{last_error};
+}
 like(
    $output,
    qr/Table 'test.t' doesn't exist'/,

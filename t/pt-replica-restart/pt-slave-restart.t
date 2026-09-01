@@ -23,12 +23,16 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $source_dbh = $sb->get_dbh_for('source');
 my $replica_dbh  = $sb->get_dbh_for('replica1');
+my $db_flavor = VersionParser->new($source_dbh)->flavor();
 
 if ( !$source_dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( !$replica_dbh ) {
    plan skip_all => 'Cannot connect to sandbox replica';
+}
+elsif ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   plan skip_all => 'pt-slave-restart is deprecated and keyword "slave" does not exist in MySQL 9.7';
 }
 
 $source_dbh->do('DROP DATABASE IF EXISTS test');

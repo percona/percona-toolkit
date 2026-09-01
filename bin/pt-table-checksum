@@ -4656,7 +4656,7 @@ sub find_best_index {
 sub find_possible_keys {
    my ( $self, $dbh, $database, $table, $quoter, $where ) = @_;
    return () unless $where;
-   my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
+   my $sql = 'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM ' . $quoter->quote($database, $table)
       . ' WHERE ' . $where;
    PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);
@@ -6138,6 +6138,8 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+my $sha2_length = 256;
+
 sub new {
    my ( $class, %args ) = @_;
    foreach my $arg ( qw(OptionParser Quoter) ) {
@@ -6208,8 +6210,8 @@ sub make_row_checksum {
       }
 
       $query .= scalar @converted_cols > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @converted_cols) . '))'
-              : "$func($converted_cols[0])";
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @converted_cols) . ")" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")")
+              : "$func($converted_cols[0]" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
    }
    else {
       my $fnv_func = uc $func;
@@ -6332,7 +6334,7 @@ sub _get_hash_func {
    }
    my ($dbh) = @args{@required_args};
    my $o     = $self->{OptionParser};
-   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MURMUR_HASH MD5 SHA1);
+   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MURMUR_HASH MD5 SHA1 SHA2);
 
    if ( my $func = $o->get('function') ) {
       unshift @funcs, $func;
@@ -6341,7 +6343,7 @@ sub _get_hash_func {
    my $error;
    foreach my $func ( @funcs ) {
       eval {
-         my $sql = "SELECT $func('test-string')";
+         my $sql = "SELECT $func('test-string'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
          PTDEBUG && _d($sql);
          $args{dbh}->do($sql);
       };
@@ -6367,7 +6369,7 @@ sub _get_crc_width {
    my $crc_width = 16;
    if ( uc $func ne 'FNV_64' && uc $func ne 'FNV1A_64' ) {
       eval {
-         my ($val) = $dbh->selectrow_array("SELECT $func('a')");
+         my ($val) = $dbh->selectrow_array("SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"));
          $crc_width = max(16, length($val));
       };
    }
@@ -6384,7 +6386,7 @@ sub _get_crc_type {
 
    my $type   = '';
    my $length = 0;
-   my $sql    = "SELECT $func('a')";
+   my $sql    = "SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
    my $sth    = $dbh->prepare($sql);
    eval {
       $sth->execute();
@@ -6415,7 +6417,7 @@ sub _optimize_xor {
       if $func =~ m/^(?:FNV1A_64|FNV_64|CRC32)$/i;
 
    my $opt_slice = 0;
-   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a')")->[0]->[0];
+   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"))->[0]->[0];
    my $sliced    = '';
    my $start     = 1;
    my $crc_width = length($unsliced) < 16 ? 16 : length($unsliced);
@@ -6424,7 +6426,7 @@ sub _optimize_xor {
       PTDEBUG && _d('Trying slice', $opt_slice);
       $dbh->do(q{SET @crc := '', @cnt := 0});
       my $slices = $self->_make_xor_slices(
-         row_checksum => "\@crc := $func('a')",
+         row_checksum => "\@crc := $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"),
          crc_width    => $crc_width,
          opt_slice    => $opt_slice,
       );
@@ -6660,7 +6662,7 @@ sub _one_nibble {
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                           ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
@@ -6758,7 +6760,7 @@ sub _nibble_params {
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
          . " FROM $from"
@@ -6781,8 +6783,8 @@ sub _nibble_params {
          last_ub_sql          => $last_ub_sql,
          ub_sql               => $ub_sql,
          nibble_sql           => $nibble_sql,
-         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
-         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_first_lb_sql => "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $ub_sql",
          explain_nibble_sql   => $explain_nibble_sql,
          resume_lb_sql        => $resume_lb_sql,
          sql                  => {
@@ -7126,7 +7128,7 @@ sub get_row_estimate {
    }
    my ($cxn, $tbl) = @args{@required_args};
 
-   my $sql = "EXPLAIN SELECT * FROM $tbl->{name} "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM $tbl->{name} "
            . "WHERE " . ($args{where} || '1=1');
    PTDEBUG && _d($sql);
    my $expl = $cxn->dbh()->selectrow_hashref($sql);
@@ -7374,7 +7376,7 @@ sub new {
       PTDEBUG && _d('Past lower statement:', $past_lower_sql);
 
       my $explain_past_lower_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args{past_select}
             || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
          . " FROM "  . $self->{sql}->{from}
@@ -7391,7 +7393,7 @@ sub new {
       PTDEBUG && _d('Past upper statement:', $past_upper_sql);
 
       my $explain_past_upper_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args{past_select}
             || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
          . " FROM "  . $self->{sql}->{from}
@@ -9911,7 +9913,7 @@ sub _make_range_query {
    my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
    push @where, $q->quote($col) . " >= " . $condition;
 
-   my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
            . "WHERE " . join(' AND ', @where)
            . " /*key_len*/";
@@ -13929,9 +13931,9 @@ structure (MAGIC_create_replicate):
      chunk_index    VARCHAR(200)     NULL,
      lower_boundary TEXT             NULL,
      upper_boundary TEXT             NULL,
-     this_crc       CHAR(40)     NOT NULL,
+     this_crc       CHAR(64)     NOT NULL,
      this_cnt       INT          NOT NULL,
-     source_crc     CHAR(40)         NULL,
+     source_crc     CHAR(64)         NULL,
      source_cnt     INT              NULL,
      ts             TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
      PRIMARY KEY (db, tbl, chunk),

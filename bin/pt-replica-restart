@@ -5480,14 +5480,14 @@ sub watch_server {
    }
    PTDEBUG && _d('Have GTID:', $have_gtid);
 
-   # If GTID is enabled, replica_parallel_workers should be == 0.
+   # If GTID is enabled, replica_parallel_workers should be == 0 or 1.
    # It's currently not possible to know what GTID event the failed trx is.
    if ( $have_gtid ) {
       my $threads = $dbh->selectrow_hashref(
          "SELECT \@\@GLOBAL.${replica_name}_parallel_workers AS threads");
-      if ( $threads->{threads} > 0 ) {
+      if ( $threads->{threads} > 1 ) {
          die "Cannot skip transactions properly because GTID is enabled "
-            . "and ${replica_name}_parallel_workers > 0.  See 'GLOBAL TRANSACTION IDS' "
+            . "and ${replica_name}_parallel_workers > 1.  See 'GLOBAL TRANSACTION IDS' "
             . "in the tool's documentation.\n";
       }
    }
@@ -5878,7 +5878,7 @@ introduced in MySQL 5.6.5.  It's important to keep in mind that:
 =item *
 
 pt-replica-restart will not skip transactions when multiple replication threads
-are being used (replica_parallel_workers > 0).  pt-replica-restart does not know
+are being used (replica_parallel_workers > 1).  pt-replica-restart does not know
 what the GTID event is of the failed transaction of a specific replica thread.
 
 =item *

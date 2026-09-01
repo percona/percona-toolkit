@@ -56,8 +56,7 @@ sub reset_query_cache {
 # 3) Set the replica delay to 30 seconds to be able to see the 'waiting' message.
 diag("Setting replica delay to 0 seconds");
 $replica_dbh->do("STOP ${replica_name}");
-$source_dbh->do("RESET ${source_reset}");
-$replica_dbh->do("RESET ${replica_name}");
+$replica_dbh->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
 $replica_dbh->do("START ${replica_name}");
 
 diag('Loading test data');
@@ -354,8 +353,7 @@ $sb->do_as_root("source", q/FLUSH TABLES/);
 
 diag("Setting replica delay to 0 seconds");
 $replica_dbh->do("STOP ${replica_name}");
-$source_dbh->do("RESET ${source_reset}");
-$replica_dbh->do("RESET ${replica_name}");
+$replica_dbh->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
 $replica_dbh->do("START ${replica_name}");
 
 $source_dbh->do("DROP DATABASE IF EXISTS test");

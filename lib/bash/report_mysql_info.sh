@@ -284,7 +284,7 @@ format_status_variables () {
 }
 
 # Slices the processlist a bunch of different ways.  The processlist should be
-# created with the \G flag so it's vertical.
+# created in vertical format.
 # The parsing is a bit awkward because different
 # versions of awk have limitations like "too many fields on line xyz".  So we
 # use 'cut' to shorten the lines.  We count all things into temporary variables
