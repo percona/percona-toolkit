@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 48
+plan 54
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -688,37 +688,91 @@ EOF
 
 test_format_innodb
 
-test_format_innodb_9_7 () {
+# Drives section_innodb against one InnoDB redo log variable layout and compares
+# only the "Log File Size" line.
+#   $1 test name
+#   $2 expected value
+#   $3 extended regex of variables to drop from the temp001 sample, or ""
+#   $4.. "name\tvalue" lines to append
+# get_var prints every matching line, so anything appended here must also be
+# named in $3 - a duplicate would make it return two values.
+test_format_innodb_log_size () {
+   local test_name="$1"
+   local expected="$2"
+   local strip="$3"
+   shift 3
+
    local NAME_VAL_LEN=25
+   local vars="$PT_TMPDIR/mysql-variables-log-size"
+
+   if [ -n "$strip" ]; then
+      grep -vE "$strip" "$samples/temp001/mysql-variables" > "$vars"
+   else
+      cp "$samples/temp001/mysql-variables" "$vars"
+   fi
+   local line
+   for line in "$@"; do
+      printf '%b\n' "$line" >> "$vars"
+   done
+
    cat <<EOF > $PT_TMPDIR/expected
-                  Version | 9.7.1
-         Buffer Pool Size | 16.0M
-         Buffer Pool Fill | 25%
-        Buffer Pool Dirty | 0%
-           File Per Table | ON
-                Page Size | 16k
-        Redo Log Capacity | 100M
-          Log Buffer Size | 64M
-             Flush Method | O_DIRECT
-      Flush Log At Commit | 1
-               XA Support | 
-                Checksums | 
-              Doublewrite | ON
-          R/W I/O Threads | 7 4
-             I/O Capacity | 10000
-       Thread Concurrency | 0
-      Concurrency Tickets | 5000
-       Commit Concurrency | 0
-      Txn Isolation Level | REPEATABLE-READ
-        Adaptive Flushing | ON
-      Adaptive Checkpoint | 
+            Log File Size | $expected
 EOF
 
-   section_innodb "$samples/temp010/mysql-variables" "$samples/temp010/mysql-status" > "$PT_TMPDIR/got"
-   no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "Format InnoDB 9.7"
+   section_innodb "$vars" "$samples/temp001/mysql-status" \
+      | grep "Log File Size" > "$PT_TMPDIR/got"
+   no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "$test_name"
 }
 
-test_format_innodb_9_7
+# MySQL 8.0.30 through 8.4: the capacity and both legacy variables are present,
+# so this pins the precedence - the capacity is what the server actually honours.
+test_format_innodb_log_size \
+   "Format InnoDB redo log capacity" "100.0M" \
+   '^innodb_redo_log_capacity' \
+   'innodb_redo_log_capacity\t104857600'
+
+# MySQL 9.3 and newer: the legacy variables were removed, only the capacity
+# remains. This is the layout the MySQL 9.7 work is actually about. 9.0, 9.1
+# and 9.2 still expose all three.
+test_format_innodb_log_size \
+   "Format InnoDB redo log capacity without legacy variables" "100.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_redo_log_capacity\t104857600'
+
+# MariaDB 10.6+: innodb_log_files_in_group was dropped and the redo capacity
+# never existed, so innodb_log_file_size alone is the total.
+test_format_innodb_log_size \
+   "Format InnoDB log file size without a file count" "96.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_log_file_size\t100663296'
+
+# No redo size variable of any spelling: say so rather than print a malformed one.
+test_format_innodb_log_size \
+   "Format InnoDB log file size when unknown" "Unknown" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity'
+
+# MariaDB 10.5: the file count is still there with value 1 (deprecated and
+# ignored from 10.5.2, removed in 10.6.0), so this takes the legacy branch and
+# keeps the count * per-file = total form rather than the bare total above.
+test_format_innodb_log_size \
+   "Format InnoDB log file size with a file count of one" "1 * 96.0M = 96.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_log_file_size\t100663296' 'innodb_log_files_in_group\t1'
+
+# The capacity guard is [ "$redo_capacity" -gt 0 ] 2>/dev/null, which relies on
+# [ returning non-zero for a non-numeric operand with the error suppressed. Pin
+# both degradation paths so a shell-behaviour change cannot slip through: a zero
+# capacity and a non-numeric one must both fall through to the legacy variables
+# rather than being reported or turning into Unknown.
+test_format_innodb_log_size \
+   "Format InnoDB log file size when the capacity is zero" "2 * 48.0M = 96.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_log_file_size\t50331648' 'innodb_log_files_in_group\t2' 'innodb_redo_log_capacity\t0'
+
+test_format_innodb_log_size \
+   "Format InnoDB log file size when the capacity is not a number" "2 * 48.0M = 96.0M" \
+   '^innodb_log_file_size|^innodb_log_files_in_group|^innodb_redo_log_capacity' \
+   'innodb_log_file_size\t50331648' 'innodb_log_files_in_group\t2' 'innodb_redo_log_capacity\tNULL'
 
 # ###########################################################################
 # format_innodb_filters
