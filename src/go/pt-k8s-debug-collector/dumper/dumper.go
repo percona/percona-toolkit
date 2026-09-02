@@ -72,11 +72,11 @@ type toolLog struct {
 
 // individualFile struct is used to dump the necessary files from the containers
 type individualFile struct {
-	resourceName  string
-	containerName string
-	filepaths     []string
-	dirpaths      map[string][]string // map[tarFolder][]dirPaths
-	toolCmds      map[string][]toolLog
+	resourceName   string
+	containerNames []string
+	filepaths      []string
+	dirpaths       map[string][]string // map[tarFolder][]dirPaths
+	toolCmds       map[string][]toolLog
 }
 
 // resourceMap struct is used to dump the resources from namespace scope or cluster scope

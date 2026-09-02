@@ -1027,16 +1027,28 @@ section_innodb () {
    name_val "File Per Table"      $(get_var innodb_file_per_table "$variables_file")
    name_val "Page Size"           $(shorten $(get_var Innodb_page_size "$status_file") 0)
 
-   local log_size="$(get_var innodb_log_file_size "$variables_file")"
-   local log_file="$(get_var innodb_log_files_in_group "$variables_file")"
-   if [ -n "$log_size" ] && [ -n "$log_file" ]; then
-      local log_total=$(awk "BEGIN {printf \"%.2f\n\", ${log_size}*${log_file}}" )
-      name_val "Log File Size"       \
-               "${log_file} * $(shorten ${log_size} 1) = $(shorten ${log_total} 1)"
+   local redo_capacity="$(get_var innodb_redo_log_capacity "$variables_file")"
+   if [ -n "${redo_capacity}" ] && [ "${redo_capacity}" -gt 0 ] 2>/dev/null; then
+      # MySQL 8.0.30 and newer manage redo files dynamically and expose their
+      # total capacity instead of the legacy file size/count variables.
+      name_val "Log File Size" "$(shorten ${redo_capacity} 1)"
    else
-      local log_total="$(get_var innodb_redo_log_capacity "$variables_file")"
-      name_val "Redo Log Capacity"       \
-               "$(shorten ${log_total} 0)"
+      local log_size="$(get_var innodb_log_file_size "$variables_file")"
+      local log_file="$(get_var innodb_log_files_in_group "$variables_file")"
+      if [ -n "${log_size}" ] && [ -n "${log_file}" ]; then
+         local log_total=$(awk "BEGIN {printf \"%.2f\n\", ${log_size}*${log_file}}" )
+         name_val "Log File Size" \
+                  "${log_file} * $(shorten ${log_size} 1) = $(shorten ${log_total} 1)"
+      elif [ -n "${log_size}" ]; then
+         # MariaDB 10.6 dropped innodb_log_files_in_group and never had
+         # innodb_redo_log_capacity, leaving innodb_log_file_size as the total.
+         # Report it rather than discarding a size the server does expose.
+         # 10.5 still reports the file count with value 1, so it takes the
+         # legacy branch above and renders 1 * 96.0M = 96.0M.
+         name_val "Log File Size" "$(shorten ${log_size} 1)"
+      else
+         name_val "Log File Size" "Unknown"
+      fi
    fi
    name_val "Log Buffer Size"     \
             "$(shorten $(get_var innodb_log_buffer_size "$variables_file") 0)"
