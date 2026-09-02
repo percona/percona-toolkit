@@ -3029,6 +3029,10 @@ sub parse_event {
       }
 
       PTDEBUG && _d('Properties of event:', Dumper(\@properties));
+      if ( @properties % 2 ) {
+         PTDEBUG && _d('Skipping malformed event (odd properties):', Dumper(\@properties));
+         next EVENT;
+      }
       my $event = { @properties };
       if ( !$event->{arg} ) {
          PTDEBUG && _d('Partial event, no arg');

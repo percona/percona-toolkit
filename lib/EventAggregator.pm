@@ -380,6 +380,12 @@ sub make_handler {
       );
    }
 
+   # Slow log and similar sources can leave numeric attributes as ''; treat as 0
+   # so type detection and later arithmetic stay consistent.
+   if ( $type =~ m/^(?:num|bool)$/ ) {
+      push @lines, q{$val = 0 if defined $val && $val eq '';};
+   }
+
    # Make sure the value is constrained to legal limits.  If it's out of
    # bounds, just use the last-seen value for it.
    if ( $type eq 'num' && $self->{attrib_limit} ) {
@@ -422,8 +428,9 @@ sub make_handler {
          'PLACE->{max} = $val if !defined PLACE->{max} || $val '
          . $gt . ' PLACE->{max};',
       );
+      # Num/bool sums must not use += on undef or '' (would warn or incorrectly sum).
       if ( $track{sum} ) {
-         push @tmp, 'PLACE->{sum} += $val;';
+         push @tmp, 'PLACE->{sum} += (defined $val && $val ne q{} ? $val : 0);';
       }
 
       # Save all values in a bucketed list.  See bucket_idx() below.
