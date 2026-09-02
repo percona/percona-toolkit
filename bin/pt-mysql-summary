@@ -2140,16 +2140,21 @@ section_innodb () {
    name_val "File Per Table"      $(get_var innodb_file_per_table "$variables_file")
    name_val "Page Size"           $(shorten $(get_var Innodb_page_size "$status_file") 0)
 
-   local log_size="$(get_var innodb_log_file_size "$variables_file")"
-   local log_file="$(get_var innodb_log_files_in_group "$variables_file")"
-   if [ -n "$log_size" ] && [ -n "$log_file" ]; then
-      local log_total=$(awk "BEGIN {printf \"%.2f\n\", ${log_size}*${log_file}}" )
-      name_val "Log File Size"       \
-               "${log_file} * $(shorten ${log_size} 1) = $(shorten ${log_total} 1)"
+   local redo_capacity="$(get_var innodb_redo_log_capacity "$variables_file")"
+   if [ -n "${redo_capacity}" ] && [ "${redo_capacity}" -gt 0 ] 2>/dev/null; then
+      name_val "Log File Size" "$(shorten ${redo_capacity} 1)"
    else
-      local log_total="$(get_var innodb_redo_log_capacity "$variables_file")"
-      name_val "Redo Log Capacity"       \
-               "$(shorten ${log_total} 0)"
+      local log_size="$(get_var innodb_log_file_size "$variables_file")"
+      local log_file="$(get_var innodb_log_files_in_group "$variables_file")"
+      if [ -n "${log_size}" ] && [ -n "${log_file}" ]; then
+         local log_total=$(awk "BEGIN {printf \"%.2f\n\", ${log_size}*${log_file}}" )
+         name_val "Log File Size" \
+                  "${log_file} * $(shorten ${log_size} 1) = $(shorten ${log_total} 1)"
+      elif [ -n "${log_size}" ]; then
+         name_val "Log File Size" "$(shorten ${log_size} 1)"
+      else
+         name_val "Log File Size" "Unknown"
+      fi
    fi
    name_val "Log Buffer Size"     \
             "$(shorten $(get_var innodb_log_buffer_size "$variables_file") 0)"
@@ -2735,13 +2740,15 @@ TOOL="pt-mysql-summary"
 [ "$CMD_MYSQLDUMP" ] || CMD_MYSQLDUMP="$( _which mysqldump )"
 
 check_mysql () {
-   # Check that mysql and mysqldump are in PATH.  If not, we're
-   # already dead in the water, so don't bother with cmd line opts,
-   # just error and exit.
+   # mysql is always required for live collection.
    [ -n "$(${CMD_MYSQL} --help 2>/dev/null)" ] \
       || die "Cannot execute mysql.  Check that it is in PATH."
-   [ -n "$(${CMD_MYSQLDUMP} --help 2>/dev/null)" ] \
-      || die "Cannot execute mysqldump.  Check that it is in PATH."
+
+   # mysqldump is only used for the optional schema analysis.
+   if [ -n "$OPT_DATABASES" ] || [ -n "$OPT_ALL_DATABASES" ]; then
+      [ -n "$(${CMD_MYSQLDUMP} --help 2>/dev/null)" ] \
+         || die "Cannot execute mysqldump.  Check that it is in PATH."
+   fi
 
    # Now that we have the cmd line opts, check that we can actually
    # connect to MySQL.
@@ -2767,9 +2774,8 @@ main() {
    local MYSQL_ARGS="$(mysql_options)"
    EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
-   # Check if mysql and mysqldump are there, otherwise bail out early.
-   # But don't if they passed in --read-samples, since we don't need
-   # a connection then.
+   # Check the required client programs, unless --read-samples was used
+   # and no live connection is needed.
    [ "$OPT_READ_SAMPLES" ] || check_mysql
 
    local RAN_WITH="--sleep=$OPT_SLEEP --databases=$OPT_DATABASES --save-samples=$OPT_SAVE_SAMPLES"
@@ -3162,6 +3168,16 @@ This section shows important configuration variables for the InnoDB storage
 engine. The buffer pool fill percent and dirty percent are fuzzy-rounded. The
 last few lines are derived from the output of SHOW INNODB STATUS. It is likely
 that this output will change in the future to become more useful.
+
+The C<Log File Size> line above shows C<count * per-file = total>, which is how
+it is reported on servers exposing C<innodb_log_file_size> and
+C<innodb_log_files_in_group>. MySQL 8.0.30 replaced both with a single
+C<innodb_redo_log_capacity> and MySQL 9.3 removed them, so on those versions the
+line shows that capacity as a bare total instead. MariaDB 10.6 dropped
+C<innodb_log_files_in_group> without adding a capacity variable, so there the
+line shows C<innodb_log_file_size> as a bare total. MariaDB 10.5 still exposes
+the file count with value 1, so it keeps the C<count * per-file = total> form. When none of these variables
+is available the line reads C<Unknown>.
 
   # MyISAM #####################################################
                   Key Cache | 16.0M
