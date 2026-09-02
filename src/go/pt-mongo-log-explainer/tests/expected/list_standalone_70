@@ -1,0 +1,9 @@
+identifier                      listen:27027                           
+current path                    tests/logs/standalone/mongod-7.0.log   
+last known ip                   10.0.0.5                               
+last known name                 listen:27027                           
+mongodb version                 7.0.28-15                              
+                                                                       
+2026-05-11T14:52:46.010+08:00   mongod starting                        
+2026-05-11T14:52:48.000+08:00   PRIMARY                                
+2026-05-11T14:52:48.000+08:00   PRIMARY                                
