@@ -2715,6 +2715,7 @@ sub new {
       DSNParser       => $dp,
       is_cluster_node => undef,
       parent          => $args{parent},
+      preserve_dbh    => $args{preserve_dbh},
    };
 
    return bless $self, $class;
@@ -2773,7 +2774,7 @@ sub set_dbh {
       $self->{hostname} = $hostname;
    }
 
-   if ( $self->{parent} ) {
+   if ( $self->{preserve_dbh} ) {
       PTDEBUG && _d($dbh, 'Setting InactiveDestroy=1 in parent');
       $dbh->{InactiveDestroy} = 1;
    }
@@ -2896,7 +2897,7 @@ sub DESTROY {
 
    PTDEBUG && _d('Destroying cxn');
 
-   if ( $self->{parent} ) {
+   if ( $self->{preserve_dbh} ) {
       PTDEBUG && _d($self->{dbh}, 'Not disconnecting dbh in parent');
    }
    elsif ( $self->{dbh}
@@ -4711,7 +4712,7 @@ sub main {
 
    my $src = Cxn->new(
       dsn_string   => shift @ARGV,
-      parent       => $o->get('daemonize'),
+      preserve_dbh => $o->get('daemonize'),
       DSNParser    => $dp,
       OptionParser => $o,
    );
@@ -4735,7 +4736,7 @@ sub main {
       $dst = Cxn->new(
          dsn          => $dst_dsn,
          prev_dsn     => ($src ? $src->dsn : undef),
-         parent       => $o->get('daemonize'),
+         preserve_dbh => $o->get('daemonize'),
          DSNParser    => $dp,
          OptionParser => $o,
          set          => $set_tz,
@@ -4806,13 +4807,13 @@ sub main {
 
    # If we daemonized, the parent has already exited and we're the child.
    # We shared a copy of every Cxn with the parent, and the parent's copies
-   # were destroyed but the dbhs were not disconnected because the parent
+   # were destroyed but the dbhs were not disconnected because the preserve_dbh
    # attrib was true.  Now, as the child, set it false so the dbhs will be
    # disconnected when our Cxn copies are destroyed.  If we didn't daemonize,
    # then we're not really a parent (since we have no children), so set it
    # false to auto-disconnect the dbhs when our Cxns are destroyed.
-   $src->{parent} = 0;
-   $dst->{parent} = 0 if $dst;
+   $src->{preserve_dbh} = 0;
+   $dst->{preserve_dbh} = 0 if $dst;
 
    # ########################################################################
    # Do the version-check

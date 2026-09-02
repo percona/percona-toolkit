@@ -52,6 +52,7 @@ our @EXPORT      = qw(
    load_file
    slurp_file
    parse_file
+   touch_file
    wait_until
    wait_for
    wait_until_replica_running
@@ -259,6 +260,13 @@ sub parse_file {
    };
    die $EVAL_ERROR if $EVAL_ERROR;
    return \@e;
+}
+
+# Create empty file
+sub touch_file {
+    my ($file) = @_;
+    open(my $t, '>', $file) or die "Cannot create $file: $!";
+    close($t) or die "Cannot close $file: $!";
 }
 
 # Wait until code returns true.
