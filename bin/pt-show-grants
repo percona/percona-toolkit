@@ -2094,7 +2094,16 @@ sub main {
                $create =~ s/IDENTIFIED AS/IDENTIFIED WITH mysql_native_password AS/;
             }
 
-            @create_user = ( $create, $alter );
+            # Or the other way around: port a MySQL CREATE/ALTER USER
+            # statement to MariaDB's syntax.
+            if ( ($version !~ m/MariaDB/) && $o->get('convert-to-MariaDB')){
+               my @alter_stmts = convert_to_mariadb($alter, $u->{User}, $u->{Host});
+               ($create) = convert_to_mariadb($create);
+               @create_user = ( $create, @alter_stmts );
+            }
+            else {
+               @create_user = ( $create, $alter );
+            }
             PTDEBUG && _d('Adjusted CREATE USER:', Dumper(\@create_user));
          }
       }
@@ -2270,6 +2279,100 @@ sub is_role {
         }
     }
     return 0;
+}
+
+# Plugins MariaDB has no auth-compatible equivalent for, but whose exact
+# on-disk hash format it can still verify -- provided the hash is written
+# straight into mysql.global_priv instead of through ALTER USER, whose
+# grammar only accepts a quoted string literal (not UNHEX() or a 0x...
+# literal) for the auth string, and these plugins' hashes contain binary
+# bytes that don't survive being quoted as plain SQL text.
+my %RAW_HASH_PLUGIN = map { $_ => 1 } qw(caching_sha2_password);
+
+sub convert_to_mariadb {
+   my ($stmt, $user, $host) = @_;
+   return () unless defined $stmt;
+   return ($stmt) unless length $stmt;
+
+   # These MySQL 8.0 password-management clauses have no MariaDB
+   # equivalent.  Left in place they cause a syntax error, so strip
+   # them out entirely.
+   $stmt =~ s/\s*PASSWORD HISTORY (?:DEFAULT|\d+)//;
+   $stmt =~ s/\s*PASSWORD REUSE INTERVAL (?:DEFAULT|\d+ DAY)//;
+   $stmt =~ s/\s*PASSWORD REQUIRE CURRENT(?: DEFAULT| OPTIONAL)?//;
+
+   # Nothing more to translate if there's no auth clause.
+   return ($stmt) unless $stmt =~ /IDENTIFIED\s+WITH/;
+
+   # MySQL's "IDENTIFIED WITH 'plugin' AS 'auth_string'" must become
+   # MariaDB's "IDENTIFIED VIA plugin USING 'auth_string'".  A few
+   # plugin names also need translating to their MariaDB equivalent.
+   # The auth string is normally a quoted string, but MySQL prints it
+   # as a 0x<hex> literal (print_identified_with_as_hex) whenever it
+   # contains bytes that aren't safe inside quotes -- which is always
+   # the case for the %RAW_HASH_PLUGIN plugins below.
+   my %plugin_map = (
+      mysql_native_password => 'mysql_native_password',
+      auth_socket            => 'unix_socket',
+   );
+
+   # Statements that must run after $stmt, once the account exists, to
+   # write the real hash for a %RAW_HASH_PLUGIN plugin.
+   my @after;
+   $stmt =~ s{
+      IDENTIFIED \s+ WITH \s+ '?([\w.]+)'?
+      (?:\s+ AS \s+ (0x[0-9A-Fa-f]+ | '(?:[^'\\]|\\.)*'))?
+   }{
+      my ($plugin, $auth_string) = ($1, $2);
+
+      if ( $RAW_HASH_PLUGIN{$plugin} ) {
+         if ( $auth_string && $auth_string =~ /^0x[0-9A-Fa-f]+$/ && $user && $host ) {
+            # Write the plugin name and the hash straight into
+            # mysql.global_priv instead of through ALTER USER, which
+            # would need the plugin installed and active on the target
+            # server just to accept it. Whether logins actually work
+            # is up to the server having a plugin installed (e.g.
+            # MariaDB's own auth_mysql_sha2, registered under the name
+            # caching_sha2_password) that understands this hash format.
+            push @after,
+               "UPDATE mysql.global_priv SET Priv = JSON_SET(Priv, "
+               . "'\$.plugin', " . _sql_quote($plugin) . ", "
+               . "'\$.authentication_string', UNHEX('"
+               . substr($auth_string, 2) . "')) WHERE User = "
+               . _sql_quote($user) . " AND Host = " . _sql_quote($host);
+            push @after, "FLUSH PRIVILEGES";
+         }
+         else {
+            warn "pt-show-grants: authentication plugin '$plugin' has no "
+               . "usable hex-encoded auth string to write into "
+               . "mysql.global_priv; the account will need its password "
+               . "set manually.\n";
+         }
+         ''; # Drop the clause; the plugin/hash are set via the UPDATE above.
+      }
+      else {
+         if ( !$plugin_map{$plugin} ) {
+            warn "pt-show-grants: authentication plugin '$plugin' has no "
+               . "direct MariaDB equivalent; the converted statement may "
+               . "need manual adjustment.\n";
+         }
+         my $mdb_plugin = $plugin_map{$plugin} || $plugin;
+         $auth_string ? "IDENTIFIED VIA $mdb_plugin USING $auth_string"
+                      : "IDENTIFIED VIA $mdb_plugin";
+      }
+   }xe;
+
+   $stmt =~ s/\s{2,}/ /g;
+   $stmt =~ s/\s+$//;
+   return ($stmt, @after);
+}
+
+# Quotes a value (an identifier's worth of text, e.g. a username or
+# hostname) as a single-quoted SQL string literal.
+sub _sql_quote {
+   my ($val) = @_;
+   $val =~ s/([\\'])/\\$1/g;
+   return "'$val'";
 }
 
 sub split_grants {
@@ -2503,6 +2606,44 @@ Only show grants for this comma-separated list of users.
 =item --convert-MariaDB
 
 Convert proprietary MariaDB syntax into valid MySQL form
+
+=item --convert-to-MariaDB
+
+Convert a MySQL CREATE/ALTER USER statement into valid MariaDB syntax.
+
+MySQL 8.0 added several C<CREATE USER>/C<ALTER USER> clauses (such as
+C<PASSWORD HISTORY>, C<PASSWORD REUSE INTERVAL> and C<PASSWORD REQUIRE
+CURRENT>) that MariaDB does not understand, and it also quotes the
+authentication plugin name differently (C<IDENTIFIED WITH 'plugin' AS
+'auth_string'> instead of MariaDB's C<IDENTIFIED VIA plugin USING
+'auth_string'>).  When this option is used against a MySQL server, those
+clauses are stripped or rewritten so the resulting statement can be
+replayed on a MariaDB server.
+
+C<mysql_native_password> and C<auth_socket> accounts convert to a plain
+C<ALTER USER ... IDENTIFIED VIA ...> statement.  C<caching_sha2_password>
+accounts (MySQL 8's default) need more: MariaDB has no plugin active by
+default that understands MySQL's hash for that plugin, and C<ALTER
+USER>'s grammar only accepts a quoted string literal, not an
+expression, for the auth string -- while the hash itself contains
+binary bytes that aren't safe to quote as plain text (which is exactly
+why MySQL prints it as a C<0x>-prefixed hex literal in the first
+place). So for these accounts the C<IDENTIFIED WITH ...> clause is
+dropped from the C<ALTER USER> entirely, and instead the tool emits an
+C<UPDATE mysql.global_priv> that sets both the plugin name and the
+real hash directly, via C<JSON_SET(..., UNHEX(...))>, followed by
+C<FLUSH PRIVILEGES>. This writes the account's authentication data
+correctly, but the account still won't be able to log in until the
+target server has a plugin that understands
+C<caching_sha2_password>-formatted hashes installed and active (e.g.
+MariaDB's own C<auth_mysql_sha2>, registered under the plugin name
+C<caching_sha2_password>, via C<INSTALL SONAME 'auth_mysql_sha2'> --
+this tool does not do that for you). Other authentication plugins with
+no MariaDB equivalent (e.g. C<sha256_password>) only get their syntax
+rewritten, with a warning that the password will need to be reset
+manually.
+
+This option has no effect when the source server is MariaDB.
 
 =item --password
 
