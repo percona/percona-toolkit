@@ -87,7 +87,7 @@ sub wait {
       my ($replicas, $refresher) = ($self->{replicas}, $self->{get_replicas_cb});
       return $replicas if ( not defined $refresher );
       my $before = join ' ', sort map {$_->description()} @$replicas;
-      $replicas = $refresher->();
+      $replicas = $refresher->(replicas => $replicas);
       my $after = join ' ', sort map {$_->description()} @$replicas;
       if ($before ne $after) {
          $self->{replicas} = $replicas;

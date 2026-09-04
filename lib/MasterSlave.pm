@@ -120,6 +120,7 @@ sub get_replicas {
          # We will set current source server as a parent
          # until https://perconadev.atlassian.net/browse/PT-2496 is implemented
          parent => $dsn,
+         replicas => $args{replicas},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -1081,18 +1082,26 @@ sub get_cxn_from_dsn_table {
    my $o = $self->{OptionParser};
    my $my_dsn;
    my $lcxn;
-   use Data::Dumper;
    DSN:
    do {
       @cxn = ();
       my $dsn_strings = $dbh->selectcol_arrayref($sql);
       if ( $dsn_strings ) {
+         DSN_STRING:
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
 
             my $raw_dsn      = $dp->parse($dsn_string);
             my $dsn_defaults = $dp->parse_options($o);
             $my_dsn = $dp->parse($dsn_string, undef, $dsn_defaults);
+
+            foreach my $known_replica ( @{$args{replicas}} ) {
+               if ( $known_replica->{dsn}->{h} eq $my_dsn->{h} and
+                  $known_replica->{dsn}->{P} eq $my_dsn->{P} ) {
+                  push @cxn, $known_replica;
+                  next DSN_STRING;
+               }
+            }
 
             if ( $o->got('replica-user') && !defined $raw_dsn->{u} ) {
                PTDEBUG && _d('DSN - username set from --replica-user');
@@ -1120,6 +1129,17 @@ sub get_cxn_from_dsn_table {
       }
       $done = 1;
    } until $done;
+   # Close database connections in stale replicas
+   REPLICAS:
+   foreach my $known_replica ( @{$args{replicas}} ) {
+      foreach my $new_replica ( @cxn ) {
+         if ( $known_replica->{dsn}->{h} eq $new_replica->{dsn}->{h} and
+            $known_replica->{dsn}->{P} eq $new_replica->{dsn}->{P} ) {
+            next REPLICAS;
+         }
+         $known_replica->{dbh}->disconnect;
+      }
+   }
    return \@cxn;
 }
 
