@@ -2371,7 +2371,7 @@ sub convert_to_mariadb {
 # hostname) as a single-quoted SQL string literal.
 sub _sql_quote {
    my ($val) = @_;
-   $val =~ s/([\\'])/\\$1/g;
+   $val =~ s/'/''/g;
    return "'$val'";
 }
 
