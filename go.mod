@@ -16,7 +16,7 @@ require (
 	github.com/hashicorp/go-version v1.9.0
 	github.com/lib/pq v1.12.3
 	github.com/mattn/go-shellwords v1.0.14
-	github.com/montanaflynn/stats v0.12.4
+	github.com/montanaflynn/stats v0.12.5
 	github.com/pborman/getopt v1.1.0
 	github.com/percona/go-mysql v0.0.0-20251202083530-b3e1c16efc74
 	github.com/pkg/errors v0.9.1
@@ -28,7 +28,7 @@ require (
 	github.com/xlab/treeprint v1.2.0
 	go.mongodb.org/mongo-driver v1.17.9
 	go.yaml.in/yaml/v2 v2.4.4
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
 	golang.org/x/sync v0.22.0
 	golang.org/x/term v0.45.0
