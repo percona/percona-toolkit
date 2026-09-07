@@ -110,7 +110,7 @@ $source_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""');
 # This is the base test, just to ensure that without using --check-replica-lag nor --skip-check-replica-lag
 # pt-online-schema-change will wait on the replica at port 12346
 
-my $max_lag = $delay / 2;
+my $max_lag = $delay / 4;
 # We need to sleep, otherwise pt-osc can finish before replica is delayed
 sleep($max_lag);
 

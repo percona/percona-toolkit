@@ -5296,7 +5296,7 @@ sub wait {
              $lag = $get_lag->($lagged_replicas[$i]->{cxn});
          };
          if ($EVAL_ERROR) {
-             die $EVAL_ERROR;
+            die $EVAL_ERROR;
          }
          PTDEBUG && _d($lagged_replicas[$i]->{cxn}->name(),
             'replica lag:', $lag);
@@ -9412,11 +9412,15 @@ sub main {
                eval { $dbh = $cxn->connect() };  # connect or die trying
                if ( $EVAL_ERROR ) {
                   # As the docs say: "The tool waits forever for replicas
-                  # to stop lagging.  If any replica is stopped, the tool
+                  # to stop lagging unless option --no-fail-on-stopped-replication
+                  # is specified.  If any replica is stopped, the tool
                   # waits forever until the replica is started."
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
                   PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
+                  if ( $o->get('fail-on-stopped-replication') ) {
+                     die $EVAL_ERROR;
+                  }
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef;
                }
