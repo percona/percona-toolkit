@@ -6062,14 +6062,6 @@ sub get_cxn_from_dsn_table {
             my $dsn_defaults = $dp->parse_options($o);
             $my_dsn = $dp->parse($dsn_string, undef, $dsn_defaults);
 
-            foreach my $known_replica ( @{$args{replicas}} ) {
-               if ( $known_replica->{dsn}->{h} eq $my_dsn->{h} and
-                  $known_replica->{dsn}->{P} eq $my_dsn->{P} ) {
-                  push @cxn, $known_replica;
-                  next DSN_STRING;
-               }
-            }
-
             if ( $o->got('replica-user') && !defined $raw_dsn->{u} ) {
                PTDEBUG && _d('DSN - username set from --replica-user');
                $my_dsn->{u} = $o->get('replica-user');
@@ -6077,6 +6069,17 @@ sub get_cxn_from_dsn_table {
             if ( $o->got('replica-password') && !defined $raw_dsn->{p} ) {
                PTDEBUG && _d('DSN - password set from --replica-password');
                $my_dsn->{p} = $o->get('replica-password');
+            }
+
+            foreach my $known_replica ( @{$args{replicas}} ) {
+               if ( $known_replica->{dsn}->{h} eq $my_dsn->{h}
+                     and $known_replica->{dsn}->{P} eq $my_dsn->{P}
+                     and $known_replica->{dsn}->{u} eq $my_dsn->{u}
+                     and $known_replica->{dsn}->{p} eq $my_dsn->{p}
+               ) {
+                  push @cxn, $known_replica;
+                  next DSN_STRING;
+               }
             }
 
             eval {
@@ -6099,8 +6102,11 @@ sub get_cxn_from_dsn_table {
    REPLICAS:
    foreach my $known_replica ( @{$args{replicas}} ) {
       foreach my $new_replica ( @cxn ) {
-         if ( $known_replica->{dsn}->{h} eq $new_replica->{dsn}->{h} and
-            $known_replica->{dsn}->{P} eq $new_replica->{dsn}->{P} ) {
+         if ( $known_replica->{dsn}->{h} eq $new_replica->{dsn}->{h}
+               and $known_replica->{dsn}->{P} eq $new_replica->{dsn}->{P}
+               and $known_replica->{dsn}->{u} eq $new_replica->{dsn}->{u}
+               and $known_replica->{dsn}->{p} eq $new_replica->{dsn}->{p}
+         ) {
             next REPLICAS;
          }
          $known_replica->{dbh}->disconnect;
@@ -8910,7 +8916,7 @@ sub wait {
       my ($replicas, $refresher) = ($self->{replicas}, $self->{get_replicas_cb});
       return $replicas if ( not defined $refresher );
       my $before = join ' ', sort map {$_->description()} @$replicas;
-      $replicas = $refresher->(replicas => $replicas);
+      $replicas = $refresher->(undef, $replicas);
       my $after = join ' ', sort map {$_->description()} @$replicas;
       if ($before ne $after) {
          $self->{replicas} = $replicas;
