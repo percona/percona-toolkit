@@ -1095,7 +1095,7 @@ sub get_cxn_from_dsn_table {
             my $dsn_defaults = $dp->parse_options($o);
             $my_dsn = $dp->parse($dsn_string, undef, $dsn_defaults);
 
-            foreach my $known_replica ( @{$args{replicas}} ) {
+            foreach my $known_replica ( @{ $args{replicas} // [] } ) {
                if ( $known_replica->{dsn}->{h} eq $my_dsn->{h} and
                   $known_replica->{dsn}->{P} eq $my_dsn->{P} ) {
                   push @cxn, $known_replica;
