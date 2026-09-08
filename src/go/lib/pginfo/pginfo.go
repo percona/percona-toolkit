@@ -40,8 +40,8 @@ type PGInfo struct {
 	AllDatabases       []*models.Databases
 	GlobalWaitEvents   []*models.GlobalWaitEvents
 	PortAndDatadir     *models.PortAndDatadir
-	SlaveHosts96       []*models.SlaveHosts96
-	SlaveHosts10       []*models.SlaveHosts10
+	ReplicaHosts96     []*models.ReplicaHosts96
+	ReplicaHosts10     []*models.ReplicaHosts10
 	Tablespaces        []*models.Tablespaces
 	Settings           []*models.Setting
 	Counters           map[models.Name][]*models.Counters    // Counters per database
@@ -205,16 +205,16 @@ func (i *PGInfo) CollectGlobalInfo(db models.XODB) []error {
 	}
 
 	if i.ServerVersion.LessThan(version10) {
-		i.logger.Info("Collecting Slave Hosts (PostgreSQL < 10)")
-		if i.SlaveHosts96, err = models.GetSlaveHosts96s(db); err != nil {
-			errs = append(errs, errors.Wrap(err, "Cannot get slave hosts on Postgre < 10"))
+		i.logger.Info("Collecting Replica Hosts (PostgreSQL < 10)")
+		if i.ReplicaHosts96, err = models.GetReplicaHosts96s(db); err != nil {
+			errs = append(errs, errors.Wrap(err, "Cannot get replica hosts on Postgre < 10"))
 		}
 	}
 
 	if i.ServerVersion.GreaterThanOrEqual(version10) {
-		i.logger.Info("Collecting Slave Hosts (PostgreSQL 10+)")
-		if i.SlaveHosts10, err = models.GetSlaveHosts10s(db); err != nil {
-			errs = append(errs, errors.Wrap(err, "Cannot get slave hosts in Postgre 10+"))
+		i.logger.Info("Collecting Replica Hosts (PostgreSQL 10+)")
+		if i.ReplicaHosts10, err = models.GetReplicaHosts10s(db); err != nil {
+			errs = append(errs, errors.Wrap(err, "Cannot get replica hosts in Postgre 10+"))
 		}
 	}
 

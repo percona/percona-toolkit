@@ -54,7 +54,7 @@ xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
 ORDER BY 1
 ENDSQL
 
-FIELDS='Usename string,Time time.Time,ClientAddr sql.NullString,ClientHostname sql.NullString,Version string,Started time.Time,IsSlave bool'
+FIELDS='Usename string,Time time.Time,ClientAddr sql.NullString,ClientHostname sql.NullString,Version string,Started time.Time,IsReplica bool'
 COMMENT='Cluster info'
 xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
     --query-mode \
@@ -72,7 +72,7 @@ SELECT usename, now() AS "Time",
        client_hostname,
        version() AS version,
        pg_postmaster_start_time() AS Started,
-       pg_is_in_recovery() AS "Is_Slave"
+       pg_is_in_recovery() AS "Is_Replica"
   FROM pg_stat_activity
  WHERE pid = pg_backend_pid()
 ENDSQL
@@ -235,7 +235,7 @@ ENDSQL
 xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
     --query-mode \
     --query-trim  \
-    --query-type SlaveHosts96 \
+    --query-type ReplicaHosts96 \
     --query-interpolate \
     --query-allow-nulls \
     --package models \
@@ -255,7 +255,7 @@ xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT10}/?sslmode=disable \
     --query-trim \
     --query-interpolate \
     --query-allow-nulls \
-    --query-type SlaveHosts10 \
+    --query-type ReplicaHosts10 \
     --package models \
     --out ./ << ENDSQL
 SELECT application_name, client_addr, state, sent_offset - (replay_offset - (sent_lsn - replay_lsn) * 255 * 16 ^ 6 ) AS byte_lag

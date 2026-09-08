@@ -20,25 +20,25 @@ import (
 	"database/sql"
 )
 
-// SlaveHosts10 represents a row from '[custom slave_hosts10]'.
-type SlaveHosts10 struct {
+// ReplicaHosts96 represents a row from '[custom replica_hosts96]'.
+type ReplicaHosts96 struct {
 	ApplicationName sql.NullString  // application_name
 	ClientAddr      sql.NullString  // client_addr
 	State           sql.NullString  // state
 	ByteLag         sql.NullFloat64 // byte_lag
 }
 
-// GetSlaveHosts10s runs a custom query, returning results as SlaveHosts10.
-func GetSlaveHosts10s(db XODB) ([]*SlaveHosts10, error) {
+// GetReplicaHosts96s runs a custom query, returning results as ReplicaHosts96.
+func GetReplicaHosts96s(db XODB) ([]*ReplicaHosts96, error) {
 	var err error
 
 	// sql query
-	sqlstr := `SELECT application_name, client_addr, state, sent_offset - (replay_offset - (sent_lsn - replay_lsn) * 255 * 16 ^ 6 ) AS byte_lag ` +
+	sqlstr := `SELECT application_name, client_addr, state, sent_offset - (replay_offset - (sent_xlog - replay_xlog) * 255 * 16 ^ 6 ) AS byte_lag ` +
 		`FROM ( SELECT application_name, client_addr, client_hostname, state, ` +
-		`('x' || lpad(split_part(sent_lsn::TEXT,   '/', 1), 8, '0'))::bit(32)::bigint AS sent_lsn, ` +
-		`('x' || lpad(split_part(replay_lsn::TEXT, '/', 1), 8, '0'))::bit(32)::bigint AS replay_lsn, ` +
-		`('x' || lpad(split_part(sent_lsn::TEXT,   '/', 2), 8, '0'))::bit(32)::bigint AS sent_offset, ` +
-		`('x' || lpad(split_part(replay_lsn::TEXT, '/', 2), 8, '0'))::bit(32)::bigint AS replay_offset ` +
+		`('x' || lpad(split_part(sent_location::TEXT,   '/', 1), 8, '0'))::bit(32)::bigint AS sent_xlog, ` +
+		`('x' || lpad(split_part(replay_location::TEXT, '/', 1), 8, '0'))::bit(32)::bigint AS replay_xlog, ` +
+		`('x' || lpad(split_part(sent_location::TEXT,   '/', 2), 8, '0'))::bit(32)::bigint AS sent_offset, ` +
+		`('x' || lpad(split_part(replay_location::TEXT, '/', 2), 8, '0'))::bit(32)::bigint AS replay_offset ` +
 		`FROM pg_stat_replication ) AS s`
 
 	// run query
@@ -50,9 +50,9 @@ func GetSlaveHosts10s(db XODB) ([]*SlaveHosts10, error) {
 	defer q.Close()
 
 	// load results
-	res := []*SlaveHosts10{}
+	res := []*ReplicaHosts96{}
 	for q.Next() {
-		sh := SlaveHosts10{}
+		sh := ReplicaHosts96{}
 
 		// scan
 		err = q.Scan(&sh.ApplicationName, &sh.ClientAddr, &sh.State, &sh.ByteLag)
