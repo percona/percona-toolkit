@@ -9187,13 +9187,43 @@ sub main {
       );
 
       # Check if we are not a replica of the source server with ROW or MIXED base replication
-      if ( !$o->get('force') ) {
+      #
+      # This check requires opening a *new* connection to whatever server
+      # SHOW [REPLICA|SLAVE] STATUS reports as our source. That server may
+      # not be reachable (firewalls, tunnels, IPv6-only routes, etc.) and,
+      # crucially, may not accept the same authentication that was used for
+      # the connection the user actually asked for -- e.g. when the tool
+      # was invoked relying on the MySQL/MariaDB unix_socket auth plugin
+      # (no --user/--password given; the OS user is trusted locally), that
+      # trust does not, and cannot, extend to a remote source server.
+      #
+      # Respect an explicit --recursion-method=none the same way the rest
+      # of the tool does elsewhere (see the replica-discovery code below):
+      # the user is telling us not to look at, or connect to, any other
+      # server. And even when the check does run, a failure to connect to
+      # the source should not abort the whole run -- just skip the check,
+      # like we already do for the tunnel/port-redirection case below.
+      if ( !$o->get('force')
+         && lc($o->get('recursion-method') || '') ne 'none' ) {
          my $source = $ms->get_source_dsn($cxn->dbh(), $dsn, $dp);
          if ( $source ) {
-            my $source_cxn = $make_cxn->(dsn => $source);
+            my $source_cxn = eval {
+               $make_cxn->(dsn => $source);
+            };
+
+            if ( $EVAL_ERROR ) {
+               PTDEBUG && _d('Could not connect to source', $dp->as_string($source),
+                  'to check replication safety:', $EVAL_ERROR);
+               warn "Could not connect to source " . $dp->as_string($source)
+                  . " to check replication safety (skipping this check): "
+                  . "$EVAL_ERROR"
+                  . "If you want to suppress this warning, specify option --force "
+                  . "or --recursion-method=none.\n";
+               $EVAL_ERROR = '';
+            }
 
             # Check source
-            my $is_source_of = eval {
+            my $is_source_of = $source_cxn && eval {
                $ms->is_source_of($source_cxn->{dbh}, $cxn->{dbh});
             };
 
