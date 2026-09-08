@@ -1,0 +1,14 @@
+2024-06-01T12:00:00.130+0000 I  CONTROL  [initandlisten] MongoDB starting : pid=1003 port=27017 dbpath=/data/db 64-bit host=mongo-rs0-2
+2024-06-01T12:00:00.135+0000 I  CONTROL  [initandlisten] db version v6.0.12
+2024-06-01T12:00:00.140+0000 I  CONTROL  [initandlisten] options: { net: { bindIp: "192.168.1.12", port: 27017 } }
+2024-06-01T12:00:01.260+0000 I  NETWORK  [listener] waiting for connections on port 27017
+2024-06-01T12:00:01.400+0000 I  NETWORK  [listener] connection accepted from 192.168.1.10:47200
+2024-06-01T12:00:01.500+0000 I  NETWORK  [listener] connection accepted from 192.168.1.11:47201
+2024-06-01T12:00:02.600+0000 I  REPL     [initandlisten] replica set rs0 starting up
+2024-06-01T12:00:03.200+0000 I  REPL     [rsSync] transition to RECOVERING from STARTUP2
+2024-06-01T12:00:07.000+0000 I  REPL     [rsSync] transition to SECONDARY from RECOVERING
+2024-06-01T12:00:07.100+0000 I  REPL     [rsSync] Replica Set Member State: SECONDARY
+2024-06-01T12:00:12.000+0000 W  REPL     [rsBackgroundSync] rollback required after sync source change
+2024-06-01T12:00:12.500+0000 E  REPL     [rsBackgroundSync] rollback failed: could not complete rollback
+2024-06-01T12:00:30.000+0000 I  REPL     [rsBackgroundSync] quorum check succeeded for replica set rs0
+2024-06-01T12:00:45.000+0000 I  COMMAND  [conn2] command test.$cmd command: find { find: "events", filter: {} } planSummary: COLLSCAN keysExamined:0 docsExamined:5000000 durationMillis: 2100

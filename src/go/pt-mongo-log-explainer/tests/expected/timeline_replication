@@ -1,0 +1,8 @@
+[2024-06-01 12:00:02] [mongo-rs0-0] [mongo-rs0-0:27017] [RS_INITIATE] [SUCCESS] [2024-06-01T12:00:02.300+0000 I  REPL     [conn1] replSetInitiate admin command received]
+[2024-06-01 12:00:03] [mongo-rs0-1] [mongo-rs0-1:27017] [INITIAL_SYNC] [INFO] [rs=rs0 2024-06-01T12:00:03.000+0000 I  REPL     [initialSync] initial sync source chosen: mongo-rs0-0:27017]
+[2024-06-01 12:00:04] [mongo-rs0-1] [mongo-rs0-1:27017] [INITIAL_SYNC] [INFO] [rs=rs0 2024-06-01T12:00:04.000+0000 I  REPL     [initialSync] initial sync in progress: cloning collection local.oplog.rs]
+[2024-06-01 12:00:08] [mongo-rs0-1] [mongo-rs0-1:27017] [INITIAL_SYNC] [INFO] [rs=rs0 2024-06-01T12:00:08.000+0000 I  REPL     [initialSync] initial sync complete]
+[2024-06-01 12:00:08] [mongo-rs0-1] [mongo-rs0-1:27017] [INITIAL_SYNC] [INFO] [rs=rs0 2024-06-01T12:00:08.100+0000 I  REPL     [initialSync] finished initial sync, transitioning to steady replication]
+[2024-06-01 12:00:12] [mongo-rs0-2] [mongo-rs0-2:27017] [ROLLBACK] [FAILURE] [rs=rs0 2024-06-01T12:00:12.000+0000 W  REPL     [rsBackgroundSync] rollback required after sync source change]
+[2024-06-01 12:00:12] [mongo-rs0-2] [mongo-rs0-2:27017] [ROLLBACK] [FAILURE] [rs=rs0 2024-06-01T12:00:12.500+0000 E  REPL     [rsBackgroundSync] rollback failed: could not complete rollback]
+[2024-06-01 12:00:25] [mongo-rs0-1] [mongo-rs0-1:27017] [SYNC_SOURCE_CHANGE] [INFO] [rs=rs0 2024-06-01T12:00:25.000+0000 I  REPL     [rsBackgroundSync] Changed sync source from mongo-rs0-0:27017 to mongo-rs0-2:27017]
