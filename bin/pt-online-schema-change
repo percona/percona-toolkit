@@ -4311,6 +4311,7 @@ sub get_replicas {
          dsn_table_dsn => $dsn_table_dsn,
          wait_no_die => $args{'wait_no_die'},
          parent => $dsn,
+         replicas => $args{replicas},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -5093,12 +5094,12 @@ sub get_cxn_from_dsn_table {
    my $o = $self->{OptionParser};
    my $my_dsn;
    my $lcxn;
-   use Data::Dumper;
    DSN:
    do {
       @cxn = ();
       my $dsn_strings = $dbh->selectcol_arrayref($sql);
       if ( $dsn_strings ) {
+         DSN_STRING:
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
 
@@ -5113,6 +5114,17 @@ sub get_cxn_from_dsn_table {
             if ( $o->got('replica-password') && !defined $raw_dsn->{p} ) {
                PTDEBUG && _d('DSN - password set from --replica-password');
                $my_dsn->{p} = $o->get('replica-password');
+            }
+
+            foreach my $known_replica ( @{$args{replicas}} ) {
+               if ( $known_replica->{dsn}->{h} eq $my_dsn->{h}
+                     and $known_replica->{dsn}->{P} eq $my_dsn->{P}
+                     and $known_replica->{dsn}->{u} eq $my_dsn->{u}
+                     and $known_replica->{dsn}->{p} eq $my_dsn->{p}
+               ) {
+                  push @cxn, $known_replica;
+                  next DSN_STRING;
+               }
             }
 
             eval {
@@ -5132,6 +5144,19 @@ sub get_cxn_from_dsn_table {
       }
       $done = 1;
    } until $done;
+   REPLICAS:
+   foreach my $known_replica ( @{$args{replicas}} ) {
+      foreach my $new_replica ( @cxn ) {
+         if ( $known_replica->{dsn}->{h} eq $new_replica->{dsn}->{h}
+               and $known_replica->{dsn}->{P} eq $new_replica->{dsn}->{P}
+               and $known_replica->{dsn}->{u} eq $new_replica->{dsn}->{u}
+               and $known_replica->{dsn}->{p} eq $new_replica->{dsn}->{p}
+         ) {
+            next REPLICAS;
+         }
+         $known_replica->{dbh}->disconnect;
+      }
+   }
    return \@cxn;
 }
 
@@ -5217,7 +5242,7 @@ sub wait {
       my ($replicas, $refresher) = ($self->{replicas}, $self->{get_replicas_cb});
       return $replicas if ( not defined $refresher );
       my $before = join ' ', sort map {$_->description()} @$replicas;
-      $replicas = $refresher->();
+      $replicas = $refresher->(undef, $replicas);
       my $after = join ' ', sort map {$_->description()} @$replicas;
       if ($before ne $after) {
          $self->{replicas} = $replicas;
@@ -5277,7 +5302,7 @@ sub wait {
              $lag = $get_lag->($lagged_replicas[$i]->{cxn});
          };
          if ($EVAL_ERROR) {
-             die $EVAL_ERROR;
+            die $EVAL_ERROR;
          }
          PTDEBUG && _d($lagged_replicas[$i]->{cxn}->name(),
             'replica lag:', $lag);
@@ -9224,11 +9249,11 @@ sub main {
      my $slaves_to_skip = $o->get('skip-check-replica-lag');
 
      my $get_replicas_cb = sub {
-         my ($intolerant) = @_;
+         my ($intolerant, $known_replicas) = @_;
          my $slaves =$ms->get_replicas(
                dbh      => $cxn->dbh(),
                dsn      => $cxn->dsn(),
-               replicas => $slaves,
+               replicas => defined($known_replicas) ? $known_replicas : $slaves,
                make_cxn => sub {
                   return $make_cxn->(
                      @_,
@@ -9393,11 +9418,15 @@ sub main {
                eval { $dbh = $cxn->connect() };  # connect or die trying
                if ( $EVAL_ERROR ) {
                   # As the docs say: "The tool waits forever for replicas
-                  # to stop lagging.  If any replica is stopped, the tool
+                  # to stop lagging unless option --no-fail-on-stopped-replication
+                  # is specified.  If any replica is stopped, the tool
                   # waits forever until the replica is started."
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
                   PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
+                  if ( $o->get('fail-on-stopped-replication') ) {
+                     die $EVAL_ERROR;
+                  }
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef;
                }
