@@ -21,18 +21,18 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"html/template"
+	"text/template"
 	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
 
 	version "github.com/hashicorp/go-version"
-	"github.com/pborman/getopt"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
@@ -82,6 +82,19 @@ var (
 	directConnection         = true
 )
 
+var ptdebug = os.Getenv("PTDEBUG") != ""
+
+func ptDebugf(format string, args ...interface{}) {
+	if !ptdebug {
+		return
+	}
+	_, file, line, _ := runtime.Caller(1)
+	fmt.Fprintf(os.Stderr, "# %s:%d %d %s %s\n",
+		filepath.Base(file), line, os.Getpid(),
+		time.Now().Format("2006-01-02T15:04:05.000Z07:00"),
+		fmt.Sprintf(format, args...))
+}
+
 type TimedStats struct {
 	Min   int64
 	Max   int64
@@ -112,12 +125,14 @@ type hostInfo struct {
 	ProcCreateTime   time.Time
 	ProcProcessCount int
 
-	CmdlineArgs []string
+	CmdlineArgs  []string
+	ParsedConfig *proto.CommandLineOptions
 	// Server Status
 	ProcessName    string
 	ReplicasetName string
 	Version        string
 	NodeType       string
+	FCV            string
 }
 
 type procInfo struct {
@@ -187,22 +202,77 @@ func (t mongosInfo) MaxNameLen() int {
 }
 
 type cliOptions struct {
-	Host               string
-	Port               string
-	User               string
-	Password           string
-	AuthDB             string
-	LogLevel           string
-	OutputFormat       string
-	SSLCAFile          string
-	SSLPEMKeyFile      string
-	RunningOpsSamples  int
-	RunningOpsInterval int
-	URI                string
-	Help               bool
-	Version            bool
-	NoVersionCheck     bool
-	NoRunningOps       bool
+	config.ConfigFlag
+	config.VersionFlag
+	config.VersionCheckFlag
+
+	URI           string                    `name:"uri"                    help:"MongoDB connection URI. Cannot be combined with --host or --port."`
+	Host          string                    `name:"host"                   help:"Host to connect to" default:""`
+	Port          string                    `name:"port"                   help:"Port to connect to" default:""`
+	User          string                    `name:"username"               short:"u" help:"Username for MongoDB authentication" default:""`
+	Password      config.StdinRequestString `name:"password"               short:"p" help:"Password for MongoDB authentication. Omit value to prompt." optional:""`
+	AuthDB        string                    `name:"authenticationDatabase" short:"a" help:"Authentication database" default:"admin"`
+	LogLevel      string                    `name:"log-level"              short:"l" help:"Log level: panic, fatal, error, warn, info, debug" default:"warn"`
+	OutputFormat  string                    `name:"output-format"          short:"f" help:"Output format: text or json" default:"text" enum:"text,json"`
+	SSLCAFile     string                    `name:"sslCAFile"              help:"SSL CA cert file used for authentication" default:""`
+	SSLPEMKeyFile string                    `name:"sslPEMKeyFile"          help:"SSL client PEM file used for authentication" default:""`
+	RunningOpsSamples  int                  `name:"running-ops-samples"    short:"s" help:"Number of samples to collect for running ops" default:"5"`
+	RunningOpsInterval int                  `name:"running-ops-interval"   short:"i" help:"Interval between running ops samples in milliseconds" default:"1000"`
+
+	HostPort string `arg:"" optional:"" name:"host[:port]" help:"Host and optional port (legacy positional syntax)" default:""`
+}
+
+func (o *cliOptions) AfterApply() error {
+	if o.Version {
+		fmt.Println(toolname)
+		fmt.Printf("Version %s\n", Version)
+		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
+		fmt.Printf("Commit: %s\n", Commit)
+		return nil
+	}
+
+	ll, err := log.ParseLevel(o.LogLevel)
+	if err != nil {
+		return fmt.Errorf("cannot set log level: %w", err)
+	}
+	log.SetLevel(ll)
+
+	if o.VersionCheck {
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
+		if err != nil {
+			log.Infof("cannot check version updates: %s", err)
+		} else if advice != "" {
+			log.Infof("%s", advice)
+		}
+	}
+
+	if err := o.Password.Request(func() (string, error) {
+		print("Password: ")
+		pass, err := term.ReadPassword(0)
+		return string(pass), err
+	}); err != nil {
+		return err
+	}
+
+	if o.HostPort != "" {
+		if o.URI != "" || o.Host != "" || o.Port != "" {
+			return fmt.Errorf("host[:port] positional arg cannot be combined with --uri, --host, or --port")
+		}
+		host, port, splitErr := net.SplitHostPort(o.HostPort)
+		if splitErr != nil {
+			o.Host = o.HostPort
+		} else {
+			o.Host = host
+			o.Port = port
+		}
+		o.HostPort = ""
+	}
+
+	if o.URI != "" && (o.Host != "" || o.Port != "") {
+		return fmt.Errorf("if a full URI is provided, you cannot also specify --host or --port")
+	}
+
+	return nil
 }
 
 type collectedInfo struct {
@@ -214,45 +284,99 @@ type collectedInfo struct {
 	SecuritySettings *security
 	HostInfo         *hostInfo
 	MongosInfo       *mongosInfo
+	OSChecks         *osProductionChecks
+	DBInventory      []dbInventoryEntry
+	StatusDelta      *statusDelta
+	WiredTiger       *wiredTigerInfo
+	ShardsInfo       *proto.ShardsInfo
+	Connections      *connectionInfo
+	ChangeStream     *changeStreamInfo
 	Errors           []string
 }
 
-func main() {
-	opts, err := parseFlags()
-	if err != nil {
-		log.Errorf("cannot get parameters: %s", err.Error())
+type connectionInfo struct {
+	Current         int64
+	Available       int64
+	TotalCreated    int64
+	MaxIncoming     int
+	SlowOpThresholdMs int64
+	ProfilingMode   string
+}
 
+type changeStreamInfo struct {
+	PreAndPostImagesExpire string
+}
+
+type osProductionChecks struct {
+	KernelVersion  string
+	MemSizeMB      float64
+	NumCores       float64
+	NUMAEnabled    bool
+	OpenFilesLimit float64
+	OpenFilesWarn  bool
+	VMMaxMapCount  int64
+	VMMaxMapWarn   bool
+	TasksMax       string
+}
+
+type oplogDisplay struct {
+	Nodes   []proto.OplogInfo
+	MinHost string
+	MaxHost string
+}
+
+type dbInventoryEntry struct {
+	Name        string
+	SizeScaled  float64
+	SizeUnit    string
+	Collections int64
+	Indexes     int64
+	TTLIndexes  int64
+}
+
+type counterDelta struct {
+	PerSec float64
+	PerDay float64
+}
+
+type statusDelta struct {
+	Insert   counterDelta
+	Query    counterDelta
+	Update   counterDelta
+	Delete   counterDelta
+	GetMore  counterDelta
+	Command  counterDelta
+	Duration time.Duration
+}
+
+type wiredTigerInfo struct {
+	CacheUsedMB            float64
+	CacheMaxMB             float64
+	CacheUsedPct           float64
+	DirtyMB                float64
+	DirtyPct               float64
+	PagesEvictedUnmodified int64
+	PagesEvictedModified   int64
+	PagesReadIntoCache     int64
+	PagesWrittenFromCache  int64
+	// tcmalloc
+	TcmallocAvailable      bool
+	TcmallocAllocMB        float64
+	TcmallocHeapMB         float64
+	TcmallocPageheapFreeMB float64
+	TcmallocPageheapUnmappedMB float64
+	TcmallocThreadCacheFreeMB  float64
+}
+
+func main() {
+	opts := &cliOptions{}
+	if _, _, err := config.Setup(toolname, opts); err != nil {
+		log.Errorf("cannot get parameters: %s", err)
 		os.Exit(cannotParseCommandLineParameters)
 	}
 
-	if opts == nil && err == nil {
-		return
-	}
-
-	logLevel, err := log.ParseLevel(opts.LogLevel)
-	if err != nil {
-		fmt.Printf("cannot set log level: %s", err.Error())
-	}
-
-	log.SetLevel(logLevel)
-
 	if opts.Version {
-		fmt.Println(toolname)
-		fmt.Printf("Version %s\n", Version)
-		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
-		fmt.Printf("Commit: %s\n", Commit)
-
 		return
-	}
-
-	conf := config.DefaultConfig(toolname)
-	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
-		advice, err := versioncheck.CheckUpdates(toolname, Version)
-		if err != nil {
-			log.Infof("cannot check version updates: %s", err.Error())
-		} else if advice != "" {
-			log.Infof("%s", advice)
-		}
 	}
 
 	ctx := context.Background()
@@ -271,9 +395,14 @@ func main() {
 	}
 
 	if err := client.Connect(ctx); err != nil {
-		log.Errorf("Cannot connect to MongoDB: %s", err)
+		if strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "tls:") {
+			log.Errorf("Cannot connect to MongoDB (possible TLS mismatch or wrong port): %s", err)
+		} else {
+			log.Errorf("Cannot connect to MongoDB: %s", err)
+		}
 		os.Exit(cannotConnectToMongoDB)
 	}
+	ptDebugf("connected to MongoDB at %v", clientOptions.Hosts)
 
 	defer client.Disconnect(ctx) // nolint
 
@@ -281,27 +410,34 @@ func main() {
 	if err != nil && errors.Is(err, util.ShardingNotEnabledError) {
 		log.Errorf("Cannot get hostnames: %s", err)
 	}
+	ptDebugf("got hostnames: %v", hostnames)
 
 	ci := &collectedInfo{}
 
+	ptDebugf("collecting mongos info")
 	ci.MongosInfo, err = getMongosInfo(ctx, client)
 	if err != nil {
 		log.Warnf("[Warning] cannot get mongos info: %v\n", err)
 	}
-
+	ptDebugf("collecting host info")
 	ci.HostInfo, err = getHostInfo(ctx, client)
 	if err != nil {
 		log.Errorf("Cannot get host info for %q: %s", clientOptions.Hosts, err)
 		os.Exit(cannotGetHostInfo) //nolint:gocritic
 	}
+	ptDebugf("host info: version=%s nodeType=%s", ci.HostInfo.Version, ci.HostInfo.NodeType)
 
 	if ci.ReplicaMembers, err = util.GetReplicasetMembers(ctx, clientOptions); err != nil {
 		log.Warnf("[Warning] cannot get replicaset members: %v\n", err)
 	}
+	ptDebugf("got %d replica members", len(ci.ReplicaMembers))
 
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
 
-	if opts.RunningOpsSamples > 0 && opts.RunningOpsInterval > 0 {
+	isArbiter := ci.HostInfo != nil && ci.HostInfo.NodeType == "arbiter"
+
+	if !isArbiter && opts.RunningOpsSamples > 0 && opts.RunningOpsInterval > 0 {
+		ptDebugf("collecting op counters (%d samples, %dms interval)", opts.RunningOpsSamples, opts.RunningOpsInterval)
 		ci.RunningOps, err = getOpCountersStats(
 			ctx, client, opts.RunningOpsSamples,
 			time.Duration(opts.RunningOpsInterval)*time.Millisecond,
@@ -309,9 +445,11 @@ func main() {
 		if err != nil {
 			log.Printf("[Error] cannot get Opcounters stats: %v\n", err)
 		}
+		ptDebugf("op counters done")
 	}
 
 	if ci.HostInfo != nil {
+		ptDebugf("collecting security settings")
 		if ci.SecuritySettings, err = getSecuritySettings(ctx, client, ci.HostInfo.Version); err != nil {
 			log.Errorf("[Error] cannot get security settings: %v\n", err)
 		}
@@ -319,29 +457,79 @@ func main() {
 		log.Warn("Cannot check security settings since host info is not available (permissions?)")
 	}
 
-	if ci.OplogInfo, err = oplog.GetOplogInfo(ctx, hostnames, clientOptions); err != nil {
-		log.Infof("Cannot get Oplog info: %s\n", err)
-	} else {
-		if len(ci.OplogInfo) == 0 {
+	ptDebugf("collecting FCV")
+	ci.HostInfo.FCV = getFCV(ctx, client)
+	ptDebugf("FCV: %s", ci.HostInfo.FCV)
+
+	ptDebugf("collecting OS production checks")
+	ci.OSChecks, err = getOSProductionChecks(ctx, client)
+	if err != nil {
+		log.Warnf("[Warning] cannot get OS production checks: %v\n", err)
+	}
+
+	ptDebugf("collecting connection info")
+	ci.Connections, err = getConnectionInfo(ctx, client)
+	if err != nil {
+		log.Warnf("[Warning] cannot get connection info: %v\n", err)
+	}
+
+	ptDebugf("collecting change stream info")
+	ci.ChangeStream, err = getChangeStreamInfo(ctx, client)
+	if err != nil {
+		log.Debugf("change stream info not available: %v", err)
+	}
+
+	ptDebugf("collecting database inventory")
+	ci.DBInventory, err = getDatabaseInventory(ctx, client)
+	if err != nil {
+		log.Warnf("[Warning] cannot get database inventory: %v\n", err)
+	}
+	ptDebugf("database inventory: %d entries", len(ci.DBInventory))
+
+	if !isArbiter {
+		ptDebugf("collecting oplog info")
+		if ci.OplogInfo, err = oplog.GetOplogInfo(ctx, hostnames, clientOptions); err != nil {
+			log.Infof("Cannot get Oplog info: %s\n", err)
+		} else if len(ci.OplogInfo) == 0 {
 			log.Info("oplog info is empty. Skipping")
-		} else {
-			ci.OplogInfo = ci.OplogInfo[:1]
+		}
+		ptDebugf("oplog info: %d entries", len(ci.OplogInfo))
+
+		ptDebugf("collecting status delta (10s window)")
+		ci.StatusDelta, err = getStatusDelta(ctx, client, 10*time.Second)
+		if err != nil {
+			log.Warnf("[Warning] cannot get status delta: %v\n", err)
+		}
+		ptDebugf("status delta done")
+
+		ptDebugf("collecting WiredTiger info")
+		ci.WiredTiger, err = getWiredTigerInfo(ctx, client)
+		if err != nil {
+			log.Debugf("WiredTiger metrics not available: %v", err)
 		}
 	}
 
 	// individual servers won't know about this info
 	if ci.HostInfo.NodeType == typeMongos {
+		ptDebugf("collecting cluster-wide info (mongos)")
 		if ci.ClusterWideInfo, err = getClusterwideInfo(ctx, client); err != nil {
 			log.Printf("[Error] cannot get cluster wide info: %v\n", err)
+		}
+
+		ptDebugf("collecting shards info")
+		if ci.ShardsInfo, err = getShardsInfo(ctx, client); err != nil {
+			log.Warnf("[Warning] cannot get shards info: %v\n", err)
 		}
 	}
 
 	if ci.HostInfo.NodeType == typeMongos {
+		ptDebugf("collecting balancer stats")
 		if ci.BalancerStats, err = GetBalancerStats(ctx, client); err != nil {
 			log.Printf("[Error] cannot get balancer stats: %v\n", err)
 		}
 	}
 
+	ptDebugf("formatting results (format=%s)", opts.OutputFormat)
 	out, err := formatResults(ci, opts.OutputFormat)
 	if err != nil {
 		log.Errorf("Cannot format the results: %s", err)
@@ -365,41 +553,66 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	default:
 		buf = new(bytes.Buffer)
 
-		t := template.Must(template.New("mongos").Parse(templates.MongosInfo))
-		if err := t.Execute(buf, ci.MongosInfo); err != nil {
-			return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
-		}
-
-		t = template.Must(template.New("replicas").Parse(templates.Replicas))
-		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
-			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
-		}
-
-		t = template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
+		// 1. Host & OS
+		t := template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
 		if err := t.Execute(buf, ci.HostInfo); err != nil {
 			return nil, errors.Wrap(err, "cannot parse hosttemplateData section of the output template")
 		}
 
+		t = template.Must(template.New("oschecks").Parse(templates.OSChecks))
+		if err := t.Execute(buf, ci.OSChecks); err != nil {
+			return nil, errors.Wrap(err, "cannot parse oschecks section of the output template")
+		}
+
+		// 2. Configuration
 		t = template.Must(template.New("cmdlineargsa").Parse(templates.CmdlineArgs))
 		if err := t.Execute(buf, ci.HostInfo); err != nil {
 			return nil, errors.Wrap(err, "cannot parse the command line args section of the output template")
 		}
 
-		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
-		if err := t.Execute(buf, ci.RunningOps); err != nil {
-			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
+		t = template.Must(template.New("connections").Parse(templates.Connections))
+		if err := t.Execute(buf, ci.Connections); err != nil {
+			return nil, errors.Wrap(err, "cannot parse connections section of the output template")
 		}
 
+		t = template.Must(template.New("changestream").Parse(templates.ChangeStream))
+		if err := t.Execute(buf, ci.ChangeStream); err != nil {
+			return nil, errors.Wrap(err, "cannot parse changestream section of the output template")
+		}
+
+		// 3. Security
 		t = template.Must(template.New("ssl").Parse(templates.Security))
 		if err := t.Execute(buf, ci.SecuritySettings); err != nil {
 			return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
 		}
 
-		if ci.OplogInfo != nil && len(ci.OplogInfo) > 0 {
+		// 4. Replication
+		t = template.Must(template.New("replicas").Parse(templates.Replicas))
+		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
+			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
+		}
+
+		if len(ci.OplogInfo) > 0 {
+			od := oplogDisplay{
+				Nodes:   ci.OplogInfo,
+				MinHost: ci.OplogInfo[0].Hostname,
+				MaxHost: ci.OplogInfo[len(ci.OplogInfo)-1].Hostname,
+			}
 			t = template.Must(template.New("oplogInfo").Parse(templates.Oplog))
-			if err := t.Execute(buf, ci.OplogInfo[0]); err != nil {
+			if err := t.Execute(buf, od); err != nil {
 				return nil, errors.Wrap(err, "cannot parse oplogInfo section of the output template")
 			}
+		}
+
+		// 5. Sharding
+		t = template.Must(template.New("mongos").Parse(templates.MongosInfo))
+		if err := t.Execute(buf, ci.MongosInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
+		}
+
+		t = template.Must(template.New("shardsinfo").Parse(templates.ShardsInfo))
+		if err := t.Execute(buf, ci.ShardsInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse shardsinfo section of the output template")
 		}
 
 		t = template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
@@ -410,6 +623,28 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 		t = template.Must(template.New("balancer").Parse(templates.BalancerStats))
 		if err := t.Execute(buf, ci.BalancerStats); err != nil {
 			return nil, errors.Wrap(err, "cannot parse balancer section of the output template")
+		}
+
+		// 6. Database Inventory
+		t = template.Must(template.New("dbinventory").Parse(templates.DBInventory))
+		if err := t.Execute(buf, ci.DBInventory); err != nil {
+			return nil, errors.Wrap(err, "cannot parse dbinventory section of the output template")
+		}
+
+		// 7. Performance & Storage
+		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
+		if err := t.Execute(buf, ci.RunningOps); err != nil {
+			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
+		}
+
+		t = template.Must(template.New("statusdelta").Parse(templates.StatusDelta))
+		if err := t.Execute(buf, ci.StatusDelta); err != nil {
+			return nil, errors.Wrap(err, "cannot parse statusdelta section of the output template")
+		}
+
+		t = template.Must(template.New("wiredtiger").Parse(templates.WiredTiger))
+		if err := t.Execute(buf, ci.WiredTiger); err != nil {
+			return nil, errors.Wrap(err, "cannot parse wiredtiger section of the output template")
 		}
 	}
 
@@ -446,6 +681,7 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		if cmdOpts.Parsed.Storage.DbPath != "" {
 			i.DBPath = cmdOpts.Parsed.Storage.DbPath
 		}
+		i.ParsedConfig = &cmdOpts
 	}
 
 	var ss proto.ServerStatus
@@ -456,16 +692,16 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		i.Version = ss.Version
 		if ss.Repl != nil {
 			i.ReplicasetName = ss.Repl.SetName
+			if fmt.Sprintf("%v", ss.Repl.ArbiterOnly) == "true" {
+				i.NodeType = "arbiter"
+			}
 		}
 
 		pi := procInfo{}
-		if err := getProcInfo(int32(ss.Pid), &pi); err != nil {
-			pi.Error = err
-		} else {
-			i.ProcPath = pi.Path
-			i.ProcUserName = pi.UserName
-			i.ProcCreateTime = pi.CreateTime
-		}
+		getProcInfo(int32(ss.Pid), &pi)
+		i.ProcPath = pi.Path
+		i.ProcUserName = pi.UserName
+		i.ProcCreateTime = pi.CreateTime
 	}
 
 	return i, nil
@@ -474,7 +710,8 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 func countMongodProcesses() (int, error) {
 	pids, err := process.Pids()
 	if err != nil {
-		return 0, err
+		log.Debugf("cannot list processes (restricted environment): %s", err)
+		return 0, nil
 	}
 
 	count := 0
@@ -832,27 +1069,20 @@ func getOpCountersStats(ctx context.Context, client *mongo.Client, count int,
 	return oc, nil
 }
 
-func getProcInfo(pid int32, templateData *procInfo) error {
-	// proc, err := process.NewProcess(templateData.ServerStatus.Pid)
+func getProcInfo(pid int32, pi *procInfo) error {
 	proc, err := process.NewProcess(pid)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot get process %d", pid))
+		log.Debugf("cannot get process %d (restricted environment): %s", pid, err)
+		return nil
 	}
-
-	ct, err := proc.CreateTime()
-	if err != nil {
-		return err
+	if ct, err := proc.CreateTime(); err == nil {
+		pi.CreateTime = time.Unix(ct/1000, 0)
 	}
-
-	templateData.CreateTime = time.Unix(ct/1000, 0)
-	templateData.Path, err = proc.Exe()
-	if err != nil {
-		return err
+	if path, err := proc.Exe(); err == nil {
+		pi.Path = path
 	}
-
-	templateData.UserName, err = proc.Username()
-	if err != nil {
-		return err
+	if name, err := proc.Username(); err == nil {
+		pi.UserName = name
 	}
 	return nil
 }
@@ -979,87 +1209,231 @@ func externalIP() (string, error) {
 	return "", errors.New("are you connected to the network?")
 }
 
-func parseFlags() (*cliOptions, error) {
-	opts := &cliOptions{
-		LogLevel:           DefaultLogLevel,
-		RunningOpsSamples:  DefaultRunningOpsSamples,
-		RunningOpsInterval: DefaultRunningOpsInterval, // milliseconds
-		AuthDB:             DefaultAuthDB,
-		OutputFormat:       DefaultOutputFormat,
+func getOSProductionChecks(ctx context.Context, client *mongo.Client) (*osProductionChecks, error) {
+	hi := proto.HostInfo{}
+	if err := client.Database("admin").RunCommand(ctx, primitive.M{"hostInfo": 1}).Decode(&hi); err != nil {
+		return nil, errors.Wrap(err, "getOSProductionChecks.hostInfo")
 	}
-
-	gop := getopt.New()
-	gop.BoolVarLong(&opts.Help, "help", 'h', "Show help")
-	gop.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
-	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
-
-	gop.StringVarLong(&opts.URI, "uri", 0, `URI describes the hosts to be used and options. Flags has higher priority. If a full URI is provided, you cannot also specify "--host" or "--port".`)
-	gop.StringVarLong(&opts.Host, "host", 0, "Host")
-	gop.StringVarLong(&opts.Port, "port", 0, "Port")
-
-	gop.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
-	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").
-		SetOptional()
-	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
-		"Database to use for optional MongoDB authentication. Default: admin")
-	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "error",
-		"Log level: panic, fatal, error, warn, info, debug. Default: error")
-	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
-
-	gop.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
-		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples),
-	)
-
-	gop.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
-		fmt.Sprintf("Interval to wait between running ops samples in milliseconds. Default %d milliseconds",
-			opts.RunningOpsInterval),
-	)
-
-	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
-	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
-
-	gop.SetParameters("host[:port]")
-	gop.Parse(os.Args)
-
-	if gop.NArgs() > 0 {
-		if gop.IsSet("host") || gop.IsSet("port") || gop.IsSet("uri") {
-			return nil, fmt.Errorf(`parameter host[:port] is not compatible with "--uri", "--host" and "--port" flags set`)
+	c := &osProductionChecks{
+		KernelVersion:  hi.Extra.KernelVersion,
+		MemSizeMB:      hi.System.MemSizeMB,
+		NumCores:       hi.System.NumCores,
+		NUMAEnabled:    hi.System.NumaEnabled,
+		OpenFilesLimit: hi.Extra.MaxOpenFiles,
+		OpenFilesWarn:  hi.Extra.MaxOpenFiles > 0 && hi.Extra.MaxOpenFiles < 65535,
+	}
+	if data, err := os.ReadFile("/proc/sys/vm/max_map_count"); err == nil {
+		fmt.Sscanf(strings.TrimSpace(string(data)), "%d", &c.VMMaxMapCount)
+		c.VMMaxMapWarn = c.VMMaxMapCount < 262144
+	}
+	if data, err := os.ReadFile("/proc/1/limits"); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			if strings.HasPrefix(line, "Max processes") {
+				fields := strings.Fields(line)
+				if len(fields) >= 4 {
+					c.TasksMax = fields[3]
+				}
+				break
+			}
 		}
-		var err error
-		opts.Host, opts.Port, err = net.SplitHostPort(gop.Arg(0))
-		if err != nil {
-			return nil, err
-		}
-		gop.Parse(gop.Args())
 	}
-
-	if gop.IsSet("password") && opts.Password == "" {
-		print("Password: ")
-
-		pass, err := term.ReadPassword(0)
-		if err != nil {
-			return opts, err
-		}
-
-		opts.Password = string(pass)
-	}
-
-	if gop.IsSet("uri") && (gop.IsSet("host") || gop.IsSet("port")) {
-		return nil, fmt.Errorf("If a full URI is provided, you cannot also specify --host or --port")
-	}
-
-	if opts.Help {
-		gop.PrintUsage(os.Stdout)
-
-		return nil, nil
-	}
-
-	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
-		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
-	}
-
-	return opts, nil
+	return c, nil
 }
+
+func getShardsInfo(ctx context.Context, client *mongo.Client) (*proto.ShardsInfo, error) {
+	cursor, err := client.Database("config").Collection("shards").Find(ctx, primitive.M{})
+	if err != nil {
+		return nil, errors.Wrap(err, "getShardsInfo")
+	}
+	defer cursor.Close(ctx)
+	var si proto.ShardsInfo
+	if err := cursor.All(ctx, &si.Shards); err != nil {
+		return nil, errors.Wrap(err, "getShardsInfo.decode")
+	}
+	si.OK = 1
+	return &si, nil
+}
+
+func getDatabaseInventory(ctx context.Context, client *mongo.Client) ([]dbInventoryEntry, error) {
+	var dbs databases
+	if err := client.Database("admin").RunCommand(ctx, primitive.M{"listDatabases": 1}).Decode(&dbs); err != nil {
+		return nil, errors.Wrap(err, "getDatabaseInventory.listDatabases")
+	}
+	var result []dbInventoryEntry
+	for _, db := range dbs.Databases {
+		var stats struct {
+			Collections int64   `bson:"collections"`
+			Indexes     int64   `bson:"indexes"`
+			DataSize    float64 `bson:"dataSize"`
+		}
+		if err := client.Database(db.Name).RunCommand(ctx, primitive.M{"dbStats": 1}).Decode(&stats); err != nil {
+			log.Debugf("cannot get dbStats for %s: %s", db.Name, err)
+			continue
+		}
+		ttl := countTTLIndexes(ctx, client, db.Name)
+		scaled, unit := sizeAndUnit(int64(stats.DataSize))
+		result = append(result, dbInventoryEntry{
+			Name:        db.Name,
+			SizeScaled:  scaled,
+			SizeUnit:    unit,
+			Collections: stats.Collections,
+			Indexes:     stats.Indexes,
+			TTLIndexes:  ttl,
+		})
+	}
+	return result, nil
+}
+
+func countTTLIndexes(ctx context.Context, client *mongo.Client, dbName string) int64 {
+	colls, err := client.Database(dbName).ListCollectionNames(ctx, primitive.M{})
+	if err != nil {
+		return 0
+	}
+	var count int64
+	for _, coll := range colls {
+		cursor, err := client.Database(dbName).Collection(coll).Indexes().List(ctx)
+		if err != nil {
+			continue
+		}
+		var indexes []struct {
+			ExpireAfterSeconds *int32 `bson:"expireAfterSeconds"`
+		}
+		if err := cursor.All(ctx, &indexes); err != nil {
+			continue
+		}
+		for _, idx := range indexes {
+			if idx.ExpireAfterSeconds != nil {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func getStatusDelta(ctx context.Context, client *mongo.Client, d time.Duration) (*statusDelta, error) {
+	var s1, s2 proto.ServerStatus
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "serverStatus", Value: 1}}).Decode(&s1); err != nil {
+		return nil, errors.Wrap(err, "getStatusDelta.first")
+	}
+	time.Sleep(d)
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "serverStatus", Value: 1}}).Decode(&s2); err != nil {
+		return nil, errors.Wrap(err, "getStatusDelta.second")
+	}
+	if s1.Opcounters == nil || s2.Opcounters == nil {
+		return nil, errors.New("opcounters unavailable")
+	}
+	secs := d.Seconds()
+	perDayMult := 86400.0 / secs
+	calc := func(a, b int64) counterDelta {
+		diff := float64(b - a)
+		return counterDelta{PerSec: diff / secs, PerDay: diff * perDayMult}
+	}
+	return &statusDelta{
+		Insert:   calc(s1.Opcounters.Insert, s2.Opcounters.Insert),
+		Query:    calc(s1.Opcounters.Query, s2.Opcounters.Query),
+		Update:   calc(s1.Opcounters.Update, s2.Opcounters.Update),
+		Delete:   calc(s1.Opcounters.Delete, s2.Opcounters.Delete),
+		GetMore:  calc(s1.Opcounters.GetMore, s2.Opcounters.GetMore),
+		Command:  calc(s1.Opcounters.Command, s2.Opcounters.Command),
+		Duration: d,
+	}, nil
+}
+
+func getWiredTigerInfo(ctx context.Context, client *mongo.Client) (*wiredTigerInfo, error) {
+	var ss proto.ServerStatus
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "serverStatus", Value: 1}}).Decode(&ss); err != nil {
+		return nil, errors.Wrap(err, "getWiredTigerInfo.serverStatus")
+	}
+	if ss.WiredTiger == nil {
+		return nil, errors.New("WiredTiger not available on this node")
+	}
+	c := ss.WiredTiger.Cache
+	maxMB := float64(c.MaxBytesConfigured) / (1024 * 1024)
+	usedMB := float64(c.CurrentCachedBytes) / (1024 * 1024)
+	dirtyMB := float64(c.TrackedDirtyBytes) / (1024 * 1024)
+	usedPct, dirtyPct := 0.0, 0.0
+	if maxMB > 0 {
+		usedPct = usedMB / maxMB * 100
+		dirtyPct = dirtyMB / maxMB * 100
+	}
+	wi := &wiredTigerInfo{
+		CacheUsedMB:            usedMB,
+		CacheMaxMB:             maxMB,
+		CacheUsedPct:           usedPct,
+		DirtyMB:                dirtyMB,
+		DirtyPct:               dirtyPct,
+		PagesEvictedUnmodified: c.PagesEvictedUnmodified,
+		PagesEvictedModified:   c.PagesEvictedModified,
+		PagesReadIntoCache:     c.PagesReadIntoCache,
+		PagesWrittenFromCache:  c.PagesWrittenFromCache,
+	}
+	if ss.Tcmalloc != nil {
+		wi.TcmallocAvailable = true
+		wi.TcmallocAllocMB = float64(ss.Tcmalloc.Generic.CurrentAllocatedBytes) / (1024 * 1024)
+		wi.TcmallocHeapMB = float64(ss.Tcmalloc.Generic.HeapSize) / (1024 * 1024)
+		wi.TcmallocPageheapFreeMB = float64(ss.Tcmalloc.Tcmalloc.PageheapFreeBytes) / (1024 * 1024)
+		wi.TcmallocPageheapUnmappedMB = float64(ss.Tcmalloc.Tcmalloc.PageheapUnmappedBytes) / (1024 * 1024)
+		wi.TcmallocThreadCacheFreeMB = float64(ss.Tcmalloc.Tcmalloc.ThreadCacheFreeBytes) / (1024 * 1024)
+	}
+	return wi, nil
+}
+
+func getConnectionInfo(ctx context.Context, client *mongo.Client) (*connectionInfo, error) {
+	var ss proto.ServerStatus
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "serverStatus", Value: 1}}).Decode(&ss); err != nil {
+		return nil, errors.Wrap(err, "getConnectionInfo.serverStatus")
+	}
+	ci := &connectionInfo{}
+	if ss.Connections != nil {
+		ci.Current = ss.Connections.Current
+		ci.Available = ss.Connections.Available
+		ci.TotalCreated = ss.Connections.TotalCreated
+	}
+	var cmdOpts proto.CommandLineOptions
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{{Key: "getCmdLineOpts", Value: 1}}).Decode(&cmdOpts); err == nil {
+		ci.MaxIncoming = cmdOpts.Parsed.Net.MaxIncomingConnections
+		ci.SlowOpThresholdMs = cmdOpts.Parsed.OperationProfiling.SlowOpThresholdMs
+		ci.ProfilingMode = cmdOpts.Parsed.OperationProfiling.Mode
+	}
+	return ci, nil
+}
+
+func getFCV(ctx context.Context, client *mongo.Client) string {
+	var result struct {
+		FCV struct {
+			Version string `bson:"version"`
+		} `bson:"featureCompatibilityVersion"`
+	}
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{
+		{Key: "getParameter", Value: 1},
+		{Key: "featureCompatibilityVersion", Value: 1},
+	}).Decode(&result); err != nil {
+		return ""
+	}
+	return result.FCV.Version
+}
+
+func getChangeStreamInfo(ctx context.Context, client *mongo.Client) (*changeStreamInfo, error) {
+	var result struct {
+		ChangeStreamOptions struct {
+			PreAndPostImages struct {
+				ExpireAfterSeconds interface{} `bson:"expireAfterSeconds"`
+			} `bson:"preAndPostImages"`
+		} `bson:"changeStreamOptions"`
+	}
+	if err := client.Database("admin").RunCommand(ctx, primitive.D{
+		{Key: "getParameter", Value: 1},
+		{Key: "changeStreamOptions", Value: 1},
+	}).Decode(&result); err != nil {
+		return nil, errors.Wrap(err, "getChangeStreamInfo.getParameter")
+	}
+	expire := "off"
+	if v := result.ChangeStreamOptions.PreAndPostImages.ExpireAfterSeconds; v != nil {
+		expire = fmt.Sprintf("%v", v)
+	}
+	return &changeStreamInfo{PreAndPostImagesExpire: expire}, nil
+}
+
 
 func getChunksCount(ctx context.Context, client *mongo.Client) ([]proto.ChunksByCollection, error) {
 	var result []proto.ChunksByCollection
@@ -1090,6 +1464,9 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 
 	if opts.URI != "" {
 		clientOptions = options.Client().ApplyURI(opts.URI)
+		if strings.HasPrefix(opts.URI, "mongodb+srv://") {
+			clientOptions.Direct = nil
+		}
 	} else {
 		host := opts.Host
 		if host == "" {
@@ -1112,8 +1489,11 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 		auth.Username = opts.User
 	}
 	if opts.Password != "" {
-		auth.Password = opts.Password
+		auth.Password = string(opts.Password)
 		auth.PasswordSet = true
+	}
+	if opts.AuthDB != "" && auth.AuthSource == "" {
+		auth.AuthSource = opts.AuthDB
 	}
 
 	if auth.Username != "" {
