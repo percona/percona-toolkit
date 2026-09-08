@@ -1074,7 +1074,7 @@ sub get_cxn_from_dsn_table {
    }
 
    my $done = 0;
-   my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
+   my $dsn_tbl_cxn = $self->{dsn_tbl_cxn}->{$dsn_table_dsn} ||= $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
