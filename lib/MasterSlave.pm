@@ -1143,8 +1143,8 @@ sub get_cxn_from_dsn_table {
          ) {
             next REPLICAS;
          }
-         $known_replica->{dbh}->disconnect;
       }
+      $known_replica->{dbh}->disconnect if $known_replica->{dbh};
    }
    return \@cxn;
 }
