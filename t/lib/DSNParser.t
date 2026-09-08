@@ -318,6 +318,23 @@ is_deeply (
    'Got connection arguments for PostgreSQL',
 );
 
+$dp->prop('dbidriver', 'MariaDB');
+is_deeply (
+   [
+      $dp->get_cxn_params(
+         $dp->parse(
+            'u=a,p=b',
+            { D => 'foo', h => 'me' },
+            { S => 'bar', h => 'host' } ))
+   ],
+   [
+      'DBI:MariaDB:foo;host=me;mariadb_socket=bar;mariadb_read_default_group=client',
+      'a',
+      'b',
+   ],
+   'Got connection arguments for DBD::MariaDB',
+);
+
 $dp->prop('required', { h => 1 } );
 throws_ok (
    sub { $dp->parse('u=b') },
@@ -431,7 +448,7 @@ pop @$opts; # Remove t part.
 # Issue 93: DBI error messages can include full SQL
 # #############################################################################
 SKIP: {
-   skip 'ShowErrorStatement requires DBD::mysql 4.003', 1 unless $DBD::mysql::VERSION ge '4.003';
+   skip 'ShowErrorStatement requires DBD::mysql 4.003', 1 unless ($dp->prop('dbidriver') ne 'MariaDB' && $DBD::mysql::VERSION ge '4.003');
    skip 'Cannot connect to sandbox master', 1 unless $dbh;
    eval { $dbh->do('SELECT * FROM doesnt.exist WHERE foo = 1'); };
    like(

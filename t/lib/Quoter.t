@@ -217,7 +217,7 @@ SKIP: {
 };
 
 my $utf8_dbh = $sb->get_dbh_for('source');
-$utf8_dbh->{mysql_enable_utf8} = 1;
+if ($dp->prop('dbidriver') ne 'MariaDB' && $dp->prop('dbidriver') ne 'Pg') { $utf8_dbh->{mysql_enable_utf8} = 1 };
 $utf8_dbh->do("SET NAMES 'utf8'");
 SKIP: {
    skip 'Cannot connect to sandbox master', scalar @utf8_serialize_tests
