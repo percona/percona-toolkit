@@ -106,6 +106,17 @@ func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOpti
 			}
 			m.StateStr = strings.ToUpper(cmdOpts.Parsed.Sharding.ClusterRole)
 
+			if md, mdErr := GetMasterDoc(ctx, client); mdErr == nil && md.IsArbiter() {
+				if m.StateStr != "" {
+					m.StateStr += "/ARBITER"
+				} else {
+					m.StateStr = "ARBITER"
+				}
+				if setName, ok := md.SetName.(string); ok {
+					m.Set = setName
+				}
+			}
+
 			if serverStatus, err := GetServerStatus(ctx, client); err == nil {
 				m.ID = serverStatus.Pid
 				m.StorageEngine = serverStatus.StorageEngine
@@ -537,9 +548,16 @@ func fillProcInfo(pid int32, procInfo *proto.ProcInfo) error {
 	return nil
 }
 
-func getNodeType(ctx context.Context, client *mongo.Client) (string, error) {
+func GetMasterDoc(ctx context.Context, client *mongo.Client) (proto.MasterDoc, error) {
 	md := proto.MasterDoc{}
-	if err := client.Database("admin").RunCommand(ctx, primitive.M{"isMaster": 1}).Decode(&md); err != nil {
+	err := client.Database("admin").RunCommand(ctx, primitive.M{"isMaster": 1}).Decode(&md)
+
+	return md, err
+}
+
+func getNodeType(ctx context.Context, client *mongo.Client) (string, error) {
+	md, err := GetMasterDoc(ctx, client)
+	if err != nil {
 		return "", err
 	}
 

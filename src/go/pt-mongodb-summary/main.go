@@ -118,6 +118,7 @@ type hostInfo struct {
 	ReplicasetName string
 	Version        string
 	NodeType       string
+	IsArbiter      bool
 }
 
 type procInfo struct {
@@ -365,12 +366,14 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	default:
 		buf = new(bytes.Buffer)
 
-		t := template.Must(template.New("mongos").Parse(templates.MongosInfo))
-		if err := t.Execute(buf, ci.MongosInfo); err != nil {
-			return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
+		if ci.MongosInfo != nil {
+			t := template.Must(template.New("mongos").Parse(templates.MongosInfo))
+			if err := t.Execute(buf, ci.MongosInfo); err != nil {
+				return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
+			}
 		}
 
-		t = template.Must(template.New("replicas").Parse(templates.Replicas))
+		t := template.Must(template.New("replicas").Parse(templates.Replicas))
 		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
 			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
 		}
@@ -385,14 +388,18 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 			return nil, errors.Wrap(err, "cannot parse the command line args section of the output template")
 		}
 
-		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
-		if err := t.Execute(buf, ci.RunningOps); err != nil {
-			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
+		if ci.RunningOps != nil {
+			t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
+			if err := t.Execute(buf, ci.RunningOps); err != nil {
+				return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
+			}
 		}
 
-		t = template.Must(template.New("ssl").Parse(templates.Security))
-		if err := t.Execute(buf, ci.SecuritySettings); err != nil {
-			return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
+		if ci.SecuritySettings != nil {
+			t = template.Must(template.New("ssl").Parse(templates.Security))
+			if err := t.Execute(buf, ci.SecuritySettings); err != nil {
+				return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
+			}
 		}
 
 		if ci.OplogInfo != nil && len(ci.OplogInfo) > 0 {
@@ -416,24 +423,43 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func newArbiterHostInfo(md proto.MasterDoc) *hostInfo {
+	setName, _ := md.SetName.(string)
+
+	return &hostInfo{
+		NodeType:       "ARBITER",
+		Hostname:       md.Me,
+		ReplicasetName: setName,
+		IsArbiter:      true,
+	}
+}
+
 func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
+	var i *hostInfo
+
 	hi := proto.HostInfo{}
 	if err := client.Database("admin").RunCommand(ctx, primitive.M{"hostInfo": 1}).Decode(&hi); err != nil {
 		log.Debugf("run('hostInfo') error: %s", err)
 
-		return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
-	}
+		md, mdErr := util.GetMasterDoc(ctx, client)
+		if mdErr != nil || !md.IsArbiter() {
+			return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
+		}
 
-	nodeType, _ := getNodeType(ctx, client)
-	procCount, _ := countMongodProcesses()
+		i = newArbiterHostInfo(md)
+		i.ProcProcessCount, _ = countMongodProcesses()
+	} else {
+		nodeType, _ := getNodeType(ctx, client)
+		procCount, _ := countMongodProcesses()
 
-	i := &hostInfo{
-		Hostname:          hi.System.Hostname,
-		HostOsType:        hi.Os.Type,
-		HostSystemCPUArch: hi.System.CpuArch,
-		ProcProcessCount:  procCount,
-		NodeType:          nodeType,
-		CmdlineArgs:       nil,
+		i = &hostInfo{
+			Hostname:          hi.System.Hostname,
+			HostOsType:        hi.Os.Type,
+			HostSystemCPUArch: hi.System.CpuArch,
+			ProcProcessCount:  procCount,
+			NodeType:          nodeType,
+			CmdlineArgs:       nil,
+		}
 	}
 
 	var cmdOpts proto.CommandLineOptions
@@ -454,7 +480,7 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 	if err == nil {
 		i.ProcessName = ss.Process
 		i.Version = ss.Version
-		if ss.Repl != nil {
+		if ss.Repl != nil && ss.Repl.SetName != "" {
 			i.ReplicasetName = ss.Repl.SetName
 		}
 
