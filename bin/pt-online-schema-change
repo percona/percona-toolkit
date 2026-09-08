@@ -10266,6 +10266,12 @@ sub main {
    my $avg_rate   = 0;  # rows/second
    my $limit      = $o->get('chunk-size-limit');  # brevity
    my $chunk_time = $o->get('chunk-time');        # brevity
+   my $min_chunk_size = $o->get('dynamic-min-chunk-size');
+   # Exit if the user passes a value less than 1
+   if ($min_chunk_size < 1) {
+      _die("The value passed for --dynamic-min-chunk-size is less than 1. Please pass a value greater than or equal to 1.");
+   }
+   print ts("Minimum chunk size is $min_chunk_size\n");
 
    my $callbacks = {
       init => sub {
@@ -10478,6 +10484,12 @@ sub main {
                   $cnt,                # processed this many rows
                   $tbl->{nibble_time}, # is this amount of time
                );
+
+               # Enforce minimum chunk size. If the value is lower than the specified min, update
+               # the chunk size value accordingly.
+               if ($tbl->{chunk_size} < $min_chunk_size) {
+                  $tbl->{chunk_size} = $min_chunk_size;
+               }
 
                if ( $tbl->{chunk_size} < 1 ) {
                   # This shouldn't happen.  WeightedAvgRate::update() may
@@ -13545,6 +13557,14 @@ Allows MODIFYing a column that allows NULL values to one that doesn't allow
 them. The existing rows which contain NULL values will be converted to the default value
 based on datatype, e.g. 0 for number datatypes, '' for string datatypes.
 New rows will use the user defined default value if specified for the column.
+
+=item --dynamic-min-chunk-size
+
+type: int; default: 1
+
+When using dynamic chunk sizing, do not copy chunks smaller than this desired minimum chunk size.
+
+The minimum value for this option is 1 and default value is 1.
 
 =item --only-same-schema-fks
 
