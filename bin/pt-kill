@@ -4,6 +4,7 @@
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
+use DBI;
 use strict;
 use warnings FATAL => 'all';
 
@@ -7213,11 +7214,17 @@ sub main {
    my $kill;          # callback to KILL
    my $kill_sth;
    my $kill_sql;
+   my $db_type = $o->get('db-type') ;
+
    if ( $o->get('rds') ){
        $kill_sql = $o->get('kill-query') ? 'CALL mysql.rds_kill_query(?)' : 'CALL mysql.rds_kill(?)';
    }
    else{
        $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
+   }
+
+   if (defined $db_type && length $db_type > 0 && $db_type eq "tidb") {
+      $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL tidb ?';
    }
    my $files;
    if ( $files = $o->get('test-matching') ) {
@@ -7314,7 +7321,19 @@ sub main {
          return $retry->retry(
             tries => 2,
             try => sub {
-               return $kill_sth->execute($id);
+               eval {
+
+                   $kill_sth->bind_param(1, $id, DBI::SQL_INTEGER);
+
+               };
+
+               if ($@) {
+
+                   print $@."\n";
+
+               }
+               #return $kill_sth->execute($id);
+               return $kill_sth->execute();
             },
             fail => sub {
                my (%args) = @_;
@@ -8100,6 +8119,11 @@ pt-kill does not provide any safeguards so code carefully!
 
 It is permissible for the code to have side effects (to alter C<$event>).
 
+=item --db-type
+
+type: string
+
+mysql; tidb
 
 =item --group-by
 
