@@ -148,7 +148,7 @@ SKIP: {
    like(
       $output,
       qr/ALTER USER `sally`@`%` REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK;/,
-      'ALTER USER converted succesfully'
+      'ALTER USER converted successfully'
    ) or diag($output);
 
    unlike(
