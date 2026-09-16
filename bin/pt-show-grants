@@ -2096,7 +2096,7 @@ sub main {
 
             # Or the other way around: port a MySQL CREATE/ALTER USER
             # statement to MariaDB's syntax.
-            if ( ($version !~ m/MariaDB/) && $o->get('convert-to-MariaDB')){
+            if ( ($version !~ m/MariaDB/) && $o->get('convert-to-mariadb') ){
                my @alter_stmts = convert_to_mariadb($alter, $u->{User}, $u->{Host});
                ($create) = convert_to_mariadb($create);
                @create_user = ( $create, @alter_stmts );
@@ -2607,7 +2607,7 @@ Only show grants for this comma-separated list of users.
 
 Convert proprietary MariaDB syntax into valid MySQL form
 
-=item --convert-to-MariaDB
+=item --convert-to-mariadb
 
 Convert a MySQL CREATE/ALTER USER statement into valid MariaDB syntax.
 

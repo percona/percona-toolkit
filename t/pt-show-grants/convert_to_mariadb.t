@@ -12,11 +12,17 @@ use English qw(-no_match_vars);
 use Test::More;
 
 use PerconaTest;
+use Sandbox;
+use VersionParser;
 require "$trunk/bin/pt-show-grants";
+
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dbh = $sb->get_dbh_for('source');
 
 # This exercises pt_show_grants::convert_to_mariadb() directly, so it
 # needs no database connection: it's the pure string-rewriting half of
-# --convert-to-MariaDB.  The sub returns a LIST of statements (usually
+# --convert-to-mariadb.  The sub returns a LIST of statements (usually
 # just one), so every call below is made in list context.
 
 # The exact statement from PT-2547: a MySQL 8.0 ALTER USER with the
@@ -128,4 +134,29 @@ is_deeply(
    );
 }
 
+SKIP: {
+   if ( !$dbh && VersionParser->new($dbh)->flavor !~ m/maria/i ) {
+      skip "This test requires active MySQL connection";
+   }
+
+   diag(`/tmp/12345/use -u root -e "CREATE USER 'sally'\@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'A005?>6LZe1'"`);
+
+   my $output = output(
+      sub { pt_show_grants::main('-F', '/tmp/12345/my.sandbox.cnf', qw(--only sally --convert-to-mariadb)); }
+   );
+
+   like(
+      $output,
+      qr/ALTER USER `sally`@`%` REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK;/,
+      'ALTER USER converted succesfully'
+   ) or diag($output);
+
+   unlike(
+      $output,
+      qr/ALTER USER `sally`@`%` IDENTIFIED WITH 'caching_sha2_password' AS/,
+      'no MySQL syntax printed'
+   ) or diag($output);
+
+   diag(`/tmp/12345/use -u root -e "DROP USER 'sally'\@'%'"`);
+}
 done_testing;
