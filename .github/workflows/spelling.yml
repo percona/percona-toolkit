@@ -21,4 +21,4 @@ jobs:
     timeout-minutes: 1
     steps:
     - uses: actions/checkout@v7
-    - uses: crate-ci/typos@master
+    - uses: crate-ci/typos@main
