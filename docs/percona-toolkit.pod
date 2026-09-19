@@ -120,7 +120,8 @@ ALTER tables without locking them.
 
 =item pt-pg-summary
 
-Collect information about a PostgreSQL cluster.
+Collect information about a PostgreSQL cluster. B<Deprecated>: this tool is no
+longer developed or maintained. Use pg_gather instead.
 
 =item pt-pmp
 
