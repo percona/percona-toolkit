@@ -123,7 +123,7 @@ ok(
    'Key exists (issue 364)'
 );
 
-my $output = `/tmp/12345/use -D test -e 'EXPLAIN SELECT BASE_KID_ID, ID FROM test.issue_364 WHERE BASE_KID_ID=1 OR ID=1'`;
+my $output = `/tmp/12345/use -D test -e 'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT BASE_KID_ID, ID FROM test.issue_364 WHERE BASE_KID_ID=1 OR ID=1'`;
 like(
    $output,
    qr/index_merge/,
@@ -181,7 +181,7 @@ like(
 
 is(
    $ks->query(),
-   'EXPLAIN SELECT BASE_KID_ID, ID FROM `test`.`issue_364` FORCE INDEX (`BASE_KID_ID`) WHERE BASE_KID_ID=1 OR ID=1',
+   'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT BASE_KID_ID, ID FROM `test`.`issue_364` FORCE INDEX (`BASE_KID_ID`) WHERE BASE_KID_ID=1 OR ID=1',
    'Query (issue 364)'
 );
 
@@ -207,7 +207,7 @@ is(
 );
 is(
    $ks->query(),
-   'EXPLAIN SELECT BASE_KID_ID, ID FROM `test`.`issue_364` WHERE BASE_KID_ID=1 OR ID=1',
+   'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT BASE_KID_ID, ID FROM `test`.`issue_364` WHERE BASE_KID_ID=1 OR ID=1',
    'Query without FORCE INDEX (issue 364)'
 );
 

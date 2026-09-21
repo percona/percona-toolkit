@@ -18,10 +18,17 @@ require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('source');
+my $source_dbh = $sb->get_dbh_for('source');
+my $replica1_dbh = $sb->get_dbh_for('replica1');
+my $replica2_dbh = $sb->get_dbh_for('replica2');
+my $dbh = $source_dbh;
 
-if ( !$dbh ) {
+if ( !$source_dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
+} elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica1';
+} elsif ( !$replica2_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica2';
 } elsif ($sandbox_version lt '5.7') {
    plan skip_all => "Generated columns are only available in MySQL 5.7+";
 } else {
@@ -37,11 +44,25 @@ $sb->load_file('source', 't/pt-table-checksum/samples/pt-225.sql');
 # And --max-load "" prevents waiting for status variables.
 my $source_dsn = $sb->dsn_for('source');
 diag("setting up the replicas");
-my $replica_dbh = $sb->get_dbh_for('replica1');
 # Create differences
 
-$replica_dbh->do('DELETE FROM `test`.`sbtest1` WHERE id > 15');
-$replica_dbh->do('FLUSH TABLES');
+$replica1_dbh->do('DELETE FROM `test`.`sbtest1` WHERE id > 15');
+$replica1_dbh->do('FLUSH TABLES');
+
+my ($orig_binlog_format_source) = $source_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica1) = $replica1_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica2) = $replica2_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+
+$source_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$source_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica1_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica2_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica2_dbh->do("START ${replica_name}");
 
 my @args       = ($source_dsn, "--set-vars", "innodb_lock_wait_timeout=50", 
                                "--ignore-databases", "mysql,sys,sakila,percona_test",
@@ -71,6 +92,13 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
+$source_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_source}'");
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica1}'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica2}'");
+$replica2_dbh->do("START ${replica_name}");
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

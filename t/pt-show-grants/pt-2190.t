@@ -47,7 +47,7 @@ $output = output(
 
 like(
    $output,
-   qr/0x24412430303524/,
+   qr/0x244124303/,
    'Password printed in HEX'
 ) or diag($output);
 

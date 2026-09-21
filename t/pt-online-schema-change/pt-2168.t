@@ -20,6 +20,7 @@ use SqlModes;
 use File::Temp qw/ tempdir tempfile /;
 
 our $delay = 10;
+our $progress = 5;
 
 my $tmp_file = File::Temp->new();
 my $tmp_file_name = $tmp_file->filename;
@@ -66,8 +67,7 @@ sub reset_query_cache {
 # 3) Set the replica delay to 30 seconds to be able to see the 'waiting' message.
 diag("Setting replica delay to 0 seconds");
 $replica_dbh1->do("STOP ${replica_name}");
-$source_dbh->do("RESET ${source_reset}");
-$replica_dbh1->do("RESET ${replica_name}");
+$replica_dbh1->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
 $replica_dbh1->do("START ${replica_name}");
 
 diag('Loading test data');
@@ -124,15 +124,15 @@ sub base_test {
    my $pid = fork();
 
    if (!$pid) {
-      open(STDERR, '>', $filename);
-      open(STDOUT, '>', $filename);
+      open(STDERR, '>>', $filename);
+      open(STDOUT, '>>', $filename);
       exec("$trunk/bin/pt-online-schema-change $args");
    }
 
    sleep($max_lag + $max_lag/2);
    # restart replica 12347
    diag(`/tmp/12347/stop >/dev/null`);
-   sleep 1;
+   sleep $progress + 1;
    diag(`/tmp/12347/start >/dev/null`);
 
    waitpid($pid, 0);
@@ -153,12 +153,12 @@ sub crash_test {
    my $pid = fork();
 
    if (!$pid) {
-       open(STDERR, '>', $filename);
-      open(STDOUT, '>', $filename);
+      open(STDERR, '>>', $filename);
+      open(STDOUT, '>>', $filename);
       exec("$trunk/bin/pt-online-schema-change $args");
    }
 
-   sleep($max_lag + 10);
+   sleep($max_lag + $max_lag / 2);
    # restart replica 12347
    diag(`/tmp/12347/start >/dev/null`);
 
@@ -180,7 +180,7 @@ sub error_test {
    $replica_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern='$pattern'");
    $replica_dbh2->do("SET GLOBAL simple_rewrite_plugin_query='$query'");
 
-   my $args = "$source_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5";
+   my $args = "$source_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,$progress";
 
    my $output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
 
@@ -190,7 +190,7 @@ sub error_test {
       "pt-osc fails with error if replica returns error when $test",
    );
 
-   $args = "$source_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nofail-on-stopped-replication";
+   $args = "$source_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,$progress --nofail-on-stopped-replication";
 
    $output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
 
@@ -205,7 +205,7 @@ sub error_test {
    $replica_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern='$pattern'");
    $replica_dbh2->do("SET GLOBAL simple_rewrite_plugin_action='abort'");
 
-   $args = "$source_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5";
+   $args = "$source_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,$progress";
 
    $output = crash_test($args);
 
@@ -219,7 +219,7 @@ sub error_test {
    $replica_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern='$pattern'");
    $replica_dbh2->do("SET GLOBAL simple_rewrite_plugin_action='abort'");
 
-   $args = "$source_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nofail-on-stopped-replication";
+   $args = "$source_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,$progress --nofail-on-stopped-replication";
 
    $output = crash_test($args);
 
@@ -235,7 +235,7 @@ sub error_test {
 
 diag("Starting base tests. This is going to take some time due to the delay in the replica");
 
-my $output = base_test("$source_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5");
+my $output = base_test("$source_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,$progress");
 
 unlike(
    $output,
@@ -244,7 +244,7 @@ unlike(
 );
 
 # pt-osc doesn't fail if replica is restarted and option --nofail-on-stopped-replication specified
-$output = base_test("$source_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nofail-on-stopped-replication");
+$output = base_test("$source_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,$progress --nofail-on-stopped-replication");
 
 like(
    $output,
@@ -252,15 +252,15 @@ like(
    "pt-osc completes successfully when one of replicas is restarted and option --nofail-on-stopped-replication is specified",
 );
 
-$output = base_test("$source_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5");
+$output = base_test("$source_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,$progress");
 
 unlike(
    $output,
    qr/Successfully altered `test`.`pt178`/s,
    "pt-osc fails with recursion-method=dsn when one of replicas is restarted",
-);
+) or diag($output);
 
-$output = base_test("$source_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nofail-on-stopped-replication");
+$output = base_test("$source_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,$progress --nofail-on-stopped-replication");
 
 like(
    $output,
@@ -328,9 +328,8 @@ $replica_dbh2 = $sb->get_dbh_for('replica2');
 diag("Setting replica delay to 0 seconds");
 $replica_dbh1->do("STOP ${replica_name}");
 $replica_dbh2->do("STOP ${replica_name}");
-$source_dbh->do("RESET ${source_reset}");
-$replica_dbh1->do("RESET ${replica_name}");
-$replica_dbh2->do("RESET ${replica_name}");
+$replica_dbh1->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
+$replica_dbh2->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
 $replica_dbh1->do("START ${replica_name}");
 $replica_dbh2->do("START ${replica_name}");
 

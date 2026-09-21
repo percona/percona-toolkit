@@ -87,7 +87,7 @@ sub wait {
       my ($replicas, $refresher) = ($self->{replicas}, $self->{get_replicas_cb});
       return $replicas if ( not defined $refresher );
       my $before = join ' ', sort map {$_->description()} @$replicas;
-      $replicas = $refresher->();
+      $replicas = $refresher->(undef, $replicas);
       my $after = join ' ', sort map {$_->description()} @$replicas;
       if ($before ne $after) {
          $self->{replicas} = $replicas;
@@ -120,7 +120,7 @@ sub wait {
       };
       $pr->set_callback($pr_callback);
 
-      # If a replic is stopped, don't wait 30s (or whatever interval)
+      # If a replica is stopped, don't wait 30s (or whatever interval)
       # to report this.  Instead, report it once, immediately, then
       # keep reporting it every interval.
       $pr_first_report = sub {
@@ -154,7 +154,7 @@ sub wait {
              $lag = $get_lag->($lagged_replicas[$i]->{cxn});
          };
          if ($EVAL_ERROR) {
-             die $EVAL_ERROR;
+            die $EVAL_ERROR;
          }
          PTDEBUG && _d($lagged_replicas[$i]->{cxn}->name(),
             'replica lag:', $lag);

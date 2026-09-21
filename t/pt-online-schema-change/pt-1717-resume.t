@@ -117,8 +117,7 @@ sub set_delay {
 # 3) Set the replica delay to 30 seconds to be able to see the 'waiting' message.
 diag("Setting replica delay to 0 seconds");
 $replica_dbh1->do("STOP ${replica_name}");
-$source_dbh->do("RESET ${source_reset}");
-$replica_dbh1->do("RESET ${replica_name}");
+$replica_dbh1->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
 $replica_dbh1->do("START ${replica_name}");
 
 diag('Loading test data');
@@ -400,10 +399,8 @@ $replica_dbh2 = $sb->get_dbh_for('replica2');
 diag("Setting replica delay to 0 seconds");
 $replica_dbh1->do("STOP ${replica_name}");
 $replica_dbh2->do("STOP ${replica_name}");
-$source_dbh->do("RESET ${source_reset}");
-$replica_dbh1->do("RESET ${source_reset}");
-$replica_dbh1->do("RESET ${replica_name}");
-$replica_dbh2->do("RESET ${replica_name}");
+$replica_dbh1->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
+$replica_dbh2->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
 $replica_dbh1->do("START ${replica_name}");
 $replica_dbh2->do("START ${replica_name}");
 

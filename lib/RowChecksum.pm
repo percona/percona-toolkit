@@ -33,6 +33,9 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+# Default length for SHA2 function
+my $sha2_length = 256;
+
 sub new {
    my ( $class, %args ) = @_;
    foreach my $arg ( qw(OptionParser Quoter) ) {
@@ -124,8 +127,8 @@ sub make_row_checksum {
       }
 
       $query .= scalar @converted_cols > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @converted_cols) . '))'
-              : "$func($converted_cols[0])";
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @converted_cols) . ")" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")")
+              : "$func($converted_cols[0]" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
    }
    else {
       # As a special case, FNV1A_64/FNV_64 doesn't need its arguments
@@ -289,7 +292,7 @@ sub _get_hash_func {
    }
    my ($dbh) = @args{@required_args};
    my $o     = $self->{OptionParser};
-   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MURMUR_HASH MD5 SHA1);
+   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MURMUR_HASH MD5 SHA1 SHA2);
 
    if ( my $func = $o->get('function') ) {
       unshift @funcs, $func;
@@ -298,7 +301,7 @@ sub _get_hash_func {
    my $error;
    foreach my $func ( @funcs ) {
       eval {
-         my $sql = "SELECT $func('test-string')";
+         my $sql = "SELECT $func('test-string'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
          PTDEBUG && _d($sql);
          $args{dbh}->do($sql);
       };
@@ -325,7 +328,7 @@ sub _get_crc_width {
    my $crc_width = 16;
    if ( uc $func ne 'FNV_64' && uc $func ne 'FNV1A_64' ) {
       eval {
-         my ($val) = $dbh->selectrow_array("SELECT $func('a')");
+         my ($val) = $dbh->selectrow_array("SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"));
          $crc_width = max(16, length($val));
       };
    }
@@ -343,7 +346,7 @@ sub _get_crc_type {
 
    my $type   = '';
    my $length = 0;
-   my $sql    = "SELECT $func('a')";
+   my $sql    = "SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
    my $sth    = $dbh->prepare($sql);
    eval {
       $sth->execute();
@@ -381,7 +384,7 @@ sub _optimize_xor {
       if $func =~ m/^(?:FNV1A_64|FNV_64|CRC32)$/i;
 
    my $opt_slice = 0;
-   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a')")->[0]->[0];
+   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"))->[0]->[0];
    my $sliced    = '';
    my $start     = 1;
    my $crc_width = length($unsliced) < 16 ? 16 : length($unsliced);
@@ -390,7 +393,7 @@ sub _optimize_xor {
       PTDEBUG && _d('Trying slice', $opt_slice);
       $dbh->do(q{SET @crc := '', @cnt := 0});
       my $slices = $self->_make_xor_slices(
-         row_checksum => "\@crc := $func('a')",
+         row_checksum => "\@crc := $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"),
          crc_width    => $crc_width,
          opt_slice    => $opt_slice,
       );

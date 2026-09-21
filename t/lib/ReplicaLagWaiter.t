@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-plan tests => 7;
+plan tests => 8;
 
 use ReplicaLagWaiter;
 use OptionParser;
@@ -70,6 +70,12 @@ my $rll = new ReplicaLagWaiter(
    replicas  => [$r1, $r2],
 );
 
+my @refresh_args;
+$rll->{get_replicas_cb} = sub {
+   @refresh_args = @_;
+   return $_[1];
+};
+
 @lag = (0, 0);
 my $t = time;
 $rll->wait();
@@ -82,6 +88,12 @@ is_deeply(
    \@waited,
    [1,2],
    "Waited for all slaves"
+);
+
+is_deeply(
+   \@refresh_args,
+   [undef, [$r1, $r2]],
+   "Passed known replicas as 2nd positional refresher arg"
 );
 
 is_deeply(

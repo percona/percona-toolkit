@@ -32,7 +32,7 @@ for my $test_url ( "http://www.percona.com/robots.txt", "https://v.percona.com" 
       $micro_content,
       qr/^\Q$tiny_content/,
       "HTTP::Micro == HTTP::Tiny for $test_url"
-   );
+   ) or diag("Tiny content: $tiny_content\n\nMicro content: $micro_content");
 }
 
 done_testing;

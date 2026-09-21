@@ -1,4 +1,4 @@
-# This program is copyright 2012 Percona LLC and/or its affiliates.
+# This program is copyright 2012-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED

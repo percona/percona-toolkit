@@ -346,7 +346,7 @@ sub __get_explain_index {
    return unless $sql;
    my $explain;
    eval {
-      $explain = $self->{dbh}->selectall_arrayref("EXPLAIN $sql",{Slice => {}});
+      $explain = $self->{dbh}->selectall_arrayref("EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $sql",{Slice => {}});
    };
    if ( $EVAL_ERROR ) {
       PTDEBUG && _d($EVAL_ERROR);

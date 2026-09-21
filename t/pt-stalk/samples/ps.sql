@@ -1,0 +1,2 @@
+PREPARE stmt FROM 'SELECT * FROM sakila.actor';
+SELECT SLEEP(11);

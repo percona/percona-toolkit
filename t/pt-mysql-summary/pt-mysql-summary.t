@@ -76,6 +76,41 @@ ok(
 undef($dir);  # rm the dir because CLEANUP => 1
 
 #
+# mysqldump is optional without schema analysis
+#
+
+my $env_without_mysqldump = qq\CMD_MYSQL="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysql" CMD_MYSQLDUMP="/nonexistent/mysqldump" LC_NUMERIC=POSIX\;
+my $out_without_mysqldump = `$env_without_mysqldump $trunk/bin/$tool --sleep 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf 2>&1`;
+my $status_without_mysqldump = $CHILD_ERROR;
+
+is(
+   $status_without_mysqldump,
+   0,
+   "mysqldump is not required without schema analysis"
+);
+
+unlike(
+   $out_without_mysqldump,
+   qr/Cannot execute mysqldump/,
+   "default summary does not report missing mysqldump"
+);
+
+my $schema_out_without_mysqldump = `$env_without_mysqldump $trunk/bin/$tool --sleep 1 --databases mysql -- --defaults-file=/tmp/12345/my.sandbox.cnf 2>&1`;
+my $schema_status_without_mysqldump = $CHILD_ERROR;
+
+isnt(
+   $schema_status_without_mysqldump,
+   0,
+   "mysqldump is required for schema analysis"
+);
+
+like(
+   $schema_out_without_mysqldump,
+   qr/Cannot execute mysqldump/,
+   "schema analysis reports missing mysqldump"
+);
+
+#
 # --databases
 #
 

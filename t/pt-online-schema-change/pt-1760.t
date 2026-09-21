@@ -81,9 +81,9 @@ like(
 # Done.
 # #############################################################################
 $replica_dbh1->do("STOP ${replica_name}");
-$source_dbh->do("RESET ${source_reset}");
-$replica_dbh1->do("RESET ${replica_name} ALL");
+$replica_dbh1->do("RESET ${replica_name} ALL FOR CHANNEL 'channel1';");
 if ( $sandbox_version lt '8.4' ) {
+   $source_dbh->do("RESET ${source_reset}");
    $replica_dbh1->do("SET GLOBAL master_info_repository='${orig_master_info_repository}'");
    $replica_dbh1->do("SET GLOBAL relay_log_info_repository='${orig_relay_log_info_repository}'");
 }

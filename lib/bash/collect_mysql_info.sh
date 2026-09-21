@@ -143,8 +143,8 @@ collect_mysql_users () {
 }
 
 collect_mysql_roles () {
-   QUERY="SELECT DISTINCT User 'Role Name', if(from_user is NULL,0, 1) Active FROM mysql.user LEFT JOIN mysql.role_edges ON from_user=user WHERE account_locked='Y' AND password_expired='Y' AND authentication_string=''\G"
-   $CMD_MYSQL $EXT_ARGV -ss -e "$QUERY" 2>/dev/null
+   QUERY="SELECT DISTINCT User 'Role Name', if(from_user is NULL,0, 1) Active FROM mysql.user LEFT JOIN mysql.role_edges ON from_user=user WHERE account_locked='Y' AND password_expired='Y' AND authentication_string=''"
+   $CMD_MYSQL $EXT_ARGV -ss -Ee "$QUERY" 2>/dev/null
 }
 
 collect_mysql_show_replica_hosts () {

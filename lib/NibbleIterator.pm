@@ -174,7 +174,7 @@ sub _one_nibble {
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                           ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
@@ -293,7 +293,7 @@ sub _nibble_params {
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
          . " FROM $from"
@@ -316,8 +316,8 @@ sub _nibble_params {
          last_ub_sql          => $last_ub_sql,
          ub_sql               => $ub_sql,
          nibble_sql           => $nibble_sql,
-         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
-         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_first_lb_sql => "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $ub_sql",
          explain_nibble_sql   => $explain_nibble_sql,
          resume_lb_sql        => $resume_lb_sql,
          sql                  => {
@@ -702,7 +702,7 @@ sub get_row_estimate {
    }
    my ($cxn, $tbl) = @args{@required_args};
 
-   my $sql = "EXPLAIN SELECT * FROM $tbl->{name} "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM $tbl->{name} "
            . "WHERE " . ($args{where} || '1=1');
    PTDEBUG && _d($sql);
    my $expl = $cxn->dbh()->selectrow_hashref($sql);

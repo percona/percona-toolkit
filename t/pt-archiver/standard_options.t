@@ -132,6 +132,7 @@ diag(`rm -f $pid_file`);
 
 # This test will achive rows from dbh:test.table_1 to dbh2:test.table_2.
 $sb->load_file('source', 't/pt-archiver/samples/tables1-4.sql');
+$sb->wait_for_replicas;
 
 # Change passwords so defaults files won't work.
 $sb->do_as_root(

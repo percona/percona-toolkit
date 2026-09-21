@@ -17,22 +17,37 @@ func (d *Dumper) addPg1() error {
 	}
 
 	d.individualFiles = append(d.individualFiles, individualFile{
-		resourceName:  "pgo",
-		containerName: "database",
-		dirpaths:      dirpaths,
+		resourceName:   "pgo",
+		containerNames: []string{"database"},
+		dirpaths:       dirpaths,
 	})
 	return nil
 }
 
 func (d *Dumper) addPg2() error {
 	dirpaths := map[string][]string{
-		"pg_log": {"$PGDATA/log"},
+		"pg_log":         {"$PGDATA/log"},
+		"pgbackrest_log": {"pgdata/pgbackrest/log"},
+	}
+
+	tools := map[string][]toolLog{
+		"": {
+			{
+				filename: "patronictl-list.log",
+				args:     []string{"patronictl", "list"},
+			},
+			{
+				filename: "pgbackrest-info.log",
+				args:     []string{"pgbackrest", "info"},
+			},
+		},
 	}
 
 	d.individualFiles = append(d.individualFiles, individualFile{
-		resourceName:  "pgv2",
-		containerName: "database",
-		dirpaths:      dirpaths,
+		resourceName:   "pgv2",
+		containerNames: []string{"database"},
+		dirpaths:       dirpaths,
+		toolCmds:       tools,
 	})
 	return nil
 }
@@ -50,9 +65,9 @@ func (d *Dumper) addPxc() error {
 	}
 
 	d.individualFiles = append(d.individualFiles, individualFile{
-		resourceName:  "pxc",
-		containerName: "logs",
-		filepaths:     filepaths,
+		resourceName:   "pxc",
+		containerNames: []string{"logs", "pxc"},
+		filepaths:      filepaths,
 	})
 	return nil
 }

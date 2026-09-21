@@ -3462,7 +3462,7 @@ sub find_best_index {
 sub find_possible_keys {
    my ( $self, $dbh, $database, $table, $quoter, $where ) = @_;
    return () unless $where;
-   my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
+   my $sql = 'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM ' . $quoter->quote($database, $table)
       . ' WHERE ' . $where;
    PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);
@@ -4311,6 +4311,7 @@ sub get_replicas {
          dsn_table_dsn => $dsn_table_dsn,
          wait_no_die => $args{'wait_no_die'},
          parent => $dsn,
+         replicas => $args{replicas},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -5085,7 +5086,7 @@ sub get_cxn_from_dsn_table {
    }
 
    my $done = 0;
-   my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
+   my $dsn_tbl_cxn = $self->{dsn_tbl_cxn}->{$dsn_table_dsn} ||= $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
@@ -5093,12 +5094,12 @@ sub get_cxn_from_dsn_table {
    my $o = $self->{OptionParser};
    my $my_dsn;
    my $lcxn;
-   use Data::Dumper;
    DSN:
    do {
       @cxn = ();
       my $dsn_strings = $dbh->selectcol_arrayref($sql);
       if ( $dsn_strings ) {
+         DSN_STRING:
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
 
@@ -5113,6 +5114,17 @@ sub get_cxn_from_dsn_table {
             if ( $o->got('replica-password') && !defined $raw_dsn->{p} ) {
                PTDEBUG && _d('DSN - password set from --replica-password');
                $my_dsn->{p} = $o->get('replica-password');
+            }
+
+            foreach my $known_replica ( @{$args{replicas}} ) {
+               if ( $known_replica->{dsn}->{h} eq $my_dsn->{h}
+                     and $known_replica->{dsn}->{P} eq $my_dsn->{P}
+                     and $known_replica->{dsn}->{u} eq $my_dsn->{u}
+                     and $known_replica->{dsn}->{p} eq $my_dsn->{p}
+               ) {
+                  push @cxn, $known_replica;
+                  next DSN_STRING;
+               }
             }
 
             eval {
@@ -5132,6 +5144,19 @@ sub get_cxn_from_dsn_table {
       }
       $done = 1;
    } until $done;
+   REPLICAS:
+   foreach my $known_replica ( @{$args{replicas}} ) {
+      foreach my $new_replica ( @cxn ) {
+         if ( $known_replica->{dsn}->{h} eq $new_replica->{dsn}->{h}
+               and $known_replica->{dsn}->{P} eq $new_replica->{dsn}->{P}
+               and $known_replica->{dsn}->{u} eq $new_replica->{dsn}->{u}
+               and $known_replica->{dsn}->{p} eq $new_replica->{dsn}->{p}
+         ) {
+            next REPLICAS;
+         }
+      }
+      $known_replica->{dbh}->disconnect if $known_replica->{dbh};
+   }
    return \@cxn;
 }
 
@@ -5217,7 +5242,7 @@ sub wait {
       my ($replicas, $refresher) = ($self->{replicas}, $self->{get_replicas_cb});
       return $replicas if ( not defined $refresher );
       my $before = join ' ', sort map {$_->description()} @$replicas;
-      $replicas = $refresher->();
+      $replicas = $refresher->(undef, $replicas);
       my $after = join ' ', sort map {$_->description()} @$replicas;
       if ($before ne $after) {
          $self->{replicas} = $replicas;
@@ -5277,7 +5302,7 @@ sub wait {
              $lag = $get_lag->($lagged_replicas[$i]->{cxn});
          };
          if ($EVAL_ERROR) {
-             die $EVAL_ERROR;
+            die $EVAL_ERROR;
          }
          PTDEBUG && _d($lagged_replicas[$i]->{cxn}->name(),
             'replica lag:', $lag);
@@ -5839,7 +5864,7 @@ sub _one_nibble {
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                           ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
@@ -5937,7 +5962,7 @@ sub _nibble_params {
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
          . " FROM $from"
@@ -5960,8 +5985,8 @@ sub _nibble_params {
          last_ub_sql          => $last_ub_sql,
          ub_sql               => $ub_sql,
          nibble_sql           => $nibble_sql,
-         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
-         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_first_lb_sql => "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $ub_sql",
          explain_nibble_sql   => $explain_nibble_sql,
          resume_lb_sql        => $resume_lb_sql,
          sql                  => {
@@ -6305,7 +6330,7 @@ sub get_row_estimate {
    }
    my ($cxn, $tbl) = @args{@required_args};
 
-   my $sql = "EXPLAIN SELECT * FROM $tbl->{name} "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM $tbl->{name} "
            . "WHERE " . ($args{where} || '1=1');
    PTDEBUG && _d($sql);
    my $expl = $cxn->dbh()->selectrow_hashref($sql);
@@ -7055,7 +7080,7 @@ sub _make_range_query {
    my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
    push @where, $q->quote($col) . " >= " . $condition;
 
-   my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
            . "WHERE " . join(' AND ', @where)
            . " /*key_len*/";
@@ -9224,11 +9249,11 @@ sub main {
      my $slaves_to_skip = $o->get('skip-check-replica-lag');
 
      my $get_replicas_cb = sub {
-         my ($intolerant) = @_;
+         my ($intolerant, $known_replicas) = @_;
          my $slaves =$ms->get_replicas(
                dbh      => $cxn->dbh(),
                dsn      => $cxn->dsn(),
-               replicas => $slaves,
+               replicas => defined($known_replicas) ? $known_replicas : $slaves,
                make_cxn => sub {
                   return $make_cxn->(
                      @_,
@@ -9393,11 +9418,15 @@ sub main {
                eval { $dbh = $cxn->connect() };  # connect or die trying
                if ( $EVAL_ERROR ) {
                   # As the docs say: "The tool waits forever for replicas
-                  # to stop lagging.  If any replica is stopped, the tool
+                  # to stop lagging unless option --no-fail-on-stopped-replication
+                  # is specified.  If any replica is stopped, the tool
                   # waits forever until the replica is started."
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
                   PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
+                  if ( $o->get('fail-on-stopped-replication') ) {
+                     die $EVAL_ERROR;
+                  }
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef;
                }

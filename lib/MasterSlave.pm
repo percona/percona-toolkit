@@ -120,6 +120,7 @@ sub get_replicas {
          # We will set current source server as a parent
          # until https://perconadev.atlassian.net/browse/PT-2496 is implemented
          parent => $dsn,
+         replicas => $args{replicas},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -1073,7 +1074,7 @@ sub get_cxn_from_dsn_table {
    }
 
    my $done = 0;
-   my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
+   my $dsn_tbl_cxn = $self->{dsn_tbl_cxn}->{$dsn_table_dsn} ||= $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
@@ -1081,12 +1082,12 @@ sub get_cxn_from_dsn_table {
    my $o = $self->{OptionParser};
    my $my_dsn;
    my $lcxn;
-   use Data::Dumper;
    DSN:
    do {
       @cxn = ();
       my $dsn_strings = $dbh->selectcol_arrayref($sql);
       if ( $dsn_strings ) {
+         DSN_STRING:
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
 
@@ -1101,6 +1102,17 @@ sub get_cxn_from_dsn_table {
             if ( $o->got('replica-password') && !defined $raw_dsn->{p} ) {
                PTDEBUG && _d('DSN - password set from --replica-password');
                $my_dsn->{p} = $o->get('replica-password');
+            }
+
+            foreach my $known_replica ( @{$args{replicas}} ) {
+               if ( $known_replica->{dsn}->{h} eq $my_dsn->{h}
+                     and $known_replica->{dsn}->{P} eq $my_dsn->{P}
+                     and $known_replica->{dsn}->{u} eq $my_dsn->{u}
+                     and $known_replica->{dsn}->{p} eq $my_dsn->{p}
+               ) {
+                  push @cxn, $known_replica;
+                  next DSN_STRING;
+               }
             }
 
             eval {
@@ -1120,6 +1132,20 @@ sub get_cxn_from_dsn_table {
       }
       $done = 1;
    } until $done;
+   # Close database connections in stale replicas
+   REPLICAS:
+   foreach my $known_replica ( @{$args{replicas}} ) {
+      foreach my $new_replica ( @cxn ) {
+         if ( $known_replica->{dsn}->{h} eq $new_replica->{dsn}->{h}
+               and $known_replica->{dsn}->{P} eq $new_replica->{dsn}->{P}
+               and $known_replica->{dsn}->{u} eq $new_replica->{dsn}->{u}
+               and $known_replica->{dsn}->{p} eq $new_replica->{dsn}->{p}
+         ) {
+            next REPLICAS;
+         }
+      }
+      $known_replica->{dbh}->disconnect if $known_replica->{dbh};
+   }
    return \@cxn;
 }
 
