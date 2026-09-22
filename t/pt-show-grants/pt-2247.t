@@ -69,6 +69,54 @@ ok(
 
 diag(`/tmp/12345/use -u root -e "DROP USER 'sally'\@'%'"`);
 
+diag(`/tmp/12345/use -u root -e "CREATE USER 'sally'\@'%' IDENTIFIED VIA mysql_native_password USING PASSWORD('pwd') OR unix_socket"`);
+
+$output = output(
+   sub { pt_show_grants::main('-F', $cnf, qw(--only sally --convert-from-mariadb)); }
+);
+
+like(
+   $output,
+   qr/ALTER USER `sally`@`%` IDENTIFIED WITH auth_socket;/,
+   'Conversion works with option --convert-from-mariadb'
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Option --convert-MariaDB is deprecated and will be removed in future versions. Use --convert-from-mariadb instead/,
+   'Deprecation warning not printed if option --convert-from-mariadb was used'
+) or diag($output);
+
+($output, my $exit_code) = full_output(
+   sub { pt_show_grants::main('-F', $cnf, qw(--only sally --convert-MariaDB)); },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/ALTER USER `sally`@`%` IDENTIFIED WITH auth_socket;/,
+   'Conversion works with deprecated option --convert-MariaDB'
+) or diag($output);
+
+like(
+   $output,
+   qr/Option --convert-MariaDB is deprecated and will be removed in future versions. Use --convert-from-mariadb instead/,
+   'Deprecation warning printed if option --convert-MariaDB was used'
+) or diag($output);
+
+$output = output(
+   sub { pt_show_grants::main('-F', $cnf, qw(--only sally)); }
+);
+
+unlike(
+   $output,
+   qr/ALTER USER `sally`@`%` IDENTIFIED WITH auth_socket;/,
+   'Original statement printed if option --convert-from-mariadb was not specified'
+) or diag($output);
+
+
+diag(`/tmp/12345/use -u root -e "DROP USER 'sally'\@'%'"`);
+
 # #############################################################################
 # Done.
 # #############################################################################
