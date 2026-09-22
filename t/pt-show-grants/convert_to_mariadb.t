@@ -135,7 +135,7 @@ is_deeply(
 }
 
 SKIP: {
-   if ( !$dbh && VersionParser->new($dbh)->flavor !~ m/maria/i ) {
+   if ( !$dbh || VersionParser->new($dbh)->flavor =~ m/maria/i ) {
       skip "This test requires active MySQL connection";
    }
 
