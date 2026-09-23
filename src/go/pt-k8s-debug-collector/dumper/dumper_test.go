@@ -16,6 +16,7 @@ package dumper
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -340,4 +341,13 @@ func TestGetSummarySkipPodSummaryFalse(t *testing.T) {
 
 		d.getSummary(context.Background(), job, "pxc", "/tmp/summary.txt")
 	})
+}
+
+func TestPodDescribePath(t *testing.T) {
+	d := &Dumper{location: "cluster-dump"}
+	got := d.PodDescribePath("pxc", "pxc-node-0")
+	want := filepath.Join("cluster-dump", "pxc", "pxc-node-0", "describe.txt")
+	if got != want {
+		t.Fatalf("PodDescribePath = %q, want %q", got, want)
+	}
 }
