@@ -553,10 +553,8 @@ _lsof() {
 _which() {
    if [ -x /usr/bin/which ]; then
       /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
-   elif which which 1>/dev/null 2>&1; then
-      which "$1" 2>/dev/null | awk '{print $1}'
    else
-      echo "$1"
+      command -v "$1" 2>/dev/null | awk '{print $1}'
    fi
 }
 
