@@ -19,7 +19,7 @@ done
 _which "$missing_cmd" > $TEST_PT_TMPDIR/out
 file_is_empty \
    $TEST_PT_TMPDIR/out \
-   "Empty line printed for non-existed command"
+   "Empty line printed for non-existent command"
 
 # Test _which with an existing command
 # bash should exist on the system, because we are running this script with bash.
