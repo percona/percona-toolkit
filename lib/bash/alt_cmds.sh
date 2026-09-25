@@ -59,15 +59,11 @@ _which() {
    # Also, if the cmd isn't found, a msg is printed to stderr.
    if [ -x /usr/bin/which ]; then
       /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
-   elif which which 1>/dev/null 2>&1; then
-      # Well, this is bizarre. /usr/bin/which either doesn't exist or
-      # isn't executable, but the shell can use which just fine.
-      # So we bite the bullet, hope that it doesn't do anything
-      # insane, and use it.
-      which "$1" 2>/dev/null | awk '{print $1}'
+   elif command -v "$1" 1>/dev/null 2>&1; then
+      command -v "$1" 2>/dev/null | awk '{print $1}'
    else
-      # We don't have which. Just return the command that was
-      # originally passed in.
+      # We don't have which installed in default place as well as command.
+      # Just return the command that was originally passed in.
       echo "$1"
    fi
 }
