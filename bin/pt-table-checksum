@@ -13903,6 +13903,10 @@ The C<processlist> method is the default, because C<SHOW REPLICAS> is not
 reliable.  However, if the server uses a non-standard port (not 3306), then
 the C<hosts> method becomes the default because it works better in this case.
 
+On versions prior to MySQL 8.0.17, C<processlist> method may also be not
+reliable if replicas use host names larger than 60 characters. This happened
+due to https://bugs.mysql.com/bug.php?id=63814 fixed in MySQL 8.0.17.
+
 The C<hosts> method requires replicas to be configured with C<report_host>,
 C<report_port>, etc.
 

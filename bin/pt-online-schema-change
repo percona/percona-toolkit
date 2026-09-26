@@ -13669,6 +13669,10 @@ non-standard port (not 3306).  The tool usually does the right thing and
 finds all replicas, but you may give a preferred method and it will be used
 first.
 
+On versions prior to MySQL 8.0.17, C<processlist> method may also be not
+reliable if replicas use host names larger than 60 characters. This happened
+due to https://bugs.mysql.com/bug.php?id=63814 fixed in MySQL 8.0.17.
+
 The hosts method requires replicas to be configured with report_host,
 report_port, etc.
 
