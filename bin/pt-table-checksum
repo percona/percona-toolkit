@@ -13076,7 +13076,11 @@ or if the structure of a table on a replica is different than on the source.
 
 =head1 Percona XtraDB Cluster
 
-pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.28-23.7 and newer.
+pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.28-23.7 up to
+the latest version in the 5.7 series. Percona XtraDB Cluster (PXC) 8.0 and
+newer are not supported, because starting from this version, PXC does not 
+support binary log format STATEMENT. This limitation maybe relaxed in the
+future, after adding binlog format ROW support to pt-table-checksum.
 The number of possible Percona XtraDB Cluster setups is large given that
 it can be used with regular replication as well.  Therefore, only the setups
 listed below are supported and known to work.  Other setups, like cluster
