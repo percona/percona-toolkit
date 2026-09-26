@@ -10,16 +10,62 @@ Most tools require:
    * Bash v3 or newer
    * Core Perl modules like Time::HiRes
 
+Tools written in Go require the latest available Go version.
+
 Tools that connect to MySQL require:
 
-   * Perl modules DBI and DBD::mysql
-   * MySQL 5.0 or newer
+   * Perl modules DBI and DBD::mysql 5.013 or newer
+   * MySQL 5.7 or newer
 
 Percona Toolkit is only tested on UNIX systems, primarily Debian and
-Red Hat derivatives; other operating systems are not supported.
+Red Hat derivatives; other operating systems may work but are not supported.
 
-Tools that connect to MySQL may work with MySQL v4.1, but this is not
-test or supported.
+Tools that connect to earlier versions of MySQL may work, but this is not
+tested or supported.
+
+Installation
+------------
+
+You can install Percona Toolkit in any of the following ways:
+
+- Install it from the Percona repository.
+- Install it from a tarball.
+- Build it from source.
+
+Installing Percona Toolkit from the Percona Repository
+------------------------------------------------------
+
+1. Configure Percona repositories as described in [Percona Software Repositories Documentation](https://docs.percona.com/percona-software-repositories/index.html).
+
+2. Enable Percona Toolkit repository:
+
+   sudo percona-release enable pt release
+
+3. Install Percona Toolkit using the corresponding package manager:
+
+   - For Debian or Ubuntu:
+
+      sudo apt-get install percona-toolkit
+
+   - For RHEL or CentOS:
+
+      sudo yum install percona-toolkit
+
+Installing Percona Toolkit from a tarball
+-----------------------------------------
+
+1. Download **Linux - Generic** tarball from https://www.percona.com/downloads/
+
+2. Extract the tarball into desired directory:
+
+   tar -xzf percona-toolkit-M.N.P_x86_64.tar.gz
+
+   (Replace `M.N.P` with the downloaded version number)
+
+3. Optionally add `percona-toolkit-M.N.P/bin` directory into `$PATH` or create links to the content of the `percona-toolkit-M.N.P` directory under `/usr/local`.
+
+Building from source
+--------------------
 
 Quick Install
 -------------
@@ -32,33 +78,41 @@ Quick Install
 Detailed Install
 ----------------
 
-Extract the tarball and cd to the resulting directory:
+1. Getting source code.
 
-   tar zxvf percona-toolkit-<version>.tar.gz
-   cd percona-toolkit-<version>
+   a. Clone Percona Toolkit from the GitHub repository at https://github.com/percona/percona-toolkit/ and cd to the resulting directory:
 
-Generate the Makefile, which will check Perl module dependencies and
+      git clone https://github.com/percona/percona-toolkit.git
+      cd percona-toolkit
+
+   b. Or download the tarball from the Percona Software Downloads web page at https://www.percona.com/downloads/, extract it, and cd to the resulting directory:
+
+
+      tar zxvf percona-toolkit-<version>.tar.gz
+      cd percona-toolkit-<version>
+
+2. Generate the `Makefile`, which will check Perl module dependencies and
 so forth:
 
    perl Makefile.PL
 
-Build the tools' man pages and prep for test and install:
+3. Build the tools' man pages and prep for test and install:
 
    make
 
-Test that the tools can run:
+4. Test that the tools can run:
 
    make test
 
-All tests should pass.  If not, then your system may be missing a Perl module
-required by a tool.  The tests are not comprehensive; they only test that the
-tools can be executed by Perl and Bash.
+   All tests should pass.  If not, then your system may be missing a Perl module
+   required by a tool.  The tests are not comprehensive; they only test that the
+   tools can be executed by Perl and Bash.
 
-Finally, install all tools and their man pages:
+5. Finally, install all tools and their man pages:
 
    make install
 
-On most systems, the tools are installed in /usr/local/bin.
+   On most systems, the tools are installed in `/usr/local/bin`.
 
 Installation Options
 --------------------
@@ -67,4 +121,3 @@ To install to a directory other than your system's default, such as your
 home directory, generate the Makefile with a prefix:
 
    perl Makefile.PL PREFIX=${HOME}
-

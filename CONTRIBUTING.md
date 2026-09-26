@@ -1,44 +1,58 @@
 # Contributing Guide
+
 ## How Can I Contribute?
+
 ## Reporting Bugs
-Before creating bug reports, please check [this list](https://jira.percona.com/projects/PT/issues) as you might find out that you don't need to create one. When you create a bug report, please include as many details as possible. You can use [this guide](https://www.percona.com/blog/2019/06/12/report-bugs-improvements-new-feature-requests-for-percona-products/) to structure the information.
+
+Before creating a bug report, please check [this list](https://jira.percona.com/projects/PT/issues) to see whether the issue has already been reported. If you still need to file one, include as much detail as possible. You can use [this guide](https://www.percona.com/blog/2019/06/12/report-bugs-improvements-new-feature-requests-for-percona-products/) to structure the information.
 
 ### Before Submitting a Bug Report
-- Ensure you have carefully read the documentation. Percona Toolkit is a mature project with many settings that cover a wide range of options.
-- Search for existing bugs in [Jira](https://jira.percona.com) to see if the problem has already been reported. If it has, add a comment to the existing issue instead of opening a new one.
-By doing this, we can avoid duplicating efforts, since the issue might have been already reported and if not, you might find useful information on older issues related to the same problem.
+
+- Read the documentation first. Percona Toolkit is a mature project with many options and behaviors, and some issues may already be explained there.
+- Search [Jira](https://jira.percona.com) for an existing report before opening a new one. If the issue already exists, add a comment to the existing ticket instead of creating a duplicate.
+
+This helps avoid duplicating work and can also reveal useful context from earlier reports or related issues.
 
 ### How Do I Submit a (Good) Bug Report?
-- Explain the problem and include additional details to help others to reproduce the problem.
+
+- Explain the problem and include enough detail for others to reproduce it.
 - Use a clear and descriptive title for the issue.
-- Be clear about what your problem is: which program you are using, what is the expected result and what is the result you are getting.
-- Include system details, such as language version, OS, database details or special configurations, etc.
-- Describe the exact steps which reproduce the problem, including as many details as possible. Provide examples of the command you used and include context information like language, OS and database versions.
-- Describe the obtained and the expected results and, if possible, provide examples.
-- Paste the error output or logs into Jira issue or attach them. You may put large files on our SFTP server if needed. Use Jira issue number as a login and password for the [Percona SFTP server](sftp.percona.com). Have Jira issue number in the file name and add a comment, so we can access it.
+- Be specific about the problem: which program you are using, what the expected result is, and what result you actually saw.
+- Include system details such as the language version, operating system, database version, and any relevant configuration.
+- Describe the exact steps that reproduce the problem in as much detail as possible. Include the command you used and any relevant context such as OS, language, and database versions.
+- Describe both the actual result and the expected result, and include examples when possible.
+- Paste the error output or logs into the Jira issue, or attach them. If a file is large, you may upload it to our SFTP server. Use the Jira issue number as both the username and password for the [Percona SFTP server](sftp.percona.com). Include the Jira issue number in the file name and add a comment so we can access it.
 
 ## Reporting Documentation Issues
-Documentation bugs for Percona Toolkit should be reported at [Percona Jira](https://jira.percona.com/) in the project **PT** and have component **Documentation**.
+
+Documentation bugs for Percona Toolkit should be reported in [Percona Jira](https://jira.percona.com/) under the **PT** project with the **Documentation** component.
 
 ### Good Documentation Bug Report
-- Contains link to the user manual page where the documentation is wrong
-- Fully explains the problem
-- Optionally explains how documentation should be fixed
+
+- Includes a link to the user manual page where the documentation is wrong.
+- Clearly explains the problem.
+- Optionally explains how the documentation should be fixed.
 
 ## Introducing Changes to the Toolkit
+
 ### Set Up the Source Code
-To start, fork the Percona Toolkit repo to be able to submit pull requests and clone it locally:
-```
+
+To start, fork the Percona Toolkit repository so you can submit pull requests and clone it locally:
+
+```bash
 mkdir ${HOME}/perldev
 git clone https://github.com/percona/percona-toolkit.git ${HOME}/perldev/percona-toolkit
 ```
+
 ### Create a New Branch
 
-You should start your own development branch. If you have a Jira ticket assigned, use its number as a reference, and add a short description of what work on this branch will do:
-```
+Create your own development branch. If you have a Jira ticket assigned, use its number as a reference and add a short description of the work this branch will do:
+
+```bash
 git checkout -b PT-9999_functionality_name
 ```
-The first commit should also have the Jira reference number as first characters in the commit message (so that Jiraf can use the smart tags).
+
+Use the Jira reference number at the beginning of the first commit message so Jira can use the smart tags.
 
 ### Example Commit Message
 
@@ -51,28 +65,35 @@ If check fails, now pt-foo will stop executing and return an error.
 
 ### Changing Shared Code
 
-Percona Toolkit uses `lib` directory for library code. Once you change it you need to run the `update-modules` tool that will merge module code with the tools. Be careful and **do not modify** anything between the `This package is a copy without comments from the original`  and `End ... package` comments.
+Percona Toolkit uses the `lib` directory for shared library code. After changing a library, run the `update-modules` tool so the generated code in each tool is updated as well. Be careful not to modify anything between the `This package is a copy without comments from the original` and `End ... package` comments.
 
 ### Running the update-modules Tool
 
-Whenever you make changes to libraries under `lib/`, you should make sure that you run the `util/update-modules` functionality, to make sure that all tools that use these packages will benefit from the new changes. For example, let's say you changed the `lib/bash/collect.sh` package, you will need to run:
-```
+Whenever you change code under `lib/`, run `util/update-modules` so every tool that uses those packages picks up the new changes. For example, if you changed `lib/bash/collect.sh`, run:
+
+```bash
 cd ${HOME}/perldev/percona-toolkit
 for t in bin/*; do util/update-modules ${t} collect; done
 ```
-Or if you changed the `lib/NibbleIterator.pm` package:
-```
+
+If you changed `lib/NibbleIterator.pm`, run:
+
+```bash
 cd ${HOME}/perldev/percona-toolkit
 for t in bin/*; do util/update-modules ${t} NibbleIterator; done
 ```
 
+If no module is specified, all modules will be updated.
+
 ## Uploading Your Branch
 
-Finally, after you run another round of tests and everything is OK, you should upload your branch to your GitHub fork:
-```
+After you run another round of tests and everything passes, upload your branch to your GitHub fork:
+
+```bash
 git push origin PT-9999_functionality_name
 ```
-And then go to the web UI to create the new pull request (PR) based off of this new branch.
+
+Then open the web UI and create a pull request (PR) from this branch.
 
 ## Submitting Fixes
 ### Pull Requests
@@ -97,26 +118,28 @@ Along with the pull request, include a message indicating that the submitted cod
 
 ## Setting up the Development Environment and Testing
 ### Perl and Shell Tools
-For testing, we are going to need to have MySQL with replicas. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distribution from [https://www.percona.com/downloads/Percona-Server-LATEST/](https://www.percona.com/downloads/Percona-Server-LATEST/).
+For testing, we are going to need to have MySQL with replicas. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distribution from [https://www.percona.com/downloads/](https://www.percona.com/downloads/).
 
 #### Set up MySQL Sandbox
-In this example, we are going to download Percona Server 8.0.26-17.
+In this example, we are going to download Percona Server 9.7.1-1
 
 ```
-mkdir -p ${HOME}/mysql/percona-server-8.0.26-17
+mkdir -p ${HOME}/mysql/percona-server-9.7.1-1
 ```
 ```
-wget https://downloads.percona.com/downloads/Percona-Server-LATEST/Percona-Server-8.0.26-17/binary/tarball/Percona-Server-8.0.26-17-Linux.x86_64.glibc2.17.tar.gz
+wget https://downloads.percona.com/downloads/Percona-Server-9.7/Percona-Server-9.7.1-1/binary/tarball/Percona-Server-9.7.1-1-Linux.x86_64.glibc2.28.tar.gz
 ```
 ```
-tar xvzf Percona-Server-8.0.26-17-Linux.x86_64.glibc2.17.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-8.0.26-17
+tar xvzf Percona-Server-9.7.1-1-Linux.x86_64.glibc2.28.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-8.0.26-17
 ```
 #### Set Up Environment Variables
 We need these environment variables to start the MySQL sandbox and to run the tests. Probably it is a good idea to add them to your `.bashrc` file.
 ```
-export PERCONA_TOOLKIT_BRANCH=${HOME}/perldev/percona-toolkit
-export PERL5LIB=${HOME}/perldev/percona-toolkit/lib
-export PERCONA_TOOLKIT_SANDBOX=${HOME}/mysql/percona-server-8.0.26-17
+export PERCONA_TOOLKIT_SANDBOX=$HOME/mysql/percona-server-9.7.1-1
+export PERCONA_TOOLKIT_BRANCH=`pwd`
+export BRANCH=$(git rev-parse --abbrev-ref HEAD)
+export MYSQL_VERSION=9.7
+export LOG_FILE=~/${BRANCH}-${MYSQL_VERSION}.log
 ```
 
 #### Check That All Needed Tools Are Correctly Installed:
@@ -138,7 +161,7 @@ cd ${HOME}/perldev/percona-toolkit
 sandbox/test-env start
 ```
 To stop the MySQL sandbox: `sandbox/test-env stop`
-To enable TokuDB (only available in Percona Server 5.7+), run:
+To enable TokuDB (only available in Percona Server 5.7 and Percona Server 8.0), run:
 
 ```
 ENABLE_TOKUDB=1 sandbox/test-env start
@@ -169,22 +192,18 @@ prove -v t/pt-stalk/option_sanity.t
 
 ### Go Tools
 
-Starting from version 3, there are new tools for MongoDB, written in Go language.
+Starting from version 3, there are new tools for MongoDB, PostgreSQL, Kubernetes, written in Go language.
 
 To test these tools, first switch to the `src/go` directory, then use command `make`.
 
 #### Starting the Sandbox
 
-Run command `make env-up`. This will start MongoDB container cluster
+For some of MongoDB and PostgreSQL tools, you need to start the sandbox. Run command `make env-up`. This will start MongoDB and PostgreSQL container clusters. For other tools, sandbox is created by the test files themselves. This inconsistency will change in the future, but at this moment, you need to test each tool individually.
 
-#### Build Mongo Tools
+#### Testing
 
-Run command `make` with your environment as a parameter. For example, `make linux-amd64` will build Mongo tools for Linux AMD64 platform.
-
-#### Running Tests
-
-Run `make test`
+cd into the individual tool directory, and run `go test`.
 
 #### Stopping the Sandbox
 
-Run `make env-down`
+Run `make env-down`.
