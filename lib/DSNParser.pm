@@ -20,7 +20,7 @@
 {
 # Package: DSNParser
 # DSNParser parses DSNs and creates connections to MySQL using DBI and
-# DBD::mysql.
+# DBD::mysql or DBD::MariaDB.
 package DSNParser;
 
 use strict;
@@ -76,18 +76,32 @@ sub new {
          copy => $opt->{copy} || 0,
       };
    }
+
+   # Use DBD::MariaDB as default MySQL DBI driver if it's installed
+   eval{ require DBD::MariaDB };
+   if ($@) {
+      $self->{dbidriver} = 'mysql';
+   } else {
+      $self->{dbidriver} = 'MariaDB';
+   };
+
    return bless $self, $class;
 }
 
 # Recognized properties:
-# * dbidriver: which DBI driver to use; assumes mysql, supports Pg.
+# * dbidriver: which DBI driver to use; assumes mysql/MariaDB, supports Pg.
 # * required:  which parts are required (hashref).
 # * set-vars:  a list of variables to set after connecting
 sub prop {
    my ( $self, $prop, $value ) = @_;
    if ( @_ > 2 ) {
       PTDEBUG && _d('Setting', $prop, 'property');
-      $self->{$prop} = $value;
+      if ($prop eq 'dbidriver') {
+         $self->{$prop} = $value || $self->{$prop};
+      }
+      else {
+         $self->{$prop} = $value;
+      }
    }
    return $self->{$prop};
 }
@@ -239,6 +253,14 @@ sub get_cxn_params {
                      grep { defined $info->{$_} }
                      qw(h P));
    }
+   elsif ( $driver eq 'MariaDB' ) {
+      $dsn = 'DBI:MariaDB:' . ( $info->{D} || '' ) . ';'
+         . join(';', map  { ($opts{$_}->{dsn} =~ s/mysql/mariadb/r) . "=$info->{$_}" }
+                     grep { defined $info->{$_} }
+                     qw(F h P S A s))
+         . ';mariadb_read_default_group=client'
+         . ($info->{L} ? ';mariadb_local_infile=1' : '');
+   }
    else {
       $dsn = 'DBI:mysql:' . ( $info->{D} || '' ) . ';'
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
@@ -275,18 +297,33 @@ sub get_dbh {
       RaiseError         => 1,
       PrintError         => 0,
       ShowErrorStatement => 1,
-      mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
    };
    @{$defaults}{ keys %$opts } = values %$opts;
+
+   my $mysql_defaults = { mysql_enable_utf8 => 0 };
+   my $mariadb_defaults = {};
+
+   if ($cxn_string =~ m/charset=utf8/i || $opts->{mysql_enable_utf8}) {
+      $mysql_defaults->{mysql_enable_utf8} = 1;
+   }
+
    if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
-      $defaults->{mysql_local_infile} = 1;
+      $mysql_defaults->{mysql_local_infile} = 1;
+      $mariadb_defaults->{mariadb_local_infile} = 1;
    }
 
    # Only add this if explicitly set because we're not sure if
    # mysql_use_result=0 would leave default mysql_store_result
    # enabled.
    if ( $opts->{mysql_use_result} ) {
-      $defaults->{mysql_use_result} = 1;
+      $mysql_defaults->{mysql_use_result} = 1;
+      $mariadb_defaults->{mariadb_use_result} = 1;
+   }
+
+   if ($self->prop('dbidriver') eq 'MariaDB') {
+      @{$defaults}{ keys %$mariadb_defaults } = values %$mariadb_defaults;
+   } elsif ($self->prop('dbidriver') ne 'Pg') {
+      @{$defaults}{ keys %$mysql_defaults } = values %$mysql_defaults;
    }
 
    if ( !$have_dbi ) {
@@ -309,14 +346,20 @@ sub get_dbh {
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
 
       if ( !$dbh && $EVAL_ERROR ) {
-         if ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
-            die "Cannot connect to MySQL because the Perl DBD::mysql module is "
-               . "not installed or not found.  Run 'perl -MDBD::mysql' to see "
-               . "the directories that Perl searches for DBD::mysql.  If "
-               . "DBD::mysql is not installed, try:\n"
+         if ( $EVAL_ERROR =~ m/locate DBD\/(mysql|MariaDB)/i ) {
+            die "Cannot connect to MySQL because the Perl DBD::mysql or DBD::MariaDB module is "
+               . "not installed or not found.  Run 'perl -MDBD::mysql' or 'perl -MDBD::MariaDB' "
+               . "to see the directories that Perl searches for.  If "
+               . "DBD::mysql or DBD::MariaDB is not installed, try:\n"
                . "  Debian/Ubuntu  apt-get install libdbd-mysql-perl\n"
+               . "                 or\n"
+               . "                 apt-get install libdbd-mariadb-perl\n"
                . "  RHEL/CentOS    yum install perl-DBD-MySQL\n"
-               . "  OpenSolaris    pkg install pkg:/SUNWapu13dbd-mysql\n";
+               . "                 or\n"
+               . "                 yum install perl-DBD-MariaDB\n"
+               . "  OpenSolaris    pkg install pkg:/SUNWapu13dbd-mysql\n"
+               . "                 or\n"
+               . "                 pkg install pkg:/SUNWapu13dbd-mariadb\n";
          }
          elsif ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
             PTDEBUG && _d('Going to try again without utf8 support');
@@ -329,7 +372,7 @@ sub get_dbh {
    }
 
    # If it's a MySQL connection, set some options.
-   if ( $cxn_string =~ m/mysql/i ) {
+   if ( $self->prop('dbidriver') =~ m/(mysql|mariadb)/i ) {
       my $sql;
 
       # Set character set and binmode on STDOUT.
@@ -342,7 +385,7 @@ sub get_dbh {
             die "Error setting NAMES to $charset: $EVAL_ERROR";
          }
       }
-      else {
+      elsif ($self->prop('dbidriver') eq 'mysql') {
          my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
          if ( $EVAL_ERROR ) {
             die "Cannot get MySQL version: $EVAL_ERROR";
@@ -407,16 +450,36 @@ sub get_dbh {
       }
    }
 
-   PTDEBUG && _d('DBH info: ',
-      $dbh,
-      Dumper($dbh->selectrow_hashref(
-         'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
-      'Connection info:',      $dbh->{mysql_hostinfo},
-      'Character set info:',   Dumper($dbh->selectall_arrayref(
-                     "SHOW VARIABLES LIKE 'character_set%'", { Slice => {}})),
-      '$DBD::mysql::VERSION:', $DBD::mysql::VERSION,
-      '$DBI::VERSION:',        $DBI::VERSION,
-   );
+   my @debug_info = ('DBH info: ', $dbh);
+   if ($self->{dbidriver} eq 'Pg') {
+      push(@debug_info,
+         Dumper($dbh->selectrow_hashref(
+            'SELECT VERSION()/*!50038 , @@hostname*/')),
+         '$DBD::Pg::VERSION:', $DBD::Pg::VERSION,
+      );
+   }
+   elsif ($self->{dbidriver} eq 'MariaDB') {
+      push(@debug_info,
+         Dumper($dbh->selectrow_hashref(
+            'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
+         'Connection info:',      $dbh->{mariadb_hostinfo},
+         'Character set info:',   Dumper($dbh->selectall_arrayref(
+                                    "SHOW VARIABLES LIKE 'character_set%'", { Slice => {} })),
+         '$DBD::MariaDB::VERSION:', $DBD::MariaDB::VERSION,
+      );
+   } else {
+      push(@debug_info,
+         Dumper($dbh->selectrow_hashref(
+            'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
+         'Connection info:',      $dbh->{mysql_hostinfo},
+         'Character set info:',   Dumper($dbh->selectall_arrayref(
+                                    "SHOW VARIABLES LIKE 'character_set%'", { Slice => {}})),
+         '$DBD::mysql::VERSION:', $DBD::mysql::VERSION,
+      )
+   }
+   push(@debug_info, '$DBI::VERSION:', $DBI::VERSION);
+
+   PTDEBUG && _d(@debug_info);
 
    return $dbh;
 }
@@ -424,8 +487,15 @@ sub get_dbh {
 # Tries to figure out a hostname for the connection.
 sub get_hostname {
    my ( $self, $dbh ) = @_;
-   if ( my ($host) = ($dbh->{mysql_hostinfo} || '') =~ m/^(\w+) via/ ) {
-      return $host;
+   if ($self->prop('dbidriver') eq 'MariaDB') {
+      if ( my ($host) = ($dbh->{mariadb_hostinfo} || '') =~ m/^(\w+) via/ ) {
+         return $host;
+      }
+   }
+   elsif ($self->prop('dbidriver') ne 'Pg') {
+      if ( my ($host) = ($dbh->{mysql_hostinfo} || '') =~ m/^(\w+) via/ ) {
+         return $host;
+      }
    }
    my ( $hostname, $one ) = $dbh->selectrow_array(
       'SELECT /*!50038 @@hostname, */ 1');

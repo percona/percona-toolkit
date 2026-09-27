@@ -43,8 +43,8 @@ $dbh2->commit;
 $dbh1->{InactiveDestroy} = 1;
 $dbh2->{InactiveDestroy} = 1;
 
-$dbh1->{mysql_auto_reconnect} = 1;
-$dbh2->{mysql_auto_reconnect} = 1;
+($dp->prop('dbidriver') eq 'MariaDB' ? $dbh1->{mariadb_auto_reconnect} : $dbh1->{mysql_auto_reconnect}) = 1;
+($dp->prop('dbidriver') eq 'MariaDB' ? $dbh2->{mariadb_auto_reconnect} : $dbh2->{mysql_auto_reconnect}) = 1;
 
 sub make_deadlock {
    # Fork off two children to deadlock against each other.

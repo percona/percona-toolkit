@@ -282,8 +282,8 @@ sub sync_table {
       my $src_sth = $src->{dbh}->prepare($src_sql);
       my $dst_sth = $dst->{dbh}->prepare($dst_sql);
       if ( $args{buffer_to_client} ) {
-         $src_sth->{mysql_use_result} = 1;
-         $dst_sth->{mysql_use_result} = 1;
+         ($dp->prop('dbidriver') eq 'MariaDB' ? $src_sth->{mariadb_use_result} : $src_sth->{mysql_use_result}) = 1;
+         ($dp->prop('dbidriver') eq 'MariaDB' ? $dst_sth->{mariadb_use_result} : $dst_sth->{mysql_use_result}) = 1;
       }
 
       # The first cycle should lock to begin work; after that, unlock only if
