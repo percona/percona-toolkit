@@ -1,0 +1,27 @@
+identifier                     rs:rs0                              
+current path                   tests/logs/replicaset/mongo-0.log   
+last known ip                  192.168.1.12                        
+last known name                rs:rs0                              
+mongodb version                6.0.12                              
+                                                                   
+2024-06-01T12:00:00.100+0000   mongod starting                     
+2024-06-01T12:00:02.300+0000   replSet initiate                    
+                               listen:27017                        
+                               (node name)                         
+                                V                                  
+                               rs:rs0                              
+2024-06-01T12:00:02.400+0000   replica set reconfig                
+2024-06-01T12:00:03.500+0000   PRIMARY                             
+2024-06-01T12:00:04.000+0000   election activity                   
+2024-06-01T12:00:15.000+0000   step down                           
+2024-06-01T12:00:15.100+0000   step down                           
+2024-06-01T12:00:20.000+0000   replica set reconfig                
+2024-06-01T12:00:20.100+0000   replica set reconfig                
+                               tests/logs/replicaset/mongo-0.log   
+                               (file path)                         
+                                V                                  
+                               tests/logs/replicaset/mongo-2.log   
+                               192.168.1.10                        
+                               (node ip)                           
+                                V                                  
+                               192.168.1.12                        
