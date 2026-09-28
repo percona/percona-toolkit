@@ -57,9 +57,9 @@ _lsof() {
 _which() {
    # which on CentOS is aliased to a cmd that prints extra stuff.
    # Also, if the cmd isn't found, a msg is printed to stderr.
-   if [ -x /usr/bin/which ]; then
-      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
-   else
+   if which "$1" 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   elif command -v "$1" 1>/dev/null 2>&1; then
       command -v "$1" 2>/dev/null | awk '{print $1}'
    fi
 }
