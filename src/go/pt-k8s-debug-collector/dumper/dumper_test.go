@@ -57,6 +57,33 @@ func TestMatchesCR(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:      "crunchy with instance label",
+			cr:        "crunchy",
+			podLabels: map[string]string{"postgres-operator.crunchydata.com/instance": "test"},
+			expected:  true,
+		},
+		{
+			name: "crunchy does not match pgv2 pod",
+			cr:   "crunchy",
+			podLabels: map[string]string{
+				"pgv2.percona.com/version":                   "1.0",
+				"postgres-operator.crunchydata.com/instance": "test",
+			},
+			expected: false,
+		},
+		{
+			name:      "pgv2 does not match crunchy pod",
+			cr:        "pgv2",
+			podLabels: map[string]string{"postgres-operator.crunchydata.com/instance": "test"},
+			expected:  false,
+		},
+		{
+			name:      "crunchy without instance label",
+			cr:        "crunchy",
+			podLabels: map[string]string{"postgres-operator.crunchydata.com/cluster": "test"},
+			expected:  false,
+		},
+		{
 			name:      "no match",
 			cr:        "unknown",
 			podLabels: map[string]string{"app": "test"},
@@ -171,6 +198,16 @@ func TestResourceTypeParsing(t *testing.T) {
 			expected: "psmdb",
 		},
 		{
+			name:     "crunchy exact match",
+			cr:       "crunchy",
+			expected: "crunchy",
+		},
+		{
+			name:     "crunchy API group",
+			cr:       "postgres-operator",
+			expected: "crunchy",
+		},
+		{
 			name:     "unknown returns as is",
 			cr:       "unknown",
 			expected: "unknown",
@@ -182,6 +219,49 @@ func TestResourceTypeParsing(t *testing.T) {
 			result := resourceType(tt.cr)
 			if result != tt.expected {
 				t.Errorf("resourceType(%q) = %q; want %q", tt.cr, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestResolvePgLogDirectory(t *testing.T) {
+	tests := []struct {
+		name     string
+		out      string
+		pgdata   string
+		expected string
+	}{
+		{
+			name:     "empty output falls back to PGDATA/log",
+			out:      "",
+			pgdata:   "/pgdata/pg18",
+			expected: "/pgdata/pg18/log",
+		},
+		{
+			name:     "relative directory",
+			out:      "log\n",
+			pgdata:   "/pgdata/pg18",
+			expected: "/pgdata/pg18/log",
+		},
+		{
+			name:     "absolute directory",
+			out:      "/pgdata/logs/postgres\n",
+			pgdata:   "/pgdata/pg18",
+			expected: "/pgdata/logs/postgres",
+		},
+		{
+			name:     "nested relative directory",
+			out:      "  pg_log/archive  ",
+			pgdata:   "/pgdata/pg18",
+			expected: "/pgdata/pg18/pg_log/archive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := resolvePgLogDirectory(tt.out, tt.pgdata)
+			if result != tt.expected {
+				t.Errorf("resolvePgLogDirectory(%q, %q) = %q; want %q", tt.out, tt.pgdata, result, tt.expected)
 			}
 		})
 	}

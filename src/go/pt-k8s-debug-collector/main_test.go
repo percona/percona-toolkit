@@ -579,13 +579,15 @@ func (s *CollectorSuite) TestResourceOption() {
 func validateSummaryByNamespace(archivePath, namespace string) error {
 	switch namespace {
 	case "psmdb":
-		return validatePSMDBSummary(archivePath, namespace)
+		return validateSummary(archivePath, namespace, "# Report On")
+	case "pgv2", "crunchy":
+		return validateSummary(archivePath, namespace, "COPY pg_srvr FROM stdin;")
 	default:
 		return nil
 	}
 }
 
-func validatePSMDBSummary(archivePath, namespace string) error {
+func validateSummary(archivePath, namespace, marker string) error {
 	file, err := os.Open(archivePath)
 	if err != nil {
 		return err
@@ -624,8 +626,8 @@ func validatePSMDBSummary(archivePath, namespace string) error {
 		if err != nil {
 			return err
 		}
-		if !bytes.Contains(content, []byte("# Report On")) {
-			return fmt.Errorf("summary file %s does not contain # Report On", header.Name)
+		if !bytes.Contains(content, []byte(marker)) {
+			return fmt.Errorf("summary file %s does not contain %s", header.Name, marker)
 		}
 
 		validated++
@@ -781,6 +783,13 @@ func (s *CollectorSuite) TestSSLResourceOption() {
 				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-ca-cert", "root.crt"), "root.crt"},
 				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-cert", "tls.crt"), strings.Repeat("tls.crt", 2)}, // there are two files with tls.crt
 				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-cert", "ca.crt"), strings.Repeat("ca.crt", 2)},   // there are two files with ca.crt
+			},
+		},
+		{
+			name: "crunchy", namespace: "crunchy", cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/crunchy/pgo-root-cacert", "root.crt"), "root.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/crunchy/*-cert", "tls.crt"), strings.Repeat("tls.crt", 2)},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/crunchy/*-cert", "ca.crt"), strings.Repeat("ca.crt", 2)},
 			},
 		},
 	}
