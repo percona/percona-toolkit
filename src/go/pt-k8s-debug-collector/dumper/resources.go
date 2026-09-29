@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var resourcesRe = regexp.MustCompile(`(\w+\.(\w+).percona\.com)`)
+var resourcesRe = regexp.MustCompile(`(\w+\.([\w-]+).(percona|crunchydata)\.com)`)
 
 func (d *Dumper) addPg1() error {
 	dirpaths := map[string][]string{
@@ -163,6 +163,8 @@ func resourceType(s string) string {
 		return "pgv2"
 	} else if s == "ps" || strings.HasPrefix(s, "ps/") {
 		return "ps"
+	} else if s == "postgres-operator" || strings.HasPrefix(s, "postgres-operator") {
+		return "crunchy"
 	}
 	return s
 }

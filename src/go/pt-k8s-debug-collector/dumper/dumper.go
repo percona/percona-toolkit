@@ -631,6 +631,8 @@ func matchesCR(cr string, podLabels map[string]string) bool {
 	case "pgv2":
 		return podLabels["pgv2.percona.com/version"] != "" &&
 			podLabels["postgres-operator.crunchydata.com/instance"] != ""
+	case "crunchy":
+		return podLabels["postgres-operator.crunchydata.com/instance"] != ""
 	}
 
 	return false
