@@ -309,6 +309,12 @@ sub parse_event {
       # Don't dump $event; want to see full dump of all properties, and after
       # it's been cast into a hash, duplicated keys will be gone.
       PTDEBUG && _d('Properties of event:', Dumper(\@properties));
+      # An odd-length @properties list would pair keys/values wrong in the
+      # hash below; skip the event rather than corrupt aggregation.
+      if ( @properties % 2 ) {
+         PTDEBUG && _d('Skipping malformed event (odd properties):', Dumper(\@properties));
+         next EVENT;
+      }
       my $event = { @properties };
       if ( !$event->{arg} ) {
          PTDEBUG && _d('Partial event, no arg');
