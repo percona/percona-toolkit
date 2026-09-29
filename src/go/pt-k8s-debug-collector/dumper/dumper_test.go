@@ -483,3 +483,12 @@ func TestPg2IndividualFile(t *testing.T) {
 		})
 	}
 }
+
+func TestGetPodSummaryUnknownResource(t *testing.T) {
+	d := &Dumper{}
+
+	_, err := d.getPodSummary(context.Background(), corev1.Pod{}, "unknown")
+	if err == nil || err.Error() != "unimplemented podSummary" {
+		t.Errorf("getPodSummary(unknown) error = %v; want unimplemented podSummary", err)
+	}
+}
