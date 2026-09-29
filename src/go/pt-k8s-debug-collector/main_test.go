@@ -34,6 +34,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/tests/utils"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/suite"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -1004,8 +1005,16 @@ func (s *CollectorSuite) TestCustomPgLogDirectory() {
 	s.NoError(err)
 	s.NotContains(string(out), "Failed to get log_directory")
 
-	testcmd := fmt.Sprintf("tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/%s/*/pg_log%s/*.log' | wc -l", s.Namespace, utils.CRUNCHY_PG_LOG_DIRECTORY)
-	out, err = exec.Command("sh", "-c", testcmd).Output()
-	s.NoError(err)
-	s.NotEqual("0", strings.TrimSpace(string(out)), "Expected PostgreSQL log files from %s in archive", utils.CRUNCHY_PG_LOG_DIRECTORY)
+	pods, err := s.KubeClient.CoreV1().Pods(s.Namespace).List(s.T().Context(), metav1.ListOptions{
+		LabelSelector: "postgres-operator.crunchydata.com/instance",
+	})
+	s.Require().NoError(err)
+	s.Require().NotEmpty(pods.Items)
+
+	for _, pod := range pods.Items {
+		testcmd := fmt.Sprintf("tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/%s/%s/pg_log%s/*.log' | wc -l", s.Namespace, pod.Name, utils.CRUNCHY_PG_LOG_DIRECTORY)
+		out, err = exec.Command("sh", "-c", testcmd).Output()
+		s.NoError(err)
+		s.NotEqual("0", strings.TrimSpace(string(out)), "Expected PostgreSQL log files from %s of pod %s in archive", utils.CRUNCHY_PG_LOG_DIRECTORY, pod.Name)
+	}
 }
