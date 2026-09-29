@@ -43,7 +43,7 @@ import (
 TEST PREREQUISITES:
   - Cluster State: All target clusters must be deployed and in a "Ready" state.
   - Required Namespaces: The test targets the following specific namespaces:
-    "pxc", "ps", "psmdb", "pgo", "pgv2".
+    "pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy".
   - Connectivity: A valid kubeconfig must be provided with active contexts for each cluster.
 
 AUTOMATIC DEPLOYMENT (Optional):
@@ -54,7 +54,7 @@ AUTOMATIC DEPLOYMENT (Optional):
     go test ./... -timeout 60m --args --deploy-k3d [comma-separated-deployments]
 
   Available deployment targets:
-    "pxc", "ps", "psmdb", "pgo", "pgv2"
+    "pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy"
 
   Example:
     go test ./... -timeout 60m --deploy-k3d pxc,pgv2
@@ -73,11 +73,11 @@ const (
 
 var (
 	namespaces = []string{
-		"pxc", "ps", "psmdb", "pgo", "pgv2",
+		"pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy",
 	}
 
 	resources = []string{
-		"pxc", "ps", "psmdb", "pgo", "pgv2", "auto", "none",
+		"pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy", "auto", "none",
 	}
 )
 
@@ -480,6 +480,15 @@ func (s *CollectorSuite) TestIndividualFiles() {
 		},
 	}
 
+	// Crunchy clusters have the same layout as pgv2
+	for _, test := range tests {
+		if test.namespace == "pgv2" {
+			test.namespace = "crunchy"
+			test.name = strings.Replace(test.name, "pgv2", "crunchy", 1)
+			tests = append(tests, test)
+		}
+	}
+
 	// Filter tests for current namespace
 	nsTests := []struct {
 		namespace    string
@@ -534,6 +543,7 @@ func (s *CollectorSuite) TestResourceOption() {
 		{name: "psmdb", namespace: "psmdb", want: "3"},
 		{name: "pg", namespace: "pg", want: "3"},
 		{name: "pgv2", namespace: "pgv2", want: "3"},
+		{name: "crunchy", namespace: "crunchy", want: "2"},
 	}
 
 	for _, resource := range s.Resources {
@@ -641,6 +651,7 @@ func (s *CollectorSuite) TestPT_2453() {
 		{name: "psmdb", namespace: "psmdb", want: "0"},
 		{name: "pg", namespace: "pg", want: "0"},
 		{name: "pgv2", namespace: "pgv2", want: "0"},
+		{name: "crunchy", namespace: "crunchy", want: "0"},
 	}
 
 	for _, resource := range s.Resources {
@@ -672,7 +683,7 @@ var busyPortTested bool
 
 // PT-2169
 func (s *CollectorSuite) TestBusyPortError() {
-	if s.Namespace == "pgv2" {
+	if s.Namespace == "pgv2" || s.Namespace == "crunchy" {
 		s.Run("pg_gather_no_error", func() {
 			cmd := exec.Command(TOOL_PATH,
 				"--kubeconfig", s.KubeConfig,
@@ -929,6 +940,9 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 			fmt.Sprintf("%s/perconapgclusters.yaml", s.Namespace),
 			fmt.Sprintf("%s/postgresclusters.yaml", s.Namespace), // PT-2396
 		}, requiredNewFiles...),
+		"crunchy": append([]string{
+			fmt.Sprintf("%s/postgresclusters.yaml", s.Namespace),
+		}, requiredNewFiles...),
 	}
 
 	for ns, files := range requiredFiles {
@@ -964,4 +978,25 @@ func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
 			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret details in archive files")
 		})
 	}
+}
+
+// PT-2558 - pg_log is collected from the log_directory reported by PostgreSQL
+func (s *CollectorSuite) TestCustomPgLogDirectory() {
+	if s.Namespace != "crunchy" {
+		s.T().Skip("Only applicable to crunchy namespace")
+	}
+
+	out, err := exec.Command(TOOL_PATH,
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--skip-pod-summary",
+	).CombinedOutput()
+	s.NoError(err)
+	s.NotContains(string(out), "Failed to get log_directory")
+
+	testcmd := fmt.Sprintf("tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/%s/*/pg_log%s/*.log' | wc -l", s.Namespace, utils.CRUNCHY_PG_LOG_DIRECTORY)
+	out, err = exec.Command("sh", "-c", testcmd).Output()
+	s.NoError(err)
+	s.NotEqual("0", strings.TrimSpace(string(out)), "Expected PostgreSQL log files from %s in archive", utils.CRUNCHY_PG_LOG_DIRECTORY)
 }

@@ -1,12 +1,14 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -29,11 +31,13 @@ const (
 )
 
 type ClusterConfig struct {
-	Port        int
-	OperatorURL string
-	CRURL       string
-	Job         string
-	ServerSide  bool
+	Port                 int
+	OperatorURL          string
+	OperatorKustomizeURL string
+	CRURL                string
+	CR                   string
+	Job                  string
+	ServerSide           bool
 }
 
 var CLUSTERS = map[string]ClusterConfig{
@@ -67,7 +71,49 @@ var CLUSTERS = map[string]ClusterConfig{
 		CRURL:       "https://raw.githubusercontent.com/percona/percona-postgresql-operator/main/deploy/cr.yaml",
 		ServerSide:  true,
 	},
+	"crunchy": {
+		Port:                 6448,
+		OperatorKustomizeURL: "https://github.com/CrunchyData/postgres-operator//config/default",
+		CR:                   CRUNCHY_CR,
+	},
 }
+
+const CRUNCHY_PG_LOG_DIRECTORY = "/pgdata/pt-custom-log"
+
+const CRUNCHY_CR = `
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: hippo
+spec:
+  postgresVersion: 18
+  instances:
+    - name: instance1
+      replicas: 2
+      dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+  patroni:
+    dynamicConfiguration:
+      postgresql:
+        parameters:
+          logging_collector: "on"
+          log_directory: ` + CRUNCHY_PG_LOG_DIRECTORY + `
+  backups:
+    pgbackrest:
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+`
 
 func run(cmd *exec.Cmd, capture bool) (string, error) {
 	if capture {
@@ -203,8 +249,32 @@ func downloadAndApplyYAML(ctx context.Context, dynamicClient *dynamic.DynamicCli
 		return fmt.Errorf("failed to download YAML: status %d", resp.StatusCode)
 	}
 
+	return applyYAML(ctx, dynamicClient, resp.Body, namespace, waitForCRDs)
+}
+
+func kustomizeAndApplyYAML(ctx context.Context, dynamicClient *dynamic.DynamicClient, url, namespace string) error {
+	dir, err := os.MkdirTemp("", "kustomize-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+
+	kustomization := fmt.Sprintf("namespace: %s\nresources:\n- %s\n", namespace, url)
+	if err := os.WriteFile(filepath.Join(dir, "kustomization.yaml"), []byte(kustomization), 0o644); err != nil {
+		return err
+	}
+
+	out, err := exec.CommandContext(ctx, "kubectl", "kustomize", dir).Output()
+	if err != nil {
+		return fmt.Errorf("failed to build kustomization %s: %w", url, err)
+	}
+
+	return applyYAML(ctx, dynamicClient, bytes.NewReader(out), namespace, true)
+}
+
+func applyYAML(ctx context.Context, dynamicClient *dynamic.DynamicClient, r io.Reader, namespace string, waitForCRDs bool) error {
 	var objects []unstructured.Unstructured
-	decoder := yaml.NewYAMLOrJSONDecoder(resp.Body, 4096)
+	decoder := yaml.NewYAMLOrJSONDecoder(r, 4096)
 
 	for {
 		var obj unstructured.Unstructured
@@ -373,7 +443,12 @@ func DeployK3d(ctx context.Context, name string) (string, error) {
 	}
 
 	fmt.Printf("deploying operator %s\n", name)
-	if err := downloadAndApplyYAML(ctx, dynamicClient, cfg.OperatorURL, name, true); err != nil {
+	if cfg.OperatorKustomizeURL != "" {
+		err = kustomizeAndApplyYAML(ctx, dynamicClient, cfg.OperatorKustomizeURL, name)
+	} else {
+		err = downloadAndApplyYAML(ctx, dynamicClient, cfg.OperatorURL, name, true)
+	}
+	if err != nil {
 		return "", fmt.Errorf("failed to deploy operator %s: %w", name, err)
 	}
 
@@ -388,7 +463,12 @@ func DeployK3d(ctx context.Context, name string) (string, error) {
 	}
 
 	err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 120*time.Second, true, func(ctx context.Context) (bool, error) {
-		err := downloadAndApplyYAML(ctx, dynamicClient, cfg.CRURL, name, false)
+		var err error
+		if cfg.CR != "" {
+			err = applyYAML(ctx, dynamicClient, strings.NewReader(cfg.CR), name, false)
+		} else {
+			err = downloadAndApplyYAML(ctx, dynamicClient, cfg.CRURL, name, false)
+		}
 		if err != nil {
 			if strings.Contains(err.Error(), "could not find the requested resource") {
 				fmt.Printf("CRD not ready yet, retrying...\n")
