@@ -30,35 +30,41 @@ func (d *Dumper) addPg1() error {
 }
 
 func (d *Dumper) addPg2() error {
-	d.individualFiles = append(d.individualFiles, pg2IndividualFile("pgv2"))
+	d.individualFiles = append(d.individualFiles, d.pg2IndividualFile("pgv2"))
 	return nil
 }
 
 func (d *Dumper) addCrunchy() error {
-	d.individualFiles = append(d.individualFiles, pg2IndividualFile("crunchy"))
+	d.individualFiles = append(d.individualFiles, d.pg2IndividualFile("crunchy"))
 	return nil
 }
 
-func (d *Dumper) pgLogDirectory(ctx context.Context, pod corev1.Pod, container, pgdata string) string {
-	fallback := path.Join(pgdata, "log")
+func (d *Dumper) pgLogDirectory(ctx context.Context, pod corev1.Pod, container string, env map[string]string) string {
+	pgdata := env["PGDATA"]
 
 	out, stderr, err := d.executeInPod(ctx, []string{"psql", "-XAtc", "SHOW log_directory"}, pod, container, nil)
 	if err != nil {
+		fallback := resolvePgLogDirectory("", pgdata)
 		log.Warnf("Failed to get log_directory in pod %s/%s, using %q: %v (stderr: %s)", pod.Namespace, pod.Name, fallback, err, stderr.String())
 		return fallback
 	}
 
-	dir := strings.TrimSpace(out.String())
-	if dir == "" {
-		return fallback
-	}
-	if !path.IsAbs(dir) {
-		dir = path.Join(pgdata, dir)
-	}
-	return dir
+	return resolvePgLogDirectory(out.String(), pgdata)
 }
 
-func pg2IndividualFile(resourceName string) individualFile {
+func resolvePgLogDirectory(out, pgdata string) string {
+	dir := strings.TrimSpace(out)
+	switch {
+	case dir == "":
+		return path.Join(pgdata, "log")
+	case path.IsAbs(dir):
+		return dir
+	default:
+		return path.Join(pgdata, dir)
+	}
+}
+
+func (d *Dumper) pg2IndividualFile(resourceName string) individualFile {
 	dirpaths := map[string][]string{
 		"pg_log":         {"$" + pgLogDirectoryVar},
 		"pgbackrest_log": {"pgdata/pgbackrest/log"},
@@ -82,6 +88,7 @@ func pg2IndividualFile(resourceName string) individualFile {
 		containerNames: []string{"database"},
 		dirpaths:       dirpaths,
 		toolCmds:       tools,
+		dynamicEnv:     map[string]dynamicEnvFunc{pgLogDirectoryVar: d.pgLogDirectory},
 	}
 }
 

@@ -77,7 +77,10 @@ type individualFile struct {
 	filepaths      []string
 	dirpaths       map[string][]string // map[tarFolder][]dirPaths
 	toolCmds       map[string][]toolLog
+	dynamicEnv     map[string]dynamicEnvFunc
 }
+
+type dynamicEnvFunc func(ctx context.Context, pod corev1.Pod, container string, env map[string]string) string
 
 // resourceMap struct is used to dump the resources from namespace scope or cluster scope
 type resourceMap struct {

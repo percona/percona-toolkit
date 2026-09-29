@@ -40,7 +40,7 @@ var (
 type cliOptions struct {
 	config.ConfigFlag
 	Namespace               string `name:"namespace" help:"Namespace for collecting data. If empty data will be collected from all namespaces"`
-	Resource                string `name:"resource" help:"Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, ps, none, auto" default:"auto"`
+	Resource                string `name:"resource" help:"Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, crunchy, ps, none, auto" default:"auto"`
 	ClusterName             string `name:"cluster" help:"Cluster name"`
 	Kubeconfig              string `name:"kubeconfig" help:"Path to kubeconfig"`
 	ForwardPort             string `name:"forwardport" help:"Port to use for  port forwarding"`
