@@ -169,6 +169,11 @@ func New(location, namespace, kubeconfig, clusterName, forwardport, resource str
 			if err != nil {
 				return nil, err
 			}
+		case "crunchy":
+			err := d.addCrunchy()
+			if err != nil {
+				return nil, err
+			}
 		case "pxc":
 			err := d.addPxc()
 			if err != nil {
@@ -632,7 +637,8 @@ func matchesCR(cr string, podLabels map[string]string) bool {
 		return podLabels["pgv2.percona.com/version"] != "" &&
 			podLabels["postgres-operator.crunchydata.com/instance"] != ""
 	case "crunchy":
-		return podLabels["postgres-operator.crunchydata.com/instance"] != ""
+		return podLabels["postgres-operator.crunchydata.com/instance"] != "" &&
+			podLabels["pgv2.percona.com/version"] == ""
 	}
 
 	return false

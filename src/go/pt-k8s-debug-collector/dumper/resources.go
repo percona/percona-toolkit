@@ -1,15 +1,20 @@
 package dumper
 
 import (
+	"context"
 	"fmt"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 )
 
 var resourcesRe = regexp.MustCompile(`(\w+\.([\w-]+).(percona|crunchydata)\.com)`)
+
+const pgLogDirectoryVar = "PG_LOG_DIRECTORY"
 
 func (d *Dumper) addPg1() error {
 	dirpaths := map[string][]string{
@@ -25,8 +30,37 @@ func (d *Dumper) addPg1() error {
 }
 
 func (d *Dumper) addPg2() error {
+	d.individualFiles = append(d.individualFiles, pg2IndividualFile("pgv2"))
+	return nil
+}
+
+func (d *Dumper) addCrunchy() error {
+	d.individualFiles = append(d.individualFiles, pg2IndividualFile("crunchy"))
+	return nil
+}
+
+func (d *Dumper) pgLogDirectory(ctx context.Context, pod corev1.Pod, container, pgdata string) string {
+	fallback := path.Join(pgdata, "log")
+
+	out, stderr, err := d.executeInPod(ctx, []string{"psql", "-XAtc", "SHOW log_directory"}, pod, container, nil)
+	if err != nil {
+		log.Warnf("Failed to get log_directory in pod %s/%s, using %q: %v (stderr: %s)", pod.Namespace, pod.Name, fallback, err, stderr.String())
+		return fallback
+	}
+
+	dir := strings.TrimSpace(out.String())
+	if dir == "" {
+		return fallback
+	}
+	if !path.IsAbs(dir) {
+		dir = path.Join(pgdata, dir)
+	}
+	return dir
+}
+
+func pg2IndividualFile(resourceName string) individualFile {
 	dirpaths := map[string][]string{
-		"pg_log":         {"$PGDATA/log"},
+		"pg_log":         {"$" + pgLogDirectoryVar},
 		"pgbackrest_log": {"pgdata/pgbackrest/log"},
 	}
 
@@ -43,13 +77,12 @@ func (d *Dumper) addPg2() error {
 		},
 	}
 
-	d.individualFiles = append(d.individualFiles, individualFile{
-		resourceName:   "pgv2",
+	return individualFile{
+		resourceName:   resourceName,
 		containerNames: []string{"database"},
 		dirpaths:       dirpaths,
 		toolCmds:       tools,
-	})
-	return nil
+	}
 }
 
 func (d *Dumper) addPxc() error {
@@ -163,7 +196,7 @@ func resourceType(s string) string {
 		return "pgv2"
 	} else if s == "ps" || strings.HasPrefix(s, "ps/") {
 		return "ps"
-	} else if s == "postgres-operator" || strings.HasPrefix(s, "postgres-operator") {
+	} else if s == "postgres-operator" {
 		return "crunchy"
 	}
 	return s

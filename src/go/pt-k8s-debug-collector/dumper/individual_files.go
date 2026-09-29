@@ -79,6 +79,9 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 		// Process directories
 		for tarFolder, dirPaths := range indf.dirpaths {
 			for _, dirPath := range dirPaths {
+				if _, ok := envMap[pgLogDirectoryVar]; !ok && strings.Contains(dirPath, "$"+pgLogDirectoryVar) {
+					envMap[pgLogDirectoryVar] = d.pgLogDirectory(ctx, job.Pod, container, envMap["PGDATA"])
+				}
 				resolvedPath := replaceEnvVars(dirPath, envMap)
 				if err := d.processDir(ctx, job, container, tarFolder, resolvedPath); err != nil {
 					log.Warnf("Skipping directory %q: %v", resolvedPath, err)
