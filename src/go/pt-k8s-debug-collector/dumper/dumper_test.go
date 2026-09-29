@@ -421,3 +421,42 @@ func TestGetSummarySkipPodSummaryFalse(t *testing.T) {
 		d.getSummary(context.Background(), job, "pxc", "/tmp/summary.txt")
 	})
 }
+
+func TestPgPodMatchesSingleCR(t *testing.T) {
+	// autoCustomResource detects both API groups on a pgv2 cluster
+	crTypes := []string{"pgv2", "postgres-operator"}
+
+	tests := []struct {
+		name      string
+		podLabels map[string]string
+		expected  string
+	}{
+		{
+			name: "pgv2 pod",
+			podLabels: map[string]string{
+				"pgv2.percona.com/version":                   "2.8.0",
+				"postgres-operator.crunchydata.com/instance": "test",
+			},
+			expected: "pgv2",
+		},
+		{
+			name:      "crunchy pod",
+			podLabels: map[string]string{"postgres-operator.crunchydata.com/instance": "test"},
+			expected:  "crunchy",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var matched []string
+			for _, cr := range crTypes {
+				if matchesCR(resourceType(cr), tt.podLabels) {
+					matched = append(matched, resourceType(cr))
+				}
+			}
+			if len(matched) != 1 || matched[0] != tt.expected {
+				t.Errorf("pod %v matched %v; want [%s]", tt.podLabels, matched, tt.expected)
+			}
+		})
+	}
+}
