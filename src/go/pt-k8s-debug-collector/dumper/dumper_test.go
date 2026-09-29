@@ -460,3 +460,26 @@ func TestPgPodMatchesSingleCR(t *testing.T) {
 		})
 	}
 }
+
+func TestPg2IndividualFile(t *testing.T) {
+	d := &Dumper{}
+
+	for _, resourceName := range []string{"pgv2", "crunchy"} {
+		t.Run(resourceName, func(t *testing.T) {
+			f := d.pg2IndividualFile(resourceName)
+
+			if f.resourceName != resourceName {
+				t.Errorf("resourceName = %q; want %q", f.resourceName, resourceName)
+			}
+			if len(f.containerNames) != 1 || f.containerNames[0] != "database" {
+				t.Errorf("containerNames = %v; want [database]", f.containerNames)
+			}
+			if got := f.dirpaths["pg_log"]; len(got) != 1 || got[0] != "$"+pgLogDirectoryVar {
+				t.Errorf("dirpaths[pg_log] = %v; want [$%s]", got, pgLogDirectoryVar)
+			}
+			if f.dynamicEnv[pgLogDirectoryVar] == nil {
+				t.Errorf("dynamicEnv has no resolver for %s", pgLogDirectoryVar)
+			}
+		})
+	}
+}
