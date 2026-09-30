@@ -14,7 +14,7 @@ Tools written in Go require the latest available Go version.
 
 Tools that connect to MySQL require:
 
-   * Perl modules DBI and DBD::mysql 5.013 or newer
+   * Perl modules DBI 1.46 or newer and DBD::mysql 5.013 or newer
    * MySQL 5.7 or newer
 
 Percona Toolkit is only tested on UNIX systems, primarily Debian and

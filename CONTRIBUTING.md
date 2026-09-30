@@ -11,13 +11,13 @@ Before creating a bug report, please check [this list](https://jira.percona.com/
 - Read the documentation first. Percona Toolkit is a mature project with many options and behaviors, and some issues may already be explained there.
 - Search [Jira](https://jira.percona.com) for an existing report before opening a new one. If the issue already exists, add a comment to the existing ticket instead of creating a duplicate.
 
-This helps avoid duplicating work and can also reveal useful context from earlier reports or related issues.
+This research avoids duplicating work and can also reveal useful context from earlier reports or related issues.
 
 ### How Do I Submit a (Good) Bug Report?
 
 - Explain the problem and include enough detail for others to reproduce it.
 - Use a clear and descriptive title for the issue.
-- Be specific about the problem: which program you are using, what the expected result is, and what result you actually saw.
+- Be specific about the problem: which program you are using, what you expected to see, and what you actually saw.
 - Include system details such as the language version, operating system, database version, and any relevant configuration.
 - Describe the exact steps that reproduce the problem in as much detail as possible. Include the command you used and any relevant context such as OS, language, and database versions.
 - Describe both the actual result and the expected result, and include examples when possible.
