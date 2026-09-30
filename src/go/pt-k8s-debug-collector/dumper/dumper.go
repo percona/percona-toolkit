@@ -214,7 +214,8 @@ func buildRestConfig(kubeconfig, clusterName string) (*rest.Config, error) {
 // DumpCluster create dump of a cluster in Dumper.location
 func (d *Dumper) DumpCluster() error {
 	var err error
-	d.archive, err = NewTarWriter(d.location + ".tar.gz")
+	archivePath := archiveFileName(d.location, time.Now())
+	d.archive, err = NewTarWriter(archivePath)
 	if err != nil {
 		return fmt.Errorf("failed to create archive: %v", err)
 	}
@@ -265,8 +266,12 @@ func (d *Dumper) DumpCluster() error {
 	close(jobsChannel)
 	wg.Wait()
 
-	log.Infof("export complete\ndata saved to %s", d.location)
+	log.Infof("export complete\ndata saved to %s", archivePath)
 	return nil
+}
+
+func archiveFileName(location string, t time.Time) string {
+	return fmt.Sprintf("%s_%s.tar.gz", location, t.UTC().Format("20060102150405"))
 }
 
 func (d *Dumper) export(ctx context.Context) error {

@@ -16,7 +16,9 @@ package dumper
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -340,4 +342,31 @@ func TestGetSummarySkipPodSummaryFalse(t *testing.T) {
 
 		d.getSummary(context.Background(), job, "pxc", "/tmp/summary.txt")
 	})
+}
+
+func TestArchiveFileName(t *testing.T) {
+	ts := time.Date(2026, 9, 29, 23, 8, 11, 0, time.FixedZone("EEST", 3*60*60))
+	got := archiveFileName("cluster-dump", ts)
+	if want := "cluster-dump_20260929200811.tar.gz"; got != want {
+		t.Errorf("archiveFileName() = %q, want %q", got, want)
+	}
+}
+
+func TestNewTarWriterDoesNotOverwrite(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cluster-dump_20260929200811.tar.gz")
+	if err := os.WriteFile(path, []byte("previous dump"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := NewTarWriter(path); err == nil {
+		t.Fatal("NewTarWriter() succeeded on an existing file")
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "previous dump" {
+		t.Errorf("existing archive was modified: %q", data)
+	}
 }

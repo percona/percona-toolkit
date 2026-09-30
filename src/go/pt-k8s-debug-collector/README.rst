@@ -4,7 +4,7 @@
 :program:`pt-k8s-debug-collector`
 ==================================
 
-Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster. Data is packed into the ``cluster-dump.tar.gz`` archive in the current working directory.
+Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster. Data is packed into the ``cluster-dump_<YYYYMMDDHHMMSS>.tar.gz`` archive in the current working directory, where the suffix is the UTC time the collection started (e.g. ``cluster-dump_20260929210811.tar.gz``). Archives from earlier runs are never overwritten.
 
 Data that will be collected
 ===========================

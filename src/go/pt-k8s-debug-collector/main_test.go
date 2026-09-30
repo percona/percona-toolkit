@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -244,7 +245,28 @@ func (s *CollectorSuite) TearDownSuite() {
 }
 
 func (s *CollectorSuite) TearDownTest() {
-	_ = os.Remove("cluster-dump.tar.gz")
+	removeArchives()
+}
+
+var archiveNameRE = regexp.MustCompile(`^cluster-dump_\d{14}\.tar\.gz$`)
+
+func removeArchives() {
+	archives, _ := filepath.Glob("cluster-dump*.tar.gz")
+	for _, a := range archives {
+		_ = os.Remove(a)
+	}
+}
+
+func (s *CollectorSuite) runCollector(args ...string) error {
+	removeArchives()
+	err := exec.Command(TOOL_PATH, args...).Run()
+
+	archives, _ := filepath.Glob("cluster-dump_*.tar.gz")
+	s.Require().Len(archives, 1)
+	s.Require().Regexp(archiveNameRE, archives[0])
+	s.Require().NoError(os.Rename(archives[0], "cluster-dump.tar.gz"))
+
+	return err
 }
 
 func TestCollectorRunner(t *testing.T) {
@@ -502,8 +524,7 @@ func (s *CollectorSuite) TestIndividualFiles() {
 
 	for _, resource := range s.Resources {
 		s.Run("Resource_"+resource, func() {
-			cmd := exec.Command(TOOL_PATH, "--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
-			err := cmd.Run()
+			err := s.runCollector("--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
 			s.NoError(err)
 
 			for _, test := range nsTests {
@@ -538,8 +559,7 @@ func (s *CollectorSuite) TestResourceOption() {
 
 	for _, resource := range s.Resources {
 		s.Run("Resource_"+resource, func() {
-			cmd := exec.Command(TOOL_PATH, "--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
-			err := cmd.Run()
+			err := s.runCollector("--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
 			s.NoError(err)
 
 			for _, test := range tests {
@@ -645,12 +665,11 @@ func (s *CollectorSuite) TestPT_2453() {
 
 	for _, resource := range s.Resources {
 		s.Run("Resource_"+resource, func() {
-			cmd := exec.Command(TOOL_PATH,
+			err := s.runCollector(
 				"--kubeconfig", s.KubeConfig,
 				"--forwardport", s.ForwardPort,
 				"--resource", resource,
 				"--skip-pod-summary")
-			err := cmd.Run()
 			s.NoError(err)
 
 			for _, test := range tests {
@@ -674,13 +693,12 @@ var busyPortTested bool
 func (s *CollectorSuite) TestBusyPortError() {
 	if s.Namespace == "pgv2" {
 		s.Run("pg_gather_no_error", func() {
-			cmd := exec.Command(TOOL_PATH,
+			_ = s.runCollector(
 				"--kubeconfig", s.KubeConfig,
 				"--forwardport", s.ForwardPort,
 				"--resource", s.Namespace,
 			)
 
-			_ = cmd.Run()
 			testcmd := "tar -xf cluster-dump.tar.gz --wildcards \"*/summary.txt\" --to-command 'grep \"err: strconv.ParseInt\"' | wc -l"
 			out, err := exec.Command("sh", "-c", testcmd).Output()
 
@@ -703,13 +721,12 @@ func (s *CollectorSuite) TestBusyPortError() {
 	s.Run("strconv_error_on_busy_port", func() {
 		busyPort, _ := os.Getwd()
 
-		cmd := exec.Command(TOOL_PATH,
+		_ = s.runCollector(
 			"--kubeconfig", s.KubeConfig,
 			"--forwardport", busyPort,
 			"--resource", s.Namespace,
 		)
 
-		_ = cmd.Run()
 		testcmd := "tar -xf cluster-dump.tar.gz --wildcards \"*/summary.txt\" --to-command 'grep \"err: strconv.ParseInt\"' | wc -l"
 		out, err := exec.Command("sh", "-c", testcmd).Output()
 
@@ -776,12 +793,11 @@ func (s *CollectorSuite) TestSSLResourceOption() {
 
 	for _, resource := range s.Resources {
 		s.Run("Resource_"+resource, func() {
-			cmd := exec.Command(TOOL_PATH,
+			err := s.runCollector(
 				"--kubeconfig", s.KubeConfig,
 				"--forwardport", s.ForwardPort,
 				"--resource", resource,
 				"--skip-pod-summary")
-			err := cmd.Run()
 			s.NoError(err)
 
 			for _, test := range tests {
@@ -848,12 +864,11 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 		}
 	}
 
-	cmd := exec.Command(TOOL_PATH,
+	err := s.runCollector(
 		"--kubeconfig", s.KubeConfig,
 		"--forwardport", s.ForwardPort,
 		"--resource", s.Namespace,
 	)
-	err := cmd.Run()
 	s.NoError(err)
 
 	out, err := exec.Command("tar", "-tf", "cluster-dump.tar.gz").Output()
@@ -950,12 +965,11 @@ func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
 
 	for _, resource := range s.Resources {
 		s.Run("Resource_"+resource, func() {
-			cmd := exec.Command(TOOL_PATH,
+			err := s.runCollector(
 				"--kubeconfig", s.KubeConfig,
 				"--forwardport", s.ForwardPort,
 				"--resource", resource,
 				"--skip-pod-summary")
-			err := cmd.Run()
 			s.NoError(err)
 
 			testcmd := "tar -xf cluster-dump.tar.gz --to-command 'grep \"pgbouncer-frontend\"' 2>/dev/null | wc -l"
