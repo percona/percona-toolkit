@@ -346,9 +346,14 @@ func TestGetSummarySkipPodSummaryFalse(t *testing.T) {
 
 func TestArchiveFileName(t *testing.T) {
 	ts := time.Date(2026, 9, 29, 23, 8, 11, 0, time.FixedZone("EEST", 3*60*60))
-	got := archiveFileName("cluster-dump", ts)
-	if want := "cluster-dump_20260929200811.tar.gz"; got != want {
+	d := &Dumper{location: "cluster-dump"}
+	if got, want := d.archiveFileName(ts), "cluster-dump_20260929200811.tar.gz"; got != want {
 		t.Errorf("archiveFileName() = %q, want %q", got, want)
+	}
+
+	d.dumpPrefix = "prod-cluster"
+	if got, want := d.archiveFileName(ts), "prod-cluster_20260929200811.tar.gz"; got != want {
+		t.Errorf("archiveFileName() with dump prefix = %q, want %q", got, want)
 	}
 }
 
