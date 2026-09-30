@@ -130,14 +130,14 @@ mkdir -p ${HOME}/mysql/percona-server-9.7.1-1
 wget https://downloads.percona.com/downloads/Percona-Server-9.7/Percona-Server-9.7.1-1/binary/tarball/Percona-Server-9.7.1-1-Linux.x86_64.glibc2.28.tar.gz
 ```
 ```
-tar xvzf Percona-Server-9.7.1-1-Linux.x86_64.glibc2.28.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-8.0.26-17
+tar xvzf Percona-Server-9.7.1-1-Linux.x86_64.glibc2.28.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-9.7.1-1
 ```
 #### Set Up Environment Variables
 We need these environment variables to start the MySQL sandbox and to run the tests. Probably it is a good idea to add them to your `.bashrc` file.
 ```
 export PERCONA_TOOLKIT_SANDBOX=$HOME/mysql/percona-server-9.7.1-1
-export PERCONA_TOOLKIT_BRANCH=`pwd`
-export BRANCH=$(git rev-parse --abbrev-ref HEAD)
+export PERCONA_TOOLKIT_BRANCH=${HOME}/perldev/percona-toolkit
+export BRANCH=$(git -C "$PERCONA_TOOLKIT_BRANCH" rev-parse --abbrev-ref HEAD)
 export MYSQL_VERSION=9.7
 export LOG_FILE=~/${BRANCH}-${MYSQL_VERSION}.log
 ```
@@ -202,7 +202,7 @@ For some of MongoDB and PostgreSQL tools, you need to start the sandbox. Run com
 
 #### Testing
 
-cd into the individual tool directory, and run `go test`.
+cd into the individual tool directory, and run `go test ./...`.
 
 #### Stopping the Sandbox
 
