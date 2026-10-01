@@ -15,12 +15,22 @@ package dumper
 
 import (
 	"regexp"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/describe"
 )
+
+const describeTimeout = 30 * time.Second
+
+func describeRestConfig(config *rest.Config, timeout time.Duration) *rest.Config {
+	c := rest.CopyConfig(config)
+	c.Timeout = timeout
+	return c
+}
 
 var pgbouncerSecretNameRE = regexp.MustCompile(`(?m)^(\s*SecretName:\s*)\S*pgbouncer\S*$`)
 
@@ -34,7 +44,7 @@ func describePod(clientset kubernetes.Interface, namespace, name string) (string
 }
 
 func (d *Dumper) getPodDescribe(pod corev1.Pod) {
-	out, err := describePod(d.clientSet, pod.Namespace, pod.Name)
+	out, err := describePod(d.describeClient, pod.Namespace, pod.Name)
 	if err != nil {
 		log.Errorf("error describing pod %s/%s: %v", pod.Namespace, pod.Name, err)
 		return

@@ -14,12 +14,17 @@
 package dumper
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 )
 
 func TestDescribePodIncludesLastStateAndExitCode(t *testing.T) {
@@ -95,5 +100,34 @@ func TestDescribePodRedactsPgbouncerSecretNames(t *testing.T) {
 	}
 	if strings.Count(out, "<redacted>") != 2 {
 		t.Errorf("describe output should have 2 redacted secret names\n---\n%s", out)
+	}
+}
+
+func TestDescribePodTimesOutOnHungAPIServer(t *testing.T) {
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+	}))
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(release) })
+
+	client, err := kubernetes.NewForConfig(describeRestConfig(&rest.Config{Host: srv.URL}, 200*time.Millisecond))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := describePod(client, "ns", "pod")
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("describePod succeeded against a hung API server")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("describePod did not time out")
 	}
 }
