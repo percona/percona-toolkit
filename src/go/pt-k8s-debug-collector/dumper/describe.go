@@ -14,6 +14,7 @@
 package dumper
 
 import (
+	"fmt"
 	"regexp"
 	"time"
 
@@ -44,17 +45,18 @@ func describePod(clientset kubernetes.Interface, namespace, name string) (string
 	return pgbouncerSecretNameRE.ReplaceAllString(out, "${1}<redacted>"), nil
 }
 
-func (d *Dumper) getPodDescribe(pod corev1.Pod) {
+func (d *Dumper) getPodDescribe(pod corev1.Pod) error {
 	out, err := describePod(d.describeClient, pod.Namespace, pod.Name)
 	if apierrors.IsNotFound(err) {
 		log.Warnf("skipping describe for pod %s/%s: %v", pod.Namespace, pod.Name, err)
-		return
+		return nil
 	}
 	if err != nil {
 		log.Errorf("error describing pod %s/%s: %v", pod.Namespace, pod.Name, err)
-		return
+		return nil
 	}
 	if err := d.archive.WriteVirtualFile(d.PodDescribePath(pod.Namespace, pod.Name), []byte(out)); err != nil {
-		log.Errorf("error writing describe for pod %s/%s: %v", pod.Namespace, pod.Name, err)
+		return fmt.Errorf("error writing describe for pod %s/%s: %w", pod.Namespace, pod.Name, err)
 	}
+	return nil
 }

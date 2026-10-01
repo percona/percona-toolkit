@@ -614,7 +614,14 @@ func (d *Dumper) resilientWorker(id int, ctx context.Context, cancel context.Can
 				log.Errorf("error exporting logs: %v", err)
 			}
 
-			d.getPodDescribe(job.Pod)
+			if err := d.getPodDescribe(job.Pod); err != nil {
+				if isSpaceError(err) {
+					log.Infof("worker %d stopping app: %v", id, err)
+					cancel()
+					return
+				}
+				log.Error(err)
+			}
 
 			if job.Pod.Status.Phase == corev1.PodRunning {
 				d.exportPodSummaryAndFiles(ctx, job)
