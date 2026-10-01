@@ -34,6 +34,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/tests/utils"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/suite"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -1012,6 +1013,9 @@ func (s *CollectorSuite) TestCustomPgLogDirectory() {
 	s.Require().NotEmpty(pods.Items)
 
 	for _, pod := range pods.Items {
+		if pod.Status.Phase != corev1.PodRunning {
+			continue
+		}
 		testcmd := fmt.Sprintf("tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/%s/%s/pg_log%s/*.log' | wc -l", s.Namespace, pod.Name, utils.CRUNCHY_PG_LOG_DIRECTORY)
 		out, err = exec.Command("sh", "-c", testcmd).Output()
 		s.NoError(err)
