@@ -19,6 +19,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/describe"
@@ -45,6 +46,10 @@ func describePod(clientset kubernetes.Interface, namespace, name string) (string
 
 func (d *Dumper) getPodDescribe(pod corev1.Pod) {
 	out, err := describePod(d.describeClient, pod.Namespace, pod.Name)
+	if apierrors.IsNotFound(err) {
+		log.Warnf("skipping describe for pod %s/%s: %v", pod.Namespace, pod.Name, err)
+		return
+	}
 	if err != nil {
 		log.Errorf("error describing pod %s/%s: %v", pod.Namespace, pod.Name, err)
 		return

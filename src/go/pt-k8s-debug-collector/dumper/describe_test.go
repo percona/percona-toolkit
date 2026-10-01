@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -129,5 +131,23 @@ func TestDescribePodTimesOutOnHungAPIServer(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("describePod did not time out")
+	}
+}
+
+func TestGetPodDescribeSkipsDeletedPod(t *testing.T) {
+	hooks := log.StandardLogger().ReplaceHooks(make(log.LevelHooks))
+	t.Cleanup(func() { log.StandardLogger().ReplaceHooks(hooks) })
+	logHook := logtest.NewGlobal()
+
+	d := &Dumper{describeClient: fake.NewSimpleClientset()}
+	d.getPodDescribe(corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "gone", Namespace: "test-ns"}})
+
+	for _, e := range logHook.AllEntries() {
+		if e.Level <= log.ErrorLevel {
+			t.Errorf("deleted pod logged at %s: %s", e.Level, e.Message)
+		}
+	}
+	if e := logHook.LastEntry(); e == nil || e.Level != log.WarnLevel {
+		t.Errorf("deleted pod should be logged as a warning, got %v", e)
 	}
 }
