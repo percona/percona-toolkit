@@ -225,7 +225,7 @@ This warning is harmless and does not affect data collection. We will remove pod
 Authors
 =======
 
-Max Dudin, Andrii Dema, Carlos Salguero, Sveta Smirnova
+Max Dudin, Andrii Dema, Carlos Salguero, Sveta Smirnova, Vladyslav Yurchenko, Eugene Slavyansky
 
 ABOUT PERCONA TOOLKIT
 =====================
