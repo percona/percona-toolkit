@@ -4548,6 +4548,10 @@ port (not 3306).  Usually pt-replica-find does the right thing and finds
 the replicas, but you may give a preferred method and it will be used first.
 If it doesn't find any replicas, the other methods will be tried.
 
+On versions prior to MySQL 8.0.17, C<processlist> method may also be not
+reliable if replicas use host names larger than 60 characters. This happened
+due to https://bugs.mysql.com/bug.php?id=63814 fixed in MySQL 8.0.17.
+
 =item --report-format
 
 type: string; default: summary
