@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var resourcesRe = regexp.MustCompile(`(\w+\.([\w-]+).(percona|crunchydata)\.com)`)
+var resourcesRe = regexp.MustCompile(`(\w+\.([\w-]+)\.(percona|crunchydata)\.com)`)
 
 const pgLogDirectoryVar = "PG_LOG_DIRECTORY"
 
