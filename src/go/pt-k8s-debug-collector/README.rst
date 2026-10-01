@@ -105,6 +105,7 @@ Data, collected for PostgreSQL
 .. code-block:: bash
 
    "perconapgclusters",
+   "postgresclusters",
    "pgclusters",
    "pgpolicies",
    "pgreplicas",
@@ -117,16 +118,16 @@ Summary, collected for PostgreSQL (available in file summary.txt)
 
    "pg_gather"
 
-Individual files, collected for PostgreSQL (PostgreSQL Operator v2)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Individual files, collected for PostgreSQL (PostgreSQL Operator v2 and Crunchy Postgres Operator)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   "$PGDATA/log"
+   "log_directory" (from SHOW log_directory, relative to $PGDATA; $PGDATA/log if the query fails)
    "pgdata/pgbackrest/log"
 
-Command outputs, collected for PostgreSQL (PostgreSQL Operator v2)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Command outputs, collected for PostgreSQL (PostgreSQL Operator v2 and Crunchy Postgres Operator)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -156,6 +157,8 @@ Targeted custom resource name. Supported values:
 * ``pg`` - PostgreSQL Operator v1 (deprecated)
 
 * ``pgv2`` - PostgreSQL Operator v2
+
+* ``crunchy`` - Crunchy Postgres Operator
 
 * ``ps`` - MySQL
 
