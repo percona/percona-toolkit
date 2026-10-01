@@ -346,14 +346,22 @@ func TestGetSummarySkipPodSummaryFalse(t *testing.T) {
 
 func TestArchiveFileName(t *testing.T) {
 	ts := time.Date(2026, 9, 29, 23, 8, 11, 0, time.FixedZone("EEST", 3*60*60))
-	d := &Dumper{location: "cluster-dump"}
-	if got, want := d.archiveFileName(ts), "cluster-dump_20260929200811.tar.gz"; got != want {
-		t.Errorf("archiveFileName() = %q, want %q", got, want)
+	tests := []struct {
+		dumpFile      string
+		dumpTimestamp bool
+		want          string
+	}{
+		{"cluster-dump", true, "cluster-dump_20260929200811.tar.gz"},
+		{"cluster-dump", false, "cluster-dump.tar.gz"},
+		{"my-dump", false, "my-dump.tar.gz"},
+		{"my-dump", true, "my-dump_20260929200811.tar.gz"},
+		{"/tmp/my-dump", true, "/tmp/my-dump_20260929200811.tar.gz"},
 	}
-
-	d.dumpPrefix = "prod-cluster"
-	if got, want := d.archiveFileName(ts), "prod-cluster_20260929200811.tar.gz"; got != want {
-		t.Errorf("archiveFileName() with dump prefix = %q, want %q", got, want)
+	for _, tt := range tests {
+		d := &Dumper{location: "cluster-dump", dumpFile: tt.dumpFile, dumpTimestamp: tt.dumpTimestamp}
+		if got := d.archiveFileName(ts); got != tt.want {
+			t.Errorf("archiveFileName() with dumpFile=%q dumpTimestamp=%v = %q, want %q", tt.dumpFile, tt.dumpTimestamp, got, tt.want)
+		}
 	}
 }
 

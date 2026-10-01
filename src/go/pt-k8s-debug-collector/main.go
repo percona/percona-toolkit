@@ -45,7 +45,8 @@ type cliOptions struct {
 	Kubeconfig              string `name:"kubeconfig" help:"Path to kubeconfig"`
 	ForwardPort             string `name:"forwardport" help:"Port to use for  port forwarding"`
 	SkipPodSummary          bool   `name:"skip-pod-summary" help:"Skip pod summary collection"`
-	DumpPrefix              string `name:"dump-prefix" help:"Archive name prefix. The archive is saved as <dump-prefix>_<YYYYMMDDHHMMSS>.tar.gz (UTC)" default:"cluster-dump"`
+	DumpFile                string `name:"dump-file" help:"Archive name without extension. The archive is saved as <dump-file>_<YYYYMMDDHHMMSS>.tar.gz (UTC), or <dump-file>.tar.gz with --no-dump-timestamp" default:"cluster-dump"`
+	DumpTimestamp           bool   `name:"dump-timestamp" help:"Add a UTC timestamp to the archive name" negatable:"" default:"true"`
 	LogLevel                string `name:"log-level" help:"Logrus log level" default:"warn"`
 	ConcurrentExportWorkers int    `name:"concurrent-export-workers" help:"Number of concurrent workers to export data from pods. Warning: values above 20 may overwhelm the Kubernetes API server" default:"16"`
 	config.VersionCheckFlag
@@ -108,7 +109,7 @@ func main() {
 		log.Infof("loaded default kubeconfig: %s", path)
 	}
 
-	d, err := dumper.New("cluster-dump", opts.DumpPrefix, opts.Namespace, opts.Kubeconfig, opts.ClusterName, opts.ForwardPort, opts.Resource, opts.SkipPodSummary, opts.ConcurrentExportWorkers)
+	d, err := dumper.New("cluster-dump", opts.DumpFile, opts.DumpTimestamp, opts.Namespace, opts.Kubeconfig, opts.ClusterName, opts.ForwardPort, opts.Resource, opts.SkipPodSummary, opts.ConcurrentExportWorkers)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

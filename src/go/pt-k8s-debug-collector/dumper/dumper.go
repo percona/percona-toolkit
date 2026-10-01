@@ -46,7 +46,8 @@ type Dumper struct {
 	kubeconfig                       string
 	namespace                        string
 	location                         string
-	dumpPrefix                       string
+	dumpFile                         string
+	dumpTimestamp                    bool
 	logger                           *SafeLogger
 	mode                             int64
 	crTypes                          []string
@@ -92,7 +93,7 @@ type exportJob struct {
 }
 
 // New return new Dumper object
-func New(location, dumpPrefix, namespace, kubeconfig, clusterName, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
+func New(location, dumpFile string, dumpTimestamp bool, namespace, kubeconfig, clusterName, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
 	safeLog := NewSafeLogger()
 
 	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
@@ -133,7 +134,8 @@ func New(location, dumpPrefix, namespace, kubeconfig, clusterName, forwardport, 
 	d := &Dumper{
 		kubeconfig:                       kubeconfig,
 		location:                         location,
-		dumpPrefix:                       dumpPrefix,
+		dumpFile:                         dumpFile,
+		dumpTimestamp:                    dumpTimestamp,
 		mode:                             int64(0o777),
 		namespace:                        namespace,
 		forwardport:                      strings.TrimSpace(forwardport),
@@ -273,11 +275,14 @@ func (d *Dumper) DumpCluster() error {
 }
 
 func (d *Dumper) archiveFileName(t time.Time) string {
-	prefix := d.dumpPrefix
-	if prefix == "" {
-		prefix = d.location
+	name := d.dumpFile
+	if name == "" {
+		name = d.location
 	}
-	return fmt.Sprintf("%s_%s.tar.gz", prefix, t.UTC().Format("20060102150405"))
+	if d.dumpTimestamp {
+		name += "_" + t.UTC().Format("20060102150405")
+	}
+	return name + ".tar.gz"
 }
 
 func (d *Dumper) export(ctx context.Context) error {
