@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +15,10 @@ import (
 
 var resourcesRe = regexp.MustCompile(`(\w+\.([\w-]+)\.(percona|crunchydata)\.com)`)
 
-const pgLogDirectoryVar = "PG_LOG_DIRECTORY"
+const (
+	pgLogDirectoryVar     = "PG_LOG_DIRECTORY"
+	pgLogDirectoryTimeout = 30 * time.Second
+)
 
 func (d *Dumper) addPg1() error {
 	dirpaths := map[string][]string{
@@ -41,6 +45,9 @@ func (d *Dumper) addCrunchy() error {
 
 func (d *Dumper) pgLogDirectory(ctx context.Context, pod corev1.Pod, container string, env map[string]string) string {
 	pgdata := env["PGDATA"]
+
+	ctx, cancel := context.WithTimeout(ctx, pgLogDirectoryTimeout)
+	defer cancel()
 
 	out, stderr, err := d.executeInPod(ctx, []string{"psql", "-XAtc", "SHOW log_directory"}, pod, container, nil)
 	if err != nil {
