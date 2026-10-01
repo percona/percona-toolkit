@@ -580,15 +580,15 @@ func (s *CollectorSuite) TestResourceOption() {
 func validateSummaryByNamespace(archivePath, namespace string) error {
 	switch namespace {
 	case "psmdb":
-		return validateSummary(archivePath, namespace, "# Report On")
+		return validateSummary(archivePath, namespace, regexp.MustCompile(`# Report On`))
 	case "pgv2", "crunchy":
-		return validateSummary(archivePath, namespace, "COPY pg_srvr FROM stdin;")
+		return validateSummary(archivePath, namespace, regexp.MustCompile(`COPY pg_get_class\b.*\n[^\\\n]`))
 	default:
 		return nil
 	}
 }
 
-func validateSummary(archivePath, namespace, marker string) error {
+func validateSummary(archivePath, namespace string, marker *regexp.Regexp) error {
 	file, err := os.Open(archivePath)
 	if err != nil {
 		return err
@@ -627,7 +627,7 @@ func validateSummary(archivePath, namespace, marker string) error {
 		if err != nil {
 			return err
 		}
-		if !bytes.Contains(content, []byte(marker)) {
+		if !marker.Match(content) {
 			return fmt.Errorf("summary file %s does not contain %s", header.Name, marker)
 		}
 
