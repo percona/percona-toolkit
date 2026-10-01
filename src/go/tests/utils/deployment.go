@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -266,6 +267,10 @@ func kustomizeAndApplyYAML(ctx context.Context, dynamicClient *dynamic.DynamicCl
 
 	out, err := exec.CommandContext(ctx, "kubectl", "kustomize", dir).Output()
 	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return fmt.Errorf("failed to build kustomization %s: %w: %s", url, err, bytes.TrimSpace(exitErr.Stderr))
+		}
 		return fmt.Errorf("failed to build kustomization %s: %w", url, err)
 	}
 
