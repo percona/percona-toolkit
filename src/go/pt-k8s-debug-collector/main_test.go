@@ -988,6 +988,11 @@ func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
 			out, err := exec.Command("sh", "-c", testcmd).Output()
 			s.NoError(err)
 			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret details in archive files")
+
+			testcmd = "tar -xzf cluster-dump.tar.gz --wildcards '*/describe.txt' --to-command 'grep -E \"SecretName:.*pgbouncer\"' 2>/dev/null | wc -l"
+			out, err = exec.Command("sh", "-c", testcmd).Output()
+			s.NoError(err)
+			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret names in describe.txt files")
 		})
 	}
 }

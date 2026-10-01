@@ -54,3 +54,46 @@ func TestDescribePodIncludesLastStateAndExitCode(t *testing.T) {
 		}
 	}
 }
+
+func TestDescribePodRedactsPgbouncerSecretNames(t *testing.T) {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "pgbouncer-pod", Namespace: "pgv2"},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "pgbouncer"}},
+			Volumes: []corev1.Volume{
+				{
+					Name: "pgbouncer-config",
+					VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{
+							{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: "cluster1-pgbouncer"}}},
+							{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: "cluster1-cluster-cert"}}},
+						},
+					}},
+				},
+				{
+					Name:         "pgbouncer-frontend",
+					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "cluster1-pgbouncer-frontend"}},
+				},
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(pod)
+
+	out, err := describePod(client, "pgv2", "pgbouncer-pod")
+	if err != nil {
+		t.Fatalf("describePod returned error: %v", err)
+	}
+
+	for _, secret := range []string{"cluster1-pgbouncer", "cluster1-pgbouncer-frontend"} {
+		if strings.Contains(out, secret) {
+			t.Errorf("describe output contains pgbouncer secret name %q\n---\n%s", secret, out)
+		}
+	}
+	if !strings.Contains(out, "cluster1-cluster-cert") {
+		t.Errorf("describe output missing non-pgbouncer secret name\n---\n%s", out)
+	}
+	if strings.Count(out, "<redacted>") != 2 {
+		t.Errorf("describe output should have 2 redacted secret names\n---\n%s", out)
+	}
+}

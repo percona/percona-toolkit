@@ -14,15 +14,23 @@
 package dumper
 
 import (
+	"regexp"
+
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubectl/pkg/describe"
 )
 
+var pgbouncerSecretNameRE = regexp.MustCompile(`(?m)^(\s*SecretName:\s*)\S*pgbouncer\S*$`)
+
 func describePod(clientset kubernetes.Interface, namespace, name string) (string, error) {
 	pd := &describe.PodDescriber{Interface: clientset}
-	return pd.Describe(namespace, name, describe.DescriberSettings{ShowEvents: true})
+	out, err := pd.Describe(namespace, name, describe.DescriberSettings{ShowEvents: true})
+	if err != nil {
+		return "", err
+	}
+	return pgbouncerSecretNameRE.ReplaceAllString(out, "${1}<redacted>"), nil
 }
 
 func (d *Dumper) getPodDescribe(pod corev1.Pod) {
