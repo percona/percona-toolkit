@@ -36,7 +36,7 @@ var pgbouncerSecretNameRE = regexp.MustCompile(`(?m)^(\s*SecretName:\s*)\S*pgbou
 
 func describePod(clientset kubernetes.Interface, namespace, name string) (string, error) {
 	pd := &describe.PodDescriber{Interface: clientset}
-	out, err := pd.Describe(namespace, name, describe.DescriberSettings{ShowEvents: true})
+	out, err := pd.Describe(namespace, name, describe.DescriberSettings{ShowEvents: true, ChunkSize: 500})
 	if err != nil {
 		return "", err
 	}
