@@ -50,6 +50,39 @@ ok(
 ) or diag($test_diff);
 
 # #############################################################################
+# PT-1731: Add min/max/avg/std/sum to each line for pt-mext
+# #############################################################################
+ok(
+   no_diff(
+      "$cmd --aggregations -- cat $sample/pt-1731-in.txt",
+      "t/pt-mext/samples/pt-1731-out.txt",
+   ),
+   "PT-1731 --aggregations",
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "$cmd -r -a -- cat $sample/pt-1731-in.txt",
+      "t/pt-mext/samples/pt-1731-relative-out.txt",
+   ),
+   "PT-1731 -r -a excludes the absolute column from aggregations",
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "$cmd -r -a --aggregations-position before -- cat $sample/pt-1731-in.txt",
+      "t/pt-mext/samples/pt-1731-before-out.txt",
+   ),
+   "PT-1731 --aggregations-position before",
+) or diag($test_diff);
+
+like(
+   `$cmd -a --aggregations-position middle -- cat $sample/pt-1731-in.txt 2>&1`,
+   qr/Invalid --aggregations-position: middle/,
+   "PT-1731 invalid --aggregations-position",
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 done_testing;
