@@ -574,6 +574,10 @@ if [ -z "$OPT_HELP" -a -z "$OPT_VERSION" ]; then
    if [ -z "$EXT_ARGV" ]; then
       option_error "No COMMAND was given."
    fi
+   case "$OPT_AGGREGATIONS_POSITION" in
+      before|after) ;;
+      *) option_error "Invalid --aggregations-position: $OPT_AGGREGATIONS_POSITION (must be before or after)" ;;
+   esac
 fi
 
 usage_or_errors "$0"
@@ -660,23 +664,19 @@ if [ -z "$OPT_AGGREGATIONS" ]; then
    AWKCMD="printf(\"$SPEC\n\", \$1, \$2$AWKS);";
    awk "{$AWKCMD}" "$FILE`expr $NUM + 1`"
 else
-   case "$OPT_AGGREGATIONS_POSITION" in
-      before|after) ;;
-      *) die "Invalid --aggregations-position: $OPT_AGGREGATIONS_POSITION (must be before or after)" ;;
-   esac
-
    # Build the same columns as above, then append (or prepend) min, max, avg,
    # median, stddev and sum of the sample columns.  With --relative the first
    # column is an absolute value, not a difference, so it is excluded from the
-   # aggregations.  Rows are buffered so the aggregation columns can be sized
-   # to their widest value, and a header line labels them.
+   # aggregations.  Rows are buffered so every column can be sized to its
+   # widest value, and a header line labels the aggregation columns.
    awk -v rel="${OPT_RELATIVE:+1}" -v pos="$OPT_AGGREGATIONS_POSITION" \
        -v spec="$SPEC" '
    BEGIN {
       nagg = split("min max avg median stddev sum", label, " ");
       for ( a = 1; a <= nagg; a++ ) aw[a] = length(label[a]);
 
-      # Number and widths of the sample columns come from the printf spec.
+      # Number and minimum widths of the sample columns come from the printf
+      # spec; they grow below if a value (e.g. a negative delta) is wider.
       n = split(spec, w, " ") - 1;
       for ( i = 1; i <= n; i++ ) {
          sw[i] = w[i + 1];
@@ -689,9 +689,11 @@ else
          c = i + 1;
          if ( rel && i > 1 ) val[NR, i] = $c - $(c - 1);
          else                val[NR, i] = $c + 0;
+         if ( length(sprintf("%d", val[NR, i])) > sw[i] + 0 )
+            sw[i] = length(sprintf("%d", val[NR, i]));
       }
       # Values to aggregate.
-      first = rel && n > 1 ? 2 : 1;
+      first = rel ? 2 : 1;
       m = 0;
       for ( i = first; i <= n; i++ ) x[++m] = val[NR, i];
       if ( m == 0 ) next;
@@ -737,7 +739,9 @@ else
          for ( a = 1; a <= nagg; a++ )
             aggs = aggs sprintf(" %" aw[a] "s", agg[r, a]);
          line = sprintf("%-33s", name[r]);
-         print (pos == "before" ? line aggs samples : line samples aggs);
+         line = pos == "before" ? line aggs samples : line samples aggs;
+         sub(/ +$/, "", line);
+         print line;
       }
    }' "$FILE`expr $NUM + 1`"
 fi
@@ -817,7 +821,8 @@ Add min, max, avg, median, stddev and sum columns for each counter.
 
 The aggregations are computed over the sample columns.  With L<"--relative">
 the first column, which is an absolute value rather than a difference, is
-excluded.  avg, median and stddev (population standard deviation) are printed
+excluded, so a single sample has no aggregations.  The sample columns are
+widened if needed so that all columns stay aligned.  avg, median and stddev (population standard deviation) are printed
 with two decimals.  A header line labeling the aggregation columns is printed
 before the counters.  See also L<"--aggregations-position">.
 

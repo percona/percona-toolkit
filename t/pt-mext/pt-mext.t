@@ -82,6 +82,31 @@ like(
    "PT-1731 invalid --aggregations-position",
 );
 
+my $marker = "/tmp/pt-mext-pt-1731-marker.$$";
+unlink $marker;
+`$cmd -a --aggregations-position middle -- touch $marker 2>&1`;
+ok(
+   !-e $marker,
+   "PT-1731 invalid --aggregations-position is rejected before running COMMAND",
+);
+unlink $marker;
+
+ok(
+   no_diff(
+      "$cmd -r -a -- cat $sample/pt-1731-one-sample-in.txt",
+      "t/pt-mext/samples/pt-1731-one-sample-out.txt",
+   ),
+   "PT-1731 -r -a with one sample has no aggregations",
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "$cmd -r -a -- cat $sample/pt-1731-wide-in.txt",
+      "t/pt-mext/samples/pt-1731-wide-out.txt",
+   ),
+   "PT-1731 -r -a widens columns for wide negative deltas",
+) or diag($test_diff);
+
 # #############################################################################
 # Done.
 # #############################################################################
