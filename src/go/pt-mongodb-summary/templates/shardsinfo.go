@@ -13,11 +13,11 @@
 
 package templates
 
-const Oplog = `
-# Oplog ##################################################################################################
-{{- range .Nodes }}
-  {{printf "%-40s" .Hostname}}  {{printf "%8d" .UsedMB}} MB used / {{printf "%8d" .Size}} MB  Length: {{.Running}}{{if not .ElectionTime.IsZero}}  Election: {{.ElectionTime.Format "2006-01-02T15:04:05Z"}}{{end}}
+const ShardsInfo = `
+{{ if . -}}
+# Shards #################################################################################################
+{{ range .Shards -}}
+  {{printf "%-20s" .ID}}  {{.Host}}
+{{ end }}
 {{- end }}
-  Min Oplog Host | {{.MinHost}}
-  Max Oplog Host | {{.MaxHost}}
 `
