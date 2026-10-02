@@ -36,6 +36,14 @@ Data that will be collected
    "modes",
    "your-custom-resource" (depends on 'resource' flag)
 
+Per-pod describe output (available in file describe.txt)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For every collected pod, the output of ``kubectl describe pod`` is stored in
+``<namespace>/<pod>/describe.txt``. It includes per-container ``State``,
+``Last State``, ``Reason`` and ``Exit Code``, together with the pod ``Events`` —
+useful for debugging crashed or restarting pods.
+
 Data, collected for PXC
 ~~~~~~~~~~~~~~~~~~~~~~~
 
