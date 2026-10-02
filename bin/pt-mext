@@ -574,6 +574,10 @@ if [ -z "$OPT_HELP" -a -z "$OPT_VERSION" ]; then
    if [ -z "$EXT_ARGV" ]; then
       option_error "No COMMAND was given."
    fi
+   case "$OPT_AGGREGATIONS_POSITION" in
+      before|after) ;;
+      *) option_error "Invalid --aggregations-position: $OPT_AGGREGATIONS_POSITION (must be before or after)" ;;
+   esac
 fi
 
 usage_or_errors "$0"
@@ -656,8 +660,91 @@ for i in `_seq $NUM`; do
 done
 
 # Print output
-AWKCMD="printf(\"$SPEC\n\", \$1, \$2$AWKS);";
-awk "{$AWKCMD}" "$FILE`expr $NUM + 1`"
+if [ -z "$OPT_AGGREGATIONS" ]; then
+   AWKCMD="printf(\"$SPEC\n\", \$1, \$2$AWKS);";
+   awk "{$AWKCMD}" "$FILE`expr $NUM + 1`"
+else
+   # Build the same columns as above, then append (or prepend) min, max, avg,
+   # median, stddev and sum of the sample columns.  With --relative the first
+   # column is an absolute value, not a difference, so it is excluded from the
+   # aggregations.  Rows are buffered so every column can be sized to its
+   # widest value, and a header line labels the aggregation columns.
+   awk -v rel="${OPT_RELATIVE:+1}" -v pos="$OPT_AGGREGATIONS_POSITION" \
+       -v spec="$SPEC" '
+   BEGIN {
+      nagg = split("min max avg median stddev sum", label, " ");
+      for ( a = 1; a <= nagg; a++ ) aw[a] = length(label[a]);
+
+      # Number and minimum widths of the sample columns come from the printf
+      # spec; they grow below if a value (e.g. a negative delta) is wider.
+      n = split(spec, w, " ") - 1;
+      for ( i = 1; i <= n; i++ ) {
+         sw[i] = w[i + 1];
+         gsub(/[^0-9]/, "", sw[i]);
+      }
+   }
+   {
+      name[NR] = $1;
+      for ( i = 1; i <= n; i++ ) {
+         c = i + 1;
+         if ( rel && i > 1 ) val[NR, i] = $c - $(c - 1);
+         else                val[NR, i] = $c + 0;
+         if ( length(sprintf("%d", val[NR, i])) > sw[i] + 0 )
+            sw[i] = length(sprintf("%d", val[NR, i]));
+      }
+      # Values to aggregate.
+      first = rel ? 2 : 1;
+      m = 0;
+      for ( i = first; i <= n; i++ ) x[++m] = val[NR, i];
+      if ( m == 0 ) next;
+
+      # Insertion sort for min, max and median.
+      for ( i = 2; i <= m; i++ ) {
+         t = x[i];
+         for ( j = i - 1; j >= 1 && x[j] > t; j-- ) x[j + 1] = x[j];
+         x[j + 1] = t;
+      }
+      sum = 0;
+      for ( i = 1; i <= m; i++ ) sum += x[i];
+      avg = sum / m;
+      sq = 0;
+      for ( i = 1; i <= m; i++ ) sq += (x[i] - avg) ^ 2;
+      med = m % 2 ? x[(m + 1) / 2] : (x[m / 2] + x[m / 2 + 1]) / 2;
+
+      agg[NR, 1] = sprintf("%d", x[1]);
+      agg[NR, 2] = sprintf("%d", x[m]);
+      agg[NR, 3] = sprintf("%.2f", avg);
+      agg[NR, 4] = sprintf("%.2f", med);
+      agg[NR, 5] = sprintf("%.2f", sqrt(sq / m));
+      agg[NR, 6] = sprintf("%d", sum);
+      for ( a = 1; a <= nagg; a++ )
+         if ( length(agg[NR, a]) > aw[a] ) aw[a] = length(agg[NR, a]);
+   }
+   END {
+      # Header line.
+      samples = "";
+      for ( i = 1; i <= n; i++ ) samples = samples sprintf(" %" sw[i] "s", "");
+      aggs = "";
+      for ( a = 1; a <= nagg; a++ ) aggs = aggs sprintf(" %" aw[a] "s", label[a]);
+      line = sprintf("%-33s", "Variable_name");
+      line = pos == "before" ? line aggs samples : line samples aggs;
+      sub(/ +$/, "", line);
+      print line;
+
+      for ( r = 1; r <= NR; r++ ) {
+         samples = "";
+         for ( i = 1; i <= n; i++ )
+            samples = samples sprintf(" %" sw[i] "d", val[r, i]);
+         aggs = "";
+         for ( a = 1; a <= nagg; a++ )
+            aggs = aggs sprintf(" %" aw[a] "s", agg[r, a]);
+         line = sprintf("%-33s", name[r]);
+         line = pos == "before" ? line aggs samples : line samples aggs;
+         sub(/ +$/, "", line);
+         print line;
+      }
+   }' "$FILE`expr $NUM + 1`"
+fi
 
 # Remove all temporary files and the tmp dir.
 rm_tmpdir
@@ -688,6 +775,10 @@ Get output from a file:
 
    pt-mext -r -- cat mysqladmin-output.txt
 
+Add min/max/avg/median/stddev/sum columns for each counter:
+
+   pt-mext -r --aggregations -- mysqladmin ext -i10 -c3
+
 =head1 RISKS
 
 Percona Toolkit is mature, proven in the real world, and well tested,
@@ -714,11 +805,33 @@ blank line, it assumes that a new sample of SHOW GLOBAL STATUS is starting,
 and it creates a new temporary file.  At the end of this process, it has a
 number of temporary files.  It joins the temporary files together side-by-side
 and prints the result.  If L<"--relative"> option is given, it first subtracts
-each sample from the one after it before printing results.
+each sample from the one after it before printing results.  If
+L<"--aggregations"> is given, it also prints min, max, avg, median, stddev and
+sum of the samples for each counter.
 
 =head1 OPTIONS
 
 =over
+
+=item --aggregations
+
+short form: -a
+
+Add min, max, avg, median, stddev and sum columns for each counter.
+
+The aggregations are computed over the sample columns.  With L<"--relative">
+the first column, which is an absolute value rather than a difference, is
+excluded, so a single sample has no aggregations.  The sample columns are
+widened if needed so that all columns stay aligned.  avg, median and stddev (population standard deviation) are printed
+with two decimals.  A header line labeling the aggregation columns is printed
+before the counters.  See also L<"--aggregations-position">.
+
+=item --aggregations-position
+
+type: string; default: after
+
+Print the aggregation columns before or after the samples.  Valid values
+are C<before> and C<after>.
 
 =item --help
 
