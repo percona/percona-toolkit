@@ -142,10 +142,6 @@ Canonicalize and print MySQL grants so you can effectively replicate, compare an
 
 Browses files created by pt-stalk.
 
-=item pt-slave-delay
-
-Make a MySQL slave server lag behind its master.
-
 =item pt-slave-find
 
 Find and print replication hierarchy tree of MySQL slaves.
@@ -517,12 +513,13 @@ Tools that connect to MySQL require:
 
 =item * Perl modules DBI and DBD::mysql
 
-=item * MySQL 5.0 or newer
+=item * MySQL server and client programs
 
 =back
 
 Percona Toolkit officially supports and is tested on many popular Linux
-distributions and MySQL 5.0 through 5.6; see http://goo.gl/srHm7 for the
+distributions and MySQL 8.0 through 9.7;
+see https://www.percona.com/release-lifecycle-overview/#mysql for the
 list of supported platforms and versions.
 
 =head1 IPv6 support

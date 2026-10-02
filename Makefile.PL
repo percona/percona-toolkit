@@ -41,6 +41,6 @@ WriteMakefile(
     depend => {manifypods => gotools},
     PREREQ_PM    => {
         DBI           => 1.46,
-        DBD::mysql    => 3.0000_0,
+        DBD::mysql    => 5.0130_0,
     },
 );

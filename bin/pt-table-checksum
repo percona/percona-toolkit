@@ -13076,7 +13076,11 @@ or if the structure of a table on a replica is different than on the source.
 
 =head1 Percona XtraDB Cluster
 
-pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.28-23.7 and newer.
+pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.28-23.7 up to
+the last version in the 5.7 series. Percona XtraDB Cluster (PXC) 8.0 and
+newer are not supported, because starting from this version, PXC does not 
+support the binary log format STATEMENT. This limitation may be relaxed in the
+future, after adding binlog format ROW support to pt-table-checksum.
 The number of possible Percona XtraDB Cluster setups is large given that
 it can be used with regular replication as well.  Therefore, only the setups
 listed below are supported and known to work.  Other setups, like cluster
@@ -13902,6 +13906,10 @@ Possible methods are:
 The C<processlist> method is the default, because C<SHOW REPLICAS> is not
 reliable.  However, if the server uses a non-standard port (not 3306), then
 the C<hosts> method becomes the default because it works better in this case.
+
+On versions prior to MySQL 8.0.17, C<processlist> method may also be not
+reliable if replicas use host names larger than 60 characters. This happened
+due to https://bugs.mysql.com/bug.php?id=63814 fixed in MySQL 8.0.17.
 
 The C<hosts> method requires replicas to be configured with C<report_host>,
 C<report_port>, etc.

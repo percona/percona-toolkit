@@ -12810,6 +12810,11 @@ The tool exits with an error if the host is a cluster node and the table
 is MyISAM or is being converted to MyISAM (C<ENGINE=MyISAM>), or if
 C<wsrep_OSU_method> is not C<TOI>.  There is no way to disable these checks.
 
+PXC 8.0 version and newer does not support the binary log format STATEMENT.
+Therefore pt-online-schema-change cannot perform replication lag check with
+this version. This limitation may be relaxed in the future, after adding binlog
+format ROW support to pt-online-schema-change.
+
 =head1 MySQL 5.7 + Generated columns
 
 The tools ignores MySQL 5.7+ C<GENERATED> columns since the value for those columns
@@ -13668,6 +13673,10 @@ reliable.  However, the hosts method can work better if the server uses a
 non-standard port (not 3306).  The tool usually does the right thing and
 finds all replicas, but you may give a preferred method and it will be used
 first.
+
+On versions prior to MySQL 8.0.17, C<processlist> method may also be not
+reliable if replicas use host names larger than 60 characters. This happened
+due to https://bugs.mysql.com/bug.php?id=63814 fixed in MySQL 8.0.17.
 
 The hosts method requires replicas to be configured with report_host,
 report_port, etc.
