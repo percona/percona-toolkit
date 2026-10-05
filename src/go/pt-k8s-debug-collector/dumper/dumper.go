@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/flowcontrol"
 )
 
 const (
@@ -59,6 +60,7 @@ type Dumper struct {
 	sslSecrets      map[string]bool
 	individualFiles []individualFile
 	clientSet       *kubernetes.Clientset
+	describeClient  kubernetes.Interface
 	dynamicClient   *dynamic.DynamicClient
 	discoveryClient *discovery.DiscoveryClient
 	archive         *tarWriter
@@ -120,7 +122,15 @@ func New(location, namespace, kubeconfig, clusterName, forwardport, resource str
 	config.QPS = float32(concurrentExportWorkers) + 1
 	config.Burst = (concurrentExportWorkers + 1) * 2
 
-	clientset, err := kubernetes.NewForConfig(config)
+	clientsetConfig := rest.CopyConfig(config)
+	clientsetConfig.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(config.QPS, config.Burst)
+
+	clientset, err := kubernetes.NewForConfig(clientsetConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kubeconfig: %w", err)
+	}
+
+	describeClient, err := kubernetes.NewForConfig(describeRestConfig(clientsetConfig, describeTimeout))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kubeconfig: %w", err)
 	}
@@ -143,6 +153,7 @@ func New(location, namespace, kubeconfig, clusterName, forwardport, resource str
 		concurrentExportWorkersCluster:   concurrentExportWorkers / 2,
 		concurrentExportWorkersNamespace: concurrentExportWorkers / 2,
 		clientSet:                        clientset,
+		describeClient:                   describeClient,
 		dynamicClient:                    dynclient,
 		discoveryClient:                  discclient,
 		restConfig:                       config,
@@ -609,6 +620,15 @@ func (d *Dumper) resilientWorker(id int, ctx context.Context, cancel context.Can
 					return
 				}
 				log.Errorf("error exporting logs: %v", err)
+			}
+
+			if err := d.getPodDescribe(job.Pod); err != nil {
+				if isSpaceError(err) {
+					log.Infof("worker %d stopping app: %v", id, err)
+					cancel()
+					return
+				}
+				log.Error(err)
 			}
 
 			if job.Pod.Status.Phase == corev1.PodRunning {

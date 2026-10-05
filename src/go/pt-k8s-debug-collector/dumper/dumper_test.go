@@ -16,6 +16,7 @@ package dumper
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -490,5 +491,14 @@ func TestGetPodSummaryUnknownResource(t *testing.T) {
 	_, err := d.getPodSummary(context.Background(), corev1.Pod{}, "unknown")
 	if err == nil || err.Error() != "unimplemented podSummary" {
 		t.Errorf("getPodSummary(unknown) error = %v; want unimplemented podSummary", err)
+	}
+}
+
+func TestPodDescribePath(t *testing.T) {
+	d := &Dumper{location: "cluster-dump"}
+	got := d.PodDescribePath("pxc", "pxc-node-0")
+	want := filepath.Join("cluster-dump", "pxc", "pxc-node-0", "describe.txt")
+	if got != want {
+		t.Fatalf("PodDescribePath = %q, want %q", got, want)
 	}
 }
