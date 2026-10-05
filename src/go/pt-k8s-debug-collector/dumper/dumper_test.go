@@ -383,3 +383,12 @@ func TestNewTarWriterDoesNotOverwrite(t *testing.T) {
 		t.Errorf("existing archive was modified: %q", data)
 	}
 }
+
+func TestPodDescribePath(t *testing.T) {
+	d := &Dumper{location: "cluster-dump"}
+	got := d.PodDescribePath("pxc", "pxc-node-0")
+	want := filepath.Join("cluster-dump", "pxc", "pxc-node-0", "describe.txt")
+	if got != want {
+		t.Fatalf("PodDescribePath = %q, want %q", got, want)
+	}
+}

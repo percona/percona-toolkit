@@ -2087,11 +2087,20 @@ sub main {
             $create =~ s{ IDENTIFIED .*}{};
             $alter  =~ s{CREATE USER}{ALTER USER};
 
+            if ( $o->got('convert-MariaDB') ) {
+               warn "Option --convert-MariaDB is deprecated and will be removed in future versions. Use --convert-from-mariadb instead.";
+               if ( !$o->got('convert-from-mariadb') ) {
+                  $o->set('convert-from-mariadb', $o->get('convert-MariaDB'));
+               }
+            }
+
             # We need to cleanup MariaDB diversions
-            if ( ($version =~ m/MariaDB/) && $o->get('convert-MariaDB')){
-               $create =~ s{ AS.*PASSWORD }{ AS };
-               $create =~ s/IDENTIFIED.*USING.*unix_socket.*/IDENTIFIED WITH auth_socket/;
-               $create =~ s/IDENTIFIED AS/IDENTIFIED WITH mysql_native_password AS/;
+            # We need to create function similar to convert_to_mariadb
+            # Currently, only limited number of incompatibilities supported
+            if ( ($version =~ m/MariaDB/) && $o->get('convert-from-mariadb')){
+               $alter =~ s{ AS.*PASSWORD }{ AS };
+               $alter =~ s/IDENTIFIED.*USING.*unix_socket.*/IDENTIFIED WITH auth_socket/;
+               $alter =~ s/IDENTIFIED AS/IDENTIFIED WITH mysql_native_password AS/;
             }
 
             # Or the other way around: port a MySQL CREATE/ALTER USER
@@ -2605,7 +2614,12 @@ Only show grants for this comma-separated list of users.
 
 =item --convert-MariaDB
 
-Convert proprietary MariaDB syntax into valid MySQL form
+This option is deprecated and will be removed in future releases.
+Use L<"--convert-from-mariadb"> instead.
+
+=item --convert-from-mariadb
+
+Convert proprietary MariaDB syntax into valid MySQL form.
 
 =item --convert-to-mariadb
 

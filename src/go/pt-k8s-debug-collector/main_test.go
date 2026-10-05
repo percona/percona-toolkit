@@ -500,6 +500,32 @@ func (s *CollectorSuite) TestIndividualFiles() {
 				return strings.Join(result, "\n")
 			},
 		},
+		{
+			namespace: "pxc",
+			name:      "pxc_describe_exists",
+			cmd:       []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/describe.txt"},
+			want:      []string{"describe.txt"},
+			preprocessor: func(in string) string {
+				for _, f := range strings.Split(in, "\n") {
+					if strings.HasSuffix(f, "/describe.txt") {
+						return "describe.txt"
+					}
+				}
+				return ""
+			},
+		},
+		{
+			namespace: "pxc",
+			name:      "pxc_describe_content",
+			cmd:       []string{"tar", "--to-command", "grep -m 1 -o Name:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/describe.txt"},
+			want:      []string{"Name:"},
+			preprocessor: func(in string) string {
+				if strings.Contains(in, "Name:") {
+					return "Name:"
+				}
+				return ""
+			},
+		},
 	}
 
 	// Filter tests for current namespace
@@ -976,6 +1002,11 @@ func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
 			out, err := exec.Command("sh", "-c", testcmd).Output()
 			s.NoError(err)
 			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret details in archive files")
+
+			testcmd = "tar -xzf cluster-dump.tar.gz --wildcards '*/describe.txt' --to-command 'grep -E \"SecretName:.*pgbouncer\"' 2>/dev/null | wc -l"
+			out, err = exec.Command("sh", "-c", testcmd).Output()
+			s.NoError(err)
+			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret names in describe.txt files")
 		})
 	}
 }
