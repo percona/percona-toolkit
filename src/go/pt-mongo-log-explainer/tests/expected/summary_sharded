@@ -1,0 +1,18 @@
+  configsvr-0
+    IP:          -
+    Host:Port:   configsvr-0:27019
+    Version:     -
+    State:       UNKNOWN
+  mongos-router-1
+    IP:          -
+    Host:Port:   mongos-router-1:27017
+    Version:     -
+    State:       UNKNOWN
+
+Replica Set: shard0-rs
+──────────────────────────────────────────────────
+  shard0-rs0-0
+    IP:          -
+    Host:Port:   shard0-rs0-0:27018
+    Version:     -
+    State:       PRIMARY

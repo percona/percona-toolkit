@@ -1,0 +1,14 @@
+{"t":{"$date":"2026-05-11T14:52:46.003+08:00"},"s":"I","c":"CONTROL","id":23285,"ctx":"main","msg":"Automatically disabling TLS 1.0"}
+{"t":{"$date":"2026-05-11T14:52:46.007+08:00"},"s":"I","c":"NETWORK","id":4648601,"ctx":"main","msg":"Implicit TCP FastOpen unavailable."}
+{"t":{"$date":"2026-05-11T14:52:46.010+08:00"},"s":"I","c":"CONTROL","id":4615611,"ctx":"initandlisten","msg":"MongoDB starting","attr":{"pid":688508,"port":27027,"dbPath":"/data/db","architecture":"64-bit","host":"mongo-node-a"}}
+{"t":{"$date":"2026-05-11T14:52:46.010+08:00"},"s":"I","c":"CONTROL","id":23403,"ctx":"initandlisten","msg":"Build Info","attr":{"buildInfo":{"version":"7.0.28-15","gitVersion":"574f4d867493f37","modules":["enterprise"],"allocator":"tcmalloc"}}}
+{"t":{"$date":"2026-05-11T14:52:46.010+08:00"},"s":"I","c":"CONTROL","id":51765,"ctx":"initandlisten","msg":"Operating System","attr":{"os":{"name":"Amazon Linux release 2023.9.20250929","version":"Kernel 6.1.153-175.280.amzn2023.x86_64"}}}
+{"t":{"$date":"2026-05-11T14:52:46.110+08:00"},"s":"I","c":"NETWORK","id":4915702,"ctx":"initandlisten","msg":"Configuration","attr":{"net":{"bindIp":"10.0.0.5,127.0.0.1","port":27027}}}
+{"t":{"$date":"2026-05-11T14:52:47.137+08:00"},"s":"I","c":"STORAGE","id":22315,"ctx":"initandlisten","msg":"Opening WiredTiger"}
+{"t":{"$date":"2026-05-11T14:52:47.190+08:00"},"s":"I","c":"REPL","id":40440,"ctx":"initandlisten","msg":"Starting the TopologyVersionObserver"}
+{"t":{"$date":"2026-05-11T14:52:47.265+08:00"},"s":"I","c":"REPL","id":6015317,"ctx":"initandlisten","msg":"Setting new configuration state","attr":{"newState":"ConfigReplicationDisabled"}}
+{"t":{"$date":"2026-05-11T14:52:47.300+08:00"},"s":"I","c":"NETWORK","id":23016,"ctx":"listener","msg":"Waiting for connections","attr":{"port":27027}}
+{"t":{"$date":"2026-05-11T14:52:48.000+08:00"},"s":"I","c":"REPL","id":21392,"ctx":"conn1","msg":"transition to PRIMARY complete; database writes are now permitted","attr":{"newState":"PRIMARY"}}
+{"t":{"$date":"2026-05-11T15:00:26.389+08:00"},"s":"I","c":"NETWORK","id":22943,"ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:39552","connectionId":1}}
+{"t":{"$date":"2026-05-11T15:00:26.399+08:00"},"s":"I","c":"NETWORK","id":51800,"ctx":"conn2","msg":"client metadata","attr":{"remote":"10.0.0.9:53994","client":"conn2","doc":{"driver":{"name":"mongo-go-driver","version":"1.17.4"},"os":{"type":"linux"},"platform":"go1.22"}}}
+{"t":{"$date":"2026-05-11T15:05:00.000+08:00"},"s":"I","c":"COMMAND","id":51803,"ctx":"conn2","msg":"Slow query","attr":{"ns":"app.orders","durationMillis":850,"planSummary":"COLLSCAN"}}
