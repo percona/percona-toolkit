@@ -80,7 +80,10 @@ type individualFile struct {
 	filepaths      []string
 	dirpaths       map[string][]string // map[tarFolder][]dirPaths
 	toolCmds       map[string][]toolLog
+	dynamicEnv     map[string]dynamicEnvFunc
 }
+
+type dynamicEnvFunc func(ctx context.Context, pod corev1.Pod, container string, env map[string]string) string
 
 // resourceMap struct is used to dump the resources from namespace scope or cluster scope
 type resourceMap struct {
@@ -179,6 +182,11 @@ func New(location, dumpFile, namespace, kubeconfig, clusterName, forwardport, re
 			}
 		case "pgv2":
 			err := d.addPg2()
+			if err != nil {
+				return nil, err
+			}
+		case "crunchy":
+			err := d.addCrunchy()
 			if err != nil {
 				return nil, err
 			}
@@ -662,6 +670,9 @@ func matchesCR(cr string, podLabels map[string]string) bool {
 	case "pgv2":
 		return podLabels["pgv2.percona.com/version"] != "" &&
 			podLabels["postgres-operator.crunchydata.com/instance"] != ""
+	case "crunchy":
+		return podLabels["postgres-operator.crunchydata.com/instance"] != "" &&
+			podLabels["pgv2.percona.com/version"] == ""
 	}
 
 	return false

@@ -68,6 +68,10 @@ func (d *Dumper) getIndividualFiles(ctx context.Context, job exportJob, crType s
 			continue
 		}
 
+		for name, resolve := range indf.dynamicEnv {
+			envMap[name] = resolve(ctx, job.Pod, container, envMap)
+		}
+
 		// Process individual files
 		for _, indPath := range indf.filepaths {
 			resolvedPath := replaceEnvVars(indPath, envMap)

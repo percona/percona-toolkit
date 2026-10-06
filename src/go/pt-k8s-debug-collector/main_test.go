@@ -35,6 +35,8 @@ import (
 	"github.com/percona/percona-toolkit/src/go/tests/utils"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/suite"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -44,7 +46,7 @@ import (
 TEST PREREQUISITES:
   - Cluster State: All target clusters must be deployed and in a "Ready" state.
   - Required Namespaces: The test targets the following specific namespaces:
-    "pxc", "ps", "psmdb", "pgo", "pgv2".
+    "pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy".
   - Connectivity: A valid kubeconfig must be provided with active contexts for each cluster.
 
 AUTOMATIC DEPLOYMENT (Optional):
@@ -55,7 +57,7 @@ AUTOMATIC DEPLOYMENT (Optional):
     go test ./... -timeout 60m --args --deploy-k3d [comma-separated-deployments]
 
   Available deployment targets:
-    "pxc", "ps", "psmdb", "pgo", "pgv2"
+    "pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy"
 
   Example:
     go test ./... -timeout 60m --deploy-k3d pxc,pgv2
@@ -74,11 +76,11 @@ const (
 
 var (
 	namespaces = []string{
-		"pxc", "ps", "psmdb", "pgo", "pgv2",
+		"pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy",
 	}
 
 	resources = []string{
-		"pxc", "ps", "psmdb", "pgo", "pgv2", "auto", "none",
+		"pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy", "auto", "none",
 	}
 )
 
@@ -528,6 +530,15 @@ func (s *CollectorSuite) TestIndividualFiles() {
 		},
 	}
 
+	// Crunchy clusters have the same layout as pgv2
+	for _, test := range tests {
+		if test.namespace == "pgv2" {
+			test.namespace = "crunchy"
+			test.name = strings.Replace(test.name, "pgv2", "crunchy", 1)
+			tests = append(tests, test)
+		}
+	}
+
 	// Filter tests for current namespace
 	nsTests := []struct {
 		namespace    string
@@ -581,6 +592,7 @@ func (s *CollectorSuite) TestResourceOption() {
 		{name: "psmdb", namespace: "psmdb", want: "3"},
 		{name: "pg", namespace: "pg", want: "3"},
 		{name: "pgv2", namespace: "pgv2", want: "3"},
+		{name: "crunchy", namespace: "crunchy", want: "2"},
 	}
 
 	for _, resource := range s.Resources {
@@ -615,13 +627,15 @@ func (s *CollectorSuite) TestResourceOption() {
 func validateSummaryByNamespace(archivePath, namespace string) error {
 	switch namespace {
 	case "psmdb":
-		return validatePSMDBSummary(archivePath, namespace)
+		return validateSummary(archivePath, namespace, regexp.MustCompile(`# Report On`))
+	case "pgv2", "crunchy":
+		return validateSummary(archivePath, namespace, regexp.MustCompile(`COPY pg_get_class\b.*\n[^\\\n]`))
 	default:
 		return nil
 	}
 }
 
-func validatePSMDBSummary(archivePath, namespace string) error {
+func validateSummary(archivePath, namespace string, marker *regexp.Regexp) error {
 	file, err := os.Open(archivePath)
 	if err != nil {
 		return err
@@ -660,8 +674,8 @@ func validatePSMDBSummary(archivePath, namespace string) error {
 		if err != nil {
 			return err
 		}
-		if !bytes.Contains(content, []byte("# Report On")) {
-			return fmt.Errorf("summary file %s does not contain # Report On", header.Name)
+		if !marker.Match(content) {
+			return fmt.Errorf("summary file %s does not contain %s", header.Name, marker)
 		}
 
 		validated++
@@ -687,6 +701,7 @@ func (s *CollectorSuite) TestPT_2453() {
 		{name: "psmdb", namespace: "psmdb", want: "0"},
 		{name: "pg", namespace: "pg", want: "0"},
 		{name: "pgv2", namespace: "pgv2", want: "0"},
+		{name: "crunchy", namespace: "crunchy", want: "0"},
 	}
 
 	for _, resource := range s.Resources {
@@ -717,7 +732,7 @@ var busyPortTested bool
 
 // PT-2169
 func (s *CollectorSuite) TestBusyPortError() {
-	if s.Namespace == "pgv2" {
+	if s.Namespace == "pgv2" || s.Namespace == "crunchy" {
 		s.Run("pg_gather_no_error", func() {
 			_ = s.runCollector(
 				"--kubeconfig", s.KubeConfig,
@@ -813,6 +828,13 @@ func (s *CollectorSuite) TestSSLResourceOption() {
 				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-ca-cert", "root.crt"), "root.crt"},
 				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-cert", "tls.crt"), strings.Repeat("tls.crt", 2)}, // there are two files with tls.crt
 				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-cert", "ca.crt"), strings.Repeat("ca.crt", 2)},   // there are two files with ca.crt
+			},
+		},
+		{
+			name: "crunchy", namespace: "crunchy", cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/crunchy/pgo-root-cacert", "root.crt"), "root.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/crunchy/*-cert", "tls.crt"), strings.Repeat("tls.crt", 2)},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/crunchy/*-cert", "ca.crt"), strings.Repeat("ca.crt", 2)},
 			},
 		},
 	}
@@ -970,6 +992,9 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 			fmt.Sprintf("%s/perconapgclusters.yaml", s.Namespace),
 			fmt.Sprintf("%s/postgresclusters.yaml", s.Namespace), // PT-2396
 		}, requiredNewFiles...),
+		"crunchy": append([]string{
+			fmt.Sprintf("%s/postgresclusters.yaml", s.Namespace),
+		}, requiredNewFiles...),
 	}
 
 	for ns, files := range requiredFiles {
@@ -1008,5 +1033,37 @@ func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
 			s.NoError(err)
 			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret names in describe.txt files")
 		})
+	}
+}
+
+// PT-2558 - pg_log is collected from the log_directory reported by PostgreSQL
+func (s *CollectorSuite) TestCustomPgLogDirectory() {
+	if s.Namespace != "crunchy" {
+		s.T().Skip("Only applicable to crunchy namespace")
+	}
+
+	out, err := exec.Command(TOOL_PATH,
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--skip-pod-summary",
+	).CombinedOutput()
+	s.NoError(err)
+	s.NotContains(string(out), "Failed to get log_directory")
+
+	pods, err := s.KubeClient.CoreV1().Pods(s.Namespace).List(s.T().Context(), metav1.ListOptions{
+		LabelSelector: "postgres-operator.crunchydata.com/instance",
+	})
+	s.Require().NoError(err)
+	s.Require().NotEmpty(pods.Items)
+
+	for _, pod := range pods.Items {
+		if pod.Status.Phase != corev1.PodRunning {
+			continue
+		}
+		testcmd := fmt.Sprintf("tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/%s/%s/pg_log%s/*.log' | wc -l", s.Namespace, pod.Name, utils.CRUNCHY_PG_LOG_DIRECTORY)
+		out, err = exec.Command("sh", "-c", testcmd).Output()
+		s.NoError(err)
+		s.NotEqual("0", strings.TrimSpace(string(out)), "Expected PostgreSQL log files from %s of pod %s in archive", utils.CRUNCHY_PG_LOG_DIRECTORY, pod.Name)
 	}
 }
