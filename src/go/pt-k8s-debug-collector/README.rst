@@ -4,7 +4,7 @@
 :program:`pt-k8s-debug-collector`
 ==================================
 
-Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster. Data is packed into the ``cluster-dump.tar.gz`` archive in the current working directory.
+Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster. Data is packed into the ``cluster-dump_<YYYYMMDDHHMMSS>.tar.gz`` archive in the current working directory, where the suffix is the UTC time the collection started (e.g. ``cluster-dump_20260929210811.tar.gz``). Use ``--dump-file`` to set a custom archive name. An existing file is never overwritten.
 
 Data that will be collected
 ===========================
@@ -187,6 +187,9 @@ Default: ``auto``
 
 ``--forwardport``
     Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
+
+``--dump-file``
+    Archive file name, used as is. ``{timestamp}`` in the name is replaced with the UTC time the collection started in ``YYYYMMDDHHMMSS`` format, e.g. ``--dump-file=prod-cluster_{timestamp}.tar.gz`` creates ``prod-cluster_20260929210811.tar.gz`` and ``--dump-file=prod-cluster.tar.gz`` creates ``prod-cluster.tar.gz``. The archive is always a gzip-compressed tar regardless of the name. Default: ``cluster-dump_{timestamp}.tar.gz``.
 
 ``--concurrent-export-workers``
     Number of concurrent workers for exporting Kubernetes resources. Default: ``16``.

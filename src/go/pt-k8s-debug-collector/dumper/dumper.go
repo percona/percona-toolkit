@@ -47,6 +47,7 @@ type Dumper struct {
 	kubeconfig                       string
 	namespace                        string
 	location                         string
+	dumpFile                         string
 	logger                           *SafeLogger
 	mode                             int64
 	crTypes                          []string
@@ -96,7 +97,7 @@ type exportJob struct {
 }
 
 // New return new Dumper object
-func New(location, namespace, kubeconfig, clusterName, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
+func New(location, dumpFile, namespace, kubeconfig, clusterName, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
 	safeLog := NewSafeLogger()
 
 	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
@@ -145,6 +146,7 @@ func New(location, namespace, kubeconfig, clusterName, forwardport, resource str
 	d := &Dumper{
 		kubeconfig:                       kubeconfig,
 		location:                         location,
+		dumpFile:                         dumpFile,
 		mode:                             int64(0o777),
 		namespace:                        namespace,
 		forwardport:                      strings.TrimSpace(forwardport),
@@ -233,7 +235,8 @@ func buildRestConfig(kubeconfig, clusterName string) (*rest.Config, error) {
 // DumpCluster create dump of a cluster in Dumper.location
 func (d *Dumper) DumpCluster() error {
 	var err error
-	d.archive, err = NewTarWriter(d.location + ".tar.gz")
+	archivePath := d.archiveFileName(time.Now())
+	d.archive, err = NewTarWriter(archivePath)
 	if err != nil {
 		return fmt.Errorf("failed to create archive: %v", err)
 	}
@@ -284,8 +287,16 @@ func (d *Dumper) DumpCluster() error {
 	close(jobsChannel)
 	wg.Wait()
 
-	log.Infof("export complete\ndata saved to %s", d.location)
+	log.Infof("export complete\ndata saved to %s", archivePath)
 	return nil
+}
+
+func (d *Dumper) archiveFileName(t time.Time) string {
+	name := d.dumpFile
+	if name == "" {
+		name = d.location + "_{timestamp}.tar.gz"
+	}
+	return strings.ReplaceAll(name, "{timestamp}", t.UTC().Format("20060102150405"))
 }
 
 func (d *Dumper) export(ctx context.Context) error {
