@@ -14,8 +14,58 @@
 package templates
 
 const CmdlineArgs = `
-{{ if . }}
+{{ if . -}}
 # Command line arguments
 {{ range .CmdlineArgs -}} {{-  . }} {{ end }}
+{{- if .ParsedConfig }}
+# Active Configuration
+{{- with .ParsedConfig.Parsed }}
+{{- if .Config }}
+             Config File | {{.Config}}
+{{- end }}
+{{- if .Net.Port }}
+                    Port | {{.Net.Port}}
+{{- end }}
+{{- if .Net.BindIP }}
+                 Bind IP | {{.Net.BindIP}}
+{{- end }}
+{{- if .Net.MaxIncomingConnections }}
+   Max Incoming Conns    | {{.Net.MaxIncomingConnections}}
+{{- end }}
+{{- if .Net.SSL.Mode }}
+                     SSL | {{.Net.SSL.Mode}}
+{{- end }}
+{{- if .Storage.DbPath }}
+               Data Path | {{.Storage.DbPath}}
+{{- end }}
+{{- if .Storage.Engine }}
+          Storage Engine | {{.Storage.Engine}}
+{{- end }}
+{{- if .Storage.WiredTiger.EngineConfig.CacheSizeGB }}
+       WT Cache Size     | {{.Storage.WiredTiger.EngineConfig.CacheSizeGB}} GB
+{{- end }}
+{{- if .Replication.ReplSet }}
+                 ReplSet | {{.Replication.ReplSet}}
+{{- end }}
+{{- if .Security.Authorization }}
+           Authorization | {{.Security.Authorization}}
+{{- end }}
+{{- if .Security.KeyFile }}
+                Key File | {{.Security.KeyFile}}
+{{- end }}
+{{- if .SystemLog.Path }}
+                 Log Path | {{.SystemLog.Path}}
+{{- end }}
+{{- if .SystemLog.LogAppend }}
+              Log Append | true
+{{- end }}
+{{- if .OperationProfiling.Mode }}
+        Profiling Mode   | {{.OperationProfiling.Mode}}
+{{- end }}
+{{- if .OperationProfiling.SlowOpThresholdMs }}
+   Slow Op Threshold     | {{.OperationProfiling.SlowOpThresholdMs}} ms
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 `
