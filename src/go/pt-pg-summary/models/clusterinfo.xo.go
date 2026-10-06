@@ -29,7 +29,7 @@ type ClusterInfo struct {
 	ClientHostname sql.NullString // client_hostname
 	Version        string         // version
 	Started        time.Time      // started
-	IsSlave        bool           // is_slave
+	IsReplica      bool           // is_replica
 }
 
 // GetClusterInfos runs a custom query, returning results as ClusterInfo.
@@ -42,7 +42,7 @@ func GetClusterInfos(db XODB) ([]*ClusterInfo, error) {
 		`client_hostname, ` +
 		`version() AS version, ` +
 		`pg_postmaster_start_time() AS Started, ` +
-		`pg_is_in_recovery() AS "Is_Slave" ` +
+		`pg_is_in_recovery() AS "Is_Replica" ` +
 		`FROM pg_stat_activity ` +
 		`WHERE pid = pg_backend_pid()`
 
@@ -60,7 +60,7 @@ func GetClusterInfos(db XODB) ([]*ClusterInfo, error) {
 		ci := ClusterInfo{}
 
 		// scan
-		err = q.Scan(&ci.Usename, &ci.Time, &ci.ClientAddr, &ci.ClientHostname, &ci.Version, &ci.Started, &ci.IsSlave)
+		err = q.Scan(&ci.Usename, &ci.Time, &ci.ClientAddr, &ci.ClientHostname, &ci.Version, &ci.Started, &ci.IsReplica)
 		if err != nil {
 			return nil, err
 		}
