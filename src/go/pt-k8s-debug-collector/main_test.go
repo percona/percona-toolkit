@@ -260,15 +260,20 @@ func removeArchives() {
 }
 
 func (s *CollectorSuite) runCollector(args ...string) error {
+	_, err := s.runCollectorOutput(args...)
+	return err
+}
+
+func (s *CollectorSuite) runCollectorOutput(args ...string) ([]byte, error) {
 	removeArchives()
-	err := exec.Command(TOOL_PATH, args...).Run()
+	out, err := exec.Command(TOOL_PATH, args...).CombinedOutput()
 
 	archives, _ := filepath.Glob("cluster-dump_*.tar.gz")
 	s.Require().Len(archives, 1)
 	s.Require().Regexp(archiveNameRE, archives[0])
 	s.Require().NoError(os.Rename(archives[0], "cluster-dump.tar.gz"))
 
-	return err
+	return out, err
 }
 
 func TestCollectorRunner(t *testing.T) {
@@ -1042,12 +1047,12 @@ func (s *CollectorSuite) TestCustomPgLogDirectory() {
 		s.T().Skip("Only applicable to crunchy namespace")
 	}
 
-	out, err := exec.Command(TOOL_PATH,
+	out, err := s.runCollectorOutput(
 		"--kubeconfig", s.KubeConfig,
 		"--forwardport", s.ForwardPort,
 		"--resource", s.Namespace,
 		"--skip-pod-summary",
-	).CombinedOutput()
+	)
 	s.NoError(err)
 	s.NotContains(string(out), "Failed to get log_directory")
 
