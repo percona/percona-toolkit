@@ -273,5 +273,5 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 VERSION
 =======
 
-:program:`pt-k8s-debug-collector` 3.7.1
+:program:`pt-k8s-debug-collector` 3.7.2
 

@@ -546,5 +546,5 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 VERSION
 =======
 
-:program:`pt-pg-summary` 3.7.1
+:program:`pt-pg-summary` 3.7.2
 

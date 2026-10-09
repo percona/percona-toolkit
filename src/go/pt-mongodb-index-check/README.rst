@@ -107,5 +107,5 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 VERSION
 =======
 
-:program:`pt-mongodb-index-check` 3.7.1
+:program:`pt-mongodb-index-check` 3.7.2
 
