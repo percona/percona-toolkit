@@ -10,6 +10,14 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+
+# Fix for Amazon Linux 2023 strict security header parsing
+BEGIN {
+    if (-f '/etc/os-release' && qx(cat /etc/os-release) =~ /amzn/) {
+        $ENV{PERL_CCFLAGS} //= '-O2';
+    }
+}
+
 use IPC::Cmd qw(can_run run);
 
 use PerconaTest;
