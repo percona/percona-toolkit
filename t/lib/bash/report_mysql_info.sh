@@ -855,12 +855,14 @@ no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_temp_enc008.txt" \
    "report_mysql_summary, dir: temp_enc008 (libjemalloc, encryption)"
+diff -u "$PT_TMPDIR/got" "$samples/expected_output_temp_enc008.txt"
 
 report_mysql_summary "$samples/temp_enc009" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
 no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_temp_enc009.txt" \
    "report_mysql_summary, dir: temp_enc009 (keyring plugin, MyRocks)"
+diff -u "$PT_TMPDIR/got" "$samples/expected_output_temp_enc009.txt"
 
 # ###########################################################################
 # parse_wsrep_provider_options

@@ -36,7 +36,7 @@ foreach my $tool ( @vc_tools ) {
    ) or diag("Tool version: $tool_version, Base version: $version, output: $output");
 
    # Now let's check that lib/Percona/Toolkit.pm and each tool's
-   # $Percona::Toolkit::VERSION agree, sow e can avoid the 2.1.4 pt-table-sync
+   # $Percona::Toolkit::VERSION agree, so we can avoid the 2.1.4 pt-table-sync
    # debacle
    open my $tmp_fh, q{<}, $tool or die "$!";
    my $is_perl = scalar(<$tmp_fh>) =~ /perl/;
@@ -62,7 +62,7 @@ foreach my $tool ( @vc_tools ) {
             "@$full_buf",
             $version,
             "$base and lib/Percona/Toolkit.pm agree"
-         );
+         ) or diag("full_buf: @$full_buf, version: $version");
       }
    }
 }
