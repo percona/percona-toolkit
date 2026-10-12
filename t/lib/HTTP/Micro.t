@@ -20,7 +20,7 @@ if ( $EVAL_ERROR ) {
 }
 
 # Need a simple URL that won't try to do chunking.
-for my $test_url ( "http://www.percona.com/robots.txt", "https://v.percona.com" ) {
+for my $test_url ( "http://repo.percona.com", "https://v.percona.com" ) {
    my $tiny     = HTTP::Tiny->new(max_redirect => 0)->request('GET', $test_url);
    my $micro    = HTTP::Micro->new->request('GET', $test_url);
 
