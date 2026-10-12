@@ -850,13 +850,13 @@ no_diff \
    "$samples/expected_output_temp007.txt" \
    "report_mysql_summary, dir: temp007 (PXC, traditional master)"
 
-LOCALE=en_US.utf8 LANG=en_US.UTF-8 report_mysql_summary "$samples/temp_enc008" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
+LOCALE=en_US.utf8 LANG=en_US.UTF-8 LC_COLLATE="en_US.UTF-8" report_mysql_summary "$samples/temp_enc008" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
 no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_temp_enc008.txt" \
    "report_mysql_summary, dir: temp_enc008 (libjemalloc, encryption)"
 
-LOCALE=en_US.utf8 LANG=en_US.UTF-8 report_mysql_summary "$samples/temp_enc009" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
+LOCALE=en_US.utf8 LANG=en_US.UTF-8 LC_COLLATE="en_US.UTF-8" report_mysql_summary "$samples/temp_enc009" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
 no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_temp_enc009.txt" \
