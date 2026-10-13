@@ -26,7 +26,9 @@ const HostInfo = `# This host
                  Hostname | {{.Hostname}}
                   Version | {{.Version}}
                  Built On | {{.HostOsType}} {{.HostSystemCPUArch}}
+{{- if not .ProcCreateTime.IsZero }}
                   Started | {{.ProcCreateTime}}
+{{- end }}
 {{- if .DBPath }}
                   Datadir | {{.DBPath}}
 {{- end }}
@@ -35,5 +37,11 @@ const HostInfo = `# This host
 {{- if .ReplicasetName }}
                   ReplSet | {{.ReplicasetName}}
               Repl Status |
+{{- end }}
+{{- if .IsArbiter }}
+
+# Arbiter ###############################################################################################
+This node is a replica-set ARBITER: it holds no data, so host, security, storage and
+running operations details are unavailable from this member.
 {{- end -}}
 `
