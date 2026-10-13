@@ -1,6 +1,6 @@
 module github.com/percona/percona-toolkit
 
-go 1.27.0
+go 1.27.2
 
 require (
 	github.com/AlekSi/pointer v1.2.0
