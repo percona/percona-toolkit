@@ -106,7 +106,7 @@ Output example
      Client Hostname:
      Version        : PostgreSQL 9.6.17 on x86_64-pc-linux-gnu (Debian 9.6.17-2.pgdg90+1), compiled by
      Started        : 2020-04-21 13:36:59.909175 +0000 UTC
-     Is Slave       : false
+     Is Replica     : false
     +------------------------------------------------------------------------------------------------------+
 
     ##### --- Databases --- ####
@@ -489,11 +489,11 @@ Output is separated into the following sections:
     
   Selects ``name`` and ``setting`` from ``pg_settings``.
 
-* **SlaveHosts10**
+* **ReplicaHosts10**
     
   Selects information for PostgreSQL version 10.
 
-* **SlaveHosts96**
+* **ReplicaHosts96**
     
   Selects information for PostgreSQL version 9.6.
 
