@@ -56,18 +56,18 @@ foreach my $tool ( @vc_tools ) {
    print { $fh } "require q{$tool}; print \$Percona::Toolkit::VERSION, qq{\\n}";
    close $fh;
    
-   my ($success, undef, $full_buf) =
+   my ($success, undef, $full_buf, $stdout_buf) =
       run( command => [ $perl, $filename ] );
 
    if ( !$success ) {
-      fail("Failed to get \$Percona::Toolkit::VERSION from $base: " . $full_buf ? join("", @$full_buf) : '')
+      fail("Failed to get \$Percona::Toolkit::VERSION from $base: " . $stdout_buf ? join("", @$stdout_buf) : '')
    }
    else {
-      chomp(@$full_buf);
-      my $out = join "", @$full_buf;
+      chomp(@$stdout_buf);
+      my $out = join "", @$stdout_buf;
       if ($out) {
          is(
-            "@$full_buf",
+            "@$stdout_buf",
             $version,
             "$base and lib/Percona/Toolkit.pm agree"
          ) or diag("full_buf: @$full_buf, version: $version");
