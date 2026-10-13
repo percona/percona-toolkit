@@ -4,6 +4,11 @@
 :program:`pt-pg-summary`
 ========================
 
+.. warning::
+
+   ``pt-pg-summary`` is deprecated and is no longer developed or maintained.
+   It is suggested to use `pg_gather <https://github.com/percona/support-snippets/tree/master/postgresql/pg_gather>`_ instead.
+
 ``pt-pg-summary`` collects information about a PostgreSQL cluster.
 
 Usage
