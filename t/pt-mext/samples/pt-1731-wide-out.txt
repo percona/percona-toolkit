@@ -1,0 +1,4 @@
+Variable_name                                                               min max          avg median      stddev       sum
+Aborted_clients                               0         0   0   0   0         0   0         0.00   0.00        0.00         0
+Questions                              99999999 -99999889  20  30  40 -99999889  40 -24999949.75  25.00 43301235.12 -99999799
+Threads_running                               3        -2   3  -3   4        -3   4         0.50   0.50        3.04         2

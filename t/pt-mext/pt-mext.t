@@ -50,6 +50,64 @@ ok(
 ) or diag($test_diff);
 
 # #############################################################################
+# PT-1731: Add min/max/avg/std/sum to each line for pt-mext
+# #############################################################################
+ok(
+   no_diff(
+      "$cmd --aggregations -- cat $sample/pt-1731-in.txt",
+      "t/pt-mext/samples/pt-1731-out.txt",
+   ),
+   "PT-1731 --aggregations",
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "$cmd -r -a -- cat $sample/pt-1731-in.txt",
+      "t/pt-mext/samples/pt-1731-relative-out.txt",
+   ),
+   "PT-1731 -r -a excludes the absolute column from aggregations",
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "$cmd -r -a --aggregations-position before -- cat $sample/pt-1731-in.txt",
+      "t/pt-mext/samples/pt-1731-before-out.txt",
+   ),
+   "PT-1731 --aggregations-position before",
+) or diag($test_diff);
+
+like(
+   `$cmd -a --aggregations-position middle -- cat $sample/pt-1731-in.txt 2>&1`,
+   qr/Invalid --aggregations-position: middle/,
+   "PT-1731 invalid --aggregations-position",
+);
+
+my $marker = "/tmp/pt-mext-pt-1731-marker.$$";
+unlink $marker;
+`$cmd -a --aggregations-position middle -- touch $marker 2>&1`;
+ok(
+   !-e $marker,
+   "PT-1731 invalid --aggregations-position is rejected before running COMMAND",
+);
+unlink $marker;
+
+ok(
+   no_diff(
+      "$cmd -r -a -- cat $sample/pt-1731-one-sample-in.txt",
+      "t/pt-mext/samples/pt-1731-one-sample-out.txt",
+   ),
+   "PT-1731 -r -a with one sample has no aggregations",
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "$cmd -r -a -- cat $sample/pt-1731-wide-in.txt",
+      "t/pt-mext/samples/pt-1731-wide-out.txt",
+   ),
+   "PT-1731 -r -a widens columns for wide negative deltas",
+) or diag($test_diff);
+
+# #############################################################################
 # Done.
 # #############################################################################
 done_testing;
