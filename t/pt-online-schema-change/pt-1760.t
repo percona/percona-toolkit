@@ -33,6 +33,14 @@ if ($sb->is_cluster_mode) {
     plan skip_all => 'Not for PXC';
 }
 
+# We need to restart sandbox to avoid re-applying binary logs from the start of tests
+if ( $sandbox_version lt '8.4' ) {
+   diag('Restarting the sandbox');
+   diag(`$trunk/sandbox/test-env restart`);
+   diag("Sandbox restarted");
+   $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+}
+
 my $source_dbh = $sb->get_dbh_for('source');
 my $replica_dbh1 = $sb->get_dbh_for('replica1');
 my $replica_dbh2 = $sb->get_dbh_for('replica2');
@@ -80,15 +88,19 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-$replica_dbh1->do("STOP ${replica_name}");
-$replica_dbh1->do("RESET ${replica_name} ALL FOR CHANNEL 'channel1';");
+# We need to restart sandbox to avoid re-applying binary logs from the start of tests
 if ( $sandbox_version lt '8.4' ) {
-   $source_dbh->do("RESET ${source_reset}");
-   $replica_dbh1->do("SET GLOBAL master_info_repository='${orig_master_info_repository}'");
-   $replica_dbh1->do("SET GLOBAL relay_log_info_repository='${orig_relay_log_info_repository}'");
+   diag('Restarting the sandbox');
+   diag(`$trunk/sandbox/test-env restart`);
+   diag("Sandbox restarted");
+   $source_dbh = $sb->get_dbh_for('source');
 }
-$replica_dbh1->do("CHANGE ${source_change} TO ${source_name}_HOST='127.0.0.1', ${source_name}_PORT=12345, ${source_name}_USER = 'msandbox', ${source_name}_PASSWORD='msandbox';");
-$replica_dbh1->do("START ${replica_name}");
+else {
+   $replica_dbh1->do("STOP ${replica_name}");
+   $replica_dbh1->do("RESET ${replica_name} ALL FOR CHANNEL 'channel1';");
+   $replica_dbh1->do("CHANGE ${source_change} TO ${source_name}_HOST='127.0.0.1', ${source_name}_PORT=12345, ${source_name}_USER = 'msandbox', ${source_name}_PASSWORD='msandbox';");
+   $replica_dbh1->do("START ${replica_name}");
+}
 
 $sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
