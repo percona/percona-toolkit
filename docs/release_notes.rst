@@ -15,7 +15,7 @@ New Features
 * :jirabug:`PT-2330`: Add describe pod command to pt-k8s-debug-collector
 * :jirabug:`PT-2397`: Collecting pgbackrest backup information
 * :jirabug:`PT-2421`: Adding further data collection to pt-k8s-debug-collector
-* :jirabug:`PT-2541`: Print database name when logging pt-kill output (Thanks to dreamydb for the contribution). Note, that this improvement is an **incompatible change**. Now the tool adds a column `(db: DATABASE_NAME)` to the default output. You need to adjust your scripts if they relayed on the previous output format.
+* :jirabug:`PT-2541`: Print database name when logging pt-kill output (Thanks to dreamydb for the contribution). Note that this improvement is an **incompatible change**. Now the tool adds a column `(Db: DATABASE_NAME)` to the default output. You need to adjust your scripts if they relied on the previous output format.
 
 Improvements
 ------------------------------------------------------------
