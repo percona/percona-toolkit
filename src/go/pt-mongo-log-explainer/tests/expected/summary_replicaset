@@ -1,0 +1,17 @@
+Replica Set: rs0
+──────────────────────────────────────────────────
+  mongo-rs0-0
+    IP:          192.168.1.10
+    Host:Port:   mongo-rs0-0:27017
+    Version:     6.0.12
+    State:       SECONDARY
+  mongo-rs0-1
+    IP:          192.168.1.11
+    Host:Port:   mongo-rs0-1:27017
+    Version:     6.0.12
+    State:       PRIMARY
+  mongo-rs0-2
+    IP:          192.168.1.12
+    Host:Port:   mongo-rs0-2:27017
+    Version:     6.0.12
+    State:       SECONDARY

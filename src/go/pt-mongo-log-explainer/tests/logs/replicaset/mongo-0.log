@@ -1,0 +1,22 @@
+2024-06-01T12:00:00.100+0000 I  CONTROL  [initandlisten] MongoDB starting : pid=1001 port=27017 dbpath=/data/db 64-bit host=mongo-rs0-0
+2024-06-01T12:00:00.110+0000 I  CONTROL  [initandlisten] options: { net: { bindIp: "192.168.1.10", port: 27017 } }
+2024-06-01T12:00:00.150+0000 I  CONTROL  [initandlisten] db version v6.0.12
+2024-06-01T12:00:01.200+0000 I  NETWORK  [listener] waiting for connections on port 27017
+2024-06-01T12:00:01.500+0000 I  NETWORK  [listener] connection accepted from 192.168.1.11:45231
+2024-06-01T12:00:01.600+0000 I  NETWORK  [listener] connection accepted from 192.168.1.12:45232
+2024-06-01T12:00:02.300+0000 I  REPL     [conn1] replSetInitiate admin command received
+2024-06-01T12:00:02.350+0000 I  REPL     [conn1] initiating a new replica set
+2024-06-01T12:00:02.355+0000 I  REPL     [conn1] configuration for replica set rs0 with 3 members
+2024-06-01T12:00:02.400+0000 I  REPL     [conn1] new replica set config version: 1 members: 3
+2024-06-01T12:00:02.450+0000 I  REPL     [conn1] member _id: 0 host: "mongo-rs0-0:27017"
+2024-06-01T12:00:02.460+0000 I  REPL     [conn1] member _id: 1 host: "mongo-rs0-1:27017"
+2024-06-01T12:00:02.470+0000 I  REPL     [conn1] member _id: 2 host: "mongo-rs0-2:27017"
+2024-06-01T12:00:03.500+0000 I  REPL     [conn1] transition to primary complete; database writes are now permitted
+2024-06-01T12:00:03.600+0000 I  REPL     [conn1] Replica Set Member State: PRIMARY
+2024-06-01T12:00:04.000+0000 I  ELECTION [conn1] election succeeded for term 1
+2024-06-01T12:00:15.000+0000 I  REPL     [conn5] stepping down self from primary; stepping down to secondary
+2024-06-01T12:00:15.100+0000 I  REPL     [conn5] stepped down from primary
+2024-06-01T12:00:16.200+0000 I  REPL     [conn5] transition to SECONDARY from PRIMARY
+2024-06-01T12:00:20.000+0000 I  REPL     [conn6] replSetReconfig command received
+2024-06-01T12:00:20.100+0000 I  REPL     [conn6] replSetReconfig finished; new config version 2
+2024-06-01T12:05:00.000+0000 I  COMMAND  [conn9] slow query: { find: "orders" } planSummary: IXSCAN keysExamined:1200000 docsExamined:1200000 durationMillis: 850
