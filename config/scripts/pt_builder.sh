@@ -265,6 +265,15 @@ install_deps() {
       yum -y install wget tar findutils rpm-build perl-ExtUtils-MakeMaker make perl-DBD-MySQL
       install_go
     else
+      export OS_NAME="$(. /etc/os-release && echo "$VERSION_CODENAME")"
+      if [ "${OS_NAME}" == "bullseye" ]; then
+         sed -i -E '/bullseye(-security|-updates)?[[:space:]]/d' /etc/apt/sources.list
+cat <<'EOF' | tee -a /etc/apt/sources.list
+deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260830T000000Z/ bullseye main
+deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260830T000000Z/ bullseye-updates main
+deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260830T000000Z/ bullseye-security main
+EOF
+      fi
       apt-get -y update
       apt-get -y install curl wget git tar lsb-release
       export DEBIAN_VERSION=$(lsb_release -sc)
