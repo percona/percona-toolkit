@@ -9,6 +9,8 @@ extend-exclude = [
     "util/NaturalDocs/",
     "util/pod2rst-fixed.packed",
     "go.mod",
+    "Changelog",
+    "docs/release_notes.rst",
     # For now
     "t/",
     "**/*_test.go",

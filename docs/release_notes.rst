@@ -1,6 +1,69 @@
 Release Notes
 ***************
 
+v3.7.2 released 2026-10-22
+==============================
+
+This release includes major improvement for the `pt-k8s-debug-collector` tool, improvements for `pt-mongodb-summary`, `pt-kill`, better MariaDB support, removal of deprecated tool `pt-slave-delay`, and bug fixes.
+
+New Features
+------------------------------------------------------------
+
+* `PR-1168`: Add a new option to support MariaDB Server syntax (Thanks to Frédéric Descamps for the contribution)
+* :jirabug:`PT-2221`: Please Include PostgreSQL log files also in pt-k8s-debug-collector dump for PostgreSQL
+* :jirabug:`PT-2288`: pt-k8s-debug-collector verbose logging
+* :jirabug:`PT-2330`: Add describe pod command to pt-k8s-debug-collector
+* :jirabug:`PT-2397`: Collecting pgbackrest backup information
+* :jirabug:`PT-2421`: Adding further data collection to pt-k8s-debug-collector
+* :jirabug:`PT-2541`: Print database name when logging pt-kill output (Thanks to dreamydb for the contribution). Note that this improvement is an **incompatible change**. Now the tool adds a column `(Db: DATABASE_NAME)` to the default output. You need to adjust your scripts if they relied on the previous output format.
+
+Improvements
+------------------------------------------------------------
+
+* `PR-1022`: add mysql_optional as dsn parameter (Thanks to Sebastian Detert for the contribution)
+* `PR-1156`: Add a doc on how to contribute to PT
+* :jirabug:`PT-1738`: add mongos to pt-mongodb-summary
+* :jirabug:`PT-2352`: make pt-mongodb-summary accept standard connection syntax
+* :jirabug:`PT-2364`: Update README.md, CONTRIBUTING.md and INSTALL
+* :jirabug:`PT-2488`: pt-k8s-debug-collector refactoring
+* :jirabug:`PT-2548`: MySQL 9.7 support
+* :jirabug:`PT-2558`: pg_gather support in pt-k8s-debug-collector for Crunchy operator
+* :jirabug:`PT-2573`: Remove pt-slave-delay
+* :jirabug:`PT-2574`: Need datetime added to cluster-dump files collected
+
+Bugs Fixed
+------------------------------------------------------------
+
+* `PR-1023`: Replace validation logic for data-dir in pt-osc to use innodb_directories. (Thanks to Pep Pla for the contribution)
+* `PR-1056`: PKG-1249 Fix PT deb source package issue
+* `PR-1057`: Fix field misalignment in pt-archiver when using --bulk-insert with special characters (Thanks to xmj147220591 for the contribution)
+* `PR-1091`: Swap to term.ReadPassword to remove outdated gopass dependency and stop using ssh/terminal (Thanks to Lena Voytek for the contribution)
+* `PR-1095`: fix(ci): pin trivy-action to known-good SHA v0.35.0 (Thanks to Ando Nogueira for the contribution)
+* :jirabug:`PT-23`: ps files in pt-stalk samples disclose MySQL password
+* :jirabug:`PT-1776`: slave-user and slave-password not used with recursion-method DSN (Thanks to Mike Benshoof for the contribution)
+* :jirabug:`PT-1931`: pt-k8s-debug-collector does not gather summaries for PSMDB
+* :jirabug:`PT-2097`: pt-mongodb-summary does not work for default installation of MongoDB in our operator
+* :jirabug:`PT-2189`: Option --cluster exists but has no effect
+* :jirabug:`PT-2215`: pt-table-sync does not recognize the privileges in roles for MariaDB
+* :jirabug:`PT-2218`: K8s logs collected as a single file one by one wihtout preffix or "starting next file" mark
+* :jirabug:`PT-2219`: Not all files collected if PXC is enabled
+* :jirabug:`PT-2220`: pt-heartbeat's --check-read-only option behaves strangely
+* :jirabug:`PT-2237`: pt-k8s-debug-collector does not collect PostgreSQL logs
+* :jirabug:`PT-2342`: The processlist method for searching for replicas can also be unreliable if hostname is longer than 60 characters in older MySQL versions
+* :jirabug:`PT-2362`: pt-table-checksum documentation wrong on PXC limitation
+* :jirabug:`PT-2368`: pt-mongodb-summary not able to read configuration file
+* :jirabug:`PT-2396`: postgresqlcluster resource is not collected
+* :jirabug:`PT-2410`: pt-archiver brokes when using output-format=csv and has null values
+* :jirabug:`PT-2448`: pt-k8s-debug-collector should not collect secret details of pgbouncer
+* :jirabug:`PT-2500`: Go TestVersionOption tests fail for versions like 3.7.0-2
+* :jirabug:`PT-2503`: pt-eustack-resolver does not have --version option
+* :jirabug:`PT-2506`: make install does not install Go tools
+* :jirabug:`PT-2507`: Remove Snyk add-ons from requirements-docbuild.txt
+* :jirabug:`PT-2508`: SIGSEGV error when running pt-mongodb-index-check with missing arguments
+* :jirabug:`PT-2531`: pt-online-schema-change creates sleeping threads in replicas
+* :jirabug:`PT-2539`: PMM pt-summary script conflicts with which/gnu-which packages
+* :jirabug:`PT-2564`: Change option --convert-MariaDB in pt-show-grants to --convert-from-mariadb
+
 v3.7.1-4 released 2026-07-02
 ==============================
 

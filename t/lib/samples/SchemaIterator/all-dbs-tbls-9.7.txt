@@ -16,7 +16,7 @@ CREATE TABLE `component` (
   `component_group_id` int unsigned NOT NULL,
   `component_urn` text NOT NULL,
   PRIMARY KEY (`component_id`)
-) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 ROW_FORMAT=DYNAMIC COMMENT='Components'
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=DYNAMIC COMMENT='Components'
 
 mysql.db
 CREATE TABLE `db` (

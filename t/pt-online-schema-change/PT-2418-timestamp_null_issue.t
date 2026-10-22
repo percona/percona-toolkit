@@ -30,7 +30,7 @@ if ($sandbox_version lt '8.0') {
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
 # tool will die.
-my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my $source_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,s=1';
 my @args       = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;

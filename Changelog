@@ -1,5 +1,54 @@
 Changelog for Percona Toolkit
 
+v3.7.2 released 2026-10-22
+
+* Feature PR-1168: Add a new option to support MariaDB Server syntax (Thanks to Frédéric Descamps for the contribution)
+* Feature PT-2221: Please Include PostgreSQL log files also in pt-k8s-debug-collector dump for PostgreSQL
+* Feature PT-2288: pt-k8s-debug-collector verbose logging
+* Feature PT-2397: Collecting pgbackrest backup information
+* Improvement PR-1022: add mysql_optional as dsn parameter (Thanks to Sebastian Detert for the contribution)
+* Improvement PR-1156: Add a doc on how to contribute to PT
+* Improvement PT-1738: add mongos to pt-mongodb-summary
+* Improvement PT-2330: Add describe pod command to pt-k8s-debug-collector
+* Improvement PT-2352: make pt-mongodb-summary accept standard connection syntax
+* Improvement PT-2364: Update README.md, CONTRIBUTING.md and INSTALL
+* Improvement PT-2421: Adding further data collection to pt-k8s-debug-collector
+* Improvement PT-2488: pt-k8s-debug-collector refactoring
+* Improvement PT-2541: Print database name when logging pt-kill output (Thanks to dreamydb for the contribution)
+* Improvement PT-2548: MySQL 9.7 support
+* Improvement PT-2558: pg_gather support in pt-k8s-debug-collector for Crunchy operator
+* Improvement PT-2573: Remove pt-slave-delay
+* Improvement PT-2574: Need datetime added to cluster-dump files collected
+* Fixed bug PR-1023: Replace validation logic for data-dir in pt-osc to use innodb_directories. (Thanks to Pep Pla for the contribution)
+* Fixed bug PR-1056: PKG-1249 Fix PT deb source package issue
+* Fixed bug PR-1057: Fix field misalignment in pt-archiver when using --bulk-insert with special characters (Thanks to xmj147220591 for the contribution)
+* Fixed bug PR-1091: Swap to term.ReadPassword to remove outdated gopass dependency and stop using ssh/terminal (Thanks to Lena Voytek for the contribution)
+* Fixed bug PR-1095: fix(ci): pin trivy-action to known-good SHA v0.35.0 (Thanks to Ando Nogueira for the contribution)
+* Fixed bug PT-23: ps files in pt-stalk samples disclose MySQL password
+* Fixed bug PT-1776: slave-user and slave-password not used with recursion-method DSN (Thanks to Mike Benshoof for the contribution)
+* Fixed bug PT-1931: pt-k8s-debug-collector does not gather summaries for PSMDB
+* Fixed bug PT-2097: pt-mongodb-summary does not work for default installation of MongoDB in our operator
+* Fixed bug PT-2189: Option --cluster exists but has no effect
+* Fixed bug PT-2215: pt-table-sync does not recognize the privileges in roles for MariaDB
+* Fixed bug PT-2218: K8s logs collected as a single file one by one wihtout preffix or "starting next file" mark
+* Fixed bug PT-2219: Not all files collected if PXC is enabled
+* Fixed bug PT-2220: pt-heartbeat's --check-read-only option behaves strangely
+* Fixed bug PT-2237: pt-k8s-debug-collector does not collect PostgreSQL logs
+* Fixed bug PT-2342: The processlist method for searching for replicas can also be unreliable if hostname is longer than 60 characters in older MySQL versions
+* Fixed bug PT-2362: pt-table-checksum documentation wrong on PXC limitation
+* Fixed bug PT-2368: pt-mongodb-summary not able to read configuration file
+* Fixed bug PT-2396: postgresqlcluster resource is not collected
+* Fixed bug PT-2410: pt-archiver brokes when using output-format=csv and has null values
+* Fixed bug PT-2448: pt-k8s-debug-collector should not collect secret details of pgbouncer
+* Fixed bug PT-2500: Go TestVersionOption tests fail for versions like 3.7.0-2
+* Fixed bug PT-2503: pt-eustack-resolver does not have --version option
+* Fixed bug PT-2506: make install does not install Go tools
+* Fixed bug PT-2507: Remove Snyk add-ons from requirements-docbuild.txt
+* Fixed bug PT-2508: SIGSEGV error when running pt-mongodb-index-check with missing arguments
+* Fixed bug PT-2531: pt-online-schema-change creates sleeping threads in replicas
+* Fixed bug PT-2539: PMM pt-summary script conflicts with which/gnu-which packages
+* Fixed bug PT-2564: Change option --convert-MariaDB in pt-show-grants to --convert-from-mariadb
+
 v3.7.1-4 released 2026-07-02
 
 This release addresses multiple important security vulnerabilities in Go libraries (CVE-2026-25680, CVE-2026-25681, CVE-2026-27136, CVE-2026-33811, CVE-2026-33814, CVE-2026-39820, CVE-2026-39821, CVE-2026-39827, CVE-2026-39828, CVE-2026-39829, CVE-2026-39830, CVE-2026-39832, CVE-2026-39835, CVE-2026-39836, CVE-2026-42499, CVE-2026-42502, CVE-2026-42504, CVE-2026-42508, CVE-2026-46595, CVE-2026-46597)

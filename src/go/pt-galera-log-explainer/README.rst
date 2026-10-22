@@ -285,5 +285,5 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 VERSION
 =======
 
-:program:`pt-galera-log-explainer` 3.7.1
+:program:`pt-galera-log-explainer` 3.7.2
 

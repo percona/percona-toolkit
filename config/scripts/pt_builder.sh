@@ -190,12 +190,7 @@ get_system(){
 }
 
 install_go() {
-    #wget --no-check-certificate http://jenkins.percona.com/downloads/golang/go1.9.4.linux-amd64.tar.gz -O /tmp/golang1.9.4.tar.gz
-    #tar --transform=s,go,go1.9, -zxf /tmp/golang1.9.4.tar.gz
-    #rm -rf /usr/local/go /usr/local/go1.8 /usr/local/go1.9
-    #mv go1.9 /usr/local/
-    #ln -s /usr/local/go1.9 /usr/local/go
-    GO_VERSION=1.26.7
+    GO_VERSION=1.27.3
     if [ x"$ARCH" = "xx86_64" ]; then
       GO_ARCH="amd64"
     elif [ x"$ARCH" = "xaarch64" ]; then
@@ -265,6 +260,15 @@ install_deps() {
       yum -y install wget tar findutils rpm-build perl-ExtUtils-MakeMaker make perl-DBD-MySQL
       install_go
     else
+      export OS_NAME="$(. /etc/os-release && echo "$VERSION_CODENAME")"
+      if [ "${OS_NAME}" == "bullseye" ]; then
+         sed -i -E '/bullseye(-security|-updates)?[[:space:]]/d' /etc/apt/sources.list
+cat <<'EOF' | tee -a /etc/apt/sources.list
+deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260830T000000Z/ bullseye main
+deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260830T000000Z/ bullseye-updates main
+deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260830T000000Z/ bullseye-security main
+EOF
+      fi
       apt-get -y update
       apt-get -y install curl wget git tar lsb-release
       export DEBIAN_VERSION=$(lsb_release -sc)
