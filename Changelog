@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.7.2 released 2026-10-20
+v3.7.2 released 2026-10-22
 
 * Feature PR-1168: Add a new option to support MariaDB Server syntax (Thanks to Frédéric Descamps for the contribution)
 * Feature PT-2221: Please Include PostgreSQL log files also in pt-k8s-debug-collector dump for PostgreSQL

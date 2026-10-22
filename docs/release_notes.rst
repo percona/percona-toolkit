@@ -1,7 +1,7 @@
 Release Notes
 ***************
 
-v3.7.2 released 2026-10-20
+v3.7.2 released 2026-10-22
 ==============================
 
 This release includes major improvement for the `pt-k8s-debug-collector` tool, improvements for `pt-mongodb-summary`, `pt-kill`, better MariaDB support, removal of deprecated tool `pt-slave-delay`, and bug fixes.
