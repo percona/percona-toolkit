@@ -73,6 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 	logger := logrus.New()
+	logger.SetLevel(logrus.WarnLevel)
 	if opts.Verbose {
 		logger.SetLevel(logrus.InfoLevel)
 	}
