@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -92,6 +93,40 @@ func connectTo(t *testing.T, test Test, dbName string) *sql.DB {
 		t.Fatalf("Cannot connect to the db using %q: %s", test.dsn(dbName), err)
 	}
 	return db
+}
+
+type statsResetter struct {
+	*sql.DB
+	t *testing.T
+}
+
+func (r statsResetter) reset() {
+	if _, err := r.DB.Exec("SELECT pg_stat_reset()"); err != nil {
+		r.t.Errorf("Cannot reset the statistics: %s", err)
+	}
+}
+
+func (r statsResetter) Exec(query string, args ...interface{}) (sql.Result, error) {
+	r.reset()
+	return r.DB.Exec(query, args...)
+}
+
+func (r statsResetter) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	r.reset()
+	return r.DB.Query(query, args...)
+}
+
+func (r statsResetter) QueryRow(query string, args ...interface{}) *sql.Row {
+	r.reset()
+	return r.DB.QueryRow(query, args...)
+}
+
+func renderReport(t *testing.T, info *pginfo.PGInfo) {
+	t.Helper()
+	tmpl := template.Must(template.New("master").Funcs(funcsMap()).Parse(templates.TPL))
+	if err := tmpl.ExecuteTemplate(io.Discard, "report", info); err != nil {
+		t.Errorf("Cannot render the report: %s", err)
+	}
 }
 
 func TestConnection(t *testing.T) {
@@ -257,6 +292,37 @@ func TestCollectPerDatabaseInfo(t *testing.T) {
 					t.Errorf("IndexCacheHitRatio for %s = %+v, want a ratio in [0, 1]", dbName, index)
 				}
 			}
+		})
+	}
+}
+
+func TestCollectAfterStatsReset(t *testing.T) {
+	skipIfNoSandbox(t)
+	for _, test := range tests[:2] {
+		t.Run(test.name, func(t *testing.T) {
+			db := statsResetter{connectTo(t, test, "postgres"), t}
+			defer db.Close()
+			info, err := pginfo.NewWithLogger(db, nil, testSleep, logger)
+			if err != nil {
+				t.Fatalf("Cannot run NewWithLogger using %q: %s", test.dsn("postgres"), err)
+			}
+			if errs := info.CollectGlobalInfo(db); len(errs) > 0 {
+				for _, err := range errs {
+					t.Logf("collect error: %s", err)
+				}
+				t.Fatalf("Cannot collect global information using %q", test.dsn("postgres"))
+			}
+
+			for _, dbName := range []string{"postgres", "pagila", "pt_test"} {
+				conn := statsResetter{connectTo(t, test, dbName), t}
+				if err := info.CollectPerDatabaseInfo(conn, dbName); err != nil {
+					t.Errorf("Cannot collect information for the %s database using %q: %s",
+						dbName, test.dsn(dbName), err)
+				}
+				conn.Close()
+			}
+
+			renderReport(t, info)
 		})
 	}
 }
