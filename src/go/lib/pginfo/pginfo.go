@@ -127,19 +127,25 @@ func (i *PGInfo) DatabaseNames() []string {
 // CollectPerDatabaseInfo collects information for a specific database
 func (i *PGInfo) CollectPerDatabaseInfo(db models.XODB, dbName string) (err error) {
 	i.logger.Info("Collecting Table Access information")
-	if i.TableAccess[dbName], err = models.GetTableAccesses(db); err != nil {
+	tableAccess, err := models.GetTableAccesses(db)
+	if err != nil {
 		return errors.Wrapf(err, "cannot get Table Accesses for the %s ibase", dbName)
 	}
+	i.TableAccess[dbName] = tableAccess
 
 	i.logger.Info("Collecting Table Cache Hit Ratio information")
-	if i.TableCacheHitRatio[dbName], err = models.GetTableCacheHitRatio(db); err != nil {
+	tableCacheHitRatio, err := models.GetTableCacheHitRatio(db)
+	if err != nil {
 		return errors.Wrapf(err, "cannot get Table Cache Hit Ratios for the %s ibase", dbName)
 	}
+	i.TableCacheHitRatio[dbName] = tableCacheHitRatio
 
 	i.logger.Info("Collecting Index Cache Hit Ratio information")
-	if i.IndexCacheHitRatio[dbName], err = models.GetIndexCacheHitRatio(db); err != nil {
+	indexCacheHitRatio, err := models.GetIndexCacheHitRatio(db)
+	if err != nil {
 		return errors.Wrapf(err, "cannot get Index Cache Hit Ratio for the %s ibase", dbName)
 	}
+	i.IndexCacheHitRatio[dbName] = indexCacheHitRatio
 
 	return nil
 }

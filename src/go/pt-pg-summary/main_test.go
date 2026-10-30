@@ -194,6 +194,28 @@ func waitForReplay(t *testing.T) {
 	t.Fatalf("%s has not replayed up to %s in 10 seconds", tests[1].name, lsn)
 }
 
+type failingDB struct {
+	*sql.DB
+	match string
+	nth   int32
+	seen  atomic.Int32
+}
+
+func (f *failingDB) replace(query string) string {
+	if strings.Contains(query, f.match) && f.seen.Add(1) == f.nth {
+		return "SELECT 1/0"
+	}
+	return query
+}
+
+func (f *failingDB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return f.DB.Query(f.replace(query), args...)
+}
+
+func (f *failingDB) QueryRow(query string, args ...interface{}) *sql.Row {
+	return f.DB.QueryRow(f.replace(query), args...)
+}
+
 func TestConnection(t *testing.T) {
 	skipIfNoSandbox(t)
 	for _, test := range tests {
@@ -450,6 +472,38 @@ func TestTableCacheHitRatioAfterStatsReset(t *testing.T) {
 					}
 				})
 			}
+		})
+	}
+}
+
+func TestReportAfterFailedDatabaseQuery(t *testing.T) {
+	skipIfNoSandbox(t)
+	for _, tc := range []struct {
+		view   string
+		stored func(*pginfo.PGInfo) bool
+	}{
+		{"pg_locks", func(info *pginfo.PGInfo) bool { _, ok := info.TableAccess["pt_test"]; return ok }},
+		{"pg_statio_user_tables", func(info *pginfo.PGInfo) bool { _, ok := info.TableCacheHitRatio["pt_test"]; return ok }},
+		{"pg_statio_user_indexes", func(info *pginfo.PGInfo) bool { _, ok := info.IndexCacheHitRatio["pt_test"]; return ok }},
+	} {
+		t.Run(tc.view, func(t *testing.T) {
+			db := connectTo(t, tests[0], "postgres")
+			defer db.Close()
+			info, err := pginfo.NewWithLogger(db, nil, testSleep, logger)
+			if err != nil {
+				t.Fatalf("Cannot run NewWithLogger using %q: %s", tests[0].dsn("postgres"), err)
+			}
+
+			conn := &failingDB{DB: connectTo(t, tests[0], "pt_test"), match: tc.view, nth: 1}
+			defer conn.Close()
+			if err := info.CollectPerDatabaseInfo(conn, "pt_test"); err == nil {
+				t.Fatalf("CollectPerDatabaseInfo did not fail when the %s query failed", tc.view)
+			}
+			if tc.stored(info) {
+				t.Errorf("the %s query failed, but its result for pt_test was stored", tc.view)
+			}
+
+			renderReport(t, info)
 		})
 	}
 }
