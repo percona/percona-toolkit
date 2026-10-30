@@ -16,6 +16,7 @@ package pginfo
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/go-version"
@@ -39,7 +40,7 @@ type PGInfo struct {
 	DatabaseWaitEvents []*models.DatabaseWaitEvents
 	AllDatabases       []*models.Databases
 	GlobalWaitEvents   []*models.GlobalWaitEvents
-	PortAndDatadir     *models.PortAndDatadir
+	PortAndDatadir     []*models.PortAndDatadir
 	SlaveHosts96       []*models.SlaveHosts96
 	SlaveHosts10       []*models.SlaveHosts10
 	Tablespaces        []*models.Tablespaces
@@ -126,19 +127,25 @@ func (i *PGInfo) DatabaseNames() []string {
 // CollectPerDatabaseInfo collects information for a specific database
 func (i *PGInfo) CollectPerDatabaseInfo(db models.XODB, dbName string) (err error) {
 	i.logger.Info("Collecting Table Access information")
-	if i.TableAccess[dbName], err = models.GetTableAccesses(db); err != nil {
+	tableAccess, err := models.GetTableAccesses(db)
+	if err != nil {
 		return errors.Wrapf(err, "cannot get Table Accesses for the %s ibase", dbName)
 	}
+	i.TableAccess[dbName] = tableAccess
 
 	i.logger.Info("Collecting Table Cache Hit Ratio information")
-	if i.TableCacheHitRatio[dbName], err = models.GetTableCacheHitRatio(db); err != nil {
+	tableCacheHitRatio, err := models.GetTableCacheHitRatio(db)
+	if err != nil {
 		return errors.Wrapf(err, "cannot get Table Cache Hit Ratios for the %s ibase", dbName)
 	}
+	i.TableCacheHitRatio[dbName] = tableCacheHitRatio
 
 	i.logger.Info("Collecting Index Cache Hit Ratio information")
-	if i.IndexCacheHitRatio[dbName], err = models.GetIndexCacheHitRatio(db); err != nil {
+	indexCacheHitRatio, err := models.GetIndexCacheHitRatio(db)
+	if err != nil {
 		return errors.Wrapf(err, "cannot get Index Cache Hit Ratio for the %s ibase", dbName)
 	}
+	i.IndexCacheHitRatio[dbName] = indexCacheHitRatio
 
 	return nil
 }
@@ -190,7 +197,7 @@ func (i *PGInfo) CollectGlobalInfo(db models.XODB) []error {
 	}
 
 	i.logger.Info("Collecting Port and Data Dir information")
-	if i.PortAndDatadir, err = models.GetPortAndDatadir(db); err != nil {
+	if i.PortAndDatadir, err = models.GetPortAndDatadirs(db); err != nil {
 		errs = append(errs, errors.Wrap(err, "Cannot get Port and Dir"))
 	}
 
@@ -226,8 +233,8 @@ func (i *PGInfo) CollectGlobalInfo(db models.XODB) []error {
 		for _, counters := range c2 {
 			i.Counters[counters.Datname] = append(i.Counters[counters.Datname], counters)
 		}
-		i.calcCountersDiff(i.Counters)
 	}
+	i.calcCountersDiff(i.Counters)
 
 	i.logger.Info("Collecting processes command line information")
 	if err := i.collectProcesses(); err != nil {
@@ -267,16 +274,23 @@ func waitForCounters(ch chan interface{}) ([]*models.Counters, error) {
 }
 
 func parseServerVersion(v string) (*version.Version, error) {
-	re := regexp.MustCompile(`(\d?\d)(\d\d)(\d\d)`)
-	m := re.FindStringSubmatch(v)
-	if len(m) != 4 {
+	num, err := strconv.Atoi(v)
+	if err != nil {
 		return nil, fmt.Errorf("cannot parse version %s", v)
 	}
-	return version.NewVersion(fmt.Sprintf("%s.%s.%s", m[1], m[2], m[3]))
+	if num >= 100000 {
+		return version.NewVersion(fmt.Sprintf("%d.%d", num/10000, num%10000))
+	}
+	return version.NewVersion(fmt.Sprintf("%d.%d.%d", num/10000, num/100%100, num%100))
 }
 
 func (i *PGInfo) calcCountersDiff(counters map[models.Name][]*models.Counters) {
 	for dbName, c := range counters {
+		if len(c) < 2 {
+			i.logger.Debugf("Skipping counters diff for %s database: it is not in both passes", dbName)
+			delete(counters, dbName)
+			continue
+		}
 		i.logger.Debugf("Calculating counters diff for %s database", dbName)
 		diff := &models.Counters{
 			Datname:      dbName,
