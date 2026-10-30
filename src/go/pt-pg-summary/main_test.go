@@ -22,13 +22,16 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
 	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/internal/tu"
+	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/models"
 	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/templates"
 )
 
@@ -127,6 +130,68 @@ func renderReport(t *testing.T, info *pginfo.PGInfo) {
 	if err := tmpl.ExecuteTemplate(io.Discard, "report", info); err != nil {
 		t.Errorf("Cannot render the report: %s", err)
 	}
+}
+
+var scratchDBs atomic.Int32
+
+func createScratchDB(t *testing.T) string {
+	t.Helper()
+	name := fmt.Sprintf("pt_scratch_%d_%d", os.Getpid(), scratchDBs.Add(1))
+	source := connectTo(t, tests[0], "postgres")
+	defer source.Close()
+	if _, err := source.Exec("CREATE DATABASE " + name + " TEMPLATE template0"); err != nil {
+		t.Fatalf("Cannot create the %s database: %s", name, err)
+	}
+	t.Cleanup(func() {
+		db, err := connect(tests[0].dsn("postgres"))
+		if err != nil {
+			t.Errorf("Cannot connect to drop the %s database: %s", name, err)
+			return
+		}
+		defer db.Close()
+		if _, err := db.Exec("DROP DATABASE " + name + " WITH (FORCE)"); err != nil {
+			t.Errorf("Cannot drop the %s database: %s", name, err)
+		}
+	})
+	return name
+}
+
+func execOnConn(t *testing.T, db *sql.DB, queries ...string) {
+	t.Helper()
+	conn, err := db.Conn(t.Context())
+	if err != nil {
+		t.Fatalf("Cannot get a connection: %s", err)
+	}
+	defer conn.Close()
+	for _, query := range queries {
+		if _, err := conn.ExecContext(t.Context(), query); err != nil {
+			t.Fatalf("Cannot run %q: %s", query, err)
+		}
+	}
+}
+
+func waitForReplay(t *testing.T) {
+	t.Helper()
+	source := connectTo(t, tests[0], "postgres")
+	defer source.Close()
+	replica := connectTo(t, tests[1], "postgres")
+	defer replica.Close()
+
+	var lsn string
+	if err := source.QueryRow("SELECT pg_current_wal_lsn()").Scan(&lsn); err != nil {
+		t.Fatalf("Cannot get the WAL position on %s: %s", tests[0].name, err)
+	}
+	for range 100 {
+		var replayed bool
+		if err := replica.QueryRow("SELECT pg_last_wal_replay_lsn() >= $1::pg_lsn", lsn).Scan(&replayed); err != nil {
+			t.Fatalf("Cannot get the replay position on %s: %s", tests[1].name, err)
+		}
+		if replayed {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("%s has not replayed up to %s in 10 seconds", tests[1].name, lsn)
 }
 
 func TestConnection(t *testing.T) {
@@ -323,6 +388,68 @@ func TestCollectAfterStatsReset(t *testing.T) {
 			}
 
 			renderReport(t, info)
+		})
+	}
+}
+
+func TestTableCacheHitRatioAfterStatsReset(t *testing.T) {
+	skipIfNoSandbox(t)
+	for _, tc := range []struct {
+		name   string
+		table  string
+		access []string
+		stats  string
+		want   float64
+	}{
+		{
+			name:   "index lookups that find nothing",
+			table:  "CREATE TABLE t (id int PRIMARY KEY) WITH (autovacuum_enabled = off)",
+			access: []string{"SET enable_seqscan = off", "SET enable_bitmapscan = off", "SELECT id FROM t WHERE id = -1"},
+			stats:  "sum(heap_blks_hit) = 0 AND sum(heap_blks_read) = 0 AND sum(idx_blks_hit) > 0",
+			want:   0,
+		},
+		{
+			name:   "cached sequential scan without indexes",
+			table:  "CREATE TABLE t (id int) WITH (autovacuum_enabled = off)",
+			access: []string{"SELECT count(*) FROM t"},
+			stats:  "sum(heap_blks_hit) > 0 AND sum(heap_blks_read) = 0 AND sum(idx_blks_hit) IS NULL",
+			want:   1,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dbName := createScratchDB(t)
+			source := connectTo(t, tests[0], dbName)
+			execOnConn(t, source, tc.table, "INSERT INTO t SELECT generate_series(1, 1000)", "SELECT pg_stat_force_next_flush()")
+			source.Close()
+			waitForReplay(t)
+
+			for _, test := range tests[:2] {
+				t.Run(test.name, func(t *testing.T) {
+					db := connectTo(t, test, dbName)
+					defer db.Close()
+					queries := append([]string{"SELECT pg_stat_reset()"}, tc.access...)
+					execOnConn(t, db, append(queries, "SELECT pg_stat_force_next_flush()")...)
+
+					query := "SELECT (" + tc.stats + ") IS TRUE, " +
+						"row(sum(heap_blks_hit), sum(heap_blks_read), sum(idx_blks_hit))::text FROM pg_statio_user_tables"
+					var ok bool
+					var sums string
+					if err := db.QueryRow(query).Scan(&ok, &sums); err != nil {
+						t.Fatalf("Cannot read pg_statio_user_tables: %s", err)
+					}
+					if !ok {
+						t.Fatalf("after %q the heap hit, heap read and index hit sums are %s, want %s", tc.access, sums, tc.stats)
+					}
+
+					ratio, err := models.GetTableCacheHitRatio(db)
+					if err != nil {
+						t.Fatalf("Cannot get the table cache hit ratio: %s", err)
+					}
+					if !ratio.Ratio.Valid || ratio.Ratio.Float64 != tc.want {
+						t.Errorf("TableCacheHitRatio = %+v, want %v", ratio.Ratio, tc.want)
+					}
+				})
+			}
 		})
 	}
 }

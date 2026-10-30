@@ -150,7 +150,7 @@ xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable --query-m
     --package models \
     --out ./ << ENDSQL
 SELECT 'cache hit rate' AS name,
-       CASE WHEN (sum(heap_blks_read) + sum(idx_blks_hit)) > 0
+       CASE WHEN (sum(heap_blks_hit) + sum(heap_blks_read)) > 0
        THEN
          sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read))
        ELSE 0
