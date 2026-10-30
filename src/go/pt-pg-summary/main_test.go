@@ -508,6 +508,35 @@ func TestReportAfterFailedDatabaseQuery(t *testing.T) {
 	}
 }
 
+func TestReportAfterFailedCountersPass(t *testing.T) {
+	skipIfNoSandbox(t)
+	for _, pass := range []int32{1, 2} {
+		t.Run(fmt.Sprintf("pass %d", pass), func(t *testing.T) {
+			db := &failingDB{DB: connectTo(t, tests[0], "postgres"), match: "xact_commit", nth: pass}
+			defer db.Close()
+			info, err := pginfo.NewWithLogger(db, nil, testSleep, logger)
+			if err != nil {
+				t.Fatalf("Cannot run NewWithLogger using %q: %s", tests[0].dsn("postgres"), err)
+			}
+
+			failed := false
+			for _, err := range info.CollectGlobalInfo(db) {
+				if strings.Contains(err.Error(), "division by zero") {
+					failed = true
+				}
+			}
+			if !failed {
+				t.Fatalf("CollectGlobalInfo did not report the failed counters pass %d", pass)
+			}
+			if len(info.Counters) != 0 {
+				t.Errorf("Counters has %d databases after a failed pass, want none", len(info.Counters))
+			}
+
+			renderReport(t, info)
+		})
+	}
+}
+
 func TestReplicationTopology(t *testing.T) {
 	skipIfNoSandbox(t)
 

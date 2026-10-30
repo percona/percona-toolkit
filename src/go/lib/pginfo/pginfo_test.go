@@ -13,7 +13,13 @@
 
 package pginfo
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/models"
+)
 
 func TestParseServerVersion(t *testing.T) {
 	for _, tc := range []struct {
@@ -41,5 +47,29 @@ func TestParseServerVersionRejectsGarbage(t *testing.T) {
 		if v, err := parseServerVersion(num); err == nil {
 			t.Errorf("parseServerVersion(%q) = %s, want an error", num, v)
 		}
+	}
+}
+
+func TestCalcCountersDiff(t *testing.T) {
+	counters := map[models.Name][]*models.Counters{
+		"both": {
+			{Datname: "both", Numbackends: 2, XactCommit: 10, BlksHit: 100, TempBytes: 4096},
+			{Datname: "both", Numbackends: 3, XactCommit: 15, BlksHit: 160, TempBytes: 8192},
+		},
+		"created": {{Datname: "created", Numbackends: 1, XactCommit: 1}},
+	}
+
+	info := &PGInfo{logger: logrus.New()}
+	info.calcCountersDiff(counters)
+
+	if c, ok := counters["created"]; ok {
+		t.Errorf("created is still in the counters with %d passes, want it removed", len(c))
+	}
+	both := counters["both"]
+	if len(both) != 3 {
+		t.Fatalf("both has %d counters, want 3", len(both))
+	}
+	if d := both[2]; d.Datname != "both" || d.Numbackends != 1 || d.XactCommit != 5 || d.BlksHit != 60 || d.TempBytes != 4096 {
+		t.Errorf("diff = %+v, want Numbackends 1, XactCommit 5, BlksHit 60, TempBytes 4096", *d)
 	}
 }

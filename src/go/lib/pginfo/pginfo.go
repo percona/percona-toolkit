@@ -233,8 +233,8 @@ func (i *PGInfo) CollectGlobalInfo(db models.XODB) []error {
 		for _, counters := range c2 {
 			i.Counters[counters.Datname] = append(i.Counters[counters.Datname], counters)
 		}
-		i.calcCountersDiff(i.Counters)
 	}
+	i.calcCountersDiff(i.Counters)
 
 	i.logger.Info("Collecting processes command line information")
 	if err := i.collectProcesses(); err != nil {
@@ -286,6 +286,11 @@ func parseServerVersion(v string) (*version.Version, error) {
 
 func (i *PGInfo) calcCountersDiff(counters map[models.Name][]*models.Counters) {
 	for dbName, c := range counters {
+		if len(c) < 2 {
+			i.logger.Debugf("Skipping counters diff for %s database: it is not in both passes", dbName)
+			delete(counters, dbName)
+			continue
+		}
 		i.logger.Debugf("Calculating counters diff for %s database", dbName)
 		diff := &models.Counters{
 			Datname:      dbName,
