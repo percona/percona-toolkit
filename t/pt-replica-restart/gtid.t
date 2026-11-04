@@ -110,8 +110,14 @@ $replica1_dbh->do('DROP TABLE test.t');
 $source_dbh->do('INSERT INTO test.t SELECT 1');
 wait_repl_broke($replica1_dbh) or die "Failed to break replication";
 
-my $r = $replica1_dbh->selectrow_hashref("show ${replica_name} status");
-like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
+my $db_flavor = VersionParser->new($source_dbh)->flavor();
+my $r;
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $r = $replica1_dbh->selectrow_hashref("select * from performance_schema.replication_applier_status_by_worker")->{last_error_message};
+} else {
+   $r = $replica1_dbh->selectrow_hashref("show ${replica_name} status")->{last_error};
+}
+like($r, qr/Table 'test.t' doesn't exist'/, 'replica: Replication broke');
 
 # Start pt-replica-restart and wait up to 5s for it to fix replication
 # (it should take < 1s but tests can be really slow sometimes).
@@ -147,8 +153,12 @@ wait_repl_broke($replica2_dbh) or die "Failed to break replication";
 $r = $source_dbh->selectrow_hashref('select @@GLOBAL.server_uuid as uuid');
 my $uuid = $r->{uuid};
 
-$r = $replica2_dbh->selectrow_hashref("show ${replica_name} status");
-like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'replicaofreplica: Replication broke');
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $r = $replica2_dbh->selectrow_hashref("select * from performance_schema.replication_applier_status_by_worker")->{last_error_message};
+} else {
+   $r = $replica2_dbh->selectrow_hashref("show ${replica_name} status")->{last_error};
+}
+like($r, qr/Table 'test.t' doesn't exist'/, 'replicaofreplica: Replication broke');
 
 # Start an instance
 start("--source-uuid=$uuid $replica2_dsn") or die;
@@ -181,9 +191,13 @@ wait_repl_broke($replica2_dbh) or die "Failed to break replication";
 $r = $source_dbh->selectrow_hashref('select @@GLOBAL.server_uuid as uuid');
 $uuid = $r->{uuid};
 
-$r = $replica2_dbh->selectrow_hashref("show ${replica_name} status");
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $r = $replica2_dbh->selectrow_hashref("select * from performance_schema.replication_applier_status_by_worker")->{last_error_message};
+} else {
+   $r = $replica2_dbh->selectrow_hashref("show ${replica_name} status")->{last_error};
+}
 like(
-   $r->{last_error},
+   $r,
    qr/Table 'test.t' doesn't exist'/,
    'replicaofreplica - deprecated option: Replication broke');
 
@@ -227,8 +241,12 @@ wait_repl_broke($replica2_dbh) or die "Failed to break replication";
 $r = $source_dbh->selectrow_hashref('select @@GLOBAL.server_uuid as uuid');
 $uuid = $r->{uuid};
 
-$r = $replica2_dbh->selectrow_hashref("show ${replica_name} status");
-like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'replicaofreplicaskip2: Replication broke');
+if ( $sandbox_version ge '9.7' && $db_flavor !~ m/mariadb/ ) {
+   $r = $replica2_dbh->selectrow_hashref("select * from performance_schema.replication_applier_status_by_worker")->{last_error_message};
+} else {
+   $r = $replica2_dbh->selectrow_hashref("show ${replica_name} status")->{last_error};
+}
+like($r, qr/Table 'test.t' doesn't exist'/, 'replicaofreplicaskip2: Replication broke');
 
 # Start an instance
 start("--skip-count=2 --source-uuid=$uuid $replica2_dsn") or die;

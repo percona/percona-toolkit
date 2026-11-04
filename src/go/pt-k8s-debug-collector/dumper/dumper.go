@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/flowcontrol"
 )
 
 const (
@@ -46,6 +47,7 @@ type Dumper struct {
 	kubeconfig                       string
 	namespace                        string
 	location                         string
+	dumpFile                         string
 	logger                           *SafeLogger
 	mode                             int64
 	crTypes                          []string
@@ -59,18 +61,29 @@ type Dumper struct {
 	sslSecrets      map[string]bool
 	individualFiles []individualFile
 	clientSet       *kubernetes.Clientset
+	describeClient  kubernetes.Interface
 	dynamicClient   *dynamic.DynamicClient
 	discoveryClient *discovery.DiscoveryClient
 	archive         *tarWriter
 	restConfig      *rest.Config
 }
 
+type toolLog struct {
+	filename string
+	args     []string
+}
+
 // individualFile struct is used to dump the necessary files from the containers
 type individualFile struct {
-	resourceName  string
-	containerName string
-	filepaths     []string
+	resourceName   string
+	containerNames []string
+	filepaths      []string
+	dirpaths       map[string][]string // map[tarFolder][]dirPaths
+	toolCmds       map[string][]toolLog
+	dynamicEnv     map[string]dynamicEnvFunc
 }
+
+type dynamicEnvFunc func(ctx context.Context, pod corev1.Pod, container string, env map[string]string) string
 
 // resourceMap struct is used to dump the resources from namespace scope or cluster scope
 type resourceMap struct {
@@ -84,14 +97,16 @@ type exportJob struct {
 }
 
 // New return new Dumper object
-func New(location, namespace, kubeconfig, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
-	var config *rest.Config
-
+func New(location, dumpFile, namespace, kubeconfig, clusterName, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
 	safeLog := NewSafeLogger()
 
 	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if clusterName == "" {
+		_, clusterName = parseResourceSpec(resource)
+	}
+
+	config, err := buildRestConfig(kubeconfig, clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build config from flags: %w", err)
 	}
@@ -108,7 +123,15 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 	config.QPS = float32(concurrentExportWorkers) + 1
 	config.Burst = (concurrentExportWorkers + 1) * 2
 
-	clientset, err := kubernetes.NewForConfig(config)
+	clientsetConfig := rest.CopyConfig(config)
+	clientsetConfig.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(config.QPS, config.Burst)
+
+	clientset, err := kubernetes.NewForConfig(clientsetConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kubeconfig: %w", err)
+	}
+
+	describeClient, err := kubernetes.NewForConfig(describeRestConfig(clientsetConfig, describeTimeout))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kubeconfig: %w", err)
 	}
@@ -123,6 +146,7 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 	d := &Dumper{
 		kubeconfig:                       kubeconfig,
 		location:                         location,
+		dumpFile:                         dumpFile,
 		mode:                             int64(0o777),
 		namespace:                        namespace,
 		forwardport:                      strings.TrimSpace(forwardport),
@@ -131,6 +155,7 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 		concurrentExportWorkersCluster:   concurrentExportWorkers / 2,
 		concurrentExportWorkersNamespace: concurrentExportWorkers / 2,
 		clientSet:                        clientset,
+		describeClient:                   describeClient,
 		dynamicClient:                    dynclient,
 		discoveryClient:                  discclient,
 		restConfig:                       config,
@@ -160,6 +185,11 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 			if err != nil {
 				return nil, err
 			}
+		case "crunchy":
+			err := d.addCrunchy()
+			if err != nil {
+				return nil, err
+			}
 		case "pxc":
 			err := d.addPxc()
 			if err != nil {
@@ -181,10 +211,32 @@ func New(location, namespace, kubeconfig, forwardport, resource string, skipPodS
 	return d, err
 }
 
+func buildRestConfig(kubeconfig, clusterName string) (*rest.Config, error) {
+	if clusterName == "" {
+		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+	}
+
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig}
+	overrides := &clientcmd.ConfigOverrides{CurrentContext: clusterName}
+	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
+
+	rawConfig, err := clientConfig.RawConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := rawConfig.Contexts[clusterName]; !ok {
+		return nil, fmt.Errorf("context %q not found in kubeconfig", clusterName)
+	}
+
+	return clientConfig.ClientConfig()
+}
+
 // DumpCluster create dump of a cluster in Dumper.location
 func (d *Dumper) DumpCluster() error {
 	var err error
-	d.archive, err = NewTarWriter(d.location + ".tar.gz")
+	archivePath := d.archiveFileName(time.Now())
+	d.archive, err = NewTarWriter(archivePath)
 	if err != nil {
 		return fmt.Errorf("failed to create archive: %v", err)
 	}
@@ -235,8 +287,16 @@ func (d *Dumper) DumpCluster() error {
 	close(jobsChannel)
 	wg.Wait()
 
-	log.Infof("export complete\ndata saved to %s", d.location)
+	log.Infof("export complete\ndata saved to %s", archivePath)
 	return nil
+}
+
+func (d *Dumper) archiveFileName(t time.Time) string {
+	name := d.dumpFile
+	if name == "" {
+		name = d.location + "_{timestamp}.tar.gz"
+	}
+	return strings.ReplaceAll(name, "{timestamp}", t.UTC().Format("20060102150405"))
 }
 
 func (d *Dumper) export(ctx context.Context) error {
@@ -349,6 +409,7 @@ func (d *Dumper) exportGeneric(ctx context.Context, gvr schema.GroupVersionResou
 			delete(meta, "selfLink")
 			delete(meta, "creationTimestamp")
 		}
+		redactPgbouncerVolumeRefs(obj)
 	}
 
 	data, err := yaml.Marshal(list.UnstructuredContent())
@@ -360,6 +421,109 @@ func (d *Dumper) exportGeneric(ctx context.Context, gvr schema.GroupVersionResou
 	d.archive.WriteVirtualFile(yamlPath, data)
 
 	return nil
+}
+
+// redactPgbouncerVolumeRefs removes volume and volumeMount entries that reference
+// pgbouncer secrets from a pod or pod template spec.
+func redactPgbouncerVolumeRefs(obj map[string]any) {
+	redactPodSpec(obj)
+
+	// Handle pod templates (Deployment, StatefulSet, etc.)
+	if spec, ok := obj["spec"].(map[string]any); ok {
+		if tmpl, ok := spec["template"].(map[string]any); ok {
+			redactPodSpec(tmpl)
+		}
+	}
+}
+
+func redactPodSpec(obj map[string]any) {
+	spec, ok := obj["spec"].(map[string]any)
+	if !ok {
+		return
+	}
+
+	volumes, ok := spec["volumes"].([]any)
+	if !ok {
+		return
+	}
+
+	pgbouncerVols := make(map[string]bool)
+	kept := make([]any, 0)
+	for _, v := range volumes {
+		vol, ok := v.(map[string]any)
+		if !ok {
+			kept = append(kept, v)
+			continue
+		}
+		if hasPgbouncerSecretRef(vol) {
+			name, _ := vol["name"].(string)
+			pgbouncerVols[name] = true
+		} else {
+			kept = append(kept, v)
+		}
+	}
+
+	if len(pgbouncerVols) == 0 {
+		return
+	}
+	spec["volumes"] = kept
+
+	for _, key := range []string{"containers", "initContainers", "ephemeralContainers"} {
+		containers, ok := spec[key].([]any)
+		if !ok {
+			continue
+		}
+		for j, c := range containers {
+			container, ok := c.(map[string]any)
+			if !ok {
+				continue
+			}
+			mounts, ok := container["volumeMounts"].([]any)
+			if !ok {
+				continue
+			}
+			var keptMounts []any
+			for _, m := range mounts {
+				mount, ok := m.(map[string]any)
+				if !ok {
+					keptMounts = append(keptMounts, m)
+					continue
+				}
+				mountName, _ := mount["name"].(string)
+				if !pgbouncerVols[mountName] {
+					keptMounts = append(keptMounts, mount)
+				}
+			}
+			container["volumeMounts"] = keptMounts
+			containers[j] = container
+		}
+	}
+}
+
+func hasPgbouncerSecretRef(vol map[string]any) bool {
+	if secret, ok := vol["secret"].(map[string]any); ok {
+		name, _ := secret["secretName"].(string)
+		if strings.Contains(name, "pgbouncer") {
+			return true
+		}
+	}
+	if projected, ok := vol["projected"].(map[string]any); ok {
+		if sources, ok := projected["sources"].([]any); ok {
+			for _, s := range sources {
+				src, ok := s.(map[string]any)
+				if !ok {
+					continue
+				}
+				if secret, ok := src["secret"].(map[string]any); ok {
+					name, _ := secret["name"].(string)
+					if strings.Contains(name, "pgbouncer") {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 var ignoredResources = map[string]bool{
@@ -469,6 +633,15 @@ func (d *Dumper) resilientWorker(id int, ctx context.Context, cancel context.Can
 				log.Errorf("error exporting logs: %v", err)
 			}
 
+			if err := d.getPodDescribe(job.Pod); err != nil {
+				if isSpaceError(err) {
+					log.Infof("worker %d stopping app: %v", id, err)
+					cancel()
+					return
+				}
+				log.Error(err)
+			}
+
 			if job.Pod.Status.Phase == corev1.PodRunning {
 				d.exportPodSummaryAndFiles(ctx, job)
 			}
@@ -497,6 +670,9 @@ func matchesCR(cr string, podLabels map[string]string) bool {
 	case "pgv2":
 		return podLabels["pgv2.percona.com/version"] != "" &&
 			podLabels["postgres-operator.crunchydata.com/instance"] != ""
+	case "crunchy":
+		return podLabels["postgres-operator.crunchydata.com/instance"] != "" &&
+			podLabels["pgv2.percona.com/version"] == ""
 	}
 
 	return false
@@ -504,15 +680,17 @@ func matchesCR(cr string, podLabels map[string]string) bool {
 
 func (d *Dumper) exportPodSummaryAndFiles(ctx context.Context, job exportJob) {
 	for _, cr := range d.crTypes {
-		if !matchesCR(cr, job.Pod.Labels) {
+		normalizedCR := resourceType(cr)
+
+		if !matchesCR(normalizedCR, job.Pod.Labels) {
 			continue
 		}
 
 		if !d.skipPodSummary {
-			d.getSummary(ctx, job, cr, d.PodSummaryPath(job.Pod.Namespace, job.Pod.Name))
+			d.getSummary(ctx, job, normalizedCR, d.PodSummaryPath(job.Pod.Namespace, job.Pod.Name))
 		}
 
-		d.getIndividualFiles(ctx, job, cr)
+		d.getIndividualFiles(ctx, job, normalizedCR)
 	}
 }
 

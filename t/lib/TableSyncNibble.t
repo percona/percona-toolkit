@@ -34,7 +34,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 37;
+   plan tests => 59;
 }
 
 my $mysql = $sb->_use_for('source');
@@ -133,25 +133,248 @@ SKIP: {
    );
 }
 
+SKIP: {
+   skip 'There is no function SHA1 in MySQL 9.7', 22 if $sandbox_version ge '9.7';
+
+   $t->set_checksum_queries(
+      $syncer->make_checksum_queries(%args, function => 'SHA1')
+   );
+   is(
+      $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+      ),
+      ($sandbox_version gt '4.0' ?
+      q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
+      . q{COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, }
+      . q{10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(}
+      . q{SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
+      . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS('#', `a`, }
+      . q{`b`, `c`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM }
+      . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE (((`a` < '1') OR (`a` = '1' AND `b` <= 'en')))} :
+      q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
+      . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
+      . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', `a`, `b`, `c`)))))), 40), 0) AS crc FROM }
+      . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE (((`a` < '1') OR (`a` = '1' AND `b` <= 'en')))}
+      ),
+      'First nibble SQL',
+   );
+
+   is(
+      $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+      ),
+      ($sandbox_version gt '4.0' ?
+      q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
+      . q{COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, }
+      . q{10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(}
+      . q{SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
+      . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS('#', `a`, }
+      . q{`b`, `c`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM }
+      . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE (((`a` < '1') OR (`a` = '1' AND `b` <= 'en')))} :
+      q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
+      . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
+      . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', `a`, `b`, `c`)))))), 40), 0) AS crc FROM }
+      . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE (((`a` < '1') OR (`a` = '1' AND `b` <= 'en')))}
+      ),
+      'First nibble SQL, again',
+   );
+
+   $t->{nibble} = 1;
+   delete $t->{cached_boundaries};
+
+   is(
+      $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+      ),
+      ($sandbox_version gt '4.0' ?
+      q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
+      . q{COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, }
+      . q{10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(}
+      . q{SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
+      . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS('#', `a`, }
+      . q{`b`, `c`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM }
+      . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '1') OR (`a` = '1' AND `b` > 'en')) AND }
+      . q{((`a` < '2') OR (`a` = '2' AND `b` <= 'ca'))))} :
+      q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
+      . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
+      . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', `a`, `b`, `c`)))))), 40), 0) AS crc FROM }
+      . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '1') OR (`a` = '1' AND `b` > 'en')) AND }
+      . q{((`a` < '2') OR (`a` = '2' AND `b` <= 'ca'))))}
+      ),
+      'Second nibble SQL',
+   );
+
+   # Bump the nibble boundaries ahead until we run off the end of the table.
+   $t->done_with_rows();
+   $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+      );
+   $t->done_with_rows();
+   $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+      );
+   $t->done_with_rows();
+   $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+      );
+
+   is(
+      $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+      ),
+      ($sandbox_version gt '4.0' ?
+      q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
+      . q{COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, }
+      . q{10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(}
+      . q{SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
+      . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS('#', `a`, }
+      . q{`b`, `c`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM }
+      . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '4') OR (`a` = '4' AND `b` > 'bz')) AND }
+      . q{1=1))} :
+      q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
+      . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
+      . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', `a`, `b`, `c`)))))), 40), 0) AS crc FROM }
+      . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '4') OR (`a` = '4' AND `b` > 'bz')) AND }
+      . q{1=1))}
+      ),
+      'End-of-table nibble SQL',
+   );
+
+   $t->done_with_rows();
+   ok($t->done(), 'Now done');
+
+   # Throw away and start anew, because it's off the end of the table
+   $t->{nibble} = 0;
+   delete $t->{cached_boundaries};
+   delete $t->{cached_nibble};
+   delete $t->{cached_row};
+
+   is_deeply($t->key_cols(), [qw(chunk_num)], 'Key cols in state 0');
+   $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+      );
+   $t->done_with_rows();
+
+   is($t->done(), '', 'Not done, because not reached end-of-table');
+
+   throws_ok(
+      sub { $t->not_in_left() },
+      qr/in state 0/,
+      'not_in_(side) illegal in state 0',
+   );
+
+   # Now "find some bad chunks," as it were.
+
+   # "find a bad row"
+   $t->same_row(
+      lr => { chunk_num => 0, cnt => 0, crc => 'abc' },
+      rr => { chunk_num => 0, cnt => 1, crc => 'abc' },
+   );
+   ok($t->pending_changes(), 'Pending changes found');
+   is($t->{state}, 1, 'Working inside nibble');
+   $t->done_with_rows();
+   is($t->{state}, 2, 'Now in state to fetch individual rows');
+   ok($t->pending_changes(), 'Pending changes not done yet');
+   is($t->get_sql(database => 'test', table => 'test1'),
+      q{SELECT /*rows in nibble*/ `a`, `b`, `c`, SHA1(CONCAT_WS('#', `a`, `b`, `c`)) AS __crc FROM }
+      . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '1') OR (`a` = '1' AND `b` > 'en')) }
+      . q{AND ((`a` < '2') OR (`a` = '2' AND `b` <= 'ca'))))}
+      . q{ ORDER BY `a`, `b`},
+      'SQL now working inside nibble'
+   );
+   ok($t->{state}, 'Still working inside nibble');
+   is(scalar(@rows), 0, 'No bad row triggered');
+
+   $t->not_in_left(rr => {a => 1, b => 'en'});
+
+   is_deeply(\@rows,
+      ["DELETE FROM `test`.`test1` WHERE `a`='1' AND `b`='en' LIMIT 1"],
+      'Working inside nibble, got a bad row',
+   );
+
+   # Shouldn't cause anything to happen
+   $t->same_row(
+      lr => {a => 1, b => 'en', __crc => 'foo'},
+      rr => {a => 1, b => 'en', __crc => 'foo'} );
+
+   is_deeply(\@rows,
+      ["DELETE FROM `test`.`test1` WHERE `a`='1' AND `b`='en' LIMIT 1"],
+      'No more rows added',
+   );
+
+   $t->same_row(
+      lr => {a => 1, b => 'en', __crc => 'foo'},
+      rr => {a => 1, b => 'en', __crc => 'bar'} );
+
+   is_deeply(\@rows,
+      [
+         "DELETE FROM `test`.`test1` WHERE `a`='1' AND `b`='en' LIMIT 1",
+         "UPDATE `test`.`test1` SET `c`='a' WHERE `a`='1' AND `b`='en' LIMIT 1",
+      ],
+      'Row added to update differing row',
+   );
+
+   $t->done_with_rows();
+   is($t->{state}, 0, 'Now not working inside nibble');
+   is($t->pending_changes(), 0, 'No pending changes');
+
+   # Now test that SQL_BUFFER_RESULT is in the queries OK
+   $t->prepare_to_sync(%args, buffer_in_mysql=>1);
+   $t->{state} = 1;
+   like(
+      $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+         buffer_in_mysql => 1,
+      ),
+      qr/SELECT ..rows in nibble.. SQL_BUFFER_RESULT/,
+      'Buffering in first nibble',
+   );
+
+   # "find a bad row"
+   $t->same_row(
+      lr => { chunk_num => 0, cnt => 0, __crc => 'abc' },
+      rr => { chunk_num => 0, cnt => 1, __crc => 'abc' },
+   );
+
+   like(
+      $t->get_sql(
+         database => 'test',
+         table    => 'test1',
+         buffer_in_mysql => 1,
+      ),
+      qr/SELECT ..rows in nibble.. SQL_BUFFER_RESULT/,
+      'Buffering in next nibble',
+   );
+}
+
+@rows = ();
+$t->prepare_to_sync(%args);
 $t->set_checksum_queries(
-   $syncer->make_checksum_queries(%args, function => 'SHA1')
+   $syncer->make_checksum_queries(%args, function => 'SHA2')
 );
+
 is(
    $t->get_sql(
       database => 'test',
       table    => 'test1',
    ),
-   ($sandbox_version gt '4.0' ?
+   (
    q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
    . q{COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, }
    . q{10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(}
    . q{SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
-   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS('#', `a`, }
-   . q{`b`, `c`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM }
-   . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE (((`a` < '1') OR (`a` = '1' AND `b` <= 'en')))} :
-   q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
-   . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
-   . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', `a`, `b`, `c`)))))), 40), 0) AS crc FROM }
+   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 33, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
+   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA2(CONCAT_WS('#', `a`, }
+   . q{`b`, `c`), 256), 49, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'))), 0) AS crc FROM }
    . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE (((`a` < '1') OR (`a` = '1' AND `b` <= 'en')))}
    ),
    'First nibble SQL',
@@ -162,17 +385,14 @@ is(
       database => 'test',
       table    => 'test1',
    ),
-   ($sandbox_version gt '4.0' ?
+   (
    q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
    . q{COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, }
    . q{10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(}
    . q{SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
-   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS('#', `a`, }
-   . q{`b`, `c`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM }
-   . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE (((`a` < '1') OR (`a` = '1' AND `b` <= 'en')))} :
-   q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
-   . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
-   . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', `a`, `b`, `c`)))))), 40), 0) AS crc FROM }
+   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 33, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
+   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA2(CONCAT_WS('#', `a`, }
+   . q{`b`, `c`), 256), 49, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'))), 0) AS crc FROM }
    . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE (((`a` < '1') OR (`a` = '1' AND `b` <= 'en')))}
    ),
    'First nibble SQL, again',
@@ -186,18 +406,14 @@ is(
       database => 'test',
       table    => 'test1',
    ),
-   ($sandbox_version gt '4.0' ?
+   (
    q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
    . q{COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, }
    . q{10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(}
    . q{SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
-   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS('#', `a`, }
-   . q{`b`, `c`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM }
-   . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '1') OR (`a` = '1' AND `b` > 'en')) AND }
-   . q{((`a` < '2') OR (`a` = '2' AND `b` <= 'ca'))))} :
-   q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
-   . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
-   . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', `a`, `b`, `c`)))))), 40), 0) AS crc FROM }
+   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 33, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
+   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA2(CONCAT_WS('#', `a`, }
+   . q{`b`, `c`), 256), 49, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'))), 0) AS crc FROM }
    . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '1') OR (`a` = '1' AND `b` > 'en')) AND }
    . q{((`a` < '2') OR (`a` = '2' AND `b` <= 'ca'))))}
    ),
@@ -226,18 +442,14 @@ is(
       database => 'test',
       table    => 'test1',
    ),
-   ($sandbox_version gt '4.0' ?
+   (
    q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
    . q{COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, }
    . q{10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(}
    . q{SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
-   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS('#', `a`, }
-   . q{`b`, `c`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM }
-   . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '4') OR (`a` = '4' AND `b` > 'bz')) AND }
-   . q{1=1))} :
-   q{SELECT /*test.test1:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, }
-   . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
-   . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', `a`, `b`, `c`)))))), 40), 0) AS crc FROM }
+   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 33, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), }
+   . q{LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA2(CONCAT_WS('#', `a`, }
+   . q{`b`, `c`), 256), 49, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'))), 0) AS crc FROM }
    . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '4') OR (`a` = '4' AND `b` > 'bz')) AND }
    . q{1=1))}
    ),
@@ -281,7 +493,7 @@ $t->done_with_rows();
 is($t->{state}, 2, 'Now in state to fetch individual rows');
 ok($t->pending_changes(), 'Pending changes not done yet');
 is($t->get_sql(database => 'test', table => 'test1'),
-   q{SELECT /*rows in nibble*/ `a`, `b`, `c`, SHA1(CONCAT_WS('#', `a`, `b`, `c`)) AS __crc FROM }
+   q{SELECT /*rows in nibble*/ `a`, `b`, `c`, SHA2(CONCAT_WS('#', `a`, `b`, `c`), 256) AS __crc FROM }
    . q{`test`.`test1` USE INDEX (`PRIMARY`) WHERE ((((`a` > '1') OR (`a` = '1' AND `b` > 'en')) }
    . q{AND ((`a` < '2') OR (`a` = '2' AND `b` <= 'ca'))))}
    . q{ ORDER BY `a`, `b`},
@@ -357,6 +569,11 @@ like(
 # #########################################################################
 $sb->load_file('source', 't/lib/samples/issue_96.sql');
 $tbl_struct = $tp->parse($tp->get_create_table($dbh, 'issue_96', 't'));
+
+$t->set_checksum_queries(
+   $syncer->make_checksum_queries(%args, function => 'SHA2')
+);
+
 $t->prepare_to_sync(
    ChangeHandler  => $ch,
    cols           => $tbl_struct->{cols},

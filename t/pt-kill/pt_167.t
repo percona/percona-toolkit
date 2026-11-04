@@ -80,7 +80,7 @@ my $output = output(
 
 like(
    $output,
-   qr/KILL $pid \(Execute/,
+   qr/KILL $pid \(Db: sakila\) \(Execute/,
    '--kill-query'
 ) or diag($output);
 

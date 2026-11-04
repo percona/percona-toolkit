@@ -64,7 +64,7 @@ rm $PT_TMPDIR/output
 # Die if pid file can't be created.
 # ###########################################################################
 (
-   make_pid_file "/root/pid" $$ >$PT_TMPDIR/output 2>&1
+   make_pid_file "$PT_TMPDIR/root/pid" $$ >$PT_TMPDIR/output 2>&1
 )
 
 is \
@@ -73,7 +73,7 @@ is \
    "Exit 1 if PID file can't be created"
 
 cmd_ok \
-   "grep -q 'Cannot create or write PID file /root/pid' $PT_TMPDIR/output" \
+   "grep -q 'Cannot create or write PID file $PT_TMPDIR/root/pid' $PT_TMPDIR/output" \
    "Error that PID file can't be created"
 
 # ###########################################################################

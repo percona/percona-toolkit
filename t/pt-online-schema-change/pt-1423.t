@@ -92,9 +92,12 @@ is(
 
 $chunks = () = $output =~ /Copying `pt_osc`.`t`:\s+\d+% \d\d:\d\d remain/gi;
 
-is(
+# We cannot rely on equality here, because depending on platform performance it could be 2 o3 3 chunks.
+# In any case, number should be less than 51.
+cmp_ok(
    $chunks,
-   2,
+   'le',
+   3,
    'Chunk size was adjusted to fit specified --chunk-time'
 ) or diag($chunks, $output);
 

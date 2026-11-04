@@ -1,6 +1,7 @@
 package dumper
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
@@ -10,10 +11,12 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/tools/remotecommand"
@@ -152,4 +155,112 @@ func (d *Dumper) executeInPod(ctx context.Context, command []string, pod corev1.
 	}
 
 	return outb, errb, nil
+}
+
+// tarFromPod executes tar command in pod and returns tar reader and read closer.
+func (d *Dumper) tarFromPod(
+	ctx context.Context,
+	pod corev1.Pod,
+	container string,
+	args ...string,
+) (*tar.Reader, io.ReadCloser, error) {
+	cmd := append([]string{"tar", "cf", "-"}, args...)
+
+	stdout, err := d.executeInPodStream(ctx, cmd, pod, container, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tar.NewReader(stdout), stdout, nil
+}
+
+// DrainCloser wraps an io.ReadCloser to ensure proper closure of pod exec streams.
+// Kubernetes SPDY transport may try to write to a closed pipe if stdout is closed
+// before fully read, causing "io: read/write on closed pipe" logs.
+// Close() drains the remaining data to io.Discard to avoid these errors.
+type DrainCloser struct{ io.ReadCloser }
+
+func (d DrainCloser) Close() error {
+	if d.ReadCloser == nil {
+		return nil
+	}
+	_, _ = io.Copy(io.Discard, d.ReadCloser)
+	err := d.ReadCloser.Close()
+	d.ReadCloser = nil
+	return err
+}
+
+// executeInPodStream executes command in pod and streams the output.
+// Streaming errors are logged from the background goroutine because they can
+// happen after this function has already returned the stdout reader.
+func (d *Dumper) executeInPodStream(ctx context.Context, command []string, pod corev1.Pod, container string, stdin io.Reader) (io.ReadCloser, error) {
+	stdinFlag := stdin != nil
+	var stderr bytes.Buffer
+
+	req := d.clientSet.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(pod.Name).
+		Namespace(pod.Namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Command:   command,
+			Stdin:     stdinFlag,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       false,
+			Container: container,
+		}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(d.restConfig, "POST", req.URL())
+	if err != nil {
+		return nil, fmt.Errorf("error creating SPDY executor: %w", err)
+	}
+
+	pr, pw := io.Pipe()
+
+	go func() {
+		if err := exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+			Stdin:  stdin,
+			Stdout: pw,
+			Stderr: &stderr,
+			Tty:    false,
+		}); err != nil && !errors.Is(err, context.Canceled) {
+			if stderr.Len() > 0 {
+				log.Errorf("error while streaming files from pod: %s (stderr: %s)", err, stderr.String())
+				_ = pw.CloseWithError(fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String())))
+				return
+			}
+			log.Errorf("error while streaming files from pod: %s", err)
+			_ = pw.CloseWithError(err)
+			return
+		}
+
+		_ = pw.Close()
+	}()
+
+	return DrainCloser{pr}, nil
+}
+
+// ParseEnvsFromSpec parses environment variables in input string
+func (d *Dumper) ParseEnvsFromSpec(ctx context.Context, namespace, podName, container, input string) (string, error) {
+	if !strings.Contains(input, "$") {
+		return input, nil
+	}
+
+	pod, err := d.clientSet.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	for _, c := range pod.Spec.Containers {
+		if c.Name == container {
+			resolved := input
+			for _, e := range c.Env {
+				resolved = strings.ReplaceAll(resolved, "$"+e.Name, e.Value)
+			}
+			return resolved, nil
+		}
+	}
+
+	return "", fmt.Errorf("container %s not found in pod %s", container, podName)
 }

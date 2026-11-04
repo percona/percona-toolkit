@@ -14,14 +14,18 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -31,6 +35,8 @@ import (
 	"github.com/percona/percona-toolkit/src/go/tests/utils"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/suite"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -40,7 +46,7 @@ import (
 TEST PREREQUISITES:
   - Cluster State: All target clusters must be deployed and in a "Ready" state.
   - Required Namespaces: The test targets the following specific namespaces:
-    "pxc", "ps", "psmdb", "pgo", "pgv2".
+    "pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy".
   - Connectivity: A valid kubeconfig must be provided with active contexts for each cluster.
 
 AUTOMATIC DEPLOYMENT (Optional):
@@ -51,7 +57,7 @@ AUTOMATIC DEPLOYMENT (Optional):
     go test ./... -timeout 60m --args --deploy-k3d [comma-separated-deployments]
 
   Available deployment targets:
-    "pxc", "ps", "psmdb", "pgo", "pgv2"
+    "pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy"
 
   Example:
     go test ./... -timeout 60m --deploy-k3d pxc,pgv2
@@ -70,11 +76,11 @@ const (
 
 var (
 	namespaces = []string{
-		"pxc", "ps", "psmdb", "pgo", "pgv2",
+		"pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy",
 	}
 
 	resources = []string{
-		"pxc", "ps", "psmdb", "pgo", "pgv2", "auto", "none",
+		"pxc", "ps", "psmdb", "pgo", "pgv2", "crunchy", "auto", "none",
 	}
 )
 
@@ -159,7 +165,7 @@ func TestMain(m *testing.M) {
 
 	if len(testNamespaces) == 0 && !selectedDeploymentNamesChanged {
 		log.Fatalf(`Target namespaces not found in the cluster.
-    
+
 Expected one of: %s
 Found in cluster: %s
 
@@ -241,7 +247,33 @@ func (s *CollectorSuite) TearDownSuite() {
 }
 
 func (s *CollectorSuite) TearDownTest() {
-	_ = os.Remove("cluster-dump.tar.gz")
+	removeArchives()
+}
+
+var archiveNameRE = regexp.MustCompile(`^cluster-dump_\d{14}\.tar\.gz$`)
+
+func removeArchives() {
+	archives, _ := filepath.Glob("cluster-dump*.tar.gz")
+	for _, a := range archives {
+		_ = os.Remove(a)
+	}
+}
+
+func (s *CollectorSuite) runCollector(args ...string) error {
+	_, err := s.runCollectorOutput(args...)
+	return err
+}
+
+func (s *CollectorSuite) runCollectorOutput(args ...string) ([]byte, error) {
+	removeArchives()
+	out, err := exec.Command(TOOL_PATH, args...).CombinedOutput()
+
+	archives, _ := filepath.Glob("cluster-dump_*.tar.gz")
+	s.Require().Len(archives, 1)
+	s.Require().Regexp(archiveNameRE, archives[0])
+	s.Require().NoError(os.Rename(archives[0], "cluster-dump.tar.gz"))
+
+	return out, err
 }
 
 func TestCollectorRunner(t *testing.T) {
@@ -273,13 +305,19 @@ func TestCollectorRunner(t *testing.T) {
 	}
 }
 
+// semVerRE is the SemVer pattern from https://semver.org (RE2-compatible
+// variant), used to validate the version line printed by --version.
+const semVerRE = `(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)` +
+	`(?:-(?:(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?` +
+	`(?:\+(?:[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
+
 func TestVersionOption(t *testing.T) {
 	out, err := exec.Command(TOOL_PATH, "--version").Output()
 	if err != nil {
 		t.Errorf("error executing %s --version: %s", toolname, err.Error())
 	}
 	// We are using MustCompile here, because hard-coded RE should not fail
-	re := regexp.MustCompile(toolname + `\n.*Version v?\d+\.\d+\.\d+\n`)
+	re := regexp.MustCompile(toolname + `\n.*Version v?` + semVerRE + `\n`)
 	if !re.Match(out) {
 		t.Errorf("%s --version returns wrong result:\n%s", toolname, out)
 	}
@@ -291,6 +329,7 @@ func (s *CollectorSuite) TestIndividualFiles() {
 		name         string
 		cmd          []string
 		want         []string
+		skipForNone  bool
 		preprocessor func(string) string
 	}{
 		{
@@ -298,14 +337,19 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			// If the tool collects required log files
 			name: "pxc_logs_list",
 			// tar -tf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/*'
-			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/*"},
-			want: []string{"auto.cnf", "grastate.dat", "gvwstate.dat", "innobackup.backup.log", "innobackup.move.log", "innobackup.prepare.log", "mysqld-error.log", "mysqld.post.processing.log"},
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/*"},
+			want:        []string{"auto.cnf", "grastate.dat", "gvwstate.dat", "innobackup.backup.log", "innobackup.move.log", "innobackup.prepare.log", "mysqld-error.log", "mysqld.post.processing.log"},
+			skipForNone: true,
 			preprocessor: func(in string) string {
 				files := strings.Split(in, "\n")
 				var result []string
 				for _, f := range files {
 					b := path.Base(f)
-					if !slices.Contains(result, b) && b != "." && b != "" {
+					if b == "." || b == "" {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
 						result = append(result, b)
 					}
 				}
@@ -318,8 +362,9 @@ func (s *CollectorSuite) TestIndividualFiles() {
 			// If MySQL error log is not empty
 			name: "pxc_mysqld_error_log",
 			// tar --to-command="grep -m 1 -o Version:" -xzf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/mysqld-error.log'
-			cmd:  []string{"tar", "--to-command", "grep -m 1 -o Version:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/mysqld-error.log"},
-			want: []string{"Version:"},
+			cmd:         []string{"tar", "--to-command", "grep -m 1 -o Version:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/mysqld-error.log"},
+			want:        []string{"Version:"},
+			skipForNone: true,
 			preprocessor: func(in string) string {
 				nl := strings.Index(in, "\n")
 				if nl == -1 {
@@ -328,23 +373,208 @@ func (s *CollectorSuite) TestIndividualFiles() {
 				return in[:nl]
 			},
 		},
+		{
+			namespace: "pgo",
+			// If the tool collects PostgreSQL log files
+			name: "pgo_pg_logs_exist",
+			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/*/pg_log/*.log'
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
+			want:        []string{".log"},
+			skipForNone: true,
+			preprocessor: func(in string) string {
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					if strings.Contains(f, "pg_log") && strings.HasSuffix(f, ".log") {
+						result = append(result, ".log")
+						break // Just check if at least one .log file exists
+					}
+				}
+				return strings.Join(result, "")
+			},
+		},
+		{
+			namespace: "pgv2",
+			// If the tool collects PostgreSQL log files for pgv2
+			name: "pgv2_pg_logs_exist",
+			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/*/pg_log/*.log'
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/pg_log/*.log"},
+			want:        []string{".log"},
+			skipForNone: true,
+			preprocessor: func(in string) string {
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					if strings.Contains(f, "pg_log") && strings.HasSuffix(f, ".log") {
+						result = append(result, ".log")
+						break // Just check if at least one .log file exists
+					}
+				}
+				return strings.Join(result, "")
+			},
+		},
+		{
+			namespace:   "pgv2",
+			name:        "pgv2_pgbackrest_log_list",
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/pgbackrest_log/*"},
+			want:        []string{"db-archive-push-async.log", "db-stanza-create.log"},
+			skipForNone: true,
+			preprocessor: func(in string) string {
+				required := map[string]struct{}{
+					"db-archive-push-async.log": {},
+					"db-stanza-create.log":      {},
+				}
+
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					b := path.Base(f)
+					if _, ok := required[b]; !ok {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
+						result = append(result, b)
+					}
+				}
+				slices.Sort(result)
+				return strings.Join(result, "\n")
+			},
+		},
+		{
+			namespace:   "pgv2",
+			name:        "pgv2_tools_log_list",
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/*/*"},
+			want:        []string{"patronictl-list.log", "pgbackrest-info.log"},
+			skipForNone: true,
+			preprocessor: func(in string) string {
+				required := map[string]struct{}{
+					"patronictl-list.log": {},
+					"pgbackrest-info.log": {},
+				}
+
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					b := path.Base(f)
+					if _, ok := required[b]; !ok {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
+						result = append(result, b)
+					}
+				}
+				slices.Sort(result)
+				return strings.Join(result, "\n")
+			},
+		},
+		{
+			namespace: "pxc",
+			// If pod logs are exported as one file per container
+			name: "pxc_container_logs_split_by_container",
+			// tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/pxc/*/*.log'
+			cmd:         []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/*.log"},
+			want:        []string{"logrotate.log", "logs.log", "pxc-init.log", "pxc.log"},
+			skipForNone: false,
+			preprocessor: func(in string) string {
+				required := map[string]struct{}{
+					"logrotate.log": {},
+					"logs.log":      {},
+					"pxc-init.log":  {},
+					"pxc.log":       {},
+				}
+
+				files := strings.Split(in, "\n")
+				var result []string
+				for _, f := range files {
+					rel := strings.TrimPrefix(f, "cluster-dump/pxc/")
+					parts := strings.Split(rel, "/")
+					if len(parts) != 2 {
+						continue
+					}
+
+					b := parts[1]
+					if _, ok := required[b]; !ok {
+						continue
+					}
+
+					if !slices.Contains(result, b) {
+						result = append(result, b)
+					}
+				}
+				slices.Sort(result)
+				return strings.Join(result, "\n")
+			},
+		},
+		{
+			namespace: "pxc",
+			name:      "pxc_describe_exists",
+			cmd:       []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/describe.txt"},
+			want:      []string{"describe.txt"},
+			preprocessor: func(in string) string {
+				for _, f := range strings.Split(in, "\n") {
+					if strings.HasSuffix(f, "/describe.txt") {
+						return "describe.txt"
+					}
+				}
+				return ""
+			},
+		},
+		{
+			namespace: "pxc",
+			name:      "pxc_describe_content",
+			cmd:       []string{"tar", "--to-command", "grep -m 1 -o Name:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/pxc/*/describe.txt"},
+			want:      []string{"Name:"},
+			preprocessor: func(in string) string {
+				if strings.Contains(in, "Name:") {
+					return "Name:"
+				}
+				return ""
+			},
+		},
 	}
 
-	if s.Namespace != "pxc" {
-		s.T().Skip("This test is specifically for pxc namespace")
+	// Crunchy clusters have the same layout as pgv2
+	for _, test := range tests {
+		if test.namespace == "pgv2" {
+			test.namespace = "crunchy"
+			test.name = strings.Replace(test.name, "pgv2", "crunchy", 1)
+			tests = append(tests, test)
+		}
+	}
+
+	// Filter tests for current namespace
+	nsTests := []struct {
+		namespace    string
+		name         string
+		cmd          []string
+		want         []string
+		skipForNone  bool
+		preprocessor func(string) string
+	}{}
+
+	for _, test := range tests {
+		if test.namespace == s.Namespace {
+			nsTests = append(nsTests, test)
+		}
+	}
+
+	if len(nsTests) == 0 {
+		s.T().Skip("No tests configured for namespace " + s.Namespace)
 	}
 
 	for _, resource := range s.Resources {
 		s.Run("Resource_"+resource, func() {
-			cmd := exec.Command(TOOL_PATH, "--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
-			err := cmd.Run()
+			err := s.runCollector("--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
 			s.NoError(err)
 
-			for _, test := range tests {
-				out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
-				if err != nil && resource == "none" {
+			for _, test := range nsTests {
+				if resource == "none" && test.skipForNone {
 					continue
 				}
+
+				out, err := exec.Command(test.cmd[0], test.cmd[1:]...).CombinedOutput()
 				s.NoError(err)
 				if test.preprocessor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
 					s.Failf("Preprocessor Check", "test %s\nresource:%s\nnamespace: %s\noutput is not as expected\nOutput: %s\nWanted: %s", test.name, resource, test.namespace, test.preprocessor(bytes.NewBuffer(out).String()), test.want)
@@ -367,12 +597,12 @@ func (s *CollectorSuite) TestResourceOption() {
 		{name: "psmdb", namespace: "psmdb", want: "3"},
 		{name: "pg", namespace: "pg", want: "3"},
 		{name: "pgv2", namespace: "pgv2", want: "3"},
+		{name: "crunchy", namespace: "crunchy", want: "2"},
 	}
 
 	for _, resource := range s.Resources {
 		s.Run("Resource_"+resource, func() {
-			cmd := exec.Command(TOOL_PATH, "--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
-			err := cmd.Run()
+			err := s.runCollector("--kubeconfig", s.KubeConfig, "--forwardport", s.ForwardPort, "--resource", resource)
 			s.NoError(err)
 
 			for _, test := range tests {
@@ -389,9 +619,78 @@ func (s *CollectorSuite) TestResourceOption() {
 				if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
 					s.Failf("Summary Check", "test %s\nresource %s\nnamespace %s\noutput is not as expected\nOutput: %s\nWanted: %s", test.name, resource, test.namespace, out, test.want)
 				}
+
+				if test.want != "0" {
+					err = validateSummaryByNamespace("cluster-dump.tar.gz", test.namespace)
+					s.NoErrorf(err, "summary validation failed for namespace %s, resource %s", test.namespace, resource)
+				}
 			}
 		})
 	}
+}
+
+func validateSummaryByNamespace(archivePath, namespace string) error {
+	switch namespace {
+	case "psmdb":
+		return validateSummary(archivePath, namespace, regexp.MustCompile(`# Report On`))
+	case "pgv2", "crunchy":
+		return validateSummary(archivePath, namespace, regexp.MustCompile(`COPY pg_get_class\b.*\n[^\\\n]`))
+	default:
+		return nil
+	}
+}
+
+func validateSummary(archivePath, namespace string, marker *regexp.Regexp) error {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	tarReader := tar.NewReader(gzr)
+	validated := 0
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+		if !strings.HasSuffix(header.Name, "/summary.txt") {
+			continue
+		}
+		if !strings.Contains(header.Name, "/"+namespace+"/") {
+			continue
+		}
+
+		content, err := io.ReadAll(tarReader)
+		if err != nil {
+			return err
+		}
+		if !marker.Match(content) {
+			return fmt.Errorf("summary file %s does not contain %s", header.Name, marker)
+		}
+
+		validated++
+	}
+
+	if validated == 0 {
+		return fmt.Errorf("no summary.txt files found for namespace %s", namespace)
+	}
+
+	return nil
 }
 
 func (s *CollectorSuite) TestPT_2453() {
@@ -407,16 +706,16 @@ func (s *CollectorSuite) TestPT_2453() {
 		{name: "psmdb", namespace: "psmdb", want: "0"},
 		{name: "pg", namespace: "pg", want: "0"},
 		{name: "pgv2", namespace: "pgv2", want: "0"},
+		{name: "crunchy", namespace: "crunchy", want: "0"},
 	}
 
 	for _, resource := range s.Resources {
 		s.Run("Resource_"+resource, func() {
-			cmd := exec.Command(TOOL_PATH,
+			err := s.runCollector(
 				"--kubeconfig", s.KubeConfig,
 				"--forwardport", s.ForwardPort,
 				"--resource", resource,
 				"--skip-pod-summary")
-			err := cmd.Run()
 			s.NoError(err)
 
 			for _, test := range tests {
@@ -438,15 +737,14 @@ var busyPortTested bool
 
 // PT-2169
 func (s *CollectorSuite) TestBusyPortError() {
-	if s.Namespace == "pgv2" {
+	if s.Namespace == "pgv2" || s.Namespace == "crunchy" {
 		s.Run("pg_gather_no_error", func() {
-			cmd := exec.Command(TOOL_PATH,
+			_ = s.runCollector(
 				"--kubeconfig", s.KubeConfig,
 				"--forwardport", s.ForwardPort,
 				"--resource", s.Namespace,
 			)
 
-			_ = cmd.Run()
 			testcmd := "tar -xf cluster-dump.tar.gz --wildcards \"*/summary.txt\" --to-command 'grep \"err: strconv.ParseInt\"' | wc -l"
 			out, err := exec.Command("sh", "-c", testcmd).Output()
 
@@ -469,13 +767,12 @@ func (s *CollectorSuite) TestBusyPortError() {
 	s.Run("strconv_error_on_busy_port", func() {
 		busyPort, _ := os.Getwd()
 
-		cmd := exec.Command(TOOL_PATH,
+		_ = s.runCollector(
 			"--kubeconfig", s.KubeConfig,
 			"--forwardport", busyPort,
 			"--resource", s.Namespace,
 		)
 
-		_ = cmd.Run()
 		testcmd := "tar -xf cluster-dump.tar.gz --wildcards \"*/summary.txt\" --to-command 'grep \"err: strconv.ParseInt\"' | wc -l"
 		out, err := exec.Command("sh", "-c", testcmd).Output()
 
@@ -538,16 +835,22 @@ func (s *CollectorSuite) TestSSLResourceOption() {
 				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/pgv2/*-cert", "ca.crt"), strings.Repeat("ca.crt", 2)},   // there are two files with ca.crt
 			},
 		},
+		{
+			name: "crunchy", namespace: "crunchy", cmdOut: []CmdCompare{
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/crunchy/pgo-root-cacert", "root.crt"), "root.crt"},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/crunchy/*-cert", "tls.crt"), strings.Repeat("tls.crt", 2)},
+				{PreareFindFileInTarCmd("cluster-dump.tar.gz", "cluster-dump/crunchy/*-cert", "ca.crt"), strings.Repeat("ca.crt", 2)},
+			},
+		},
 	}
 
 	for _, resource := range s.Resources {
 		s.Run("Resource_"+resource, func() {
-			cmd := exec.Command(TOOL_PATH,
+			err := s.runCollector(
 				"--kubeconfig", s.KubeConfig,
 				"--forwardport", s.ForwardPort,
 				"--resource", resource,
 				"--skip-pod-summary")
-			err := cmd.Run()
 			s.NoError(err)
 
 			for _, test := range tests {
@@ -614,12 +917,11 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 		}
 	}
 
-	cmd := exec.Command(TOOL_PATH,
+	err := s.runCollector(
 		"--kubeconfig", s.KubeConfig,
 		"--forwardport", s.ForwardPort,
 		"--resource", s.Namespace,
 	)
-	err := cmd.Run()
 	s.NoError(err)
 
 	out, err := exec.Command("tar", "-tf", "cluster-dump.tar.gz").Output()
@@ -693,6 +995,10 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 			fmt.Sprintf("%s/perconapgbackups.yaml", s.Namespace),
 			fmt.Sprintf("%s/perconapgrestores.yaml", s.Namespace),
 			fmt.Sprintf("%s/perconapgclusters.yaml", s.Namespace),
+			fmt.Sprintf("%s/postgresclusters.yaml", s.Namespace), // PT-2396
+		}, requiredNewFiles...),
+		"crunchy": append([]string{
+			fmt.Sprintf("%s/postgresclusters.yaml", s.Namespace),
 		}, requiredNewFiles...),
 	}
 
@@ -704,5 +1010,65 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 		for _, file := range files {
 			s.Contains(output, file, "Expected file %s not found in archive", file)
 		}
+	}
+}
+
+// PT-2448 - pt-k8s-debug-collector should not collect secret details of pgbouncer
+func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
+	if s.Namespace != "pgo" && s.Namespace != "pgv2" {
+		s.T().Skip("Only applicable to pgo and pgv2 namespaces")
+	}
+
+	for _, resource := range s.Resources {
+		s.Run("Resource_"+resource, func() {
+			err := s.runCollector(
+				"--kubeconfig", s.KubeConfig,
+				"--forwardport", s.ForwardPort,
+				"--resource", resource,
+				"--skip-pod-summary")
+			s.NoError(err)
+
+			testcmd := "tar -xf cluster-dump.tar.gz --to-command 'grep \"pgbouncer-frontend\"' 2>/dev/null | wc -l"
+			out, err := exec.Command("sh", "-c", testcmd).Output()
+			s.NoError(err)
+			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret details in archive files")
+
+			testcmd = "tar -xzf cluster-dump.tar.gz --wildcards '*/describe.txt' --to-command 'grep -E \"SecretName:.*pgbouncer\"' 2>/dev/null | wc -l"
+			out, err = exec.Command("sh", "-c", testcmd).Output()
+			s.NoError(err)
+			s.Equal("0", strings.TrimSpace(string(out)), "Should not find pgbouncer secret names in describe.txt files")
+		})
+	}
+}
+
+// PT-2558 - pg_log is collected from the log_directory reported by PostgreSQL
+func (s *CollectorSuite) TestCustomPgLogDirectory() {
+	if s.Namespace != "crunchy" {
+		s.T().Skip("Only applicable to crunchy namespace")
+	}
+
+	out, err := s.runCollectorOutput(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--skip-pod-summary",
+	)
+	s.NoError(err)
+	s.NotContains(string(out), "Failed to get log_directory")
+
+	pods, err := s.KubeClient.CoreV1().Pods(s.Namespace).List(s.T().Context(), metav1.ListOptions{
+		LabelSelector: "postgres-operator.crunchydata.com/instance",
+	})
+	s.Require().NoError(err)
+	s.Require().NotEmpty(pods.Items)
+
+	for _, pod := range pods.Items {
+		if pod.Status.Phase != corev1.PodRunning {
+			continue
+		}
+		testcmd := fmt.Sprintf("tar -tf cluster-dump.tar.gz --wildcards 'cluster-dump/%s/%s/pg_log%s/*.log' | wc -l", s.Namespace, pod.Name, utils.CRUNCHY_PG_LOG_DIRECTORY)
+		out, err = exec.Command("sh", "-c", testcmd).Output()
+		s.NoError(err)
+		s.NotEqual("0", strings.TrimSpace(string(out)), "Expected PostgreSQL log files from %s of pod %s in archive", utils.CRUNCHY_PG_LOG_DIRECTORY, pod.Name)
 	}
 }

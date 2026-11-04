@@ -56,6 +56,13 @@ my @args       = ($source_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max
 my $output;
 my $row;
 
+my ($orig_binlog_format_source) = $source_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica1) = $replica1_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica2) = $replica2_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+
+$source_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$source_dbh->do("SET binlog_format = 'STATEMENT'");
+
 # You must call this sub if the source 12345 or replica1 12346 is restarted,
 # else a replica might notice that its source went away and enter the "trying
 # to reconnect" state, and then replication will break as the tests continue.
@@ -81,6 +88,15 @@ for my $port ( qw(12346 12347) ) {
 }
 $replica1_dbh = $sb->get_dbh_for('replica1');
 $replica2_dbh = $sb->get_dbh_for('replica2');
+
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica1_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica2_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica2_dbh->do("START ${replica_name}");
 
 my $pos = PerconaTest::get_source_binlog_pos($source_dbh);
 
@@ -138,6 +154,15 @@ for my $port ( qw(12346 12347) ) {
 $replica1_dbh = $sb->get_dbh_for('replica1');
 $replica2_dbh = $sb->get_dbh_for('replica2');
 
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica1_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica2_dbh->do("SET binlog_format = 'STATEMENT'");
+$replica2_dbh->do("START ${replica_name}");
+
 # #############################################################################
 # Issue 982: --empty-replicate-table does not work with binlog-ignore-db
 # #############################################################################
@@ -162,6 +187,9 @@ diag(`echo "binlog-ignore-db=mysql" >> /tmp/12345/my.sandbox.cnf`);
 diag(`/tmp/12345/start >/dev/null`);
 restart_replica_threads();
 $source_dbh = $sb->get_dbh_for('source');
+
+$source_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$source_dbh->do("SET binlog_format = 'STATEMENT'");
 
 # Checksum the tables again in 1 chunk.  Since db percona isn't being
 # ignored, deleting old results in the repl table should replicate.
@@ -203,6 +231,9 @@ diag(`echo "binlog-do-db=mysql" >> /tmp/12345/my.sandbox.cnf`);
 diag(`/tmp/12345/start >/dev/null`);
 $source_dbh = $sb->get_dbh_for('source');
 restart_replica_threads();
+
+$source_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$source_dbh->do("SET binlog_format = 'STATEMENT'");
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(--no-check-replication-filters),
@@ -282,6 +313,9 @@ diag(`/tmp/12345/start >/dev/null`);
 restart_replica_threads();
 $source_dbh = $sb->get_dbh_for('source');
 
+$source_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$source_dbh->do("SET binlog_format = 'STATEMENT'");
+
 # Get the source's binlog pos so we can check its binlogs for USE statements
 $row = $source_dbh->selectrow_hashref("show ${source_status} status");
 
@@ -328,6 +362,13 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
+$source_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_source}'");
+$replica1_dbh->do("STOP ${replica_name}");
+$replica1_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica1}'");
+$replica1_dbh->do("START ${replica_name}");
+$replica2_dbh->do("STOP ${replica_name}");
+$replica2_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica2}'");
+$replica2_dbh->do("START ${replica_name}");
 $sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

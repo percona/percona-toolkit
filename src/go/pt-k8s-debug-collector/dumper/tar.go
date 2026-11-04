@@ -19,7 +19,7 @@ type tarWriter struct {
 }
 
 func NewTarWriter(filename string) (*tarWriter, error) {
-	f, err := os.Create(filename)
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
 	if err != nil {
 		return nil, err
 	}

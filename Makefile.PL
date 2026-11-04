@@ -21,7 +21,7 @@ MAKE_GOTOOLS
 
 WriteMakefile(
     NAME      => 'Percona::Toolkit',
-    VERSION   => '3.7.1',
+    VERSION   => '3.7.2',
     EXE_FILES => [ <bin/*> ],
     MAN1PODS  => {
       'docs/percona-toolkit.pod' => 'blib/man1/percona-toolkit.1p',
@@ -41,6 +41,6 @@ WriteMakefile(
     depend => {manifypods => gotools},
     PREREQ_PM    => {
         DBI           => 1.46,
-        DBD::mysql    => 3.0000_0,
+        DBD::mysql    => 5.0130_0,
     },
 );

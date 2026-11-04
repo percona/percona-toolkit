@@ -30,10 +30,19 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
 my $source_dbh = $sb->get_dbh_for('node1');
 my $source_dsn = $sb->dsn_for('node1');
+my $replica_dbh = $sb->get_dbh_for('replica1');
 
 if ( !$source_dbh ) {
     plan skip_all => 'Cannot connect to sandbox source';
 }
+
+my ($orig_binlog_format_source) = $source_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+my ($orig_binlog_format_replica) = $replica_dbh->selectrow_array(q{SELECT @@global.binlog_format});
+
+$source_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica_dbh->do("STOP ${replica_name}");
+$replica_dbh->do("SET GLOBAL binlog_format = 'STATEMENT'");
+$replica_dbh->do("START ${replica_name}");
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
@@ -47,6 +56,7 @@ $sb->load_file('source', "t/pt-online-schema-change/samples/pt-229.sql");
 my $num_rows = 40000;
 diag("Loading $num_rows into the table. This might take some time.");
 diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test test_a $num_rows`);
+$sb->wait_for_replicas();
 diag("$num_rows rows loaded. Starting tests.");
 $source_dbh->do("FLUSH TABLES");
 
@@ -147,6 +157,10 @@ $source_dbh->do("DROP DATABASE IF EXISTS test");
 # #############################################################################
 # Done.
 # #############################################################################
+$source_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_source}'");
+$replica_dbh->do("STOP ${replica_name}");
+$replica_dbh->do("SET GLOBAL binlog_format = '${orig_binlog_format_replica}'");
+$replica_dbh->do("START ${replica_name}");
 $sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

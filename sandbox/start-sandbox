@@ -122,13 +122,17 @@ make_sandbox() {
     fi
 
     if [ -n "$GTID" ]; then
-        if [ "$version" "<" '5.7' ]; then
-            echo "gtid_mode=on" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        if [ "$GTID" -eq 0 ]; then
+            echo "gtid_mode=off" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        else
+            if [ "$version" "<" '5.7' ]; then
+                echo "gtid_mode=on" >> ${TMP_DIR}/$port/my.sandbox.cnf
+            fi
+            if [ ! "$version" "<" '5.7' ]; then
+                echo "gtid_mode=ON_PERMISSIVE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+            fi
+            echo "enforce_gtid_consistency" >> ${TMP_DIR}/$port/my.sandbox.cnf
         fi
-        if [ ! "$version" "<" '5.7' ]; then
-            echo "gtid_mode=ON_PERMISSIVE" >> ${TMP_DIR}/$port/my.sandbox.cnf
-        fi
-        echo "enforce_gtid_consistency" >> ${TMP_DIR}/$port/my.sandbox.cnf
     fi
     if [ -n "$REPLICATION_THREADS" ]; then
         echo "${REPLICA_NAME}_parallel_workers=$REPLICATION_THREADS" >> ${TMP_DIR}/$port/my.sandbox.cnf

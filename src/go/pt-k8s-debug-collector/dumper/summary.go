@@ -65,7 +65,7 @@ func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName strin
 		summCmdName = "pt-mysql-summary"
 		summCmdArgs = []string{"--host=127.0.0.1", "--port=" + fmt.Sprintf("%d", localport), "--user=root", "--password=" + pass}
 
-	case "pgv2", "pg":
+	case "pgv2", "pg", "crunchy":
 		scriptURL := "https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql"
 		resp, err := http.Get(scriptURL)
 		if err != nil {
@@ -110,6 +110,8 @@ func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName strin
 
 		summCmdName = "pt-mongodb-summary"
 		summCmdArgs = []string{"--username=" + user, "--password=" + string(pass), "--authenticationDatabase=admin", "127.0.0.1:" + fmt.Sprintf("%d", localport)}
+	default:
+		return nil, errors.New("unimplemented podSummary")
 	}
 
 	var outb, errb bytes.Buffer

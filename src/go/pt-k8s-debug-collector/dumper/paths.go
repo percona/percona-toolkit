@@ -12,6 +12,11 @@ func (d *Dumper) PodSummaryPath(namespace, podName string) string {
 	return filepath.Join(d.location, namespace, podName, "summary.txt")
 }
 
+// /<location>/<namespace>/<podName>/describe.txt
+func (d *Dumper) PodDescribePath(namespace, podName string) string {
+	return filepath.Join(d.location, namespace, podName, "describe.txt")
+}
+
 // /<location>/<namespace>/<podName>/<individualFile>
 func (d *Dumper) PodIndividualFilesPath(namespace, podName, internalFilePath string) string {
 	return filepath.Join(d.location, namespace, podName, internalFilePath)

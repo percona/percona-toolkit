@@ -287,15 +287,14 @@ collect_system_data() {
 }
 
 collect_mysql_data_loop() {
-
    # SHOW FULL PROCESSLIST duplicates information in performance_schema.threads we collecting now
    # Keeping it for backward compatibility and may remove in the future
    if ! _should_skip "processlist"; then
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+      (echo $ts; $CMD_MYSQL $EXT_ARGV -Ee "SHOW FULL PROCESSLIST") \
       >> "$d/$p-processlist" &
    fi
 
-   (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM performance_schema.threads\G") \
+   (echo $ts; $CMD_MYSQL $EXT_ARGV -Ee "SELECT * FROM performance_schema.threads") \
    >> "$d/$p-threads" &
 
    if [ "$have_lock_waits_table" ]; then
@@ -461,7 +460,7 @@ lock_waits() {
          INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
          INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
          LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-         GROUP BY who_blocks ORDER BY num_waiters DESC\G"
+         GROUP BY who_blocks ORDER BY num_waiters DESC"
 
          sql2="SELECT SQL_NO_CACHE
             r.trx_id AS waiting_trx_id,
@@ -479,7 +478,7 @@ lock_waits() {
          INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
          INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
          LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-         ORDER BY wait_time DESC\G"
+         ORDER BY wait_time DESC"
       else
          sql1="SELECT SQL_NO_CACHE
             CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
@@ -490,7 +489,7 @@ lock_waits() {
          INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.BLOCKING_ENGINE_TRANSACTION_ID
          INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.REQUESTING_ENGINE_TRANSACTION_ID
          LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-         GROUP BY who_blocks ORDER BY num_waiters DESC\G"
+         GROUP BY who_blocks ORDER BY num_waiters DESC"
 
          sql2="SELECT SQL_NO_CACHE
             r.trx_id AS waiting_trx_id,
@@ -508,24 +507,24 @@ lock_waits() {
          INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.REQUESTING_ENGINE_TRANSACTION_ID
          INNER JOIN performance_schema.data_locks AS l ON w.REQUESTING_ENGINE_LOCK_ID = l.ENGINE_LOCK_ID
          LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-         ORDER BY wait_time DESC\G"
+         ORDER BY wait_time DESC"
       fi
 
-      $CMD_MYSQL $EXT_ARGV -e "$sql1"
-      $CMD_MYSQL $EXT_ARGV -e "$sql2"
+      $CMD_MYSQL $EXT_ARGV -Ee "$sql1"
+      $CMD_MYSQL $EXT_ARGV -Ee "$sql2"
 
       rm "$flag_file"
    fi
 }
 
 transactions() {
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id\G"
+   $CMD_MYSQL $EXT_ARGV -Ee "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id"
    if [ "${lock_table_p_s}" != "yes" ]; then
-      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS ORDER BY lock_trx_id\G"
-      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ORDER BY blocking_trx_id, requesting_trx_id\G"
+      $CMD_MYSQL $EXT_ARGV -Ee "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS ORDER BY lock_trx_id"
+      $CMD_MYSQL $EXT_ARGV -Ee "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ORDER BY blocking_trx_id, requesting_trx_id"
    else
-      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM performance_schema.data_locks ORDER BY ENGINE_TRANSACTION_ID\G"
-      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM performance_schema.data_lock_waits ORDER BY BLOCKING_ENGINE_TRANSACTION_ID, REQUESTING_ENGINE_TRANSACTION_ID\G"
+      $CMD_MYSQL $EXT_ARGV -Ee "SELECT SQL_NO_CACHE * FROM performance_schema.data_locks ORDER BY ENGINE_TRANSACTION_ID"
+      $CMD_MYSQL $EXT_ARGV -Ee "SELECT SQL_NO_CACHE * FROM performance_schema.data_lock_waits ORDER BY BLOCKING_ENGINE_TRANSACTION_ID, REQUESTING_ENGINE_TRANSACTION_ID"
    fi
 }
 
@@ -536,7 +535,7 @@ tokudb_status() {
     exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
-       $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE TOKUDB STATUS\G" \
+       $CMD_MYSQL $EXT_ARGV -Ee "SHOW ENGINE TOKUDB STATUS" \
          >> "$d/$p-tokudbstatus$n" || rm -f "$d/$p-tokudbstatus$n"
     fi
 }
@@ -547,7 +546,7 @@ innodb_status() {
    local innostat=""
 
    if ! _should_skip "innodbstatus"; then
-      $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
+      $CMD_MYSQL $EXT_ARGV -Ee "SHOW /*!40100 ENGINE*/ INNODB STATUS" \
          >> "$d/$p-innodbstatus$n"
       grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
          if [ -d /proc -a -d /proc/$mysqld_pid ]; then
@@ -571,7 +570,7 @@ rocksdb_status() {
     exit_code=$?
 
     if [ $exit_code -eq 0 ] && ! _should_skip "rocksdbstatus"; then
-        $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE ROCKSDB STATUS\G" \
+        $CMD_MYSQL $EXT_ARGV -Ee "SHOW ENGINE ROCKSDB STATUS" \
                    >> "$d/$p-rocksdbstatus$n" || rm -f "$d/$p-rocksdbstatus$n"
     fi
 }
@@ -582,21 +581,21 @@ ps_locks_transactions() {
    $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
-      local status="select t.processlist_id, ml.* from performance_schema.metadata_locks ml join performance_schema.threads t on (ml.owner_thread_id=t.thread_id)\G"
+      local status="select t.processlist_id, ml.* from performance_schema.metadata_locks ml join performance_schema.threads t on (ml.owner_thread_id=t.thread_id)"
       echo -e "\n$status\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -Ee "$status" >> $outfile
 
-      local status="select t.processlist_id, th.* from performance_schema.table_handles th left join performance_schema.threads t on (th.owner_thread_id=t.thread_id)\G"
+      local status="select t.processlist_id, th.* from performance_schema.table_handles th left join performance_schema.threads t on (th.owner_thread_id=t.thread_id)"
       echo -e "\n$status\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -Ee "$status" >> $outfile
 
-      local status="select t.processlist_id, et.* from performance_schema.events_transactions_current et join performance_schema.threads t using(thread_id)\G"
+      local status="select t.processlist_id, et.* from performance_schema.events_transactions_current et join performance_schema.threads t using(thread_id)"
       echo -e "\n$status\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -Ee "$status" >> $outfile
 
-      local status="select t.processlist_id, et.* from performance_schema.events_transactions_history_long et join performance_schema.threads t using(thread_id)\G"
+      local status="select t.processlist_id, et.* from performance_schema.events_transactions_history_long et join performance_schema.threads t using(thread_id)"
       echo -e "\n$status\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -Ee "$status" >> $outfile
   else
       echo "Performance schema is not enabled" >> $outfile
    fi
@@ -613,10 +612,10 @@ ps_prepared_statements() {
       echo "Prepared statements collection already running, skipping this iteration"
    else
       touch "$flag_file"
-      $CMD_MYSQL $EXT_ARGV -e "SELECT t.processlist_id, pse.* \
+      $CMD_MYSQL $EXT_ARGV -Ee "SELECT t.processlist_id, pse.* \
                                FROM performance_schema.prepared_statements_instances pse \
                                JOIN performance_schema.threads t \
-                               ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
+                               ON (pse.OWNER_THREAD_ID=t.thread_id)"
       rm "$flag_file"
    fi
 }
@@ -625,26 +624,26 @@ replica_status() {
    local outfile=$1
    local mysql_version=$2
 
-   local sql="SHOW REPLICA STATUS\G"
+   local sql="SHOW REPLICA STATUS"
    if [ "${mysql_version}" '<' "8.1" ]; then
-      sql="SHOW SLAVE STATUS\G"
+      sql="SHOW SLAVE STATUS"
    fi
 
    echo -e "\n$sql\n" >> $outfile
-   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -Ee "$sql" >> $outfile
 
    if [ "${mysql_version}" '>' "5.6" ]; then
-      local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)\G"
+      local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)"
       echo -e "\n$sql\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -Ee "$sql" >> $outfile
 
-      sql="SELECT * FROM performance_schema.replication_connection_status\G"
+      sql="SELECT * FROM performance_schema.replication_connection_status"
       echo -e "\n$sql\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -Ee "$sql" >> $outfile
 
-      sql="SELECT * FROM performance_schema.replication_applier_status JOIN performance_schema.replication_applier_status_by_coordinator USING(channel_name)\G"
+      sql="SELECT * FROM performance_schema.replication_applier_status JOIN performance_schema.replication_applier_status_by_coordinator USING(channel_name)"
       echo -e "\n$sql\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -Ee "$sql" >> $outfile
    fi
 
 }

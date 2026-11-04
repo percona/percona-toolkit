@@ -37,7 +37,7 @@ my ($output, $exit_code);
 my @args = (qw(--sync-to-source -t sakila.actor --print --chunk-size 100));
 
 my $to = 'TO';
-$ENV{FORK} eq 'mariadb' and $to = 'FOR';
+defined $ENV{FORK} and $ENV{FORK} eq 'mariadb' and $to = 'FOR';
 
 $sb->do_as_root(
    'source',
@@ -49,7 +49,7 @@ $sb->do_as_root(
    qq/SET DEFAULT ROLE `dba` ${to} `vinnie`@`%`/,
 );
 
-if ( $ENV{FORK} ne 'mariadb') {
+if ( not defined $ENV{FORK} or $ENV{FORK} ne 'mariadb') {
    diag(`/tmp/12345/use -h127.1 -P12345 -uvinnie -ppercona123 --ssl-mode=DISABLED --get-server-public-key -e 'select 1' 2>&1 > /dev/null`);
    diag(`/tmp/12345/use -h127.1 -P12346 -uvinnie -ppercona123 --ssl-mode=DISABLED --get-server-public-key -e 'select 1' 2>&1 > /dev/null`);
    diag(`/tmp/12345/use -h127.1 -P12347 -uvinnie -ppercona123 --ssl-mode=DISABLED --get-server-public-key -e 'select 1' 2>&1 > /dev/null`);
