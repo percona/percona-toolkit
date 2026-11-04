@@ -121,12 +121,12 @@ func main() {
 		conn.Close()
 	}
 
-	masterTmpl, err := template.New("master").Funcs(funcsMap()).Parse(templates.TPL)
+	reportTmpl, err := template.New("report").Funcs(funcsMap()).Parse(templates.TPL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := masterTmpl.ExecuteTemplate(os.Stdout, "report", info); err != nil {
+	if err := reportTmpl.ExecuteTemplate(os.Stdout, "report", info); err != nil {
 		log.Fatal(err)
 	}
 }
