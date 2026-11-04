@@ -51,6 +51,10 @@ Without ``--username`` against a server that has authentication enabled,
 the tool stops with exit code 3 and
 ``authentication required: pass --username/--password (and --authenticationDatabase)``.
 
+If the server cannot be reached or the login fails, the tool stops with
+exit code 5 and names the likely cause: wrong credentials, a TLS mismatch,
+nothing listening on the port, or a host name that cannot be resolved.
+
 Arbiters accept no logins: the driver does not log in to an arbiter, and the
 credentials are used only for the other members. On the arbiter host,
 through ``localhost``, the report shows
@@ -80,7 +84,11 @@ Options
 ``-a``, ``--authenticationDatabase``
   Specifies the database used to establish credentials and privileges
   with a MongoDB server.
-  By default, the ``admin`` database is used.
+  By default, the ``authSource`` or the database of ``--uri`` is used,
+  else ``admin``.
+  The option is ignored for mechanisms that authenticate against
+  ``$external`` (``GSSAPI``, ``MONGODB-X509``, ``PLAIN``, ``MONGODB-AWS``,
+  ``MONGODB-OIDC``).
 
 ``-c``, ``--no-version-check``
   Do not check for a newer version of ``pt-mongodb-summary``.
@@ -472,7 +480,7 @@ Code   Meaning
 2      The command line could not be parsed
 3      The server could not be identified, or a login is required
 4      The connection options are invalid
-5      The client could not be created or connected
+5      The client could not be created, connected or logged in
 =====  ==========================================================
 
 Authors

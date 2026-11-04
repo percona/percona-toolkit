@@ -230,7 +230,7 @@ func TestSetupFlags(t *testing.T) {
 			args: []string{},
 			want: cliOptions{
 				VersionCheckFlag: config.VersionCheckFlag{VersionCheck: true},
-				AuthDB:           "admin", LogLevel: "warn", OutputFormat: "text", RunningOpsSamples: 5, RunningOpsInterval: 1000,
+				LogLevel:         "warn", OutputFormat: "text", RunningOpsSamples: 5, RunningOpsInterval: 1000,
 			},
 		},
 		{
@@ -247,7 +247,7 @@ func TestSetupFlags(t *testing.T) {
 			args: []string{"--no-version-check", "--uri", "mongodb://h2:27019", "--username=cm", "--password=secret"},
 			want: cliOptions{
 				URI: "mongodb://h2:27019", User: "cm", Password: config.StdinRequestString("secret"),
-				AuthDB: "admin", LogLevel: "warn", OutputFormat: "text", RunningOpsSamples: 5, RunningOpsInterval: 1000,
+				LogLevel: "warn", OutputFormat: "text", RunningOpsSamples: 5, RunningOpsInterval: 1000,
 			},
 		},
 	}
@@ -330,6 +330,60 @@ func TestGetClientOptions(t *testing.T) {
 				URI: "not-a-valid-uri",
 			},
 			wantErr: true,
+		},
+		{
+			name: "Explicit AuthDB wins over the URI credentials' source",
+			opts: &cliOptions{
+				URI:    "mongodb://u:p@localhost:27017/?authSource=other",
+				AuthDB: "monitoring",
+			},
+			validate: func(t *testing.T, co *options.ClientOptions) {
+				assert.Equal(t, "monitoring", co.Auth.AuthSource)
+			},
+		},
+		{
+			name: "URI authSource used for flag credentials",
+			opts: &cliOptions{
+				URI:  "mongodb://localhost:27017/?authSource=custom",
+				User: "mon",
+			},
+			validate: func(t *testing.T, co *options.ClientOptions) {
+				assert.Equal(t, "custom", co.Auth.AuthSource)
+			},
+		},
+		{
+			name: "URI database used for flag credentials",
+			opts: &cliOptions{
+				URI:  "mongodb://localhost:27017/mydb",
+				User: "mon",
+			},
+			validate: func(t *testing.T, co *options.ClientOptions) {
+				assert.Equal(t, "mydb", co.Auth.AuthSource)
+			},
+		},
+		{
+			name: "Username only leaves the driver default",
+			opts: &cliOptions{User: "mon"},
+			validate: func(t *testing.T, co *options.ClientOptions) {
+				assert.Equal(t, "", co.Auth.AuthSource)
+			},
+		},
+		{
+			name: "AuthDB without a user sets no credential",
+			opts: &cliOptions{AuthDB: "mydb"},
+			validate: func(t *testing.T, co *options.ClientOptions) {
+				assert.Nil(t, co.Auth)
+			},
+		},
+		{
+			name: "External mechanism keeps $external",
+			opts: &cliOptions{
+				URI:    "mongodb://user@localhost:27017/?authMechanism=GSSAPI",
+				AuthDB: "admin",
+			},
+			validate: func(t *testing.T, co *options.ClientOptions) {
+				assert.Equal(t, "$external", co.Auth.AuthSource)
+			},
 		},
 		{
 			name: "AuthDB flag used when the URI has no authSource",

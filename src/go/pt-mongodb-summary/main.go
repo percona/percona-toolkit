@@ -34,6 +34,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 	"golang.org/x/term"
 
 	"github.com/percona/percona-toolkit/src/go/lib/config"
@@ -110,7 +111,7 @@ type cliOptions struct {
 	Port               string                    `name:"port"                   help:"Port to connect to"`
 	User               string                    `name:"username"               short:"u" help:"Username for MongoDB authentication"`
 	Password           config.StdinRequestString `name:"password"               short:"p" help:"Password for MongoDB authentication. Omit the value to be prompted." optional:""`
-	AuthDB             string                    `name:"authenticationDatabase" short:"a" help:"Authentication database" default:"admin"`
+	AuthDB             string                    `name:"authenticationDatabase" short:"a" help:"Authentication database (default: the authSource or database of --uri, else admin)"`
 	LogLevel           string                    `name:"log-level"              short:"l" help:"Log level: panic, fatal, error, warn, info, debug" default:"warn"`
 	OutputFormat       string                    `name:"output-format"          short:"f" help:"Output format: text or json" default:"text" enum:"text,json"`
 	SSLCAFile          string                    `name:"sslCAFile"              help:"SSL CA cert file used for authentication"`
@@ -231,6 +232,14 @@ func main() {
 	defer client.Disconnect(ctx) // nolint
 
 	start := time.Now()
+	if err := pingServer(ctx, client, b); err != nil {
+		log.Errorf("Cannot connect to MongoDB at %s after %s: %s%s", strings.Join(clientOptions.Hosts, ","),
+			time.Since(start).Round(100*time.Millisecond), connectHint(err, clientOptions.TLSConfig != nil), err)
+		os.Exit(cannotConnectToMongoDB) //nolint:gocritic
+	}
+	log.Debugf("ping took %s", time.Since(start))
+
+	start = time.Now()
 	sctx, cancel := b.ctx(ctx, snapshotCallTimeout)
 	snap := takeSnapshot(sctx, client)
 	cancel()
@@ -579,11 +588,21 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 		auth.Password = string(opts.Password)
 		auth.PasswordSet = true
 	}
-	if opts.AuthDB != "" && auth.AuthSource == "" {
-		auth.AuthSource = opts.AuthDB
-	}
-
 	if auth.Username != "" {
+		switch {
+		case opts.AuthDB != "" && usesExternalAuth(auth.AuthMechanism):
+			log.Warnf("[Warning] --authenticationDatabase %s is ignored: %s authenticates against $external\n",
+				opts.AuthDB, auth.AuthMechanism)
+		case opts.AuthDB != "":
+			auth.AuthSource = opts.AuthDB
+		case auth.AuthSource == "" && opts.URI != "":
+			if cs, err := connstring.Parse(opts.URI); err == nil {
+				auth.AuthSource = cs.AuthSource
+				if auth.AuthSource == "" {
+					auth.AuthSource = cs.Database
+				}
+			}
+		}
 		clientOptions.SetAuth(*auth)
 	}
 
