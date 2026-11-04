@@ -1,0 +1,24 @@
+// This program is copyright 2016-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
+package templates
+
+const DBInventory = `
+{{ if . -}}
+# Database Inventory #####################################################################################
+  {{printf "%-30s  %8s %-5s  %11s  %9s  %10s" "Database" "Size" "" "Collections" "Indexes" "TTL Indexes"}}
+{{- range . }}
+  {{printf "%-30s  %8.2f %-5s  %11d  %9d  %11d" .Name .SizeScaled .SizeUnit .Collections .Indexes .TTLIndexes}}
+{{- end }}
+{{- end }}
+`
