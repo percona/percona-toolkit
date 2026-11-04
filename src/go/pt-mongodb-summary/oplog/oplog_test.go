@@ -75,7 +75,7 @@ func TestGetOplogInfo(t *testing.T) {
 			}
 			assert.Equal(t, map[bool]int{true: 0, false: 1}[test.viaShardMap], self)
 
-			rows := GetOplogInfo(ctx, client, tu.TestClientOptions(test.port), members, 4, 5*time.Second)
+			rows, _ := GetOplogInfo(ctx, client, tu.TestClientOptions(test.port), members, 4, 5*time.Second)
 			require.Len(t, rows, len(members))
 
 			seen := map[string]bool{}

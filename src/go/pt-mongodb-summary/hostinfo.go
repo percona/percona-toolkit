@@ -50,6 +50,11 @@ type hostInfo struct {
 	Version        string
 	NodeType       string
 	IsArbiter      bool
+	ReplRole       string
+	Hidden         bool
+	DelaySecs      int64
+	Priority       *float64
+	Votes          *float64
 
 	FCV             *fcvInfo
 	IsLocal         bool

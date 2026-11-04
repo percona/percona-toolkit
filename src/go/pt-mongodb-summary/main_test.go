@@ -540,7 +540,7 @@ func TestFormatResultsDataNode(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, want := range []string{
-		"# Instances", "  4242 m1:27017 ", "\n       m2:27017 ", "PID Owner | mongod", "Version | 7.0.37",
+		"# Instances", "  4242  m1:27017  PRIMARY", "\n        m2:27017  SECONDARY", "PID Owner | mongod", "Version | 7.0.37",
 		"FCV | 6.0 (binary is 7.0)", "Built On | Linux x86_64", "Started | 2026-10-27 16:11:40 UTC",
 		"Process Type | replset", "# Command line arguments", "Users  : 1", "Roles  : 0",
 		"Open files limit | 64000\n", "Local checks | skipped: argv differs", "replication.replSet = rs0",
@@ -552,7 +552,7 @@ func TestFormatResultsDataNode(t *testing.T) {
 	}
 	assert.NotContains(t, string(out), "# Arbiter")
 	assert.NotContains(t, string(out), "not readable")
-	assert.NotContains(t, string(out), "     0 m2:27017")
+	assert.NotContains(t, string(out), " 0  m2:27017")
 	assert.Equal(t, []string{
 		"Instances", "This host", "Report On m1", "OS & Production Checks", "Command line arguments",
 		"Startup Options", "Connections & Profiling", "Security", "Change Streams", "Not collected",

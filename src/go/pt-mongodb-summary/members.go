@@ -19,7 +19,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -27,13 +26,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
 )
 
 const (
-	instancesServerSelection = time.Second
-
 	oplogHostCap   = 60
 	oplogHostTail  = 20
 	oplogLineWidth = 140
@@ -55,62 +51,61 @@ type oplogSet struct {
 
 func memberPhase(ctx context.Context, client *mongo.Client, co *options.ClientOptions, snap *snapshot, hi *hostInfo,
 	b *budget, g *gaps,
-) ([]proto.Members, []proto.OplogInfo) {
+) ([]proto.Members, []memberDetail, []proto.OplogInfo) {
 	if hi.NodeType == "mongod" {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	ctx, cancel := b.ctx(ctx, memberPhaseBudget)
 	defer cancel()
 
-	var (
-		wg       sync.WaitGroup
-		utilRows []proto.Members
-		utilErr  error
-	)
-
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-
-		utilRows, utilErr = util.GetReplicasetMembers(ctx, instancesOptions(co))
-	}()
-
 	members, err := oplog.Discover(ctx, client, snap.IsMaster, snap.IsMasterRaw, nodeCallTimeout)
+	members = withSetRole(members, snap.clusterRole())
 	if state := selfState(members); state != "" {
 		g.setMemberState(state)
 	}
 
-	var rows []proto.OplogInfo
+	var (
+		rows   []proto.OplogInfo
+		walked []oplog.Member
+	)
 	if len(members) > 0 {
-		rows = oplog.GetOplogInfo(ctx, client, co, members, collectWorkers, nodeCallTimeout)
+		rows, walked = oplog.GetOplogInfo(ctx, client, co, members, collectWorkers, nodeCallTimeout)
 	}
 
-	wg.Wait()
+	walked = withEntryFacts(walked, snap)
+	setHostRole(hi, walked)
 
-	instances, read, total := reconcileInstances(utilRows, withWalkStates(members, rows), utilErr)
+	instances, details, read, total := buildInstances(walked)
 	needs := discoveryNeeds(snap)
 	remoteArbiter := hi.IsArbiter && snap.ServerStatusErr != nil
-	addInstancesGap(g, hi.IsArbiter, remoteArbiter, needs, utilErr, instances, read, total)
 
-	if err != nil {
+	instancesErr := err
+	if hi.IsArbiter && requiresAuth(err) && len(members) > 0 {
+		logGap("Instances", err.Error(), true)
+		instancesErr = nil
+	}
+	addInstancesGap(g, hi.IsArbiter, remoteArbiter, needs, instancesErr, instances, read, total)
+
+	if err != nil && len(members) == 0 {
 		g.add("Oplog", "Oplog", needs, err)
 	}
 
-	return instances, rows
+	return instances, details, rows
 }
 
-func addInstancesGap(g *gaps, isArbiter, remoteArbiter bool, needs string, utilErr error, instances []proto.Members,
+func addInstancesGap(g *gaps, isArbiter, remoteArbiter bool, needs string, discoverErr error, instances []proto.Members,
 	read, total int,
 ) {
 	switch {
-	case remoteArbiter && requiresAuth(utilErr):
-		logGap("Instances", utilErr.Error(), true)
-	case utilErr != nil:
-		g.add("Instances", "Instances", needs, utilErr)
+	case remoteArbiter && requiresAuth(discoverErr):
+		logGap("Instances", discoverErr.Error(), true)
+	case discoverErr != nil:
+		g.add("Instances", "Instances", needs, discoverErr)
 	case instances == nil:
 		g.note("Instances", "Instances", "no members found", false)
+	case read < total && remoteArbiter:
+		logGap("Instances", fmt.Sprintf("partial: %d of %d members read", read, total), true)
 	case read < total:
 		g.note("Instances", "Instances", fmt.Sprintf("partial: %d of %d members read", read, total), isArbiter)
 	}
@@ -124,15 +119,6 @@ func discoveryNeeds(snap *snapshot) string {
 	return "replSetGetStatus: clusterMonitor"
 }
 
-func instancesOptions(co *options.ClientOptions) *options.ClientOptions {
-	timeout := instancesServerSelection
-	if co.ServerSelectionTimeout != nil && *co.ServerSelectionTimeout < timeout {
-		timeout = *co.ServerSelectionTimeout
-	}
-
-	return options.MergeClientOptions(co).SetServerSelectionTimeout(timeout)
-}
-
 func selfState(members []oplog.Member) string {
 	for _, m := range members {
 		if m.Self {
@@ -141,79 +127,6 @@ func selfState(members []oplog.Member) string {
 	}
 
 	return ""
-}
-
-func withWalkStates(members []oplog.Member, rows []proto.OplogInfo) []oplog.Member {
-	states := make(map[string]string, len(rows))
-	for _, r := range rows {
-		states[r.Hostname] = r.State
-	}
-
-	out := make([]oplog.Member, 0, max(len(members), len(rows)))
-	known := make(map[string]bool, len(members))
-
-	for _, m := range members {
-		if m.State == "" {
-			m.State = states[m.Host]
-		}
-		known[m.Host] = true
-		out = append(out, m)
-	}
-
-	for _, r := range rows {
-		if !known[r.Hostname] {
-			out = append(out, oplog.Member{Host: r.Hostname, Set: r.ReplicaSet, State: r.State})
-		}
-	}
-
-	return out
-}
-
-func reconcileInstances(rows []proto.Members, discovered []oplog.Member, utilErr error) ([]proto.Members, int, int) {
-	if utilErr != nil {
-		rows = nil
-	}
-
-	byHost := make(map[string]oplog.Member, len(discovered))
-	for _, m := range discovered {
-		byHost[m.Host] = m
-	}
-
-	out := make([]proto.Members, 0, len(rows)+len(discovered))
-	seen := make(map[string]bool, len(rows))
-	read := 0
-
-	for _, r := range rows {
-		seen[r.Name] = true
-
-		if r.StateStr != "" && r.Set != "" {
-			read++
-		} else if m, ok := byHost[r.Name]; ok {
-			if r.StateStr == "" {
-				r.StateStr = m.State
-			}
-			if r.Set == "" {
-				r.Set = m.Set
-			}
-		}
-
-		out = append(out, r)
-	}
-
-	for _, m := range discovered {
-		if !seen[m.Host] {
-			seen[m.Host] = true
-			out = append(out, proto.Members{Name: m.Host, StateStr: m.State, Set: m.Set})
-		}
-	}
-
-	if len(out) == 0 {
-		return nil, 0, 0
-	}
-
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-
-	return out, read, len(out)
 }
 
 func oplogView(rows []proto.OplogInfo) any {

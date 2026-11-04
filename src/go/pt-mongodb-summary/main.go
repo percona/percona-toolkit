@@ -171,6 +171,7 @@ type collectedInfo struct {
 	ClusterWideInfo   *clusterwideInfo
 	OplogInfo         []proto.OplogInfo
 	ReplicaMembers    []proto.Members
+	MemberDetails     []memberDetail
 	RunningOps        *opCounters
 	SecuritySettings  *security
 	HostInfo          *hostInfo
@@ -344,7 +345,7 @@ func collect(ctx context.Context, client *mongo.Client, co *options.ClientOption
 		ci.MongosInfo, ci.ShardsInfo = getShardingInfo(ctx, client, snap, hi, b, g)
 	}, sharding...)
 	runStage(b, g, "member phase", !standalone, func() {
-		ci.ReplicaMembers, ci.OplogInfo = memberPhase(ctx, client, co, snap, hi, b, g)
+		ci.ReplicaMembers, ci.MemberDetails, ci.OplogInfo = memberPhase(ctx, client, co, snap, hi, b, g)
 	}, collectError{Section: "Instances", Item: "Instances"}, collectError{Section: "Oplog", Item: "Oplog"})
 	runStage(b, g, "change streams", !arbiter && !standalone && majorVersion(hi.Version) >= 6, func() {
 		ci.ChangeStreams = getChangeStreams(ctx, client, snap, hi, b, g)

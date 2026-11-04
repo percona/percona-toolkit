@@ -15,6 +15,7 @@ package oplog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
@@ -108,7 +110,7 @@ func TestGetOplogInfoUnreachable(t *testing.T) {
 	}
 
 	start := time.Now()
-	rows := GetOplogInfo(ctx, nil, co, members, 4, 5*time.Second)
+	rows, _ := GetOplogInfo(ctx, nil, co, members, 4, 5*time.Second)
 	assert.Less(t, time.Since(start), 2*time.Second)
 
 	require.Len(t, rows, 2)
@@ -129,7 +131,7 @@ func TestGetOplogInfoUnreachable(t *testing.T) {
 
 	expired, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer cancel()
-	rows = GetOplogInfo(expired, nil, co, members[:1], 4, 5*time.Second)
+	rows, _ = GetOplogInfo(expired, nil, co, members[:1], 4, 5*time.Second)
 	require.Len(t, rows, 1)
 	assert.Equal(t, "timed out", rows[0].Error)
 	assert.Equal(t, context.DeadlineExceeded.Error(), rows[0].ErrorDetail)
@@ -139,15 +141,19 @@ type fakeRead struct {
 	mu    sync.Mutex
 	calls []string
 	peers map[string][]Member
+	found map[string]facts
 	fn    func(ctx context.Context, m Member, row *proto.OplogInfo) error
 }
 
-func (f *fakeRead) read(ctx context.Context, m Member, row *proto.OplogInfo) ([]Member, error) {
+func (f *fakeRead) read(ctx context.Context, m Member, row *proto.OplogInfo) (facts, error) {
 	f.mu.Lock()
 	f.calls = append(f.calls, m.Host)
 	f.mu.Unlock()
 
-	return f.peers[m.Host], f.fn(ctx, m, row)
+	res := f.found[m.Host]
+	res.peers = f.peers[m.Host]
+
+	return res, f.fn(ctx, m, row)
 }
 
 func withData(row *proto.OplogInfo, hours float64) {
@@ -308,4 +314,187 @@ func TestWalkAuthFailureConcurrent(t *testing.T) {
 		assert.Contains(t, r.Error, "authentication failed", r.Hostname)
 	}
 	assert.Empty(t, (&walker{read: f.read}).walk(context.Background(), nil, 4))
+}
+
+func mustMarshal(t *testing.T, v any) bson.Raw {
+	t.Helper()
+
+	b, err := bson.Marshal(v)
+	require.NoError(t, err)
+
+	return b
+}
+
+func float(v float64) *float64 {
+	return &v
+}
+
+func TestParseConfig(t *testing.T) {
+	doc := mustMarshal(t, bson.D{{Key: "config", Value: bson.D{
+		{Key: "_id", Value: "rs"},
+		{Key: "members", Value: bson.A{
+			bson.D{{Key: "host", Value: "a:1"}, {Key: "priority", Value: 2.0}, {Key: "votes", Value: int32(1)}},
+			bson.D{
+				{Key: "host", Value: "h:1"}, {Key: "priority", Value: int32(0)}, {Key: "votes", Value: int32(0)},
+				{Key: "hidden", Value: true}, {Key: "secondaryDelaySecs", Value: int64(3600)},
+			},
+			bson.D{{Key: "host", Value: "old:1"}, {Key: "priority", Value: 0.5}, {Key: "votes", Value: int32(1)},
+				{Key: "slaveDelay", Value: int32(120)}},
+			bson.D{{Key: "priority", Value: 1.0}},
+		}},
+	}}})
+
+	cfg := parseConfig(doc)
+
+	require.Len(t, cfg, 3)
+	assert.Equal(t, Member{Host: "a:1", Priority: float(2), Votes: float(1)}, cfg["a:1"])
+	assert.Equal(t, Member{Host: "h:1", Priority: float(0), Votes: float(0), Hidden: true, DelaySecs: 3600}, cfg["h:1"])
+	assert.Equal(t, Member{Host: "old:1", Priority: float(0.5), Votes: float(1), DelaySecs: 120}, cfg["old:1"])
+	assert.Empty(t, parseConfig(mustMarshal(t, bson.D{{Key: "ok", Value: 1.0}})))
+}
+
+func TestMembersFromShardMapSetRole(t *testing.T) {
+	doc := mustMarshal(t, bson.D{{Key: "map", Value: bson.D{
+		{Key: "config", Value: "cfg/c1:1,c2:1"},
+		{Key: "sh1", Value: "sh1/s1:1,s2:1"},
+	}}})
+
+	got := map[string]Member{}
+	for _, m := range membersFromShardMap(doc) {
+		got[m.Host] = m
+	}
+
+	require.Len(t, got, 4)
+	assert.Equal(t, Member{Host: "c1:1", Set: "cfg", SetRole: "CONFIGSVR", ViaShardMap: true}, got["c1:1"])
+	assert.Equal(t, "CONFIGSVR", got["c2:1"].SetRole)
+	assert.Equal(t, Member{Host: "s1:1", Set: "sh1", SetRole: "SHARDSVR", ViaShardMap: true}, got["s1:1"])
+	assert.Equal(t, "SHARDSVR", got["s2:1"].SetRole)
+}
+
+func TestWalkMembers(t *testing.T) {
+	f := &fakeRead{
+		peers: map[string][]Member{
+			"a:1": {
+				{Host: "a:1", Set: "rs", State: "PRIMARY", Self: true},
+				{Host: "b:1", Set: "rs", State: "SECONDARY"},
+				{Host: "arb:1", Set: "rs", State: "ARBITER", Arbiter: true},
+			},
+		},
+		found: map[string]facts{
+			"a:1": {config: map[string]Member{
+				"a:1":   {Host: "a:1", Priority: float(2), Votes: float(1)},
+				"b:1":   {Host: "b:1", Priority: float(1), Votes: float(1), Hidden: true, DelaySecs: 60},
+				"arb:1": {Host: "arb:1", Priority: float(0), Votes: float(1)},
+			}},
+			"b:1": {pid: 202, engine: proto.StorageEngine{Name: "wiredTiger", Persistent: true}},
+		},
+		fn: func(_ context.Context, m Member, row *proto.OplogInfo) error {
+			if m.Host == "b:1" {
+				row.State = "SECONDARY"
+			}
+			withData(row, 10)
+
+			return nil
+		},
+	}
+
+	members := []Member{{Host: "a:1", Set: "rs", State: "PRIMARY", Self: true, SetRole: "SHARDSVR"}}
+	w := &walker{read: f.read, timeout: time.Second}
+	rows := w.walk(context.Background(), members, 1)
+	got := w.members(members, rows)
+
+	require.Len(t, got, 3)
+	byHost := map[string]Member{}
+	for _, m := range got {
+		byHost[m.Host] = m
+	}
+
+	assert.Equal(t, Member{
+		Host: "a:1", Set: "rs", State: "PRIMARY", Self: true, SetRole: "SHARDSVR",
+		Priority: float(2), Votes: float(1),
+	}, byHost["a:1"])
+	assert.Equal(t, Member{
+		Host: "b:1", Set: "rs", State: "SECONDARY", SetRole: "SHARDSVR", Pid: 202,
+		Engine:   proto.StorageEngine{Name: "wiredTiger", Persistent: true},
+		Priority: float(1), Votes: float(1), Hidden: true, DelaySecs: 60,
+	}, byHost["b:1"])
+	assert.Equal(t, Member{
+		Host: "arb:1", Set: "rs", State: "ARBITER", Arbiter: true, SetRole: "SHARDSVR",
+		Priority: float(0), Votes: float(1),
+	}, byHost["arb:1"])
+}
+
+func TestMembersFromReplStatusKeepsStatus(t *testing.T) {
+	doc := mustMarshal(t, bson.D{
+		{Key: "set", Value: "rs"},
+		{Key: "members", Value: bson.A{
+			bson.D{{Key: "_id", Value: int32(0)}, {Key: "name", Value: "a:1"}, {Key: "stateStr", Value: "PRIMARY"},
+				{Key: "state", Value: int32(1)}, {Key: "health", Value: 1.0}, {Key: "uptime", Value: int32(100)}},
+		}},
+	})
+
+	members := membersFromReplStatus(doc)
+
+	require.Len(t, members, 1)
+	uptime, ok := members[0].Status.Lookup("uptime").Int32OK()
+	require.True(t, ok)
+	assert.Equal(t, int32(100), uptime)
+}
+
+func TestWalkMembersStatusFromPeers(t *testing.T) {
+	status := mustMarshal(t, bson.D{{Key: "name", Value: "s1:1"}, {Key: "uptime", Value: int32(7)}})
+	f := &fakeRead{
+		peers: map[string][]Member{"s1:1": {{Host: "s1:1", Set: "sh1", State: "PRIMARY", Self: true, Status: status}}},
+		fn:    func(context.Context, Member, *proto.OplogInfo) error { return nil },
+	}
+
+	members := []Member{{Host: "s1:1", Set: "sh1", SetRole: "SHARDSVR", ViaShardMap: true}}
+	w := &walker{read: f.read, timeout: time.Second}
+	got := w.members(members, w.walk(context.Background(), members, 1))
+
+	require.Len(t, got, 1)
+	assert.Equal(t, status, got[0].Status)
+	assert.True(t, got[0].ViaShardMap)
+}
+
+func TestProcessFacts(t *testing.T) {
+	pid, engine := processFacts(mustMarshal(t, bson.D{
+		{Key: "pid", Value: int64(31)},
+		{Key: "storageEngine", Value: bson.D{
+			{Key: "name", Value: "wiredTiger"}, {Key: "supportsCommittedReads", Value: true},
+			{Key: "readOnly", Value: false}, {Key: "persistent", Value: true},
+		}},
+	}))
+
+	assert.Equal(t, int64(31), pid)
+	assert.Equal(t, proto.StorageEngine{Name: "wiredTiger", SupportsCommittedReads: true, Persistent: true}, engine)
+
+	pid, engine = processFacts(mustMarshal(t, bson.D{{Key: "ok", Value: 1.0}}))
+	assert.Zero(t, pid)
+	assert.Equal(t, proto.StorageEngine{}, engine)
+}
+
+func TestWalkMembersStateFromPeers(t *testing.T) {
+	down := mustMarshal(t, bson.D{{Key: "name", Value: "b:1"}, {Key: "health", Value: 0.0}, {Key: "state", Value: int32(8)}})
+	f := &fakeRead{
+		peers: map[string][]Member{"a:1": {
+			{Host: "a:1", Set: "sh1", State: "PRIMARY", Self: true},
+			{Host: "b:1", Set: "sh1", State: "DOWN", Status: down},
+		}},
+		fn: func(_ context.Context, m Member, _ *proto.OplogInfo) error {
+			if m.Host == "b:1" {
+				return errors.New("connection refused")
+			}
+
+			return nil
+		},
+	}
+
+	members := []Member{{Host: "a:1", Set: "sh1", ViaShardMap: true}, {Host: "b:1", Set: "sh1", ViaShardMap: true}}
+	w := &walker{read: f.read, timeout: time.Second}
+	got := w.members(members, w.walk(context.Background(), members, 1))
+
+	require.Len(t, got, 2)
+	assert.Equal(t, "DOWN", got[1].State)
+	assert.Equal(t, down, got[1].Status)
 }

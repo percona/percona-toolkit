@@ -169,11 +169,11 @@ Output example
 .. code-block:: none
 
    # Instances ##############################################################################################
-     PID    Host                         Type                      ReplSet                   Engine
-        1 localhost:37018                PRIMARY                   rs                    wiredTiger
-        1 localhost:37019                SECONDARY                 rs                    wiredTiger
-        1 localhost:37020                ARBITER                   rs                    wiredTiger
-        1 localhost:37021                SECONDARY                 rs                    wiredTiger
+     PID  Host             Type                ReplSet  Engine      Priority  Votes
+       1  localhost:37018  PRIMARY             rs       wiredTiger         2      1
+       1  localhost:37019  SECONDARY           rs       wiredTiger         1      1
+          localhost:37020  ARBITER             rs                          0      1
+       1  localhost:37021  SECONDARY (hidden)  rs       wiredTiger         0      0
 
    # This host
    # Report On db-host:37018 ########################################
@@ -184,7 +184,7 @@ Output example
                     Built On | Linux x86_64
                      Started | 2026-11-03 19:54:38 UTC
                      Datadir | /data/db
-                Process Type | replset
+                Process Type | PRIMARY
                      ReplSet | rs
                  Repl Status |
 
@@ -303,18 +303,26 @@ Sections appear in this order:
 
   The members of every replica set, from ``replSetGetStatus``
   on each member (through ``getShardMap`` on mongos).
-  Members that could not be read keep the state seen by the oplog discovery,
-  with an empty PID and engine.
+  PID and engine come from each member's own ``serverStatus`` and stay empty
+  for members that could not be read, such as arbiters and unreachable members.
+  Type adds ``(hidden)`` and ``(delayed N s)``, and ``SHARDSVR/`` or ``CONFIGSVR/``
+  on shard and config server members.
+  Priority and Votes come from ``replSetGetConfig``.
+  Members that could not be read keep the state seen by the oplog discovery.
   ``no replica sets found`` is printed only for a standalone server.
 
 * **This host**
 
   Version, FCV (``getParameter``), build, start time (server time
-  minus uptime, in UTC), data directory, process type and replica set,
+  minus uptime, in UTC), data directory, role and replica set,
   from ``isMaster``, ``hostInfo``, ``getCmdLineOpts`` and ``serverStatus``.
   The executable path, its user and the number of local ``mongod`` processes
   are shown only when the tool runs on the same host as the server
   (see `Local checks`_). On arbiters a notice explains what is not collected.
+  Process Type is the member's role as in **Instances** (from ``replSetGetStatus``
+  and ``replSetGetConfig``), for example ``PRIMARY``,
+  ``SECONDARY (hidden)``, ``SHARDSVR/PRIMARY`` or ``ARBITER``; mongos and a
+  standalone server show ``mongos`` and ``mongod``.
 
 * **OS & Production Checks**
 
@@ -449,7 +457,7 @@ JSON output
 ``--output-format json`` prints the same data with the Go field names as keys.
 Values that are unknown are ``null``. New keys: ``OSChecks``, ``StartupOptions``,
 ``WiredTiger``, ``Memory``, ``Connections``, ``Profiling``, ``ChangeStreams``,
-``DatabaseInventory``, ``ShardsInfo``, and new fields in ``HostInfo``,
+``DatabaseInventory``, ``ShardsInfo``, ``MemberDetails``, and new fields in ``HostInfo``,
 ``RunningOps``, ``SecuritySettings`` and ``OplogInfo``.
 Changes to existing keys:
 
@@ -460,9 +468,15 @@ Changes to existing keys:
 * ``MongosInfo`` is ``null`` except on mongos and config server members.
 * ``OplogInfo`` has one entry per member of every replica set; ``[0]`` is still
   the shortest window.
-* ``ReplicaMembers`` entries for members that could not be read are filled
-  from the oplog discovery: their ``Health`` and ``State`` are ``0``, meaning
-  unknown, and only ``StateStr`` carries the member state.
+* ``ReplicaMembers`` entries come from ``replSetGetStatus`` as seen by the
+  member that reported them. ``ID`` is the member's own PID and
+  ``StorageEngine`` its own engine, both empty when the member could not be
+  read (``ID`` used to repeat this host's PID). Members known only from
+  ``getShardMap`` or ``isMaster`` have ``Health`` and ``State`` ``0``,
+  meaning unknown, and only ``StateStr`` carries the member state.
+* ``MemberDetails`` lists ``{Host, Priority, Votes, Hidden, DelaySecs}`` for
+  every member; ``Priority`` and ``Votes`` are ``null`` when
+  ``replSetGetConfig`` could not be read.
 * ``Errors`` lists ``{Section, Item, Code, Reason}`` objects for
   **Not collected**.
 * ``RunningOps.Insert`` ... ``Command`` keep ``Min``, ``Max``, ``Total``

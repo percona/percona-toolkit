@@ -45,7 +45,7 @@ const HostInfo = `
 {{- if .IsLocal }}
                 Processes | {{.ProcProcessCount}}
 {{- end }}
-             Process Type | {{.NodeType}}
+             Process Type | {{ if .ReplRole }}{{ .ReplRole }}{{ else }}{{ .NodeType }}{{ end }}
 {{- if .ReplicasetName }}
                   ReplSet | {{.ReplicasetName}}
               Repl Status |

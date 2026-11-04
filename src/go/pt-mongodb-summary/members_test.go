@@ -282,56 +282,6 @@ func TestFormatOplog(t *testing.T) {
 	}
 }
 
-func TestReconcileInstances(t *testing.T) {
-	discovered := []oplog.Member{
-		{Host: "a:1", Set: "rs", State: "PRIMARY", Self: true},
-		{Host: "b:1", Set: "rs", State: "SECONDARY"},
-		{Host: "c:1", Set: "rs", State: "ARBITER", Arbiter: true},
-		{Host: "d:1", Set: "rs", State: "SECONDARY"},
-	}
-	util := []proto.Members{
-		{Name: "a:1", StateStr: "PRIMARY", Set: "rs", ID: 11},
-		{Name: "b:1"},
-		{Name: "c:1", StateStr: "ARBITER", Set: "rs"},
-		{Name: "x:1", StateStr: "SHARDSVR"},
-	}
-
-	out, read, total := reconcileInstances(util, discovered, nil)
-	assert.Equal(t, []proto.Members{
-		{Name: "a:1", StateStr: "PRIMARY", Set: "rs", ID: 11},
-		{Name: "b:1", StateStr: "SECONDARY", Set: "rs"},
-		{Name: "c:1", StateStr: "ARBITER", Set: "rs"},
-		{Name: "d:1", StateStr: "SECONDARY", Set: "rs"},
-		{Name: "x:1", StateStr: "SHARDSVR"},
-	}, out)
-	assert.Equal(t, 2, read)
-	assert.Equal(t, 5, total)
-
-	out, read, total = reconcileInstances(nil, discovered, errors.New("cannot getShardMap"))
-	assert.Equal(t, []proto.Members{
-		{Name: "a:1", StateStr: "PRIMARY", Set: "rs"},
-		{Name: "b:1", StateStr: "SECONDARY", Set: "rs"},
-		{Name: "c:1", StateStr: "ARBITER", Set: "rs"},
-		{Name: "d:1", StateStr: "SECONDARY", Set: "rs"},
-	}, out)
-	assert.Less(t, read, total)
-	assert.Equal(t, 0, read)
-	assert.Equal(t, 4, total)
-
-	out, read, total = reconcileInstances(util[:1], discovered[:1], nil)
-	assert.Equal(t, util[:1], out)
-	assert.Equal(t, 1, read)
-	assert.Equal(t, 1, total)
-
-	out, read, total = reconcileInstances(nil, nil, errors.New("timed out"))
-	assert.Nil(t, out)
-	assert.Zero(t, read)
-	assert.Zero(t, total)
-
-	out, _, _ = reconcileInstances([]proto.Members{}, nil, nil)
-	assert.Nil(t, out)
-}
-
 func remoteArbiterSnapshot(t *testing.T, entry, member string) *snapshot {
 	t.Helper()
 
@@ -363,7 +313,7 @@ func TestMemberPhaseUnreachable(t *testing.T) {
 	g := &gaps{isArbiter: true}
 
 	start := time.Now()
-	members, rows := memberPhase(context.Background(), client, co, snap, newArbiterHostInfo(snap.IsMaster),
+	members, details, rows := memberPhase(context.Background(), client, co, snap, newArbiterHostInfo(snap.IsMaster),
 		newBudget(time.Minute), g)
 	assert.Less(t, time.Since(start), 3*time.Second)
 
@@ -373,6 +323,7 @@ func TestMemberPhaseUnreachable(t *testing.T) {
 	}
 	sort.Slice(want, func(i, j int) bool { return want[i].Name < want[j].Name })
 	assert.Equal(t, want, members)
+	assert.Equal(t, []memberDetail{{Host: want[0].Name}, {Host: want[1].Name}}, details)
 
 	require.Len(t, rows, 2)
 	byHost := map[string]proto.OplogInfo{}
@@ -400,7 +351,7 @@ func TestMemberPhaseBudget(t *testing.T) {
 	g := &gaps{isArbiter: true}
 
 	start := time.Now()
-	_, rows := memberPhase(context.Background(), client, co, snap, newArbiterHostInfo(snap.IsMaster),
+	_, _, rows := memberPhase(context.Background(), client, co, snap, newArbiterHostInfo(snap.IsMaster),
 		newBudget(500*time.Millisecond), g)
 	assert.Less(t, time.Since(start), 2*time.Second)
 
@@ -475,6 +426,14 @@ func TestAddInstancesGap(t *testing.T) {
 	addInstancesGap(g, true, false, needs, noLogin, members, 0, 4)
 	assert.Equal(t, []collectError{{Section: "Instances", Item: "Instances", Reason: remoteArbiterReason}}, g.list)
 
+	hook.Reset()
+	g = &gaps{isArbiter: true}
+	addInstancesGap(g, true, true, needs, nil, members, 0, 3)
+	assert.Empty(t, g.list)
+	require.Len(t, hook.AllEntries(), 1)
+	assert.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+	assert.Contains(t, hook.LastEntry().Message, "partial: 0 of 3 members read")
+
 	g = &gaps{isArbiter: true}
 	addInstancesGap(g, true, true, needs, errors.New("connection reset by peer"), members, 0, 4)
 	assert.Equal(t, []collectError{{Section: "Instances", Item: "Instances", Reason: "connection reset by peer"}}, g.list)
@@ -489,36 +448,31 @@ func TestSelfState(t *testing.T) {
 	assert.Empty(t, selfState(nil))
 }
 
-func TestInstancesOptions(t *testing.T) {
-	opts, err := getClientOptions(&cliOptions{Host: "db", Port: "27018", User: "u", Password: "p"})
-	require.NoError(t, err)
-
-	copied := instancesOptions(opts)
-	require.NotNil(t, copied.ServerSelectionTimeout)
-	assert.Equal(t, time.Second, *copied.ServerSelectionTimeout)
-	assert.Equal(t, 3*time.Second, *opts.ServerSelectionTimeout)
-	assert.Equal(t, opts.Hosts, copied.Hosts)
-	assert.Equal(t, opts.Auth, copied.Auth)
-	assert.Equal(t, opts.Timeout, copied.Timeout)
-
-	short := 100 * time.Millisecond
-	opts.ServerSelectionTimeout = &short
-	assert.Equal(t, short, *instancesOptions(opts).ServerSelectionTimeout)
-}
-
-func TestWithWalkStates(t *testing.T) {
-	members := []oplog.Member{{Host: "a:1", Set: "sh1", ViaShardMap: true}, {Host: "b:1", Set: "sh1", State: "DOWN"}}
-	rows := []proto.OplogInfo{
-		{Hostname: "b:1", ReplicaSet: "sh1", State: "SECONDARY"},
-		{Hostname: "a:1", ReplicaSet: "sh1", State: "PRIMARY"},
-		{Hostname: "arb:1", ReplicaSet: "sh1", State: "ARBITER", Error: "no oplog on an arbiter"},
+func TestMemberPhaseReplStatusDenied(t *testing.T) {
+	denied := func(cmd string) bson.D {
+		return bson.D{
+			{Key: "ok", Value: 0.0}, {Key: "code", Value: int32(13)}, {Key: "codeName", Value: "Unauthorized"},
+			{Key: "errmsg", Value: "not authorized on admin to execute command { " + cmd + ": 1 }"},
+		}
 	}
+	addr := noLoginServer(t, func(addr string) bson.D {
+		return bson.D{
+			{Key: "ismaster", Value: true}, {Key: "setName", Value: "rs"},
+			{Key: "hosts", Value: bson.A{addr}}, {Key: "me", Value: addr},
+		}
+	}, map[string]bson.D{"replSetGetStatus": denied("replSetGetStatus"), "getShardMap": denied("getShardMap")})
 
-	assert.Equal(t, []oplog.Member{
-		{Host: "a:1", Set: "sh1", State: "PRIMARY", ViaShardMap: true},
-		{Host: "b:1", Set: "sh1", State: "DOWN"},
-		{Host: "arb:1", Set: "sh1", State: "ARBITER"},
-	}, withWalkStates(members, rows))
-	assert.Equal(t, members, withWalkStates(members, nil))
-	assert.Empty(t, withWalkStates(nil, nil))
+	client, co := fakeClient(t, addr)
+	snap := takeSnapshot(context.Background(), client)
+	require.NoError(t, snap.IsMasterErr)
+	g := &gaps{}
+
+	members, _, _ := memberPhase(context.Background(), client, co, snap, &hostInfo{NodeType: "replset"},
+		newBudget(time.Minute), g)
+
+	require.Len(t, members, 1)
+	assert.Equal(t, []collectError{{
+		Section: "Instances", Item: "Instances", Code: 13,
+		Reason: "not authorized (needs replSetGetStatus: clusterMonitor)",
+	}}, g.list)
 }

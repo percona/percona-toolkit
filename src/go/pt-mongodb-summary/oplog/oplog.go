@@ -63,6 +63,21 @@ type Member struct {
 	Self        bool
 	Arbiter     bool
 	ViaShardMap bool
+	SetRole     string
+	Pid         int64
+	Engine      proto.StorageEngine
+	Priority    *float64
+	Votes       *float64
+	Hidden      bool
+	DelaySecs   int64
+	Status      bson.Raw
+}
+
+type facts struct {
+	peers  []Member
+	pid    int64
+	engine proto.StorageEngine
+	config map[string]Member
 }
 
 func Discover(ctx context.Context, client *mongo.Client, md proto.MasterDoc, isMaster bson.Raw,
@@ -83,12 +98,19 @@ func Discover(ctx context.Context, client *mongo.Client, md proto.MasterDoc, isM
 		}
 	}
 
+	code := errorCode(err)
+	expected := code == codeNoReplicationEnabled || code == codeNotYetInitialized
+
 	if members := membersFromIsMaster(md, isMaster); len(members) > 0 {
-		return members, nil
+		if expected {
+			return members, nil
+		}
+
+		return members, err
 	}
 
-	switch code := errorCode(err); {
-	case code == codeNoReplicationEnabled || code == codeNotYetInitialized:
+	switch {
+	case expected:
 		return nil, nil
 	case md.Msg == "isdbgrid" && smErr != nil:
 		return nil, smErr
@@ -121,6 +143,7 @@ func membersFromReplStatus(doc bson.Raw) []Member {
 			State:   state,
 			Self:    self,
 			Arbiter: code == stateArbiter || state == "ARBITER",
+			Status:  m,
 		})
 	}
 
@@ -179,13 +202,21 @@ func membersFromShardMap(doc bson.Raw) []Member {
 			}
 
 			seen[host] = true
-			members = append(members, Member{Host: host, Set: set, ViaShardMap: true})
+			members = append(members, Member{Host: host, Set: set, SetRole: shardMapRole(e.Key()), ViaShardMap: true})
 		}
 	}
 
 	sortMembers(members)
 
 	return members
+}
+
+func shardMapRole(key string) string {
+	if key == "config" {
+		return "CONFIGSVR"
+	}
+
+	return "SHARDSVR"
 }
 
 func membersFromIsMaster(md proto.MasterDoc, raw bson.Raw) []Member {
@@ -237,20 +268,23 @@ func membersFromIsMaster(md proto.MasterDoc, raw bson.Raw) []Member {
 
 func GetOplogInfo(ctx context.Context, client *mongo.Client, co *options.ClientOptions, members []Member, workers int,
 	memberTimeout time.Duration,
-) []proto.OplogInfo {
+) ([]proto.OplogInfo, []Member) {
 	r := reader{client: client, co: co}
 	w := &walker{read: r.read, timeout: memberTimeout}
+	rows := w.walk(ctx, members, workers)
 
-	return w.walk(ctx, members, workers)
+	return rows, w.members(members, rows)
 }
 
 type walker struct {
-	read    func(ctx context.Context, m Member, row *proto.OplogInfo) ([]Member, error)
+	read    func(ctx context.Context, m Member, row *proto.OplogInfo) (facts, error)
 	timeout time.Duration
 
 	mu         sync.Mutex
 	authFailed map[string]string
 	peers      []Member
+	found      map[string]facts
+	config     map[string]Member
 }
 
 func (w *walker) walk(ctx context.Context, members []Member, workers int) proto.OpLogs {
@@ -355,8 +389,9 @@ func (w *walker) member(ctx context.Context, m Member) proto.OplogInfo {
 	}
 	defer cancel()
 
-	peers, err := w.read(mctx, m, &row)
-	w.addPeers(m, peers)
+	f, err := w.read(mctx, m, &row)
+	w.addPeers(m, f.peers)
+	w.addFacts(m.Host, f)
 
 	if err != nil {
 		log.Infof("cannot read the oplog of %s: %s", m.Host, err)
@@ -381,8 +416,85 @@ func (w *walker) addPeers(m Member, peers []Member) {
 		if p.Set == "" {
 			p.Set = m.Set
 		}
+		if p.Set == m.Set {
+			p.SetRole = m.SetRole
+		}
 		w.peers = append(w.peers, p)
 	}
+}
+
+func (w *walker) addFacts(host string, f facts) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if f.pid != 0 || f.engine.Name != "" {
+		if w.found == nil {
+			w.found = map[string]facts{}
+		}
+		w.found[host] = facts{pid: f.pid, engine: f.engine}
+	}
+
+	for h, c := range f.config {
+		if w.config == nil {
+			w.config = map[string]Member{}
+		}
+		if _, ok := w.config[h]; !ok {
+			w.config[h] = c
+		}
+	}
+}
+
+func (w *walker) members(initial []Member, rows []proto.OplogInfo) []Member {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	known := make(map[string]Member, len(initial)+len(w.peers))
+	for _, list := range [][]Member{initial, w.peers} {
+		for _, m := range list {
+			k, ok := known[m.Host]
+			if !ok {
+				known[m.Host] = m
+
+				continue
+			}
+
+			if len(k.Status) == 0 {
+				k.Status = m.Status
+			}
+			if k.State == "" {
+				k.State = m.State
+			}
+			k.Arbiter = k.Arbiter || m.Arbiter
+			known[m.Host] = k
+		}
+	}
+
+	out := make([]Member, 0, len(rows))
+	for _, r := range rows {
+		m, ok := known[r.Hostname]
+		if !ok {
+			m = Member{Host: r.Hostname}
+		}
+
+		if m.Set == "" {
+			m.Set = r.ReplicaSet
+		}
+		if r.State != "" {
+			m.State = r.State
+		}
+		if f, ok := w.found[r.Hostname]; ok {
+			m.Pid, m.Engine = f.pid, f.engine
+		}
+		if c, ok := w.config[r.Hostname]; ok {
+			m.Priority, m.Votes, m.Hidden, m.DelaySecs = c.Priority, c.Votes, c.Hidden, c.DelaySecs
+		}
+
+		out = append(out, m)
+	}
+
+	sortMembers(out)
+
+	return out
 }
 
 func (w *walker) unwalked(members []Member) []Member {
@@ -455,41 +567,117 @@ type reader struct {
 	co     *options.ClientOptions
 }
 
-func (r reader) read(ctx context.Context, m Member, row *proto.OplogInfo) ([]Member, error) {
+func (r reader) read(ctx context.Context, m Member, row *proto.OplogInfo) (facts, error) {
 	client := r.client
 
-	var arbiters []string
+	var (
+		arbiters []string
+		f        facts
+	)
 
 	if !m.Self || client == nil {
 		c, err := util.GetClientForHost(r.co, m.Host)
 		if err != nil {
-			return nil, err
+			return f, err
 		}
 
 		if err := c.Connect(ctx); err != nil {
-			return nil, err
+			return f, err
 		}
 		defer func() { _ = c.Disconnect(ctx) }()
 
 		if err := c.Ping(ctx, nil); err != nil {
-			return nil, err
+			return f, err
 		}
 
 		hello, stop, err := guard(ctx, c, m, row)
 		if stop || err != nil {
-			return nil, err
+			return f, err
 		}
 
 		arbiters = strs(hello, "arbiters")
 		client = c
+		f.pid, f.engine = readProcess(ctx, client, m.Host)
 	}
 
 	err := readOplog(ctx, client, row)
 	if err != nil && !answered(err) {
-		return nil, err
+		return f, err
 	}
 
-	return markArbiters(readStatus(ctx, client, row), arbiters), err
+	f.peers = markArbiters(readStatus(ctx, client, row), arbiters)
+	f.config = readConfig(ctx, client, m.Host)
+
+	return f, err
+}
+
+func readProcess(ctx context.Context, client *mongo.Client, host string) (int64, proto.StorageEngine) {
+	status, err := runCommand(ctx, client, "serverStatus")
+	if err != nil {
+		log.Debugf("cannot get serverStatus from %s: %s", host, err)
+
+		return 0, proto.StorageEngine{}
+	}
+
+	return processFacts(status)
+}
+
+func processFacts(status bson.Raw) (int64, proto.StorageEngine) {
+	pid, _ := intValue(status, "pid")
+
+	var engine proto.StorageEngine
+	if doc, ok := status.Lookup("storageEngine").DocumentOK(); ok {
+		if err := bson.Unmarshal(doc, &engine); err != nil {
+			engine = proto.StorageEngine{}
+		}
+	}
+
+	return pid, engine
+}
+
+func readConfig(ctx context.Context, client *mongo.Client, host string) map[string]Member {
+	doc, err := runCommand(ctx, client, "replSetGetConfig")
+	if err != nil {
+		log.Debugf("cannot get replSetGetConfig from %s: %s", host, err)
+
+		return nil
+	}
+
+	return parseConfig(doc)
+}
+
+func parseConfig(doc bson.Raw) map[string]Member {
+	cfg, ok := doc.Lookup("config").DocumentOK()
+	if !ok {
+		return nil
+	}
+
+	out := map[string]Member{}
+	for _, d := range documents(cfg, "members") {
+		host, _ := d.Lookup("host").StringValueOK()
+		if host == "" {
+			continue
+		}
+
+		m := Member{Host: host}
+		if v, ok := number(d.Lookup("priority")); ok {
+			m.Priority = &v
+		}
+		if v, ok := number(d.Lookup("votes")); ok {
+			m.Votes = &v
+		}
+		m.Hidden, _ = d.Lookup("hidden").BooleanOK()
+
+		if v, ok := number(d.Lookup("secondaryDelaySecs")); ok {
+			m.DelaySecs = int64(v)
+		} else if v, ok := number(d.Lookup("slaveDelay")); ok {
+			m.DelaySecs = int64(v)
+		}
+
+		out[host] = m
+	}
+
+	return out
 }
 
 func guard(ctx context.Context, client *mongo.Client, m Member, row *proto.OplogInfo) (bson.Raw, bool, error) {

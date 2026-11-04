@@ -60,7 +60,7 @@ func textSections(ci *collectedInfo) []reportSection {
 		{name: "Mongos", tmpl: templates.MongosInfo, data: ci.MongosInfo, show: ci.MongosInfo != nil},
 		{name: "Shards", tmpl: templates.Shards, data: ci.ShardsInfo, show: ci.ShardsInfo != nil},
 		{
-			name: "Instances", tmpl: templates.Replicas, data: ci.ReplicaMembers,
+			name: "Instances", tmpl: templates.Replicas, data: instancesView(ci.ReplicaMembers, ci.MemberDetails),
 			show: ci.ReplicaMembers != nil || (!isArbiter && !ci.hasGap("Instances")),
 		},
 		{name: "This host", tmpl: templates.HostInfo, data: hi, show: hi != nil},
