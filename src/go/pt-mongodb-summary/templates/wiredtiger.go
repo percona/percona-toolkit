@@ -14,21 +14,22 @@
 package templates
 
 const WiredTiger = `
-{{ if . -}}
-# WiredTiger ##########################################################################################
-          Cache Used | {{printf "%.2f" .CacheUsedMB}} MB / {{printf "%.2f" .CacheMaxMB}} MB ({{printf "%.1f" .CacheUsedPct}}%)
-         Dirty Pages | {{printf "%.2f" .DirtyMB}} MB ({{printf "%.1f" .DirtyPct}}%)
-  Evicted Unmodified | {{.PagesEvictedUnmodified}}
-    Evicted Modified | {{.PagesEvictedModified}}
-    Read Into Cache  | {{.PagesReadIntoCache}}
-   Written Fr Cache  | {{.PagesWrittenFromCache}}
-{{- if .TcmallocAvailable }}
-# TCMalloc ############################################################################################
-       Heap Size     | {{printf "%.2f" .TcmallocHeapMB}} MB
-   Allocated (RSS)   | {{printf "%.2f" .TcmallocAllocMB}} MB
-   Pageheap Free     | {{printf "%.2f" .TcmallocPageheapFreeMB}} MB
- Pageheap Unmapped   | {{printf "%.2f" .TcmallocPageheapUnmappedMB}} MB
-  Thread Cache Free  | {{printf "%.2f" .TcmallocThreadCacheFreeMB}} MB
+{{ header "WiredTiger" }}
+           Storage Engine | {{ .Engine }}
+               Cache Size | {{ bytes .CacheMaxBytes }}
+               Cache Used | {{ bytes .CacheUsedBytes }} ({{ pct .CacheUsedPct }})
+               Cache Free | {{ bytes .CacheFreeBytes }} ({{ pct .CacheFreePct }})
+              Cache Dirty | {{ bytes .CacheDirtyBytes }} ({{ pct .CacheDirtyPct }})
+{{- with .CacheUpdatesBytes }}
+            Cache Updates | {{ bytes . }} ({{ pct $.CacheUpdatesPct }})
 {{- end }}
+{{- if .Window }}
+              Rate Window | {{ dur .Window }}
+          Read Into Cache | {{ rate .PagesReadIntoCache.PerSec }} pages/s, {{ bytes .BytesReadIntoCache.PerSecBytes }}/s uncompressed
+       Written From Cache | {{ rate .PagesWrittenFromCache.PerSec }} pages/s, {{ bytes .BytesWrittenFromCache.PerSecBytes }}/s uncompressed
+ Unmodified Pages Evicted | {{ rate .UnmodifiedPagesEvicted.PerSec }}/s
+   Modified Pages Evicted | {{ rate .ModifiedPagesEvicted.PerSec }}/s
+App Thread Evict Attempts | {{ rate .AppThreadEvictions.PerSec }}/s
+ App Thread Wait on Cache | {{ rate .AppThreadCacheWaitUsecs.PerSecMillis }} ms/s
 {{- end }}
 `

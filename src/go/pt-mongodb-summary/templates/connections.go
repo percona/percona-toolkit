@@ -14,19 +14,30 @@
 package templates
 
 const Connections = `
-{{ if . -}}
-# Connections & Profiling #################################################################################
-             Current | {{.Current}}
-           Available | {{.Available}}
-       Total Created | {{.TotalCreated}}
-{{- if .MaxIncoming }}
-        Max Incoming | {{.MaxIncoming}}
+{{ header "Connections & Profiling" }}
+{{- with .Connections }}
+                  Current | {{ .Current }}
+                Available | {{ .Available }}
+                    Limit | {{ .Limit }} ({{ .LimitSource }})
+{{- if .MaxIncomingConnections }}
+   maxIncomingConnections | {{ .MaxIncomingConnections }}
+{{- else if $.StartupOptions }}
+   maxIncomingConnections | not set
 {{- end }}
-{{- if .ProfilingMode }}
-      Profiling Mode | {{.ProfilingMode}}
+{{- if .Active }}
+                   Active | {{ .Active }}
 {{- end }}
-{{- if .SlowOpThresholdMs }}
-  Slow Op Threshold  | {{.SlowOpThresholdMs}} ms
+{{- if .Rejected }}
+                 Rejected | {{ .Rejected }}
+{{- end }}
+            Total Created | {{ .TotalCreated }}{{ if .TotalCreatedWrapped }} (wrapped){{ end }}
+{{- end }}
+{{- with .Profiling }}
+        Slow Op Threshold | {{ .SlowMs }} ms{{ if .StartupDiffers }} (startup: {{ .StartupSlowMs }} ms){{ end }}
+              Sample Rate | {{ .SampleRate }}
+{{- if .AdminFilter }}
+           Filter (admin) | {{ .AdminFilter }}
+                          | slowms and sampleRate do not apply while a filter is set
 {{- end }}
 {{- end }}
 `

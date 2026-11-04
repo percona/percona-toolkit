@@ -14,14 +14,38 @@
 package templates
 
 const OSChecks = `
-{{ if . -}}
-# OS & Production Checks #################################################################################
-     Kernel Version | {{.KernelVersion}}
-            MemSize | {{printf "%.0f" .MemSizeMB}} MB
-          Num Cores | {{printf "%.0f" .NumCores}}
-       NUMA Enabled | {{.NUMAEnabled}}
-   Open Files Limit | {{printf "%.0f" .OpenFilesLimit}}{{if .OpenFilesWarn}}  [WARNING: recommended >= 65535]{{end}}
-   vm.max_map_count | {{if eq .VMMaxMapCount 0}}unknown{{else}}{{.VMMaxMapCount}}{{if .VMMaxMapWarn}}  [WARNING: recommended >= 262144]{{end}}{{end}}
-          TasksMax  | {{if .TasksMax}}{{.TasksMax}}{{else}}unknown{{end}}
+{{ header "OS & Production Checks" }}
+{{- with .OSSummary }}
+                       OS | {{ . }}
+{{- end }}
+{{- with .KernelVersion }}
+                   Kernel | {{ . }}
+{{- end }}
+{{- with .CPUSummary }}
+                CPU cores | {{ . }}
+{{- end }}
+{{- with .RAMSummary }}
+                      RAM | {{ . }}
+{{- end }}
+{{- with .NUMASummary }}
+                     NUMA | {{ . }}{{ with $.NUMAWarning }}  [WARNING: {{ . }}]{{ end }}
+{{- end }}
+{{- if gt .MaxOpenFiles 0 }}
+         Open files limit | {{ .MaxOpenFiles }}{{ with .OpenFilesWarning }}  [WARNING: {{ . }}]{{ end }}
+{{- end }}
+{{- with .Local }}
+         vm.max_map_count | {{ .MaxMapCountText }}{{ with .MaxMapCountWarning }}  [WARNING: {{ . }}]{{ end }}
+   Max processes (mongod) | {{ .MaxProcessesText }}{{ with .MaxProcessesWarning }}  [WARNING: {{ . }}]{{ end }}
+     Tasks limit (cgroup) | {{ .TasksLimitText }}{{ with .TasksLimitWarning }}  [WARNING: {{ . }}]{{ end }}
+{{- else }}
+{{- with .LocalSkipReason }}
+             Local checks | skipped: {{ . }}
+{{- end }}
+{{- end }}
+{{- with .StartupWarningsSummary }}
+         Startup warnings | {{ . }}
+{{- end }}
+{{- range .StartupWarnings }}
+  - {{ .Text }}
 {{- end }}
 `

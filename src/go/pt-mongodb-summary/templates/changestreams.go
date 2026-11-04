@@ -13,11 +13,15 @@
 
 package templates
 
-const ShardsInfo = `
-{{ if . -}}
-# Shards #################################################################################################
-{{ range .Shards -}}
-  {{printf "%-20s" .ID}}  {{.Host}}
-{{ end }}
+const ChangeStreams = `
+{{ header "Change Streams" }}
+{{- if .Readable }}
+{{ printf "%25s" "Pre/Post Images Expire" }} | {{ .PreAndPostImagesExpire }}
+{{- if eq .PreAndPostImagesExpire "off" }} (kept until the matching oplog entry is removed){{ end }}
+{{- else }}
+{{ printf "%25s" "Pre/Post Images Expire" }} | not readable with this login (needs getClusterParameter: clusterManager)
+{{- end }}
+{{- with .PreImages }}
+{{ printf "%25s" "Pre-Images" }} | {{ . }}
 {{- end }}
 `

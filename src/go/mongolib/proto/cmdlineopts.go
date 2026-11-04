@@ -25,39 +25,24 @@ type Sharding struct {
 	ClusterRole string `bson:"clusterRole"`
 }
 
-type CloStorageWT struct {
-	EngineConfig struct {
-		CacheSizeGB float64 `bson:"cacheSizeGB"`
-	} `bson:"engineConfig"`
-}
-
 type CloStorage struct {
-	DbPath     string       `bson:"dbPath"`
-	Engine     string       `bson:"engine"`
-	WiredTiger CloStorageWT `bson:"wiredTiger"`
+	DbPath string `bson:"dbPath"`
+	Engine string `bson:"engine"`
 }
 
 type CloSystemLog struct {
 	Destination string `bson:"destination"`
 	Path        string `bson:"path"`
-	LogAppend   bool   `bson:"logAppend"`
-}
-
-type OperationProfiling struct {
-	Mode              string `bson:"mode"`
-	SlowOpThresholdMs int64  `bson:"slowOpThresholdMs"`
 }
 
 type Parsed struct {
-	Config              string              `bson:"config"`
-	Sharding            Sharding            `bson:"sharding"`
-	Storage             CloStorage          `bson:"storage"`
-	SystemLog           CloSystemLog        `bson:"systemLog"`
-	Net                 Net                 `bson:"net"`
-	ProcessManagement   ProcessManagement   `bson:"processManagement"`
-	Replication         Replication         `bson:"replication"`
-	Security            Security            `bson:"security"`
-	OperationProfiling  OperationProfiling  `bson:"operationProfiling"`
+	Sharding          Sharding          `bson:"sharding"`
+	Storage           CloStorage        `bson:"storage"`
+	SystemLog         CloSystemLog      `bson:"systemLog"`
+	Net               Net               `bson:"net"`
+	ProcessManagement ProcessManagement `bson:"processManagement"`
+	Replication       Replication       `bson:"replication"`
+	Security          Security          `bson:"security"`
 }
 
 // Security is a struct to hold security related configs

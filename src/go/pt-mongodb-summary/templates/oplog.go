@@ -14,10 +14,23 @@
 package templates
 
 const Oplog = `
-# Oplog ##################################################################################################
-{{- range .Nodes }}
-  {{printf "%-40s" .Hostname}}  {{printf "%8d" .UsedMB}} MB used / {{printf "%8d" .Size}} MB  Length: {{.Running}}{{if not .ElectionTime.IsZero}}  Election: {{.ElectionTime.Format "2006-01-02T15:04:05Z"}}{{end}}
+{{ header "Oplog" }}
+{{- range $i, $s := . }}
+{{- if $i }}
+{{ end }}
+{{ printf "%25s" "Replica Set" }} | {{ $s.Name }}
+{{ printf "%25s" "Primary" }} | {{ $s.Primary }}
+{{- with $s.LastElection }}
+{{ printf "%25s" "Last Election" }} | {{ . }}{{ with $s.ElectionReason }} ({{ . }}){{ end }}
 {{- end }}
-  Min Oplog Host | {{.MinHost}}
-  Max Oplog Host | {{.MaxHost}}
+{{- range $s.Lines }}
+{{ . }}
+{{- end }}
+{{- with $s.Shortest }}
+{{ printf "%25s" "Shortest Window" }} | {{ .Hostname }} ({{ .Running }})
+{{- end }}
+{{- with $s.Longest }}
+{{ printf "%25s" "Longest Window" }} | {{ .Hostname }} ({{ .Running }})
+{{- end }}
+{{- end }}
 `

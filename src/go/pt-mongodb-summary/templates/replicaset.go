@@ -18,9 +18,9 @@ const Replicas = `
   PID    Host                         Type                      ReplSet                   Engine
 {{- if . -}}
 {{- range . }}
-{{printf "% 6d" .ID}} {{printf "%-30s" .Name}} {{printf "%-25s" .StateStr}} {{ if .Set }}{{printf "%-10s" .Set }}{{else}}-         {{end}}  {{printf "%20s" .StorageEngine.Name -}}
+{{ if .ID }}{{printf "% 6d" .ID}}{{ else }}      {{ end }} {{printf "%-30s" .Name}} {{printf "%-25s" .StateStr}} {{ if .Set }}{{printf "%-10s" .Set }}{{else}}-         {{end}}  {{printf "%20s" .StorageEngine.Name -}}
 {{end}}
 {{else}}
                                           no replica sets found
-{{end}}
+{{end -}}
 `

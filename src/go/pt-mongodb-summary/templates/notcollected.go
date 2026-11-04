@@ -13,9 +13,9 @@
 
 package templates
 
-const ChangeStream = `
-{{ if . -}}
-# Change Stream ###########################################################################################
-  Pre/Post Images Expire | {{.PreAndPostImagesExpire}}
+const NotCollected = `
+{{ header "Not collected" }}
+{{- range . }}
+{{ printf "%25s" .Item }} | {{ .Reason }}
 {{- end }}
 `

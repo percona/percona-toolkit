@@ -14,14 +14,19 @@
 package templates
 
 const RunningOps = `
-{{ if . -}}
-# Running Ops ############################################################################################
-Type         Min        Max        Avg
-Insert    {{printf "% 8d" .Insert.Min}}   {{printf "% 8d" .Insert.Max}}   {{printf "% 8d" .Insert.Avg}}/{{.SampleRate}}
-Query     {{printf "% 8d" .Query.Min}}   {{printf "% 8d" .Query.Max}}   {{printf "% 8d" .Query.Avg}}/{{.SampleRate}}
-Update    {{printf "% 8d" .Update.Min}}   {{printf "% 8d" .Update.Max}}   {{printf "% 8d" .Update.Avg}}/{{.SampleRate}}
-Delete    {{printf "% 8d" .Delete.Min}}   {{printf "% 8d" .Delete.Max}}   {{printf "% 8d" .Delete.Avg}}/{{.SampleRate}}
-GetMore   {{printf "% 8d" .GetMore.Min}}   {{printf "% 8d" .GetMore.Max}}   {{printf "% 8d" .GetMore.Avg}}/{{.SampleRate}}
-Command   {{printf "% 8d" .Command.Min}}   {{printf "% 8d" .Command.Max}}   {{printf "% 8d" .Command.Avg}}/{{.SampleRate}}
+{{ header "Running Ops" }}
+Per second over {{ dur .Elapsed }} of sampling; "Since start" = average over {{ dur .Uptime }} of uptime
+{{- with .Partial }}
+{{ . }}
+{{- end }}
+Type           Min/s       Max/s       Avg/s   Since start/day
+{{- range .Rates.Rows }}
+{{ printf "%-8s%12s%12s%12s%18s" .Name (rate .Min) (rate .Max) (rate .Avg) (rate .SinceStartPerDay) }}
+{{- end }}
+{{- with .ReplRates }}
+Replicated (oplog entries applied; counts documents)
+{{- range .ReplRows }}
+{{ printf "%-8s%12s%12s%12s%18s" .Name (rate .Min) (rate .Max) (rate .Avg) (rate .SinceStartPerDay) }}
+{{- end }}
 {{- end }}
 `

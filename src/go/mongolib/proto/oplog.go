@@ -20,15 +20,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type OplogEntry struct {
-	Name    string
-	Options struct {
-		Capped      bool
-		Size        int64
-		AutoIndexId bool
-	}
-}
-
 type OplogInfo struct {
 	Hostname      string
 	Size          int64
@@ -40,6 +31,18 @@ type OplogInfo struct {
 	TLast         time.Time
 	Now           time.Time
 	ElectionTime  time.Time
+
+	ReplicaSet     string
+	State          string
+	MaxSizeMB      int64
+	Primary        string
+	ElectionReason string
+	Error          string
+	ErrorDetail    string
+}
+
+func (o OplogInfo) HasData() bool {
+	return o.Error == "" && !o.TLast.IsZero()
 }
 
 type OpLogs []OplogInfo
@@ -53,6 +56,10 @@ func (s OpLogs) Swap(i, j int) {
 }
 
 func (s OpLogs) Less(i, j int) bool {
+	if a, b := s[i].HasData(), s[j].HasData(); a != b {
+		return a
+	}
+
 	return s[i].TimeDiffHours < s[j].TimeDiffHours
 }
 

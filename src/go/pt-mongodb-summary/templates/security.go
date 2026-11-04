@@ -14,16 +14,24 @@
 package templates
 
 const Security = `
-# Security ###############################################################################################
-Users  : {{.Users}}
-Roles  : {{.Roles}}
-Auth   : {{.Auth}}
-SSL    : {{.SSL}}
-Port   : {{.Port}}
-Bind IP: {{.BindIP}}
-{{- if .WarningMsgs -}}
+{{ header "Security" }}
+{{- if not .IsArbiter }}
+{{- if .CountsReadable }}
+Users  : {{ .Users }}
+Roles  : {{ .Roles }}
+{{- else if .CountsDenied }}
+Users  : not readable with this login (needs find on admin.system.users)
+Roles  : not readable with this login
+{{- else }}
+Users  : not collected{{ with .CountsReason }} ({{ . }}){{ end }}
+Roles  : not collected{{ with .CountsReason }} ({{ . }}){{ end }}
+{{- end }}
+{{- end }}
+Auth   : {{ .Auth }}
+SSL    : {{ .SSL }}
+Port   : {{ .Port }}
+Bind IP: {{ .BindIP }}
 {{- range .WarningMsgs }}
 {{ . }}
-{{end}}
-{{end }}
-  `
+{{- end }}
+`
