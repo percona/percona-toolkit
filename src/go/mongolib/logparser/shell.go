@@ -149,8 +149,9 @@ func (p *shellParser) parseKey() (string, error) {
 	p.skipWS()
 	switch p.peek() {
 	case '"', '\'':
-		return p.parseString()
+		return p.parseString(followedBy(":"))
 	}
+	// Field names are written as they are, so they can include quotes
 	start := p.pos
 	for !p.eof() {
 		switch p.s[p.pos] {
@@ -160,7 +161,7 @@ func (p *shellParser) parseKey() (string, error) {
 				return "", p.errorf("empty key")
 			}
 			return key, nil
-		case '{', '}', '[', ']', ',', '"', '\'':
+		case '{', '}', '[', ']', ',':
 			return "", p.errorf("invalid character in key")
 		}
 		p.pos++
@@ -168,34 +169,45 @@ func (p *shellParser) parseKey() (string, error) {
 	return "", p.errorf("unexpected end of document")
 }
 
-func (p *shellParser) parseString() (string, error) {
+// followedBy returns a function for parseString that accepts a quote as the closing one
+// when it is followed (after optional spaces) by one of the delimiters or by the end of
+// the input.
+func followedBy(delimiters string) func(rest string) bool {
+	return func(rest string) bool {
+		rest = strings.TrimLeft(rest, " \t")
+		return rest == "" || strings.IndexByte(delimiters, rest[0]) >= 0
+	}
+}
+
+// parseString parses a quoted string. MongoDB writes string values as they are, without
+// escaping quotes, backslashes or control characters (e.g. "say "hi" to C:\temp"), so
+// the closing quote is the first one for which isEnd, called with the rest of the input,
+// returns true.
+func (p *shellParser) parseString(isEnd func(rest string) bool) (string, error) {
 	quote := p.peek()
-	p.pos++
-	var sb strings.Builder
-	for !p.eof() {
-		c := p.s[p.pos]
-		switch {
-		case c == '\\' && p.pos+1 < len(p.s):
-			p.pos++
-			switch e := p.s[p.pos]; e {
-			case 'n':
-				sb.WriteByte('\n')
-			case 't':
-				sb.WriteByte('\t')
-			case 'r':
-				sb.WriteByte('\r')
-			default:
-				sb.WriteByte(e)
-			}
-		case c == quote:
-			p.pos++
-			return sb.String(), nil
-		default:
-			sb.WriteByte(c)
+	start := p.pos + 1
+	for i := start; i < len(p.s); i++ {
+		if p.s[i] == quote && isEnd(p.s[i+1:]) {
+			p.pos = i + 1
+			return p.s[start:i], nil
 		}
-		p.pos++
 	}
 	return "", p.errorf("unterminated string")
+}
+
+// skipQuoted skips a quoted string in JavaScript code, where quotes are escaped
+func (p *shellParser) skipQuoted() error {
+	quote := p.peek()
+	for p.pos++; !p.eof(); p.pos++ {
+		switch p.s[p.pos] {
+		case '\\':
+			p.pos++
+		case quote:
+			p.pos++
+			return nil
+		}
+	}
+	return p.errorf("unterminated string")
 }
 
 func (p *shellParser) parseValue() (interface{}, error) {
@@ -205,7 +217,7 @@ func (p *shellParser) parseValue() (interface{}, error) {
 	case c == '[':
 		return p.parseArray()
 	case c == '"' || c == '\'':
-		return p.parseString()
+		return p.parseString(followedBy(",}])"))
 	case c == '/':
 		return p.parseRegex()
 	case c == '-' || c == '+' || c == '.' || (c >= '0' && c <= '9'):
@@ -374,7 +386,7 @@ func (p *shellParser) skipBalanced(open, close byte) error {
 		c := p.s[p.pos]
 		switch c {
 		case '"', '\'':
-			if _, err := p.parseString(); err != nil {
+			if err := p.skipQuoted(); err != nil {
 				return err
 			}
 			continue

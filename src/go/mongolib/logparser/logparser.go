@@ -22,6 +22,7 @@ package logparser
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -133,13 +134,17 @@ func (p *Parser) ParseLine(line []byte) (proto.SystemProfile, bool) {
 	p.counters.SlowQueries++
 
 	if err != nil {
+		// Any other operation on the connection ends the current write batch
+		delete(p.statements, entry.ctx)
 		p.counters.Unparsable++
 		if p.opts.OnError != nil {
 			p.opts.OnError(p.lineNum, err)
 		}
 		return proto.SystemProfile{}, false
 	}
-	if entry.ignore || p.isLoggedWriteBatch(entry) {
+	// isLoggedWriteBatch must run for every entry (ignored ones included) so the pending
+	// statements of a connection are cleared by the next operation.
+	if loggedBatch := p.isLoggedWriteBatch(entry); entry.ignore || loggedBatch {
 		p.counters.Ignored++
 		return proto.SystemProfile{}, false
 	}
@@ -259,6 +264,8 @@ func isWriteBatch(op string, command bson.D) bool {
 	}
 	return false
 }
+
+var errTruncated = errors.New("the log line was truncated (maxLogSizeKB)")
 
 func stripPort(addr string) string {
 	if host, _, err := net.SplitHostPort(addr); err == nil {

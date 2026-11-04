@@ -14,6 +14,7 @@
 package stats
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -129,4 +130,40 @@ func TestSortValueCounts(t *testing.T) {
 		[]ValueCount{{"c", 3}, {"a", 1}, {"b", 1}},
 		sortValueCounts(map[string]int{"b": 1, "c": 3, "a": 1}),
 	)
+}
+
+// Queries returns a snapshot: later calls to Add must not change it (the profiler flushes
+// stats periodically while documents are still being added).
+func TestQueriesSnapshot(t *testing.T) {
+	t0 := time.Date(2026, 11, 3, 10, 0, 0, 0, time.UTC)
+	s := New(fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters()))
+	require.NoError(t, s.Add(findDoc(1, 10, t0, "COLLSCAN", "orders-api", "10.0.0.1", "app@admin")))
+
+	snapshot := s.Queries()
+	require.NoError(t, s.Add(findDoc(2, 20, t0, "IXSCAN { customerId: 1 }", "reporting", "10.0.0.2", "report@admin")))
+
+	require.Len(t, snapshot, 1)
+	assert.Equal(t, 1, snapshot[0].Count)
+	assert.Equal(t, map[string]int{"COLLSCAN": 1}, snapshot[0].PlanSummaries)
+	assert.Equal(t, map[string]int{"orders-api": 1}, snapshot[0].AppNames)
+	assert.Equal(t, map[string]int{"10.0.0.1": 1}, snapshot[0].Clients)
+	assert.Equal(t, map[string]int{"app": 1}, snapshot[0].Users)
+}
+
+func TestQueriesConcurrentAdd(t *testing.T) {
+	t0 := time.Date(2026, 11, 3, 10, 0, 0, 0, time.UTC)
+	s := New(fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters()))
+	require.NoError(t, s.Add(findDoc(1, 10, t0, "COLLSCAN", "orders-api", "10.0.0.1", "app@admin")))
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 1000; i++ {
+			_ = s.Add(findDoc(i, i, t0, fmt.Sprintf("plan%d", i), fmt.Sprintf("app%d", i), "10.0.0.1", "app@admin"))
+		}
+	}()
+	for i := 0; i < 100; i++ {
+		_ = s.Queries().CalcQueriesStats(1)
+	}
+	<-done
 }

@@ -232,9 +232,23 @@ func (s *Stats) Queries() Queries {
 
 	queries := []QueryInfoAndCounters{}
 	for _, key := range keys {
-		queries = append(queries, *s.queryInfoAndCounters[key])
+		// The maps are copied so the snapshot is not changed by later calls to Add
+		q := *s.queryInfoAndCounters[key]
+		q.PlanSummaries = copyCounts(q.PlanSummaries)
+		q.AppNames = copyCounts(q.AppNames)
+		q.Clients = copyCounts(q.Clients)
+		q.Users = copyCounts(q.Users)
+		queries = append(queries, q)
 	}
 	return queries
+}
+
+func copyCounts(m map[string]int) map[string]int {
+	c := make(map[string]int, len(m))
+	for k, v := range m {
+		c[k] = v
+	}
+	return c
 }
 
 func (s *Stats) getQueryInfoAndCounters(key GroupKey) (*QueryInfoAndCounters, bool) {

@@ -262,6 +262,14 @@ func TestWriteBatches(t *testing.T) {
 		batch("conn3", "06", "update"),                                           // conn3 statement: ignored
 		stmt("conn5", "07"), find("conn5", "08"), batch("conn5", "09", "update"), // the find resets conn5: reported
 		`2026-11-03T10:00:10.000+0000 I  COMMAND  [conn6] command airline.$cmd command: delete { delete: "flights", deletes: [ { q: { flight_id: 5, status: "x" }, limit: 1 } ], ordered: true, $db: "airline" } numYields:0 reslen:60 locks:{} protocol:op_query 300ms`,
+		// an ignored entry (no query shape) resets conn7: reported
+		stmt("conn7", "11"),
+		`{"t":{"$date":"2026-11-03T10:00:12.000+00:00"},"s":"I","c":"COMMAND","id":51803,"ctx":"conn7","msg":"Slow query","attr":{"type":"command","ns":"airline.$cmd","command":"unrecognized","durationMillis":200}}`,
+		batch("conn7", "13", "update"),
+		// an unparsable entry resets conn8: reported
+		stmt("conn8", "14"),
+		`{"t":{"$date":"2026-11-03T10:00:15.000+00:00"},"s":"I","c":"COMMAND","id":51803,"ctx":"conn8","msg":"Slow query","attr":{"type":"command","locks":"x","command":{"find":"flights"}}}`,
+		batch("conn8", "16", "update"),
 	}
 
 	p := New(Options{})
@@ -285,14 +293,19 @@ func TestWriteBatches(t *testing.T) {
 		"08 airline.flights FIND flights a",
 		"09 airline.flights UPDATE flights (batch)",
 		"10 airline.flights DELETE flights flight_id,status (batch)",
+		"11 airline.flights UPDATE flights flight_id",
+		"13 airline.flights UPDATE flights (batch)",
+		"14 airline.flights UPDATE flights flight_id",
+		"16 airline.flights UPDATE flights (batch)",
 	}, got)
-	assert.Equal(t, 2, p.Counters().Ignored)
+	assert.Equal(t, 3, p.Counters().Ignored)
+	assert.Equal(t, 1, p.Counters().Unparsable)
 }
 
 func TestUnparsable(t *testing.T) {
 	lines := []string{
-		// truncated command
-		`2026-11-04T11:33:02.145+0000 I  COMMAND  [conn3] command shop.orders command: find { find: "orders", filter: { customerId: 0, status: "op ...  planSummary: COLLSCAN 0ms`,
+		// line longer than maxLogSizeKB (MongoDB <= 4.2)
+		`2026-11-04T12:50:08.850+0000 I  COMMAND  [conn1] warning: log line attempted (15kB) over max size (1kB), printing beginning and end ... command shop.orders appName: "MongoDB Shell" command: find { find: "orders", filter: { customerId: { $in: [ 0.0, 1.0, 2.0, 3. .......... :1 cursorExhausted:1 numYields:0 nreturned:0 reslen:100 protocol:op_msg 1ms`,
 		// invalid json
 		`{"t":{"$date":"2026-11-04T11:33:06.273+00:00"},"s":"I","c":"COMMAND","id":51803,"ctx":"conn3","msg":"Slow query","attr":{"type":"command"`,
 		// not slow queries
@@ -367,7 +380,7 @@ func TestParseShellDoc(t *testing.T) {
 			{Key: "b c", Value: "x"},
 			{Key: "d", Value: bson.D{{Key: "e", Value: bson.A{int32(1), bson.D{{Key: "f", Value: int64(5000000000)}}}}}},
 		}},
-		{`{ a: "say \"hi\"", b: 1.5e3, c: -inf, d: MinKey, e: undefined }`, bson.D{
+		{`{ a: "say "hi"", b: 1.5e3, c: -inf, d: MinKey, e: undefined }`, bson.D{
 			{Key: "a", Value: `say "hi"`},
 			{Key: "b", Value: 1500.0},
 			{Key: "c", Value: math.Inf(-1)},
@@ -381,9 +394,16 @@ func TestParseShellDoc(t *testing.T) {
 			{Key: "n", Value: int64(5)},
 			{Key: "dec", Value: mustDecimal(t, "1.5")},
 		}},
-		{`{ mapreduce: "coll", map: function () { emit(this.a, "}"); }, out: { inline: 1 } }`, bson.D{
+		// Strings and field names are written as they are, without escaping (MongoDB 3.6 - 4.2)
+		{`{ k"q: "café "q" x", b: "C:\temp\u0061", c: "tab	nl\n", d: [ "x", "y" ] }`, bson.D{
+			{Key: `k"q`, Value: `café "q" x`},
+			{Key: "b", Value: `C:\temp\u0061`},
+			{Key: "c", Value: "tab\tnl\\n"},
+			{Key: "d", Value: bson.A{"x", "y"}},
+		}},
+		{`{ mapreduce: "coll", map: function () { emit(this.a, "\"}"); }, out: { inline: 1 } }`, bson.D{
 			{Key: "mapreduce", Value: "coll"},
-			{Key: "map", Value: primitive.JavaScript(`function () { emit(this.a, "}"); }`)},
+			{Key: "map", Value: primitive.JavaScript(`function () { emit(this.a, "\"}"); }`)},
 			{Key: "out", Value: bson.D{{Key: "inline", Value: int32(1)}}},
 		}},
 	}

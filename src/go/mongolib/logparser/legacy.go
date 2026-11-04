@@ -39,6 +39,9 @@ var (
 	reLegacyMetadata  = regexp.MustCompile(`^received client metadata from (\S+) `)
 	reLegacyAuth      = regexp.MustCompile(`^Successfully authenticated as principal (\S+) on (\S+)`)
 	reLegacyKey       = regexp.MustCompile(`^([A-Za-z_$][A-Za-z0-9_$.]*):`)
+	// Lines longer than maxLogSizeKB keep only their beginning and end:
+	//	warning: log line attempted (15kB) over max size (1kB), printing beginning and end ... command shop.orders ... .......... ... 103ms
+	reLegacyTruncated = regexp.MustCompile(`^warning: log line attempted \(\S+\) over max size \(\S+\), printing beginning and end \.\.\. (command|query|update|remove|insert|getmore|killcursors)\s`)
 )
 
 var legacyTimeLayouts = []string{
@@ -64,6 +67,10 @@ func (p *Parser) parseLegacyLine(line string) (*slowQuery, error) {
 		return nil, nil
 	}
 	tsStr, ctx, msg := m[1], m[2], m[3]
+
+	if reLegacyTruncated.MatchString(msg) {
+		return &slowQuery{ctx: ctx}, errTruncated
+	}
 
 	sq := reLegacySlowQuery.FindStringSubmatch(msg)
 	if sq == nil {
@@ -251,7 +258,11 @@ func parseLegacyAttrs(s string) (legacyAttrs, error) {
 			attrs.docs[key] = doc
 		case pos < len(s) && s[pos] == '"':
 			p := &shellParser{s: s, pos: pos}
-			str, err := p.parseString()
+			// e.g. appName: "my "quoted" app" command: ...
+			str, err := p.parseString(func(rest string) bool {
+				rest = strings.TrimLeft(rest, " ")
+				return rest == "" || reLegacyKey.MatchString(rest)
+			})
 			if err != nil {
 				return attrs, err
 			}

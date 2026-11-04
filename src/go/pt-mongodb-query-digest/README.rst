@@ -88,10 +88,13 @@ Things to keep in mind:
 * Internal operations (like index builds, which are also logged as a
   ``createIndexes`` command) are ignored.
 
-* Slow query entries that cannot be parsed (for example, because the
-  command was truncated in the log) are skipped. The number of skipped
-  entries is reported as a warning. Use ``--log-level=debug`` to see
-  where they are.
+* Slow query entries that cannot be parsed are skipped. The number of
+  skipped entries is reported as a warning. Use ``--log-level=debug`` to
+  see where they are. For example, MongoDB 4.2 and earlier keep only the
+  beginning and the end of lines longer than ``maxLogSizeKB``, so the
+  command is lost. Since 4.4 the log keeps the first part of a truncated
+  command; those entries are processed, but the query shape may miss the
+  fields that were cut.
 
 * Timestamps are shown in UTC.
 
