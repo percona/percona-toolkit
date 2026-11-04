@@ -30,5 +30,5 @@ Unsharded Collections: {{.UnshardedColsCount}}
 {{- end }}
 {{- end }}
 {{- end -}}
-{{- end -}}
+{{- end }}
 `

@@ -33,5 +33,5 @@ const MongosInfo = `
 {{ end }}
 {{- else -}}
                                         no mongos instances found
-{{- end }}
+{{ end -}}
 `
