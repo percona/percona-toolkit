@@ -133,41 +133,65 @@ like($output, qr/Command line options:/, "--help lists the options");
 like($output, qr/Options and values after processing arguments:/, "--help prints option values");
 
 my $dest = "$tmpdir/collect";
-($status, $output) = run_capture(
-   "bash", $tool,
+my @common_args = (
    "--host", "localhost",
    "--port", "27017",
    "--user", "admin",
    "--password", "admin",
    "--authenticationDatabase", "admin",
    "--no-stalk",
-   "--iterations", "1",
    "--run-time", "1",
    "--sleep-collect", "1",
-   "--sleep", "1",
    "--disk-pct-free", "1",
    "--disk-bytes-free", "1",
+);
+
+sub prefixes_in {
+   my ($dir) = @_;
+   my %prefixes;
+   for my $file ( glob("$dir/*-*") ) {
+      my ($prefix) = $file =~ m{/([^/]+?)-[^/]+$};
+      $prefixes{$prefix}++ if $prefix;
+   }
+   return sort keys %prefixes;
+}
+
+($status, $output) = run_capture(
+   "bash", $tool, @common_args,
+   "--iterations", "1",
+   "--sleep", "1",
    "--dest", $dest,
-   "--pid", "$dest/pt-mongodb-stalk.pid",
+   "--pid", "$tmpdir/pt-mongodb-stalk.pid",
 );
 
 is($status, 0, "--no-stalk collection exits 0")
    or diag($output, `find "$dest" -maxdepth 1 -type f -print 2>/dev/null`);
 
-ok(-f "$dest/trigger", "creates trigger file");
-ok(-f "$dest/heartbeat", "creates heartbeat file");
-ok(-f "$dest/log", "creates log file");
+my @prefixes = prefixes_in($dest);
+is(scalar @prefixes, 1, "all files of one collection share one prefix")
+   or diag(join("\n", glob("$dest/*")));
+like($prefixes[0] || '', qr/^\d{4}(?:_\d{2}){5}$/, "default prefix is a timestamp");
+my $p = "$dest/" . ($prefixes[0] || 'none');
 
-is(glob_count("$dest/*-serverStatus.json"), 1, "collects serverStatus once");
-is(glob_count("$dest/*-currentOp.json"),    1, "collects currentOp once");
-is(glob_count("$dest/*-mongostat.txt"),     1, "collects mongostat once");
-is(glob_count("$dest/*-mongotop.txt"),      1, "collects mongotop once");
-is(glob_count("$dest/*-ps.txt"),            1, "collects ps once");
-is(glob_count("$dest/*-pidstat_mongod.txt"), 1, "collects process pidstat with mongod label");
+ok(-f "$p-trigger",    "creates <prefix>-trigger");
+ok(-f "$p-output",     "creates <prefix>-output");
+ok(-f "$p-hostname",   "creates <prefix>-hostname");
+ok(-f "$p-disk-space", "creates <prefix>-disk-space");
+ok(-f "$p-serverstatus",   "collects serverStatus");
+ok(-f "$p-currentop",      "collects currentOp");
+ok(-f "$p-mongostat",      "collects mongostat");
+ok(-f "$p-mongotop",       "collects mongotop");
+ok(-f "$p-ps",             "collects ps");
+ok(-f "$p-pidstat_mongod", "collects process pidstat with mongod label");
 
-my @mongotop_err = glob("$dest/*-mongotop.err");
-is(scalar @mongotop_err, 1, "keeps non-empty mongotop stderr");
-like(slurp_file($mongotop_err[0]), qr/connected to: mongodb:\/\/localhost:27017/, "mongotop stderr keeps connection banner");
+ok(!-e "$dest/trigger",   "no shared trigger file");
+ok(!-e "$dest/log",       "no shared log file");
+ok(!-e "$dest/heartbeat", "no heartbeat file");
+is(glob_count("$dest/*.err"), 0, "no .err files");
+
+like(slurp_file("$p-trigger"), qr/pt-mongodb-stalk ran with/, "trigger file records the options");
+like(slurp_file("$p-output"), qr/connected to: mongodb:\/\/localhost:27017/,
+   "command stderr goes to <prefix>-output");
 
 my $mongosh_log = slurp_file($ENV{MONGOSH_LOG});
 like(
@@ -176,7 +200,37 @@ like(
    "currentOp command includes allUsers"
 );
 
-ok(!-e "$dest/topology",   "does not write topology file");
-ok(!-e "$dest/disk-space", "does not write disk-space file");
+# --prefix: every file of every collection uses the given prefix.
+my $dest_prefix = "$tmpdir/collect-prefix";
+($status, $output) = run_capture(
+   "bash", $tool, @common_args,
+   "--iterations", "2",
+   "--sleep", "1",
+   "--prefix", "MYPREFIX",
+   "--dest", $dest_prefix,
+   "--pid", "$tmpdir/pt-mongodb-stalk-prefix.pid",
+);
+is($status, 0, "--prefix collection exits 0") or diag($output);
+is_deeply([prefixes_in($dest_prefix)], ["MYPREFIX"], "--prefix is used for every file")
+   or diag(join("\n", glob("$dest_prefix/*")));
+my @triggers = slurp_file("$dest_prefix/MYPREFIX-trigger") =~ m/pt-mongodb-stalk ran with/g;
+is(scalar @triggers, 2, "--prefix appends both collections to the same files");
+
+# --retention-count: only the newest N collections are kept, and files that
+# are not collections (here the PID file) are left alone.
+my $dest_ret = "$tmpdir/collect-retention";
+($status, $output) = run_capture(
+   "bash", $tool, @common_args,
+   "--iterations", "4",
+   "--sleep", "1",
+   "--retention-count", "2",
+   "--dest", $dest_ret,
+   "--pid", "$dest_ret/pt-mongodb-stalk.pid",
+);
+is($status, 0, "--retention-count collection exits 0") or diag($output);
+my @kept = grep { $_ ne 'pt' } prefixes_in($dest_ret);
+is(scalar @kept, 2, "--retention-count 2 keeps 2 collections")
+   or diag(join("\n", glob("$dest_ret/*")));
+ok(-f "$dest_ret/$kept[$_]-serverstatus", "kept collection $_ is complete") for 0..$#kept;
 
 done_testing;

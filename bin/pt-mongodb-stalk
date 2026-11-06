@@ -724,16 +724,6 @@ remove_pid_file() {
 # ###########################################################################
 
 # ###########################################################################
-# pt-mongodb-stalk helpers
-# ###########################################################################
-
-remove_empty_err_files() {
-   local dir="$1"
-   [ -d "$dir" ] || return 0
-   find "$dir" -maxdepth 1 -type f -name '*.err' -size 0 -delete 2>/dev/null || true
-}
-
-# ###########################################################################
 # Mongo helpers
 # ###########################################################################
 
@@ -1046,38 +1036,6 @@ run_maybe_sudo() {
    fi
 }
 
-sample_ts() {
-   date +%F-%T | tr ':-' '_'
-}
-
-sample_file() {
-   local d="$1"
-   local label="$2"
-   local ext="$3"
-   printf '%s/%s-%s.%s' "$d" "$(sample_ts)" "$label" "$ext"
-}
-
-sample_file_with_ts() {
-   local d="$1"
-   local ts="$2"
-   local label="$3"
-   local ext="$4"
-   printf '%s/%s-%s.%s' "$d" "$ts" "$label" "$ext"
-}
-
-state_file() {
-   local d="$1"
-   local label="$2"
-   printf '%s/%s' "$d" "$label"
-}
-
-fixed_file() {
-   local d="$1"
-   local label="$2"
-   local ext="$3"
-   printf '%s/%s.%s' "$d" "$label" "$ext"
-}
-
 sample_count() {
    perl -e '
       my ($run_time, $sleep_collect) = @ARGV;
@@ -1090,49 +1048,20 @@ sample_count() {
    ' "$1" "$2"
 }
 
-collect_mongo_monitor_sample() {
-   local d="$1"
+# Append the output of a command to a sample file.  stderr is not redirected,
+# so it goes to the collection's <prefix>-output file.  Only the label is
+# logged on failure, never the command line, which may contain credentials.
+run_collector() {
+   local file="$1"
    local label="$2"
-   local cmd="$3"
-   local interval="$4"
-   shift 4
+   shift 2
 
-   local ts out err status
-   ts="$(sample_ts)"
-   out="$(sample_file_with_ts "$d" "$ts" "$label" "txt")"
-   err="$(sample_file_with_ts "$d" "$ts" "$label" "err")"
-
-   mongo_monitor_exec "$cmd" "$interval" "$@" > "$out" 2>"$err"
-   status=$?
-
+   "$@" >> "$file"
+   local status=$?
    if [ "$status" -ne 0 ]; then
-      echo "Command exited with status $status: $cmd $* $MONGO_MONITOR_ARGS $interval" >> "$err"
+      warn "$label exited with status $status"
    fi
-   if [ ! -s "$out" ]; then
-      echo "Command produced no output: $cmd $* $MONGO_MONITOR_ARGS $interval" >> "$err"
-   fi
-}
-
-collect_command_sample() {
-   local d="$1"
-   local label="$2"
-   local cmd="$3"
-   shift 3
-
-   local ts out err status
-   ts="$(sample_ts)"
-   out="$(sample_file_with_ts "$d" "$ts" "$label" "txt")"
-   err="$(sample_file_with_ts "$d" "$ts" "$label" "err")"
-
-   "$cmd" "$@" > "$out" 2>"$err"
-   status=$?
-
-   if [ "$status" -ne 0 ]; then
-      echo "Command exited with status $status: $cmd $*" >> "$err"
-   fi
-   if [ ! -s "$out" ]; then
-      echo "Command produced no output: $cmd $*" >> "$err"
-   fi
+   return 0
 }
 
 # ###########################################################################
@@ -1140,7 +1069,8 @@ collect_command_sample() {
 # ###########################################################################
 
 collect() {
-   local d="$1"
+   local d="$1"  # directory to save results in
+   local p="$2"  # prefix for each result file
    local cnt
    local collect_wait
    local mongo_pid=""
@@ -1149,23 +1079,36 @@ collect() {
    collect_wait="$OPT_RUN_TIME"
    [ "$collect_wait" -lt 1 ] && collect_wait=1
    mongo_pid=$(get_mongo_pid)
-   collect_mongodb_data_one "$d" "$mongo_pid"
-   collect_system_data "$d" "$mongo_pid" "$cnt"
+
+   collect_mongodb_data_one "$d" "$p" "$mongo_pid"
+   collect_system_data "$d" "$p" "$mongo_pid" "$cnt"
 
    log "Loop start: $(date +'TS %s.%N %F %T')"
-   collect_system_data_loop "$d" "$mongo_pid"
-   collect_mongodb_data_loop "$d"
-   date +"TS %s.%N %F %T" >> "$(state_file "$d" "heartbeat")"
+   collect_system_data_loop "$d" "$p" "$mongo_pid"
+   collect_mongodb_data_loop "$d" "$p"
 
-   collect_mongodb_data_two "$d"
+   collect_mongodb_data_two "$d" "$p"
+
+   hostname > "$d/$p-hostname"
 
    wait_for_subshells "$collect_wait"
    kill_all_subshells
+
+   # Remove "empty" files, i.e. ones that are truly empty or just contain
+   # timestamp lines, as pt-stalk does.
+   for file in "$d/$p-"*; do
+      [ -f "$file" ] || continue
+      if [ -z "$(grep -v '^TS ' --max-count 10 "$file")" ]; then
+         log "Removing empty file $file"
+         rm "$file"
+      fi
+   done
 }
 
 collect_mongodb_data_one() {
    local d="$1"
-   local mongo_pid="$2"
+   local p="$2"
+   local mongo_pid="$3"
 
    detect_mongo_topology
 
@@ -1174,8 +1117,9 @@ collect_mongodb_data_one() {
 
 collect_mongodb_data_loop() {
    local d="$1"
-   (mongo_admin_json "db.runCommand({serverStatus: 1})" > "$(sample_file "$d" "serverStatus" "json")") &
-   (mongo_admin_json "db.runCommand({currentOp: 1, active: true, idleConnections: false, allUsers: true})" > "$(sample_file "$d" "currentOp" "json")") &
+   local p="$2"
+   (mongo_admin_json "db.runCommand({serverStatus: 1})" >> "$d/$p-serverstatus") &
+   (mongo_admin_json "db.runCommand({currentOp: 1, active: true, idleConnections: false, allUsers: true})" >> "$d/$p-currentop") &
 }
 
 collect_mongodb_data_two() {
@@ -1184,53 +1128,57 @@ collect_mongodb_data_two() {
 
 collect_system_data() {
    local d="$1"
-   local mongo_pid="$2"
-   local cnt="$3"
+   local p="$2"
+   local mongo_pid="$3"
+   local cnt="$4"
 
    if [ -f /var/log/messages ]; then
-      (run_maybe_sudo cp /var/log/messages "$(fixed_file "$d" "messages" "out")") 2>"$(fixed_file "$d" "messages" "err")" &
+      (run_maybe_sudo cp /var/log/messages "$d/$p-messages") &
    fi
 
    if [ -n "$CMD_VMSTAT" ]; then
-      (collect_command_sample "$d" "vmstat" "$CMD_VMSTAT" "$OPT_SLEEP_COLLECT" "$cnt") &
+      run_collector "$d/$p-vmstat" vmstat "$CMD_VMSTAT" "$OPT_SLEEP_COLLECT" "$cnt" &
    fi
    if [ -n "$CMD_IOSTAT" ]; then
-      (collect_command_sample "$d" "iostat" "$CMD_IOSTAT" "$OPT_SLEEP_COLLECT" "$cnt") &
+      run_collector "$d/$p-iostat" iostat "$CMD_IOSTAT" "$OPT_SLEEP_COLLECT" "$cnt" &
    fi
    if [ -n "$CMD_MPSTAT" ]; then
-      (collect_command_sample "$d" "mpstat" "$CMD_MPSTAT" -P ALL "$OPT_SLEEP_COLLECT" "$cnt") &
+      run_collector "$d/$p-mpstat" mpstat "$CMD_MPSTAT" -P ALL "$OPT_SLEEP_COLLECT" "$cnt" &
    fi
    if [ -n "$CMD_TOP" ]; then
       if top -bn1 >/dev/null 2>&1; then
-         (collect_command_sample "$d" "top" "$CMD_TOP" -b -d "$OPT_SLEEP_COLLECT" -n "$cnt") &
+         run_collector "$d/$p-top" top "$CMD_TOP" -b -d "$OPT_SLEEP_COLLECT" -n "$cnt" &
       elif top -l 1 >/dev/null 2>&1; then
-         (collect_command_sample "$d" "top" "$CMD_TOP" -l "$cnt" -s "$OPT_SLEEP_COLLECT") &
+         run_collector "$d/$p-top" top "$CMD_TOP" -l "$cnt" -s "$OPT_SLEEP_COLLECT" &
       fi
    fi
    if [ -n "$CMD_MONGOSTAT" ]; then
-      (collect_mongo_monitor_sample "$d" "mongostat" "$CMD_MONGOSTAT" "$OPT_SLEEP_COLLECT" --rowcount "$cnt") &
+      run_collector "$d/$p-mongostat" mongostat \
+         mongo_monitor_exec "$CMD_MONGOSTAT" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
    fi
    if [ -n "$CMD_MONGOTOP" ]; then
-      (collect_mongo_monitor_sample "$d" "mongotop" "$CMD_MONGOTOP" "$OPT_SLEEP_COLLECT" --rowcount "$cnt") &
+      run_collector "$d/$p-mongotop" mongotop \
+         mongo_monitor_exec "$CMD_MONGOTOP" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
    fi
 }
 
 collect_system_data_loop() {
    local d="$1"
-   local mongo_pid="$2"
-   local disk_space_file="$PT_TMPDIR/collect-disk-space"
+   local p="$2"
+   local mongo_pid="$3"
    local mongo_proc_label="pidstat_mongod"
 
-   disk_space "$d" > "$disk_space_file"
-   check_disk_space "$disk_space_file" "$OPT_DISK_BYTES_FREE" "$OPT_DISK_PCT_FREE" || return
+   disk_space "$d" > "$d/$p-disk-space"
+   check_disk_space "$d/$p-disk-space" "$OPT_DISK_BYTES_FREE" "$OPT_DISK_PCT_FREE" || return
 
-   (ps faux > "$(sample_file "$d" "ps" "txt")") &
+   (ps faux >> "$d/$p-ps") &
    if [ -n "$CMD_PIDSTAT" ]; then
-      (collect_command_sample "$d" "pidstat_d" "$CMD_PIDSTAT" -d 1 1) &
-      (collect_command_sample "$d" "pidstat_u" "$CMD_PIDSTAT" -u 1 1) &
+      run_collector "$d/$p-pidstat_d" pidstat "$CMD_PIDSTAT" -d 1 1 &
+      run_collector "$d/$p-pidstat_u" pidstat "$CMD_PIDSTAT" -u 1 1 &
       if [ -n "$mongo_pid" ]; then
          [ "$MONGO_PROCESS_TYPE" = "mongos" ] && mongo_proc_label="pidstat_mongos"
-         (collect_command_sample "$d" "$mongo_proc_label" "$CMD_PIDSTAT" -urdwt -h -p "$mongo_pid" 1 1) &
+         run_collector "$d/$p-$mongo_proc_label" pidstat \
+            "$CMD_PIDSTAT" -urdwt -h -p "$mongo_pid" 1 1 &
       fi
    fi
 }
@@ -1417,21 +1365,54 @@ sleep_ok() {
 
 purge_samples() {
    local dir
-   dir=$(realpath -s "$1")
+   dir=$(cd "$1" && pwd -P) || return
    local retention_time="$2"
    local retention_count="$3"
+   local retention_size="$4"
+   local prefix
 
-   find "$dir" -maxdepth 1 -type f -mtime +"$retention_time" -regextype posix-egrep \
-      -regex "$dir/[0-9]{4}(_[0-9]{2}){5}-.*" -exec rm -f '{}' \;
+   # Delete collect files which are more than --retention-time days old.
+   if [ -n "${OPT_PREFIX:-}" ]; then
+      find "$dir" -maxdepth 1 -type f -mtime +"$retention_time" \
+         -name "$OPT_PREFIX-*" -exec rm -f '{}' \;
+   else
+      find "$dir" -maxdepth 1 -type f -mtime +"$retention_time" \
+         -name '[0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9]_[0-9][0-9]_[0-9][0-9]_[0-9][0-9]-*' \
+         -exec rm -f '{}' \;
+   fi
 
-   if [ "$retention_count" -gt 0 ]; then
-      local target_count=$((retention_count + 1))
-      local files_to_delete
-      files_to_delete=$(find "$dir" -maxdepth 1 -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +"${target_count}")
-      for prefix in $files_to_delete; do
-         rm -f "$dir"/"$prefix"-* 2>/dev/null
+   # Keep only the newest --retention-count collections.
+   if [ "${retention_count:-0}" -gt 0 ]; then
+      for prefix in $(_sample_prefixes "$dir" | tail -n +$((retention_count + 1))); do
+         echo "deleting files ${dir}/${prefix}-* according to the --retention-count param"
+         rm -f "$dir/$prefix"-* 2>/dev/null
       done
    fi
+
+   # Delete the oldest collections until --dest is at most --retention-size MB,
+   # always keeping the newest collection.
+   if [ "${retention_size:-0}" -gt 0 ]; then
+      for prefix in $(_sample_prefixes "$dir" | tail -n +2 | sort); do
+         local current_size
+         current_size=$(du -sk "$dir" | awk '{print int($1 / 1024)}')
+         if [ "$current_size" -gt "$retention_size" ]; then
+            echo "deleting files ${dir}/${prefix}-* according to the --retention-size param"
+            rm -f "$dir/$prefix"-* 2>/dev/null
+         else
+            break
+         fi
+      done
+   fi
+}
+
+# Print the collection prefixes in --dest, newest first.  Every file written
+# by a collection is named <prefix>-<name>, and a collection always writes
+# <prefix>-trigger, so only those prefixes are collections.  This leaves out
+# unrelated files such as a PID file or a log in --dest.
+_sample_prefixes() {
+   local dir="$1"
+   find "$dir" -maxdepth 1 -type f -name '*-trigger' -exec basename {} \; \
+      | sed 's/-trigger$//' | sort -r | uniq
 }
 
 sigtrap() {
@@ -1485,17 +1466,21 @@ stalk() {
 
          if [ "$OPT_COLLECT" ]; then
             local prefix="${OPT_PREFIX:-$(date +%F-%T | tr ':-' '_')}"
+            # Check that there will be enough disk space for another
+            # collection the size of the previous one (default 20M margin).
+            # check_disk_space takes the margin in bytes.
             local margin="20971520"
             if [ -n "$last_prefix" ]; then
-               margin=$(du -mc "$OPT_DEST"/"$last_prefix"-* 2>/dev/null | tail -n 1 | awk '{print $1}')
-               [ -n "$margin" ] || margin="20971520"
+               local last_kb
+               last_kb=$(du -kc "$OPT_DEST"/"$last_prefix"-* 2>/dev/null | tail -n 1 | awk '{print $1}')
+               [ -n "$last_kb" ] && [ "$last_kb" -gt 0 ] && margin=$((last_kb * 1024))
             fi
 
-            disk_space "$OPT_DEST" > "$PT_TMPDIR/$prefix-disk-space"
-            check_disk_space "$PT_TMPDIR/$prefix-disk-space" "$OPT_DISK_BYTES_FREE" "$OPT_DISK_PCT_FREE" "$margin"
+            disk_space "$OPT_DEST" > "$OPT_DEST/$prefix-disk-space"
+            check_disk_space "$OPT_DEST/$prefix-disk-space" "$OPT_DISK_BYTES_FREE" "$OPT_DISK_PCT_FREE" "$margin"
             if [ $? -eq 0 ]; then
-               ts "$msg"                                 >> "$(state_file "$OPT_DEST" "trigger")"
-               ts "pt-mongodb-stalk ran with $RAN_WITH" >> "$(state_file "$OPT_DEST" "trigger")"
+               ts "$msg"                                >> "$OPT_DEST/$prefix-trigger"
+               ts "pt-mongodb-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
                last_prefix="$prefix"
 
                before_collect
@@ -1504,11 +1489,11 @@ stalk() {
                local collect_end_epoch
                local collect_elapsed
                collect_start_epoch=$(date +%s)
-               ts "Collect $ITER started; run-time=$OPT_RUN_TIME; sleep-collect=$OPT_SLEEP_COLLECT" >> "$(state_file "$OPT_DEST" "trigger")"
+               ts "Collect $ITER started; run-time=$OPT_RUN_TIME; sleep-collect=$OPT_SLEEP_COLLECT" >> "$OPT_DEST/$prefix-trigger"
 
                (
-                  collect "$OPT_DEST"
-               ) >> "$(state_file "$OPT_DEST" "log")" 2>&1 &
+                  collect "$OPT_DEST" "$prefix"
+               ) >> "$OPT_DEST/$prefix-output" 2>&1 &
                local collector_pid=$!
                log "Collect $ITER PID $collector_pid"
                after_collect "$collector_pid"
@@ -1519,13 +1504,13 @@ stalk() {
                fi
                collect_end_epoch=$(date +%s)
                collect_elapsed=$((collect_end_epoch - collect_start_epoch))
-               ts "Collect $ITER finished in ${collect_elapsed}s; sleep=$OPT_SLEEP before next iteration" >> "$(state_file "$OPT_DEST" "trigger")"
+               ts "Collect $ITER finished in ${collect_elapsed}s; sleep=$OPT_SLEEP before next iteration" >> "$OPT_DEST/$prefix-trigger"
             else
-               warn "Collect canceled because there will not be enough disk space after collecting another sample"
+               warn "Collect canceled because there will not be enough disk space after collecting another $margin bytes"
             fi
 
             if [ -d "$OPT_DEST" ]; then
-               purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME" "$OPT_RETENTION_COUNT"
+               purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME" "$OPT_RETENTION_COUNT" "$OPT_RETENTION_SIZE"
             fi
          fi
 
@@ -1541,12 +1526,11 @@ stalk() {
    done
 
    if [ "$OPT_COLLECT" ] && [ -d "$OPT_DEST" ]; then
-      purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME" "$OPT_RETENTION_COUNT"
+      purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME" "$OPT_RETENTION_COUNT" "$OPT_RETENTION_SIZE"
    fi
 
    wait_for_subshells $((OPT_RUN_TIME * 3))
    kill_all_subshells
-   remove_empty_err_files "$OPT_DEST"
 }
 
 main() {
@@ -1818,13 +1802,23 @@ Port number to use for connection.
 
 type: string
 
-Filename prefix for diagnostic samples.
+The filename prefix for diagnostic samples.  By default, all files created
+by the same L<"--collect"> instance have a timestamp prefix based on the current
+local time, like C<2026_11_06_14_02_02>, which is November 6, 2026 at 14:02:02.
 
 =item --retention-count
 
 type: int; default: 0
 
-Keep data for the last N runs.
+Keep the data for the last N runs.  If N > 0, the tool keeps the files of the
+last N collections in L<"--dest"> and deletes older ones.
+
+=item --retention-size
+
+type: int; default: 0
+
+Keep up to --retention-size MB of data.  The oldest collections are deleted
+first, and the newest one is always kept, even if it is bigger than this value.
 
 =item --retention-time
 
@@ -1972,72 +1966,65 @@ Run in stalking mode when replica set lag is above 30 seconds:
 =head1 OUTPUT
 
 When the trigger condition is met for the configured number of consecutive
-cycles, the tool collects into L<"--dest">.  Snapshot commands run once per
-collection iteration and are stored as timestamped files.  For example:
+cycles, the tool collects into L<"--dest">.  All files of one collection share
+the same prefix (see L<"--prefix">) and are named C<E<lt>prefixE<gt>-E<lt>nameE<gt>>, as
+with C<pt-stalk>.  For example:
 
-  2026_04_24_10_00_01-serverStatus.json
-  2026_04_24_10_00_01-currentOp.json
-  2026_04_24_10_00_01-ps.txt
+  2026_11_06_10_00_01-trigger
+  2026_11_06_10_00_01-output
+  2026_11_06_10_00_01-hostname
+  2026_11_06_10_00_01-disk-space
+  2026_11_06_10_00_01-serverstatus
+  2026_11_06_10_00_01-currentop
+  2026_11_06_10_00_01-vmstat
 
-Interval commands run once per collection iteration using L<"--sleep-collect">
-as their polling interval and a count derived from L<"--run-time">.  For
-example, C<--run-time 5 --sleep-collect 1> runs commands like C<vmstat 1 5>
-and stores the result in one timestamped file.
+C<E<lt>prefixE<gt>-trigger> records why the collection was triggered and the options
+the tool ran with.  C<E<lt>prefixE<gt>-output> holds the collector's own messages and
+the error output of the commands it ran.
+
+Interval commands run once per collection using L<"--sleep-collect"> as their
+polling interval and a count derived from L<"--run-time">.  For example,
+C<--run-time 5 --sleep-collect 1> runs commands like C<vmstat 1 5>.
 
 The collection window is capped by L<"--run-time">.  After a collection
 finishes, the tool waits L<"--sleep"> seconds before the next trigger check or
-collection iteration.  Collections do not overlap.
+collection.  Collections do not overlap.
 
-The collector also writes these fixed files in the destination directory:
-
-  heartbeat
-  log
-  trigger
+If L<"--prefix"> is given, every collection writes to the same files and the
+output is appended.
 
 =head1 COLLECTED DATA
 
-MongoDB data collected once per collection iteration:
+MongoDB data, with the file name suffix in parentheses:
 
-  serverStatus
-  currentOp
-
-MongoDB interval tools collected once per collection iteration:
-
-  mongostat
-  mongotop
+  serverStatus (serverstatus)
+  currentOp (currentop)
+  mongostat (mongostat)
+  mongotop (mongotop)
 
 MongoDB JSON output from shell commands is cleaned before writing: C<ok>,
 C<$clusterTime>, and C<operationTime> are removed.
 
-System data collected once per collection iteration, depending on tool
-availability:
+System data, depending on tool availability:
 
-  ps faux
-  pidstat -d
-  pidstat -u
-  pidstat -urdwt for mongod or mongos
+  ps faux (ps)
+  pidstat -d (pidstat_d)
+  pidstat -u (pidstat_u)
+  pidstat -urdwt for mongod or mongos (pidstat_mongod or pidstat_mongos)
+  vmstat (vmstat)
+  iostat (iostat)
+  mpstat (mpstat)
+  top (top)
+  df for --dest (disk-space)
 
-System interval tools collected once per collection iteration, depending on
-tool availability:
-
-  vmstat
-  iostat
-  mpstat
-  top
-
-The process-specific C<pidstat> file is named C<pidstat_mongod.txt> or
-C<pidstat_mongos.txt> according to the detected MongoDB process type.  Topology
-is detected internally for this purpose, but no topology summary file is
-written.
-
-If C</var/log/messages> exists, the tool also copies it to C<messages.out>.
+If C</var/log/messages> exists, the tool also copies it to
+C<E<lt>prefixE<gt>-messages>.
 
 =head1 OUTPUT CLEANUP
 
-At the end of a run, zero-byte C<.err> files are removed and non-empty C<.err>
-files are kept.  The collector enforces disk-space safety checks, but uses
-internal temporary files instead of writing disk-space snapshots into
-L<"--dest">.
+At the end of a collection, files that are empty or contain only timestamp
+lines are removed.  Old collections are removed according to
+L<"--retention-time">, L<"--retention-count"> and L<"--retention-size">.
 
 =head1 NOTES
 
