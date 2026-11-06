@@ -852,20 +852,6 @@ redact_secrets() {
    '
 }
 
-mongo_admin_json() {
-   local expr="$1"
-   mongo_eval "
-      const __pt = db.getSiblingDB('admin');
-      const __doc = ${expr};
-      if (__doc && typeof __doc === 'object' && !Array.isArray(__doc)) {
-         delete __doc.ok;
-         delete __doc['\$clusterTime'];
-         delete __doc.operationTime;
-      }
-      print(EJSON.stringify(__doc));
-   "
-}
-
 detect_mongo_topology() {
    local topology
    topology=$(mongo_eval "
@@ -914,10 +900,12 @@ detect_mongo_topology() {
          __clusterRole,
          __replicaSetRole,
          __hello.setName || ''
-      ].join('\t'));
+      ].join('|'));
    ")
 
-   IFS=$'\t' read -r MONGO_PROCESS_TYPE MONGO_CLUSTER_ROLE MONGO_REPLICA_SET_ROLE MONGO_REPLSET_NAME <<EOF
+   # Not a tab: read merges consecutive whitespace separators, which would
+   # shift the fields after an empty one (e.g. no cluster role).
+   IFS='|' read -r MONGO_PROCESS_TYPE MONGO_CLUSTER_ROLE MONGO_REPLICA_SET_ROLE MONGO_REPLSET_NAME <<EOF
 $topology
 EOF
 }
@@ -1081,6 +1069,181 @@ run_collector() {
 # collection section
 # ###########################################################################
 
+# mongosh code shared by the MongoDB collectors.  The scripts that use it
+# start with the P_* constants written by mongo_collect_params, and write the
+# sample files themselves with Node's fs module, so one mongosh process can
+# collect a whole time series.  Each sample starts with a TS line in the same
+# format as pt-stalk's, followed by pretty-printed JSON.  Errors are printed
+# on stdout, which goes to <prefix>-output.
+read -r -d '' MONGO_JS_LIB <<'MONGO_JS'
+const __fs = require('fs');
+
+function __ts() {
+   const d = new Date();
+   const pad = (n, w) => String(n).padStart(w || 2, '0');
+   return 'TS ' + Math.floor(d.getTime() / 1000) + '.' + pad(d.getMilliseconds(), 3) + '000000 '
+      + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' '
+      + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+
+function __file(name) {
+   return P_DIR + '/' + P_PREFIX + '-' + name;
+}
+
+function __cmd(cmd, dbName) {
+   const doc = db.getSiblingDB(dbName || 'admin').runCommand(cmd);
+   if (doc && doc.ok === 0) {
+      throw new Error(doc.errmsg || 'command failed');
+   }
+   if (doc && typeof doc === 'object' && !Array.isArray(doc)) {
+      delete doc.ok;
+      delete doc['$clusterTime'];
+      delete doc.operationTime;
+   }
+   return doc;
+}
+
+function __write(name, doc, ts) {
+   __fs.appendFileSync(__file(name), (ts || __ts()) + '\n' + EJSON.stringify(doc, null, 2) + '\n');
+}
+
+function __try(label, f) {
+   try {
+      return f();
+   } catch (e) {
+      print('MongoDB ' + label + ': ' + e.message);
+      return undefined;
+   }
+}
+
+// serverStatus as numeric "name value" rows for pt-mext: dot-separated paths
+// with characters other than [A-Za-z0-9_.-] replaced by _, whole numbers only
+// (booleans as 0/1, decimals rounded), no strings, dates or arrays, and no
+// latency histograms or metrics.commands.
+function __extRows(doc, path, rows, seen) {
+   for (const key of Object.keys(doc)) {
+      if (/histogram/i.test(key)) {
+         continue;
+      }
+      const name = (path ? path + '.' : '') + String(key).replace(/[^A-Za-z0-9_.-]/g, '_');
+      if (name === 'metrics.commands') {
+         continue;
+      }
+      const v = doc[key];
+      let num;
+      if (v === null || v === undefined) {
+         continue;
+      } else if (typeof v === 'boolean') {
+         num = v ? '1' : '0';
+      } else if (typeof v === 'number' || (typeof v === 'object' && (v._bsontype === 'Int32' || v._bsontype === 'Double' || v._bsontype === 'Decimal128'))) {
+         const f = typeof v === 'number' ? v : parseFloat(v.toString());
+         if (!isFinite(f)) {
+            continue;
+         }
+         const r = Math.round(f);
+         num = Number.isSafeInteger(r) ? String(r) : BigInt(r).toString();
+      } else if (typeof v === 'object' && v._bsontype === 'Long') {
+         num = v.toString();
+      } else if (typeof v === 'object' && !v._bsontype && !Array.isArray(v) && !(v instanceof Date)) {
+         __extRows(v, name, rows, seen);
+         continue;
+      } else {
+         continue;
+      }
+      if (!seen.has(name)) {
+         seen.add(name);
+         rows.push([name, num]);
+      }
+   }
+   return rows;
+}
+
+// The same table format as "mysqladmin extended-status -i", followed by an
+// empty line, so pt-mext can compare the samples.
+function __extTable(doc) {
+   const rows = __extRows(doc, '', [], new Set());
+   const w1 = rows.reduce((w, r) => Math.max(w, r[0].length), 'Variable_name'.length);
+   const w2 = rows.reduce((w, r) => Math.max(w, r[1].length), 'Value'.length);
+   const line = '+' + '-'.repeat(w1 + 2) + '+' + '-'.repeat(w2 + 2) + '+';
+   const row = (a, b) => '| ' + a.padEnd(w1) + ' | ' + b.padEnd(w2) + ' |';
+   return [line, row('Variable_name', 'Value'), line]
+      .concat(rows.map(r => row(r[0], r[1])), [line, '', ''])
+      .join('\n');
+}
+MONGO_JS
+
+# Metadata collected once at the start of a collection.
+read -r -d '' MONGO_JS_ONCE <<'MONGO_JS'
+__try('hostInfo', () => __write('hostinfo', __cmd({hostInfo: 1})));
+__try('buildInfo', () => __write('buildinfo', __cmd({buildInfo: 1})));
+const __opts = __try('getCmdLineOpts', () => __cmd({getCmdLineOpts: 1}));
+if (__opts) {
+   __write('cmdlineopts', __opts);
+}
+__try('getParameter', () => __write('parameters', __cmd({getParameter: '*'})));
+__try('connPoolStats', () => __write('connpoolstats', __cmd({connPoolStats: 1})));
+
+__try('profiling status', () => {
+   const status = {};
+   for (const d of __cmd({listDatabases: 1, nameOnly: true}).databases) {
+      status[d.name] = __try('profiling status of ' + d.name, () => __cmd({profile: -1}, d.name));
+   }
+   __write('profiling-status', status);
+});
+
+if (P_REPLSET) {
+   __try('replSetGetConfig', () => __write('rs-conf', __cmd({replSetGetConfig: 1}).config));
+   __try('printReplicationInfo', () => __write('oplog-info', db.printReplicationInfo().value));
+   __try('printSecondaryReplicationInfo', () => __write('secondary-replication-info', db.printSecondaryReplicationInfo().value));
+}
+
+// Tell the collector where the server logs to, and its PID, so it can tail
+// the log if the server runs on this host.
+const __log = __opts && __opts.parsed && __opts.parsed.systemLog;
+if (__log && __log.destination === 'file' && __log.path) {
+   const __status = __try('serverStatus', () => __cmd({serverStatus: 1})) || {};
+   __fs.writeFileSync(P_TMPDIR + '/mongod-log', (__status.pid || '') + '\t' + __log.path + '\n');
+}
+MONGO_JS
+
+# Time series: one sample every --sleep-collect seconds for --run-time
+# seconds.  All files of a sample share its TS line.
+read -r -d '' MONGO_JS_LOOP <<'MONGO_JS'
+const __start = Date.now();
+for (let i = 0; i < P_COUNT; i++) {
+   const __wait = __start + i * P_INTERVAL * 1000 - Date.now();
+   if (__wait > 0) {
+      sleep(__wait);
+   }
+   const ts = __ts();
+   __try('serverStatus', () => {
+      const status = __cmd({serverStatus: 1});
+      __write('serverstatus', status, ts);
+      __fs.appendFileSync(__file('serverstatus-ext'), __extTable(status));
+   });
+   __try('currentOp', () => __write('currentop',
+      __cmd({currentOp: 1, active: true, idleConnections: false, allUsers: true}), ts));
+   if (P_REPLSET) {
+      __try('replSetGetStatus', () => __write('replsetgetstatus', __cmd({replSetGetStatus: 1}), ts));
+   }
+}
+MONGO_JS
+
+# The P_* constants used by the scripts above.
+mongo_collect_params() {
+   local d="$1"
+   local p="$2"
+   local count="${3:-1}"
+   local replset="false"
+   [ -n "$MONGO_REPLSET_NAME" ] && replset="true"
+   printf 'const P_DIR = %s;\n' "$(_js_quote "$d")"
+   printf 'const P_PREFIX = %s;\n' "$(_js_quote "$p")"
+   printf 'const P_TMPDIR = %s;\n' "$(_js_quote "$PT_TMPDIR")"
+   printf 'const P_COUNT = %d;\n' "$count"
+   printf 'const P_INTERVAL = %d;\n' "$OPT_SLEEP_COLLECT"
+   printf 'const P_REPLSET = %s;\n' "$replset"
+}
+
 collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
@@ -1091,8 +1254,6 @@ collect() {
 
    start_time=$(date +%s)
    cnt=$(sample_count "$OPT_RUN_TIME" "$OPT_SLEEP_COLLECT")
-   collect_wait="$OPT_RUN_TIME"
-   [ "$collect_wait" -lt 1 ] && collect_wait=1
    mongo_pid=$(get_mongo_pid)
 
    collect_mongodb_data_one "$d" "$p" "$mongo_pid"
@@ -1100,14 +1261,18 @@ collect() {
 
    log "Loop start: $(date +'TS %s.%N %F %T')"
    collect_system_data_loop "$d" "$p" "$mongo_pid"
-   collect_mongodb_data_loop "$d" "$p"
-
-   collect_mongodb_data_two "$d" "$p"
+   collect_mongodb_data_loop "$d" "$p" "$cnt"
 
    hostname > "$d/$p-hostname"
 
+   # The collectors run for --run-time seconds.  Like pt-stalk, give them
+   # another --run-time seconds to finish (mongosh, mongostat and mongotop
+   # take a moment to start) before killing them.
+   collect_wait=$((OPT_RUN_TIME * 2))
+   [ "$collect_wait" -lt 2 ] && collect_wait=2
    wait_for_subshells "$collect_wait"
    kill_all_subshells
+   log "Loop end: $(date +'TS %s.%N %F %T')"
 
    collect_system_journal "$d" "$p" "$start_time"
 
@@ -1129,18 +1294,50 @@ collect_mongodb_data_one() {
 
    detect_mongo_topology
 
-   :
+   rm -f "$PT_TMPDIR/mongod-log"
+   mongo_eval "$(mongo_collect_params "$d" "$p")
+$MONGO_JS_LIB
+$MONGO_JS_ONCE"
+
+   collect_mongodb_log "$d" "$p"
+}
+
+# Follow the server's log file during the collection, like pt-stalk does with
+# the MySQL error log, if the server runs on this host and the log is readable.
+collect_mongodb_log() {
+   local d="$1"
+   local p="$2"
+   local server_pid log_path
+
+   [ -f "$PT_TMPDIR/mongod-log" ] || return 0
+   IFS="$(printf '\t')" read -r server_pid log_path < "$PT_TMPDIR/mongod-log"
+   [ -n "$server_pid" ] && [ -n "$log_path" ] || return 0
+
+   case "$(ps -p "$server_pid" -o comm= 2>/dev/null)" in
+      *mongod*|*mongos*) ;;
+      *) return 0 ;;  # the server does not run on this host
+   esac
+   if [ ! -r "$log_path" ]; then
+      log "Cannot read the MongoDB log $log_path; not collecting it"
+      return 0
+   fi
+
+   (
+      tail -f "$log_path" >> "$d/$p-mongod-log" &
+      local tail_pid=$!
+      sleep "$OPT_RUN_TIME"
+      kill "$tail_pid" 2>/dev/null
+   ) &
 }
 
 collect_mongodb_data_loop() {
    local d="$1"
    local p="$2"
-   (mongo_admin_json "db.runCommand({serverStatus: 1})" >> "$d/$p-serverstatus") &
-   (mongo_admin_json "db.runCommand({currentOp: 1, active: true, idleConnections: false, allUsers: true})" >> "$d/$p-currentop") &
-}
+   local cnt="$3"
 
-collect_mongodb_data_two() {
-   :
+   mongo_eval "$(mongo_collect_params "$d" "$p" "$cnt")
+$MONGO_JS_LIB
+$MONGO_JS_LOOP" &
 }
 
 collect_system_data() {
@@ -2135,6 +2332,7 @@ with C<pt-stalk>.  For example:
   2026_11_06_10_00_01-hostname
   2026_11_06_10_00_01-disk-space
   2026_11_06_10_00_01-serverstatus
+  2026_11_06_10_00_01-serverstatus-ext
   2026_11_06_10_00_01-currentop
   2026_11_06_10_00_01-vmstat
 
@@ -2142,11 +2340,12 @@ C<E<lt>prefixE<gt>-trigger> records why the collection was triggered and the opt
 the tool ran with.  C<E<lt>prefixE<gt>-output> holds the collector's own messages and
 the error output of the commands it ran.
 
-Interval commands run once per collection using L<"--sleep-collect"> as their
-polling interval and a count derived from L<"--run-time">.  For example,
-C<--run-time 5 --sleep-collect 1> runs commands like C<vmstat 1 5>.
+Time series are collected every L<"--sleep-collect"> seconds for
+L<"--run-time"> seconds.  For example, C<--run-time 5 --sleep-collect 1> takes
+5 samples of serverStatus and runs commands like C<vmstat 1 5>.
 
-The collection window is capped by L<"--run-time">.  After a collection
+Collectors that are still running L<"--run-time"> seconds after the end of the
+collection window are stopped.  After a collection
 finishes, the tool waits L<"--sleep"> seconds before the next trigger check or
 collection.  Collections do not overlap.
 
@@ -2155,15 +2354,55 @@ output is appended.
 
 =head1 COLLECTED DATA
 
-MongoDB data, with the file name suffix in parentheses:
+MongoDB data is saved as pretty-printed JSON.  Each sample starts with a line
+in the same format as C<pt-stalk>'s timestamp lines:
+
+  TS 1793989603.540000000 2026-11-06 15:26:43
+
+C<ok>, C<$clusterTime> and C<operationTime> are removed from command results.
+
+Collected once at the start of the collection, with the file name suffix in
+parentheses:
+
+  hostInfo (hostinfo)
+  buildInfo (buildinfo)
+  getCmdLineOpts (cmdlineopts)
+  getParameter: '*' (parameters)
+  connPoolStats (connpoolstats)
+  profiling status of each database (profiling-status)
+
+and on replica set members:
+
+  replSetGetConfig (rs-conf)
+  db.printReplicationInfo(), the oplog window (oplog-info)
+  db.printSecondaryReplicationInfo() (secondary-replication-info)
+
+Collected every L<"--sleep-collect"> seconds during L<"--run-time">:
 
   serverStatus (serverstatus)
-  currentOp (currentop)
+  currentOp with active: true and allUsers: true (currentop)
+  replSetGetStatus, on replica set members (replsetgetstatus)
+
+Each serverStatus sample is also written to C<E<lt>prefixE<gt>-serverstatus-ext>
+in the table format of C<mysqladmin extended-status -i>, so C<pt-mext> can
+show how the values change between samples:
+
+  pt-mext -r -- cat 2026_11_06_15_26_41-serverstatus-ext
+
+The names are the dot-separated paths in serverStatus, with characters other
+than letters, digits, C<_>, C<.> and C<-> replaced by C<_>.  Only numeric
+values are included: booleans as 0 or 1, decimals rounded, and strings, dates
+and arrays left out.  The latency histograms and C<metrics.commands> are left
+out to keep the file small.
+
+Run with interval and count derived from L<"--sleep-collect"> and
+L<"--run-time">:
+
   mongostat (mongostat)
   mongotop (mongotop)
 
-MongoDB JSON output from shell commands is cleaned before writing: C<ok>,
-C<$clusterTime>, and C<operationTime> are removed.
+If the server runs on the same host and its log file is readable, the log is
+followed during the collection and saved to C<E<lt>prefixE<gt>-mongod-log>.
 
 System data, depending on tool availability:
 

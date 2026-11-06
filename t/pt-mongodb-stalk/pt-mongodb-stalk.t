@@ -92,9 +92,29 @@ script_file="${@: -1}"
 script="$(cat "$script_file" 2>/dev/null)"
 [ -n "${MONGOSH_ARGS_LOG:-}" ] && printf '%s\n' "$*" >> "$MONGOSH_ARGS_LOG"
 [ -n "${MONGOSH_LOG:-}" ] && printf '%s\n%s\n' "$*" "$script" >> "$MONGOSH_LOG"
+# The collection scripts write their files themselves; act them out.
+p_dir="$(sed -n "s/^const P_DIR = '\(.*\)';\$/\1/p" "$script_file")"
+p_prefix="$(sed -n "s/^const P_PREFIX = '\(.*\)';\$/\1/p" "$script_file")"
+p_count="$(sed -n 's/^const P_COUNT = \([0-9]*\);$/\1/p' "$script_file")"
+case "$script" in
+   *"__try('hostInfo'"*)
+      printf 'TS 1.0 2026-01-01 00:00:00\n{"hostname": "fake"}\n' >> "$p_dir/$p_prefix-hostinfo"
+      exit 0
+      ;;
+   *"for (let i = 0; i < P_COUNT"*)
+      i=0
+      while [ "$i" -lt "$p_count" ]; do
+         printf 'TS 1.0 2026-01-01 00:00:00\n{"connections": {"active": 2}}\n' >> "$p_dir/$p_prefix-serverstatus"
+         printf '+---+\n| Variable_name | Value |\n+---+\n| connections.active | 2 |\n+---+\n\n' >> "$p_dir/$p_prefix-serverstatus-ext"
+         printf 'TS 1.0 2026-01-01 00:00:00\n{"inprog": []}\n' >> "$p_dir/$p_prefix-currentop"
+         i=$((i + 1))
+      done
+      exit 0
+      ;;
+esac
 case "$script" in
    *"__serverStatus.process"*)
-      printf 'mongod\tshard\tPRIMARY\trs0\n'
+      printf 'mongod||PRIMARY|rs0\n'
       ;;
    *"currentOp: 1"*)
       printf '{"inprog":[]}\n'
@@ -233,8 +253,10 @@ ok(-f "$p-trigger",    "creates <prefix>-trigger");
 ok(-f "$p-output",     "creates <prefix>-output");
 ok(-f "$p-hostname",   "creates <prefix>-hostname");
 ok(-f "$p-disk-space", "creates <prefix>-disk-space");
-ok(-f "$p-serverstatus",   "collects serverStatus");
-ok(-f "$p-currentop",      "collects currentOp");
+ok(-f "$p-hostinfo",         "collects the metadata once");
+ok(-f "$p-serverstatus",     "collects serverStatus");
+ok(-f "$p-serverstatus-ext", "collects serverStatus for pt-mext");
+ok(-f "$p-currentop",        "collects currentOp");
 ok(-f "$p-mongostat",      "collects mongostat");
 ok(-f "$p-mongotop",       "collects mongotop");
 ok(-f "$p-ps",             "collects ps");
@@ -250,6 +272,9 @@ like(slurp_file("$p-output"), qr/connected to: mongodb:\/\/localhost:27017/,
    "command stderr goes to <prefix>-output");
 
 my $mongosh_log = slurp_file($ENV{MONGOSH_LOG});
+like($mongosh_log, qr/^const P_COUNT = 1;$/m, "one sample for --run-time 1 --sleep-collect 1");
+like($mongosh_log, qr/^const P_REPLSET = true;$/m,
+   "replica set detected when the cluster role is empty");
 like(
    $mongosh_log,
    qr/currentOp: 1, active: true, idleConnections: false, allUsers: true/,
