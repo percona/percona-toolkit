@@ -118,6 +118,7 @@ type hostInfo struct {
 	ReplicasetName string
 	Version        string
 	NodeType       string
+	IsArbiter      bool
 }
 
 type procInfo struct {
@@ -135,6 +136,7 @@ type security struct {
 	BindIP      string
 	Port        int64
 	WarningMsgs []string
+	IsArbiter   bool
 }
 
 type databases struct {
@@ -284,19 +286,25 @@ func main() {
 
 	ci := &collectedInfo{}
 
-	ci.MongosInfo, err = getMongosInfo(ctx, client)
-	if err != nil {
-		log.Warnf("[Warning] cannot get mongos info: %v\n", err)
-	}
-
 	ci.HostInfo, err = getHostInfo(ctx, client)
 	if err != nil {
 		log.Errorf("Cannot get host info for %q: %s", clientOptions.Hosts, err)
 		os.Exit(cannotGetHostInfo) //nolint:gocritic
 	}
 
+	if !ci.HostInfo.IsArbiter {
+		ci.MongosInfo, err = getMongosInfo(ctx, client)
+		if err != nil {
+			log.Warnf("[Warning] cannot get mongos info: %v\n", err)
+		}
+	}
+
 	if ci.ReplicaMembers, err = util.GetReplicasetMembers(ctx, clientOptions); err != nil {
-		log.Warnf("[Warning] cannot get replicaset members: %v\n", err)
+		if ci.HostInfo.IsArbiter {
+			log.Infof("cannot get replicaset members: %v", err)
+		} else {
+			log.Warnf("[Warning] cannot get replicaset members: %v\n", err)
+		}
 	}
 
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
@@ -312,8 +320,12 @@ func main() {
 	}
 
 	if ci.HostInfo != nil {
-		if ci.SecuritySettings, err = getSecuritySettings(ctx, client, ci.HostInfo.Version); err != nil {
-			log.Errorf("[Error] cannot get security settings: %v\n", err)
+		if ci.SecuritySettings, err = getSecuritySettings(ctx, client, ci.HostInfo.Version, ci.HostInfo.IsArbiter); err != nil {
+			if ci.HostInfo.IsArbiter {
+				log.Infof("cannot get security settings: %v", err)
+			} else {
+				log.Errorf("[Error] cannot get security settings: %v\n", err)
+			}
 		}
 	} else {
 		log.Warn("Cannot check security settings since host info is not available (permissions?)")
@@ -365,17 +377,21 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	default:
 		buf = new(bytes.Buffer)
 
-		t := template.Must(template.New("mongos").Parse(templates.MongosInfo))
-		if err := t.Execute(buf, ci.MongosInfo); err != nil {
-			return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
+		if ci.MongosInfo != nil {
+			t := template.Must(template.New("mongos").Parse(templates.MongosInfo))
+			if err := t.Execute(buf, ci.MongosInfo); err != nil {
+				return nil, errors.Wrap(err, "cannot parse mongos section of the output template")
+			}
 		}
 
-		t = template.Must(template.New("replicas").Parse(templates.Replicas))
-		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
-			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
+		if ci.ReplicaMembers != nil || !ci.HostInfo.IsArbiter {
+			t := template.Must(template.New("replicas").Parse(templates.Replicas))
+			if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
+				return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
+			}
 		}
 
-		t = template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
+		t := template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
 		if err := t.Execute(buf, ci.HostInfo); err != nil {
 			return nil, errors.Wrap(err, "cannot parse hosttemplateData section of the output template")
 		}
@@ -385,14 +401,18 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 			return nil, errors.Wrap(err, "cannot parse the command line args section of the output template")
 		}
 
-		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
-		if err := t.Execute(buf, ci.RunningOps); err != nil {
-			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
+		if ci.RunningOps != nil {
+			t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
+			if err := t.Execute(buf, ci.RunningOps); err != nil {
+				return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
+			}
 		}
 
-		t = template.Must(template.New("ssl").Parse(templates.Security))
-		if err := t.Execute(buf, ci.SecuritySettings); err != nil {
-			return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
+		if ci.SecuritySettings != nil {
+			t = template.Must(template.New("ssl").Parse(templates.Security))
+			if err := t.Execute(buf, ci.SecuritySettings); err != nil {
+				return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
+			}
 		}
 
 		if ci.OplogInfo != nil && len(ci.OplogInfo) > 0 {
@@ -416,24 +436,48 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func newArbiterHostInfo(md proto.MasterDoc) *hostInfo {
+	setName, _ := md.SetName.(string)
+
+	return &hostInfo{
+		NodeType:       "ARBITER",
+		Hostname:       md.Me,
+		ReplicasetName: setName,
+		IsArbiter:      true,
+	}
+}
+
 func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
+	var i *hostInfo
+
 	hi := proto.HostInfo{}
 	if err := client.Database("admin").RunCommand(ctx, primitive.M{"hostInfo": 1}).Decode(&hi); err != nil {
 		log.Debugf("run('hostInfo') error: %s", err)
 
-		return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
-	}
+		md, mdErr := util.GetMasterDoc(ctx, client)
+		if mdErr != nil || !md.IsArbiter() {
+			return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
+		}
 
-	nodeType, _ := getNodeType(ctx, client)
-	procCount, _ := countMongodProcesses()
+		i = newArbiterHostInfo(md)
+		i.ProcProcessCount, _ = countMongodProcesses()
+	} else {
+		nodeType, _ := getNodeType(ctx, client)
+		procCount, _ := countMongodProcesses()
 
-	i := &hostInfo{
-		Hostname:          hi.System.Hostname,
-		HostOsType:        hi.Os.Type,
-		HostSystemCPUArch: hi.System.CpuArch,
-		ProcProcessCount:  procCount,
-		NodeType:          nodeType,
-		CmdlineArgs:       nil,
+		i = &hostInfo{
+			Hostname:          hi.System.Hostname,
+			HostOsType:        hi.Os.Type,
+			HostSystemCPUArch: hi.System.CpuArch,
+			ProcProcessCount:  procCount,
+			NodeType:          nodeType,
+			CmdlineArgs:       nil,
+		}
+
+		if md, err := util.GetMasterDoc(ctx, client); err == nil && md.IsArbiter() {
+			i.NodeType = "ARBITER"
+			i.IsArbiter = true
+		}
 	}
 
 	var cmdOpts proto.CommandLineOptions
@@ -454,7 +498,7 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 	if err == nil {
 		i.ProcessName = ss.Process
 		i.Version = ss.Version
-		if ss.Repl != nil {
+		if ss.Repl != nil && ss.Repl.SetName != "" {
 			i.ReplicasetName = ss.Repl.SetName
 		}
 
@@ -585,10 +629,11 @@ func sizeAndUnit(size int64) (float64, string) {
 	return newSize, unit[idx]
 }
 
-func getSecuritySettings(ctx context.Context, client *mongo.Client, ver string) (*security, error) {
+func getSecuritySettings(ctx context.Context, client *mongo.Client, ver string, isArbiter bool) (*security, error) {
 	s := security{
-		Auth: "disabled",
-		SSL:  "disabled",
+		Auth:      "disabled",
+		SSL:       "disabled",
+		IsArbiter: isArbiter,
 	}
 
 	v26, _ := version.NewVersion("2.6")
@@ -648,6 +693,10 @@ func getSecuritySettings(ctx context.Context, client *mongo.Client, ver string) 
 				}
 			}
 		}
+	}
+
+	if isArbiter {
+		return &s, nil
 	}
 
 	if s.Users, s.Roles, err = getUserRolesCount(ctx, client); err != nil {
