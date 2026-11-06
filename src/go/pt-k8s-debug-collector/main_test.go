@@ -1220,3 +1220,27 @@ func (s *CollectorSuite) TestNonexistentNamespace() {
 		}
 	}
 }
+
+func (s *CollectorSuite) TestSkipPodSummaryKeepsIndividualFiles() {
+	if s.Namespace != "pxc" {
+		s.T().Skip("Individual files are checked for PXC only")
+	}
+
+	err := s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--skip-pod-summary",
+	)
+	s.Require().NoError(err)
+
+	entries, err := readArchive("cluster-dump.tar.gz")
+	s.Require().NoError(err)
+
+	s.False(slices.ContainsFunc(entries, func(entry archiveEntry) bool {
+		return strings.HasSuffix(entry.name, "/summary.txt")
+	}), "Expected no summary.txt with --skip-pod-summary")
+	s.True(slices.ContainsFunc(entries, func(entry archiveEntry) bool {
+		return strings.HasSuffix(entry.name, "/var/lib/mysql/grastate.dat")
+	}), "Expected PXC individual files with --skip-pod-summary")
+}
