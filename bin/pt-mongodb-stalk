@@ -738,6 +738,11 @@ CMD_TOP="${CMD_TOP:-"$(_which top)"}"
 CMD_PMAP="${CMD_PMAP:-"$(_which pmap)"}"
 CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
 CMD_JOURNALCTL="${CMD_JOURNALCTL:-"$(_which journalctl)"}"
+CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
+CMD_NETSTAT="${CMD_NETSTAT:-"$(_which netstat)"}"
+
+# Try to find command manually, as pt-stalk does.
+[ -z "$CMD_SYSCTL" ] && [ -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
 
 MONGO_SHELL=""
 MONGO_CONNECT_JS=""    # mongosh script prefix that connects to MongoDB
@@ -1197,13 +1202,12 @@ if (P_REPLSET) {
    __try('printSecondaryReplicationInfo', () => __write('secondary-replication-info', db.printSecondaryReplicationInfo().value));
 }
 
-// Tell the collector where the server logs to, and its PID, so it can tail
-// the log if the server runs on this host.
+// Tell the collector the server's PID and log file, so it can collect
+// process data and follow the log if the server runs on this host.
 const __log = __opts && __opts.parsed && __opts.parsed.systemLog;
-if (__log && __log.destination === 'file' && __log.path) {
-   const __status = __try('serverStatus', () => __cmd({serverStatus: 1})) || {};
-   __fs.writeFileSync(P_TMPDIR + '/mongod-log', (__status.pid || '') + '\t' + __log.path + '\n');
-}
+const __status = __try('serverStatus', () => __cmd({serverStatus: 1})) || {};
+__fs.writeFileSync(P_TMPDIR + '/mongo-server', (__status.pid || '') + '|'
+   + (__log && __log.destination === 'file' && __log.path || '') + '\n');
 MONGO_JS
 
 # Time series: one sample every --sleep-collect seconds for --run-time
@@ -1251,28 +1255,38 @@ collect() {
    local collect_wait
    local mongo_pid=""
    local start_time
+   local curr_time
 
-   start_time=$(date +%s)
    cnt=$(sample_count "$OPT_RUN_TIME" "$OPT_SLEEP_COLLECT")
-   mongo_pid=$(get_mongo_pid)
 
-   collect_mongodb_data_one "$d" "$p" "$mongo_pid"
+   collect_mongodb_data_one "$d" "$p"
+   mongo_pid=$(local_mongo_pid)
+   collect_mongodb_log "$d" "$p" "$mongo_pid"
+
+   # Start the collectors that run for the whole collection.
    collect_system_data "$d" "$p" "$mongo_pid" "$cnt"
-
-   log "Loop start: $(date +'TS %s.%N %F %T')"
-   collect_system_data_loop "$d" "$p" "$mongo_pid"
    collect_mongodb_data_loop "$d" "$p" "$cnt"
+
+   # This loop collects the system snapshots every --sleep-collect seconds,
+   # and defines the duration of the collection, as in pt-stalk.
+   log "Loop start: $(date +'TS %s.%N %F %T')"
+   start_time=$(date +%s)
+   curr_time=$start_time
+   while [ $((curr_time - start_time)) -lt "$OPT_RUN_TIME" ]; do
+      collect_system_data_loop "$d" "$p" || break
+      curr_time=$(date +%s)
+   done
+   log "Loop end: $(date +'TS %s.%N %F %T')"
 
    hostname > "$d/$p-hostname"
 
-   # The collectors run for --run-time seconds.  Like pt-stalk, give them
-   # another --run-time seconds to finish (mongosh, mongostat and mongotop
-   # take a moment to start) before killing them.
-   collect_wait=$((OPT_RUN_TIME * 2))
+   # Like pt-stalk, give the collectors another --run-time seconds to finish
+   # (mongosh, mongostat and mongotop take a moment to start) before killing
+   # them.
+   collect_wait="$OPT_RUN_TIME"
    [ "$collect_wait" -lt 2 ] && collect_wait=2
    wait_for_subshells "$collect_wait"
    kill_all_subshells
-   log "Loop end: $(date +'TS %s.%N %F %T')"
 
    collect_system_journal "$d" "$p" "$start_time"
 
@@ -1290,16 +1304,36 @@ collect() {
 collect_mongodb_data_one() {
    local d="$1"
    local p="$2"
-   local mongo_pid="$3"
 
    detect_mongo_topology
 
-   rm -f "$PT_TMPDIR/mongod-log"
+   rm -f "$PT_TMPDIR/mongo-server"
    mongo_eval "$(mongo_collect_params "$d" "$p")
 $MONGO_JS_LIB
 $MONGO_JS_ONCE"
+}
 
-   collect_mongodb_log "$d" "$p"
+# Print the PID of the server if it runs on this host, else nothing.  The
+# server reports its own PID; it is used if a mongod or mongos with that PID
+# runs here.  If the server did not report it (e.g. the metadata collection
+# failed), fall back to finding a local mongod or mongos when connecting to
+# this host.
+local_mongo_pid() {
+   local server_pid="" log_path=""
+   if [ -f "$PT_TMPDIR/mongo-server" ]; then
+      IFS='|' read -r server_pid log_path < "$PT_TMPDIR/mongo-server"
+   fi
+   if [ -n "$server_pid" ]; then
+      case "$(ps -p "$server_pid" -o comm= 2>/dev/null)" in
+         *mongod*|*mongos*) echo "$server_pid" ;;
+      esac
+      return 0
+   fi
+   if [ -z "$OPT_URI" ]; then
+      case "$OPT_HOST" in
+         localhost|127.*|::1) get_mongo_pid ;;
+      esac
+   fi
 }
 
 # Follow the server's log file during the collection, like pt-stalk does with
@@ -1307,16 +1341,12 @@ $MONGO_JS_ONCE"
 collect_mongodb_log() {
    local d="$1"
    local p="$2"
-   local server_pid log_path
+   local mongo_pid="$3"
+   local server_pid="" log_path=""
 
-   [ -f "$PT_TMPDIR/mongod-log" ] || return 0
-   IFS="$(printf '\t')" read -r server_pid log_path < "$PT_TMPDIR/mongod-log"
-   [ -n "$server_pid" ] && [ -n "$log_path" ] || return 0
-
-   case "$(ps -p "$server_pid" -o comm= 2>/dev/null)" in
-      *mongod*|*mongos*) ;;
-      *) return 0 ;;  # the server does not run on this host
-   esac
+   [ -n "$mongo_pid" ] && [ -f "$PT_TMPDIR/mongo-server" ] || return 0
+   IFS='|' read -r server_pid log_path < "$PT_TMPDIR/mongo-server"
+   [ "$server_pid" = "$mongo_pid" ] && [ -n "$log_path" ] || return 0
    if [ ! -r "$log_path" ]; then
       log "Cannot read the MongoDB log $log_path; not collecting it"
       return 0
@@ -1338,30 +1368,7 @@ collect_mongodb_data_loop() {
    mongo_eval "$(mongo_collect_params "$d" "$p" "$cnt")
 $MONGO_JS_LIB
 $MONGO_JS_LOOP" &
-}
 
-collect_system_data() {
-   local d="$1"
-   local p="$2"
-   local mongo_pid="$3"
-   local cnt="$4"
-
-   if [ -n "$CMD_VMSTAT" ]; then
-      run_collector "$d/$p-vmstat" vmstat "$CMD_VMSTAT" "$OPT_SLEEP_COLLECT" "$cnt" &
-   fi
-   if [ -n "$CMD_IOSTAT" ]; then
-      run_collector "$d/$p-iostat" iostat "$CMD_IOSTAT" "$OPT_SLEEP_COLLECT" "$cnt" &
-   fi
-   if [ -n "$CMD_MPSTAT" ]; then
-      run_collector "$d/$p-mpstat" mpstat "$CMD_MPSTAT" -P ALL "$OPT_SLEEP_COLLECT" "$cnt" &
-   fi
-   if [ -n "$CMD_TOP" ]; then
-      if top -bn1 >/dev/null 2>&1; then
-         run_collector "$d/$p-top" top "$CMD_TOP" -b -d "$OPT_SLEEP_COLLECT" -n "$cnt" &
-      elif top -l 1 >/dev/null 2>&1; then
-         run_collector "$d/$p-top" top "$CMD_TOP" -l "$cnt" -s "$OPT_SLEEP_COLLECT" &
-      fi
-   fi
    if [ -n "$CMD_MONGOSTAT" ]; then
       run_collector "$d/$p-mongostat" mongostat \
          mongo_monitor_exec "$CMD_MONGOSTAT" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
@@ -1369,6 +1376,76 @@ collect_system_data() {
    if [ -n "$CMD_MONGOTOP" ]; then
       run_collector "$d/$p-mongotop" mongotop \
          mongo_monitor_exec "$CMD_MONGOTOP" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
+   fi
+}
+
+# System data collected once, or by commands that run for the whole
+# collection.  The file names and formats are the same as pt-stalk's, so
+# pt-sift, pt-diskstats and pt-pmp can read them.
+collect_system_data() {
+   local d="$1"
+   local p="$2"
+   local mongo_pid="$3"
+   local cnt="$4"
+   local pidstat_label="pidstat_mongod"
+
+   # Memory map of the server before anything else, as pt-stalk does.
+   if [ -n "$CMD_PMAP" ] && [ -n "$mongo_pid" ]; then
+      if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1; then
+         run_collector "$d/$p-pmap" pmap "$CMD_PMAP" -x "$mongo_pid"
+      else
+         run_collector "$d/$p-pmap" pmap "$CMD_PMAP" "$mongo_pid"
+      fi
+   fi
+
+   (ps -eaF | redact_secrets >> "$d/$p-ps") &
+
+   if [ -n "$CMD_TOP" ]; then
+      if top -bn1 >/dev/null 2>&1; then
+         run_collector "$d/$p-top" top "$CMD_TOP" -b -d "$OPT_SLEEP_COLLECT" -n "$cnt" &
+      elif top -l 1 >/dev/null 2>&1; then
+         run_collector "$d/$p-top" top "$CMD_TOP" -l "$cnt" -s "$OPT_SLEEP_COLLECT" &
+      fi
+   fi
+
+   if [ -n "$mongo_pid" ]; then
+      (_lsof "$mongo_pid" >> "$d/$p-lsof") &
+   fi
+
+   if [ -n "$CMD_SYSCTL" ]; then
+      run_collector "$d/$p-sysctl" sysctl "$CMD_SYSCTL" -a &
+   fi
+
+   # dmesg events from 60 seconds before the collection until now.
+   if [ -n "$CMD_DMESG" ] && [ -r /proc/uptime ]; then
+      local uptime start
+      uptime=$(awk '{print $1}' /proc/uptime)
+      start=$(echo "$uptime 60" | awk '{print ($1 - $2)}')
+      ($CMD_DMESG | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '"$start"') { print }' \
+         >> "$d/$p-dmesg") &
+   fi
+
+   if [ -n "$CMD_VMSTAT" ]; then
+      run_collector "$d/$p-vmstat" vmstat "$CMD_VMSTAT" "$OPT_SLEEP_COLLECT" "$cnt" &
+      run_collector "$d/$p-vmstat-overall" vmstat "$CMD_VMSTAT" "$OPT_RUN_TIME" 2 &
+   fi
+   if [ -n "$CMD_IOSTAT" ]; then
+      run_collector "$d/$p-iostat" iostat "$CMD_IOSTAT" -dx "$OPT_SLEEP_COLLECT" "$cnt" &
+      run_collector "$d/$p-iostat-overall" iostat "$CMD_IOSTAT" -dx "$OPT_RUN_TIME" 2 &
+   fi
+   if [ -n "$CMD_MPSTAT" ]; then
+      run_collector "$d/$p-mpstat" mpstat "$CMD_MPSTAT" -P ALL "$OPT_SLEEP_COLLECT" "$cnt" &
+      run_collector "$d/$p-mpstat-overall" mpstat "$CMD_MPSTAT" -P ALL "$OPT_RUN_TIME" 1 &
+   fi
+
+   if [ -n "$CMD_PIDSTAT" ]; then
+      run_collector "$d/$p-pidstat_d" pidstat "$CMD_PIDSTAT" -d "$OPT_SLEEP_COLLECT" "$cnt" &
+      run_collector "$d/$p-pidstat_u" pidstat "$CMD_PIDSTAT" -u "$OPT_SLEEP_COLLECT" "$cnt" &
+      if [ -n "$mongo_pid" ]; then
+         [ "$MONGO_PROCESS_TYPE" = "mongos" ] && pidstat_label="pidstat_mongos"
+         run_collector "$d/$p-$pidstat_label" pidstat \
+            "$CMD_PIDSTAT" -urdwt -h -p "$mongo_pid" "$OPT_SLEEP_COLLECT" "$cnt" &
+      fi
    fi
 }
 
@@ -1386,25 +1463,42 @@ collect_system_journal() {
       "$CMD_JOURNALCTL" --no-pager --since "@$((start_time - 60))"
 }
 
+# One cycle of system snapshots, each starting with a TS line, as in
+# pt-stalk.  Returns 1 if there is not enough free disk space to continue.
 collect_system_data_loop() {
    local d="$1"
    local p="$2"
-   local mongo_pid="$3"
-   local mongo_proc_label="pidstat_mongod"
+   local ts
 
    disk_space "$d" > "$d/$p-disk-space"
-   check_disk_space "$d/$p-disk-space" "$OPT_DISK_BYTES_FREE" "$OPT_DISK_PCT_FREE" || return
+   check_disk_space "$d/$p-disk-space" "$OPT_DISK_BYTES_FREE" "$OPT_DISK_PCT_FREE" \
+      || return 1
 
-   (ps faux | redact_secrets >> "$d/$p-ps") &
-   if [ -n "$CMD_PIDSTAT" ]; then
-      run_collector "$d/$p-pidstat_d" pidstat "$CMD_PIDSTAT" -d 1 1 &
-      run_collector "$d/$p-pidstat_u" pidstat "$CMD_PIDSTAT" -u 1 1 &
-      if [ -n "$mongo_pid" ]; then
-         [ "$MONGO_PROCESS_TYPE" = "mongos" ] && mongo_proc_label="pidstat_mongos"
-         run_collector "$d/$p-$mongo_proc_label" pidstat \
-            "$CMD_PIDSTAT" -urdwt -h -p "$mongo_pid" 1 1 &
+   # Synchronize onto the clock tick, so samples are --sleep-collect apart.
+   sleep "$(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")"
+   ts="$(date +"TS %s.%N %F %T")"
+
+   local file
+   for file in diskstats:diskstats stat:procstat vmstat:procvmstat meminfo:meminfo \
+               slabinfo:slabinfo interrupts:interrupts; do
+      if [ -r "/proc/${file%%:*}" ]; then
+         (echo "$ts"; cat "/proc/${file%%:*}") >> "$d/$p-${file#*:}" &
       fi
+   done
+   (echo "$ts"; df -k) >> "$d/$p-df" &
+   if [ -n "$CMD_NETSTAT" ]; then
+      (echo "$ts"; $CMD_NETSTAT -antp) >> "$d/$p-netstat" &
+      (echo "$ts"; $CMD_NETSTAT -s) >> "$d/$p-netstat_s" &
    fi
+   if [ -d /sys/devices/system/node ]; then
+      (echo "$ts";
+       for node in /sys/devices/system/node/node*; do
+          [ -r "$node/numastat" ] || continue
+          basename "$node"
+          cat "$node/numastat"
+       done) >> "$d/$p-numastat" &
+   fi
+   return 0
 }
 
 # ###########################################################################
@@ -2404,17 +2498,43 @@ L<"--run-time">:
 If the server runs on the same host and its log file is readable, the log is
 followed during the collection and saved to C<E<lt>prefixE<gt>-mongod-log>.
 
-System data, depending on tool availability:
+System data is collected with the same commands, file names and formats as
+C<pt-stalk>, so C<pt-sift>, C<pt-diskstats> and C<pt-pmp> can read it.
+Depending on tool availability:
 
-  ps faux, with passwords hidden (ps)
-  pidstat -d (pidstat_d)
-  pidstat -u (pidstat_u)
-  pidstat -urdwt for mongod or mongos (pidstat_mongod or pidstat_mongos)
-  vmstat (vmstat)
-  iostat (iostat)
-  mpstat (mpstat)
+Collected once, or by commands that run for the whole collection:
+
+  ps -eaF, with passwords hidden (ps)
   top (top)
-  df for --dest (disk-space)
+  sysctl -a (sysctl)
+  dmesg, from 60 seconds before the collection (dmesg)
+  vmstat --sleep-collect and --run-time (vmstat, vmstat-overall)
+  iostat -dx --sleep-collect and --run-time (iostat, iostat-overall)
+  mpstat -P ALL --sleep-collect and --run-time (mpstat, mpstat-overall)
+  pidstat -d and -u (pidstat_d, pidstat_u)
+
+and, if the server runs on this host, for its PID:
+
+  pmap -x (pmap)
+  lsof (lsof)
+  pidstat -urdwt (pidstat_mongod or pidstat_mongos)
+
+Collected every L<"--sleep-collect"> seconds, each sample starting with a TS
+line:
+
+  /proc/diskstats (diskstats)
+  /proc/stat (procstat)
+  /proc/vmstat (procvmstat)
+  /proc/meminfo (meminfo)
+  /proc/slabinfo, if readable (slabinfo)
+  /proc/interrupts (interrupts)
+  df -k (df)
+  netstat -antp (netstat)
+  netstat -s (netstat_s)
+  numastat of each NUMA node (numastat)
+
+The free space in L<"--dest"> is checked before each sample and saved to
+C<E<lt>prefixE<gt>-disk-space>; the collection stops if there is not enough.
 
 If C<journalctl> is available, the system journal entries from 60 seconds
 before the collection until its end are saved to C<E<lt>prefixE<gt>-journal>.

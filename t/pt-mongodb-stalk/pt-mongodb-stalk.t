@@ -96,9 +96,11 @@ script="$(cat "$script_file" 2>/dev/null)"
 p_dir="$(sed -n "s/^const P_DIR = '\(.*\)';\$/\1/p" "$script_file")"
 p_prefix="$(sed -n "s/^const P_PREFIX = '\(.*\)';\$/\1/p" "$script_file")"
 p_count="$(sed -n 's/^const P_COUNT = \([0-9]*\);$/\1/p' "$script_file")"
+p_tmpdir="$(sed -n "s/^const P_TMPDIR = '\(.*\)';\$/\1/p" "$script_file")"
 case "$script" in
    *"__try('hostInfo'"*)
       printf 'TS 1.0 2026-01-01 00:00:00\n{"hostname": "fake"}\n' >> "$p_dir/$p_prefix-hostinfo"
+      printf '4242|\n' > "$p_tmpdir/mongo-server"
       exit 0
       ;;
    *"for (let i = 0; i < P_COUNT"*)
@@ -183,10 +185,16 @@ write_fake_cmd("journalctl", <<'SH');
 echo "journal entry: $*"
 SH
 
-for my $cmd (qw(vmstat iostat mpstat top pidstat)) {
+write_fake_cmd("pmap", <<'SH');
+#!/usr/bin/env bash
+[ "$1" = "--help" ] && { echo "  -x, --extended"; exit 0; }
+echo "pmap $*"
+SH
+
+for my $cmd (qw(vmstat iostat mpstat top pidstat sysctl netstat)) {
    write_fake_cmd($cmd, <<"SH");
 #!/usr/bin/env bash
-echo "$cmd sample"
+echo "$cmd sample \$*"
 SH
 }
 
@@ -261,6 +269,28 @@ ok(-f "$p-mongostat",      "collects mongostat");
 ok(-f "$p-mongotop",       "collects mongotop");
 ok(-f "$p-ps",             "collects ps");
 ok(-f "$p-pidstat_mongod", "collects process pidstat with mongod label");
+
+# System data with pt-stalk's file names and formats.
+like(slurp_file("$p-pmap"), qr/^pmap -x 4242$/m, "pmap -x for the server's PID");
+like(slurp_file("$p-lsof"), qr/mongod 4242/, "lsof for the server's PID");
+like(slurp_file("$p-sysctl"), qr/^sysctl sample -a$/m, "sysctl -a");
+like(slurp_file("$p-vmstat"), qr/^vmstat sample 1 1$/m, "vmstat --sleep-collect count");
+like(slurp_file("$p-vmstat-overall"), qr/^vmstat sample 1 2$/m, "vmstat --run-time 2");
+like(slurp_file("$p-iostat"), qr/^iostat sample -dx 1 1$/m, "iostat -dx");
+like(slurp_file("$p-iostat-overall"), qr/^iostat sample -dx 1 2$/m, "iostat -dx --run-time 2");
+like(slurp_file("$p-mpstat-overall"), qr/^mpstat sample -P ALL 1 1$/m, "mpstat -P ALL --run-time 1");
+like(slurp_file("$p-pidstat_mongod"), qr/^pidstat sample -urdwt -h -p 4242 1 1$/m,
+   "pidstat for the server's PID");
+for my $name ( qw(df netstat netstat_s) ) {
+   like(slurp_file("$p-$name"), qr/\ATS \d+\.\S+ \d{4}-\d\d-\d\d \d\d:\d\d:\d\d\n/,
+      "$name starts with a TS line");
+}
+like(slurp_file("$p-netstat"), qr/^netstat sample -antp$/m, "netstat -antp");
+SKIP: {
+   skip "no /proc/diskstats", 2 unless -r "/proc/diskstats";
+   like(slurp_file("$p-diskstats"), qr/\ATS \d+/, "diskstats starts with a TS line");
+   ok(-f "$p-meminfo", "collects meminfo");
+}
 
 ok(!-e "$dest/trigger",   "no shared trigger file");
 ok(!-e "$dest/log",       "no shared log file");
