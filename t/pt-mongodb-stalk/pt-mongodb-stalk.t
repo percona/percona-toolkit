@@ -233,4 +233,25 @@ is(scalar @kept, 2, "--retention-count 2 keeps 2 collections")
    or diag(join("\n", glob("$dest_ret/*")));
 ok(-f "$dest_ret/$kept[$_]-serverstatus", "kept collection $_ is complete") for 0..$#kept;
 
+# Options with uppercase letters cannot be given as --name=value.
+($status, $output) = run_capture("bash", $tool, "--authenticationDatabase=admin", "--sslCAFile=/tmp/ca.pem", "--no-stalk");
+is($status, 1, "--authenticationDatabase=value exits 1");
+like($output, qr/Use '--authenticationDatabase <value>' instead of '--authenticationDatabase=<value>'/,
+   "--authenticationDatabase=value prints a specific error");
+like($output, qr/Use '--sslCAFile <value>' instead of '--sslCAFile=<value>'/,
+   "every uppercase option with = is reported");
+unlike($output, qr/Unknown option/, "no generic unknown option error");
+
+($status, $output) = run_capture("bash", $tool, "--authenticationDatabase", "admin", "--port=27017", "--help");
+is($status, 0, "--authenticationDatabase value and lowercase --name=value are accepted") or diag($output);
+
+my $conf = "$tmpdir/pt-mongodb-stalk.conf";
+open my $conf_fh, ">", $conf or die "Cannot write $conf: $OS_ERROR";
+print {$conf_fh} "port=27017\nauthenticationDatabase = admin\n";
+close $conf_fh;
+($status, $output) = run_capture("bash", $tool, "--config", $conf, "--help");
+is($status, 1, "uppercase option in --config file exits 1");
+like($output, qr/\Q$conf\E line 2: option 'authenticationDatabase' cannot be set in a config file/,
+   "uppercase option in --config file prints a specific error");
+
 done_testing;

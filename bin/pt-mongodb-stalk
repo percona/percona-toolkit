@@ -1184,6 +1184,78 @@ collect_system_data_loop() {
 }
 
 # ###########################################################################
+# Option checks
+# ###########################################################################
+
+# The MongoDB-style options with uppercase letters (--authenticationDatabase,
+# --sslCAFile, --sslPEMKeyFile) keep the names used by mongosh and the other
+# pt-mongodb tools.  The standard parse_options package only splits
+# --name=value when the name is all lowercase, so these options must be given
+# as "--name value" and cannot be set in a config file, where every line is
+# name=value.  parse_options would report "--name=value" as an unknown option
+# on the command line, and silently ignore it in the global config files, so
+# detect both cases here and print a clear error instead.  Only option names
+# are printed, never their values.
+check_uppercase_options() {
+   local errors=0
+   local arg name
+   for arg in "$@"; do
+      [ "$arg" = "--" ] && break
+      case "$arg" in
+         --*=*)
+            name="${arg%%=*}"
+            case "$name" in
+               *[[:upper:]]*)
+                  echo "Use '$name <value>' instead of '$name=<value>': options with uppercase letters must be separated from their value by a space." >&2
+                  errors=$((errors + 1))
+                  ;;
+            esac
+            ;;
+      esac
+   done
+
+   # The global config files are shared by all tools and parse_options
+   # ignores unknown options in them, so only warn about those.
+   local global_files="/etc/percona-toolkit/percona-toolkit.conf"
+   local config_files="/etc/percona-toolkit/$TOOL.conf"
+   if [ "${HOME:-}" ]; then
+      global_files="$global_files $HOME/.percona-toolkit.conf"
+      config_files="$config_files $HOME/.$TOOL.conf"
+   fi
+   if [ $# -ge 2 ] && [ "$1" = "--config" ]; then
+      global_files=""
+      config_files="$(echo "$2" | tr ',' ' ')"
+   fi
+
+   local config_file
+   for config_file in $global_files; do
+      _uppercase_config_options "$config_file" \
+         "is ignored in this config file; give it on the command line"
+   done
+   for config_file in $config_files; do
+      _uppercase_config_options "$config_file" \
+         "cannot be set in a config file; give it on the command line" \
+         && errors=$((errors + 1))
+   done
+
+   [ "$errors" -eq 0 ]
+}
+
+# Print a message for each option with uppercase letters in a config file.
+# Returns 0 if any were found.
+_uppercase_config_options() {
+   local config_file="$1"
+   local msg="$2"
+   local line name
+   [ -f "$config_file" ] || return 1
+   grep -n -E '^[[:space:]]*[A-Za-z-]*[[:upper:]][A-Za-z-]*[[:space:]]*=' "$config_file" 2>/dev/null \
+      | while IFS= read -r line; do
+         name=$(echo "${line#*:}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*=.*$//')
+         echo "$config_file line ${line%%:*}: option '$name' $msg as '--$name <value>'."
+      done | grep . >&2
+}
+
+# ###########################################################################
 # Global variables
 # ###########################################################################
 
@@ -1557,6 +1629,8 @@ main() {
 }
 
 if [ "${0##*/}" = "$TOOL" ] || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; then
+   check_uppercase_options "${@:-""}" || exit 1
+
    mk_tmpdir
    parse_options "$0" "${@:-""}"
    usage_or_errors "$0"
@@ -1655,6 +1729,10 @@ Prompt for a password when connecting to MongoDB.
 type: string; default: admin
 
 Authentication database for the MongoDB shell connection.
+
+Give the value after a space, as in C<--authenticationDatabase value>.
+C<--authenticationDatabase=value> is not accepted, and this option cannot be
+set in a config file.
 
 =item --collect
 
@@ -1867,11 +1945,19 @@ type: string
 
 Path to the TLS CA file.
 
+Give the value after a space, as in C<--sslCAFile value>.
+C<--sslCAFile=value> is not accepted, and this option cannot be set in a
+config file.
+
 =item --sslPEMKeyFile
 
 type: string
 
 Path to the TLS client certificate and key file.
+
+Give the value after a space, as in C<--sslPEMKeyFile value>.
+C<--sslPEMKeyFile=value> is not accepted, and this option cannot be set in a
+config file.
 
 =item --uri
 
