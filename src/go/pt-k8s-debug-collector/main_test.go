@@ -1275,3 +1275,58 @@ func (s *CollectorSuite) TestClusterOption() {
 		s.Empty(archives, "Expected no archive when the context does not exist")
 	})
 }
+
+var dumpFileTested bool
+
+func (s *CollectorSuite) TestDumpFileOption() {
+	if dumpFileTested {
+		s.T().Skip("Already tested in another namespace run")
+	}
+	dumpFileTested = true
+
+	dir := s.T().TempDir()
+	run := func(dumpFile string) ([]byte, error) {
+		return exec.Command(TOOL_PATH,
+			"--kubeconfig", s.KubeConfig,
+			"--resource", "none",
+			"--namespace", s.Namespace,
+			"--skip-pod-summary",
+			"--dump-file", dumpFile,
+		).CombinedOutput()
+	}
+
+	s.Run("existing_file", func() {
+		archive := filepath.Join(dir, "fixed.tar.gz")
+		out, err := run(archive)
+		s.Require().NoErrorf(err, "First run failed:\n%s", out)
+		before, err := os.Stat(archive)
+		s.Require().NoError(err)
+
+		out, err = run(archive)
+		s.Error(err)
+		s.Contains(string(out), "file exists")
+
+		after, err := os.Stat(archive)
+		s.Require().NoError(err)
+		s.Equal(before.Size(), after.Size())
+		s.Equal(before.ModTime(), after.ModTime())
+	})
+
+	s.Run("missing_directory", func() {
+		archive := filepath.Join(dir, "missing", "x.tar.gz")
+		out, err := run(archive)
+		s.Error(err)
+		s.Contains(string(out), "no such file or directory")
+		s.NoFileExists(archive)
+	})
+
+	s.Run("timestamp", func() {
+		out, err := run(filepath.Join(dir, "ts_{timestamp}.tar.gz"))
+		s.Require().NoErrorf(err, "Run failed:\n%s", out)
+
+		archives, err := filepath.Glob(filepath.Join(dir, "ts_*.tar.gz"))
+		s.Require().NoError(err)
+		s.Require().Len(archives, 1)
+		s.Regexp(`^ts_\d{14}\.tar\.gz$`, filepath.Base(archives[0]))
+	})
+}
