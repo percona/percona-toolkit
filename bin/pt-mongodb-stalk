@@ -740,9 +740,8 @@ CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
 CMD_JOURNALCTL="${CMD_JOURNALCTL:-"$(_which journalctl)"}"
 
 MONGO_SHELL=""
-MONGO_AUTH_DB=""
-MONGO_CONNECT_ARGS=""
-MONGO_MONITOR_ARGS=""
+MONGO_CONNECT_JS=""    # mongosh script prefix that connects to MongoDB
+MONGO_TOOLS_CONFIG=""  # mongostat/mongotop --config file
 MONGO_REPLSET_NAME=""
 MONGO_REPLICA_SET_ROLE=""
 MONGO_PROCESS_TYPE=""
@@ -754,76 +753,103 @@ choose_mongo_shell() {
    MONGO_SHELL="$CMD_MONGOSH"
 }
 
-mongo_connect_args() {
-   local args=""
-   if [ -n "$OPT_URI" ]; then
-      args="$OPT_URI"
-   else
-      args="mongodb://${OPT_HOST}:${OPT_PORT}/admin"
-   fi
+# Print the connection URI built from --uri or --host and --port, with the
+# credentials, auth database and TLS options added.  The URI contains the
+# password, so it is only written to files in $PT_TMPDIR that only the
+# current user can read; it is never passed on a command line or printed.
+mongo_uri() {
+   PT_URI="$OPT_URI" PT_HOST="$OPT_HOST" PT_PORT="$OPT_PORT" \
+   PT_USER="$OPT_USER" PT_PASSWORD="$OPT_PASSWORD" \
+   PT_AUTHDB="$OPT_AUTHENTICATIONDATABASE" PT_TLS="$OPT_TLS" \
+   PT_CAFILE="$OPT_SSLCAFILE" PT_PEMFILE="$OPT_SSLPEMKEYFILE" perl -e '
+      use strict;
+      use warnings;
+      sub esc {
+         my ($s) = @_;
+         $s =~ s/([^A-Za-z0-9\-._~])/sprintf("%%%02X", ord($1))/ge;
+         return $s;
+      }
+      sub opt { return defined $ENV{$_[0]} ? $ENV{$_[0]} : "" }
 
-   if [ -n "$OPT_USER" ]; then
-      args="$args --username=$OPT_USER"
-   fi
-   if [ -n "$OPT_PASSWORD" ]; then
-      args="$args --password=$OPT_PASSWORD"
-   fi
-   if [ -n "$OPT_AUTHENTICATIONDATABASE" ]; then
-      args="$args --authenticationDatabase=$OPT_AUTHENTICATIONDATABASE"
-   fi
-   if [ -n "$OPT_SSLCAFILE" ]; then
-      args="$args --tlsCAFile=$OPT_SSLCAFILE"
-   fi
-   if [ -n "$OPT_SSLPEMKEYFILE" ]; then
-      args="$args --tlsCertificateKeyFile=$OPT_SSLPEMKEYFILE"
-   fi
-   if [ "$OPT_TLS" ]; then
-      args="$args --tls"
-   fi
+      my $uri = opt("PT_URI") ne "" ? opt("PT_URI")
+              : "mongodb://" . opt("PT_HOST") . ":" . opt("PT_PORT") . "/";
+      my ($scheme, $rest) = $uri =~ m{^(mongodb(?:\+srv)?://)(.*)$}s
+         or die "Invalid --uri: it must start with mongodb:// or mongodb+srv://\n";
+      my ($hosts, $path) = $rest =~ m{^([^/?]*)(.*)$}s;
+      $path = "/$path" unless $path =~ m{^/};
 
-   echo "$args"
+      # Credentials in --uri take precedence over --user and --password.
+      if ( opt("PT_USER") ne "" && $hosts !~ m/@/ ) {
+         my $userinfo = esc(opt("PT_USER"));
+         $userinfo .= ":" . esc(opt("PT_PASSWORD")) if opt("PT_PASSWORD") ne "";
+         $hosts = "$userinfo\@$hosts";
+      }
+
+      # authSource only applies when authenticating; passing it without a
+      # user makes mongostat and mongotop try to authenticate and fail.
+      my @params;
+      push @params, "authSource=" . esc(opt("PT_AUTHDB"))
+         if $hosts =~ m/@/ && opt("PT_AUTHDB") ne "" && $path !~ m/[?&]authSource=/i;
+      push @params, "tls=true"
+         if opt("PT_TLS") ne "" && $path !~ m/[?&](?:tls|ssl)=/i;
+      push @params, "tlsCAFile=" . esc(opt("PT_CAFILE")) if opt("PT_CAFILE") ne "";
+      push @params, "tlsCertificateKeyFile=" . esc(opt("PT_PEMFILE")) if opt("PT_PEMFILE") ne "";
+      if ( @params ) {
+         my $sep = $path !~ m/\?/ ? "?" : $path =~ m/[?&]$/ ? "" : "&";
+         $path .= $sep . join("&", @params);
+      }
+      print "$scheme$hosts$path";
+   '
 }
 
+# Write the files used to connect to MongoDB: a mongosh script prefix and a
+# mongostat/mongotop --config file.  Both contain the URI with the password,
+# so the password never appears on a command line, where it could be seen
+# in the process list (and in the ps samples this tool collects).
+setup_mongo_connection() {
+   local uri
+   uri="$(mongo_uri)" || die "Cannot build the MongoDB connection URI"
+
+   MONGO_CONNECT_JS="$PT_TMPDIR/mongo-connect.js"
+   MONGO_TOOLS_CONFIG="$PT_TMPDIR/mongo-tools.yaml"
+   (
+      umask 077
+      printf 'db = connect(%s).getSiblingDB("admin");\n' "$(_js_quote "$uri")" \
+         > "$MONGO_CONNECT_JS"
+      printf 'uri: "%s"\n' "$(printf '%s' "$uri" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')" \
+         > "$MONGO_TOOLS_CONFIG"
+   ) || die "Cannot write the MongoDB connection files in $PT_TMPDIR"
+}
+
+# Run a mongosh script against the server.  The script is written to a file
+# after the connection prefix; mongosh only runs files whose names end in .js.
 mongo_eval() {
    local script="$1"
-   "$MONGO_SHELL" --quiet $MONGO_CONNECT_ARGS --eval "$script"
-}
-
-mongo_monitor_args() {
-   local args=""
-
-   if [ -n "$OPT_USER" ]; then
-      args="$args --username=$OPT_USER"
-   fi
-   if [ -n "$OPT_PASSWORD" ]; then
-      args="$args --password=$OPT_PASSWORD"
-   fi
-   if [ -n "$OPT_AUTHENTICATIONDATABASE" ]; then
-      args="$args --authenticationDatabase=$OPT_AUTHENTICATIONDATABASE"
-   fi
-   if [ -n "$OPT_SSLCAFILE" ]; then
-      args="$args --sslCAFile=$OPT_SSLCAFILE"
-   fi
-   if [ -n "$OPT_SSLPEMKEYFILE" ]; then
-      args="$args --sslPEMKeyFile=$OPT_SSLPEMKEYFILE"
-   fi
-   if [ "$OPT_TLS" ]; then
-      args="$args --ssl"
-   fi
-   if [ -n "$OPT_URI" ]; then
-      args="$args $OPT_URI"
-   else
-      args="$args --host=$OPT_HOST --port=$OPT_PORT"
-   fi
-
-   echo "$args"
+   local file status
+   file="$(mktemp "$PT_TMPDIR/mongo-eval.XXXXXX")" || return 1
+   mv "$file" "$file.js" || return 1
+   file="$file.js"
+   { cat "$MONGO_CONNECT_JS"; printf '%s\n' "$script"; } > "$file"
+   "$MONGO_SHELL" --nodb --quiet "$file"
+   status=$?
+   rm -f "$file"
+   return $status
 }
 
 mongo_monitor_exec() {
    local cmd="$1"
    local interval="$2"
    shift 2
-   "$cmd" "$@" $MONGO_MONITOR_ARGS "$interval"
+   "$cmd" "--config=$MONGO_TOOLS_CONFIG" "$@" "$interval"
+}
+
+# Hide credentials in command lines, for the ps samples.
+redact_secrets() {
+   perl -pe '
+      s{(mongodb(?:\+srv)?://[^:/@\s]*):[^@\s]*@}{$1:***@}g;
+      s{(--password(?:=|\s+))(?!\*\*\*)\S+}{$1***}g;
+      s{(\s-p\s*)(?!\*\*\*)(?!-)\S+}{$1***}g if m/mongo/;
+   '
 }
 
 mongo_admin_json() {
@@ -902,7 +928,7 @@ mongo_status_value() {
       const __pt = db.getSiblingDB('admin');
       const __doc = __pt.runCommand({serverStatus: 1});
       let __val = __doc;
-      for (const __part of '$var'.split('.')) {
+      for (const __part of $(_js_quote "$var").split('.')) {
          if (__val && Object.prototype.hasOwnProperty.call(__val, __part)) {
             __val = __val[__part];
          } else {
@@ -930,7 +956,7 @@ mongo_currentop_count() {
    mongo_eval "
       const __pt = db.getSiblingDB('admin');
       const __doc = __pt.runCommand({currentOp: 1, active: true, idleConnections: false, allUsers: true});
-      const __parts = '$field'.split('.');
+      const __parts = $(_js_quote "$field").split('.');
       const __re = ${js_regex};
       let __count = 0;
       (__doc.inprog || []).forEach(function(op) {
@@ -1023,19 +1049,6 @@ get_mongo_pid() {
    echo "$pid"
 }
 
-run_maybe_sudo() {
-   local cmd="$1"
-   shift
-
-   if [ "$(id -u)" -eq 0 ]; then
-      "$cmd" "$@"
-   elif [ -n "$(_which sudo)" ] && sudo -n true >/dev/null 2>&1; then
-      sudo -n "$cmd" "$@"
-   else
-      "$cmd" "$@"
-   fi
-}
-
 sample_count() {
    perl -e '
       my ($run_time, $sleep_collect) = @ARGV;
@@ -1074,7 +1087,9 @@ collect() {
    local cnt
    local collect_wait
    local mongo_pid=""
+   local start_time
 
+   start_time=$(date +%s)
    cnt=$(sample_count "$OPT_RUN_TIME" "$OPT_SLEEP_COLLECT")
    collect_wait="$OPT_RUN_TIME"
    [ "$collect_wait" -lt 1 ] && collect_wait=1
@@ -1093,6 +1108,8 @@ collect() {
 
    wait_for_subshells "$collect_wait"
    kill_all_subshells
+
+   collect_system_journal "$d" "$p" "$start_time"
 
    # Remove "empty" files, i.e. ones that are truly empty or just contain
    # timestamp lines, as pt-stalk does.
@@ -1132,10 +1149,6 @@ collect_system_data() {
    local mongo_pid="$3"
    local cnt="$4"
 
-   if [ -f /var/log/messages ]; then
-      (run_maybe_sudo cp /var/log/messages "$d/$p-messages") &
-   fi
-
    if [ -n "$CMD_VMSTAT" ]; then
       run_collector "$d/$p-vmstat" vmstat "$CMD_VMSTAT" "$OPT_SLEEP_COLLECT" "$cnt" &
    fi
@@ -1162,6 +1175,20 @@ collect_system_data() {
    fi
 }
 
+# System journal entries from 60 seconds before the collection started until
+# now, like the dmesg lines pt-stalk collects.  journalctl runs as the current
+# user, without sudo; if that user cannot read the system journal, journalctl
+# says so in <prefix>-output and only the entries the user can read are saved.
+collect_system_journal() {
+   local d="$1"
+   local p="$2"
+   local start_time="$3"
+
+   [ -n "$CMD_JOURNALCTL" ] || return 0
+   run_collector "$d/$p-journal" journalctl \
+      "$CMD_JOURNALCTL" --no-pager --since "@$((start_time - 60))"
+}
+
 collect_system_data_loop() {
    local d="$1"
    local p="$2"
@@ -1171,7 +1198,7 @@ collect_system_data_loop() {
    disk_space "$d" > "$d/$p-disk-space"
    check_disk_space "$d/$p-disk-space" "$OPT_DISK_BYTES_FREE" "$OPT_DISK_PCT_FREE" || return
 
-   (ps faux >> "$d/$p-ps") &
+   (ps faux | redact_secrets >> "$d/$p-ps") &
    if [ -n "$CMD_PIDSTAT" ]; then
       run_collector "$d/$p-pidstat_d" pidstat "$CMD_PIDSTAT" -d 1 1 &
       run_collector "$d/$p-pidstat_u" pidstat "$CMD_PIDSTAT" -u 1 1 &
@@ -1607,15 +1634,15 @@ stalk() {
 
 main() {
    trap sigtrap SIGHUP SIGINT SIGTERM
+   # $PT_TMPDIR holds the connection files, which contain the password, so
+   # remove it however the tool exits.  When daemonized, main runs in a
+   # background subshell, which does not inherit the EXIT trap, so set it here.
+   trap rm_tmpdir EXIT
 
    RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --log=$OPT_LOG --pid=$OPT_PID --plugin=$OPT_PLUGIN"
 
    log "Starting $0 $RAN_WITH"
-   choose_mongo_shell
-   MONGO_CONNECT_ARGS="$(mongo_connect_args)"
-   MONGO_MONITOR_ARGS="$(mongo_monitor_args)"
 
-   mk_tmpdir
    before_stalk
    stalk
    after_stalk
@@ -1668,11 +1695,15 @@ if [ "${0##*/}" = "$TOOL" ] || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; the
    fi
 
    choose_mongo_shell
-   MONGO_CONNECT_ARGS="$(mongo_connect_args)"
-    MONGO_MONITOR_ARGS="$(mongo_monitor_args)"
 
-   mongo_eval "db.getSiblingDB('admin').runCommand({ping: 1})" >/dev/null 2>&1 \
-      || die "Cannot connect to MongoDB. Check that MongoDB is running and that the options are correct."
+   # The connection files written to $PT_TMPDIR contain the password, so
+   # remove the directory however the tool exits.
+   mk_tmpdir
+   trap rm_tmpdir EXIT
+   setup_mongo_connection
+
+   ping_output="$(mongo_eval "db.runCommand({ping: 1})" 2>&1)" \
+      || die "Cannot connect to MongoDB: $(echo "$ping_output" | tail -n 1)"
 
    if [ "$OPT_COLLECT" ]; then
       [ -d "$OPT_DEST" ] || mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
@@ -1688,6 +1719,8 @@ if [ "${0##*/}" = "$TOOL" ] || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; the
       make_pid_file "$OPT_PID" $$
       main "${@:-""}" </dev/null 1>>"$OPT_LOG" 2>&1 &
       echo "$!" > "$OPT_PID"
+      # The daemon removes $PT_TMPDIR when it exits; this shell must not.
+      trap - EXIT
    else
       [ "$OPT_STALK" ] && make_pid_file "$OPT_PID" $$
       main "${@:-""}"
@@ -1705,6 +1738,37 @@ pt-mongodb-stalk - Collect forensic data about MongoDB when problems occur.
 
 Usage: pt-mongodb-stalk [OPTIONS]
 
+=head1 RISKS
+
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
+
+=over
+
+=item * Read the tool's documentation
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=item * Do NOT provide the MongoDB password on the command line with the L<"--password"> option or in L<"--uri">.  The tool's own command line is visible to all users on the system and is stored in the collected output of the C<ps> command, where the tool hides passwords it recognizes but cannot guarantee to hide all of them.  Use L<"--ask-pass">, or put C<password=...> in a config file that only you can read (see L<"--config">), instead.
+
+=back
+
+The tool never passes the password to C<mongosh>, C<mongostat> or C<mongotop>
+on their command lines.  It writes the connection URI, with the password, to
+files that only the current user can read in a temporary directory, which is
+removed when the tool exits.
+
+Collecting data adds load to a server that may already be in trouble.  Each
+trigger check and each MongoDB sample starts a C<mongosh> process, and
+C<currentOp> with C<allUsers> lists every operation on the server.
+
+The collected files can contain sensitive data: the queries and their
+parameters in C<currentOp>, the process list, and the system journal.  Keep
+L<"--dest"> readable only by the users who need it.
+
 =head1 DESCRIPTION
 
 pt-mongodb-stalk watches a MongoDB server for a trigger condition and collects
@@ -1712,8 +1776,8 @@ diagnostic data when that trigger occurs. It follows the same basic operating
 model as C<pt-stalk>, but uses MongoDB administration commands instead of
 MySQL commands.
 
-The default trigger watches C<serverStatus.connections.current>. You can also
-watch C<currentOp>, host CPU usage, host memory usage, queued writers, and
+The default trigger watches C<serverStatus.connections.active>, the number of
+client connections with an operation in progress.  You can also watch C<currentOp>, host CPU usage, host memory usage, queued writers, and
 replica set replication lag.
 
 =head1 OPTIONS
@@ -1724,11 +1788,14 @@ replica set replication lag.
 
 Prompt for a password when connecting to MongoDB.
 
+Use this instead of L<"--password"> to keep the password out of the process
+list.  See L<"RISKS">.
+
 =item --authenticationDatabase
 
 type: string; default: admin
 
-Authentication database for the MongoDB shell connection.
+Authentication database, used only when authenticating with a user.
 
 Give the value after a space, as in C<--authenticationDatabase value>.
 C<--authenticationDatabase=value> is not accepted, and this option cannot be
@@ -1856,6 +1923,9 @@ short form: -p; type: string
 
 Password to use when connecting.
 
+A password given on the command line is visible in the process list.  Prefer
+L<"--ask-pass"> or a config file.  See L<"RISKS">.
+
 =item --pid
 
 type: string; default: /var/run/pt-mongodb-stalk.pid
@@ -1931,13 +2001,13 @@ collect immediately.
 
 =item --threshold
 
-type: float; default: 100
+type: float; default: 25
 
 Collection is triggered when L<"--variable"> is greater than this value.
 
 =item --tls
 
-Enable TLS for the MongoDB shell connection.
+Enable TLS for the connections to MongoDB.
 
 =item --sslCAFile
 
@@ -1965,6 +2035,10 @@ type: string
 
 Full MongoDB URI to connect with.
 
+When given, L<"--host"> and L<"--port"> are ignored.  Credentials in the URI
+take precedence over L<"--user"> and L<"--password">.  If the URI has no
+C<authSource>, L<"--authenticationDatabase"> is added when authenticating.
+
 =item --user
 
 short form: -u; type: string
@@ -1973,14 +2047,14 @@ User for login.
 
 =item --variable
 
-type: string; default: connections.current
+type: string; default: connections.active
 
 Variable to watch inside C<serverStatus> or C<currentOp>. This option is ignored
 by C<cpu>, C<memory>, C<writewait>, and C<repllag>.
 
 =item --verbose
 
-type: int; default: 3
+type: int; default: 2
 
 Print level of information. Values: 1 errors, 2 matching triggers and
 collection info, 3 non-matching triggers.
@@ -1996,56 +2070,56 @@ Print version and exit.
 Run in stalking mode and collect twice when the trigger is met:
 
   pt-mongodb-stalk \
-    --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
+    --host localhost --port 30001 --user admin --ask-pass \
     --function status --variable connections.current --threshold 50 --cycles 3 --interval 1 --iterations 2 \
     --dest /tmp/pt-mongodb-stalk
 
 Run immediately without stalking and collect one short sample:
 
   pt-mongodb-stalk \
-    --host localhost --port 30004 --user admin --password admin --authenticationDatabase admin \
+    --host localhost --port 30004 --user admin --ask-pass \
     --no-stalk --iterations 1 --run-time 6 --sleep-collect 1 \
     --dest /tmp/pt-mongodb-stalk
 
 Run immediately without stalking and collect multiple short runs:
 
   pt-mongodb-stalk \
-    --host localhost --port 30000 --user admin --password admin --authenticationDatabase admin \
+    --host localhost --port 30000 --user admin --ask-pass \
     --no-stalk --iterations 3 --run-time 6 --sleep-collect 1 --sleep 1 \
     --dest /tmp/pt-mongodb-stalk
 
 Run immediately without stalking and collect fewer, more widely spaced samples:
 
   pt-mongodb-stalk \
-    --host localhost --port 27000 --user admin --password admin --authenticationDatabase admin \
+    --host localhost --port 27000 --user admin --ask-pass \
     --no-stalk --iterations 1 --run-time 10 --sleep-collect 2 \
     --dest /tmp/pt-mongodb-stalk
 
 Run in stalking mode using currentOp matches instead of a serverStatus metric:
 
   pt-mongodb-stalk \
-    --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
+    --host localhost --port 30001 --user admin --ask-pass \
     --function currentop --variable command.aggregate --match '^orders$' --threshold 10 --cycles 2 --interval 1 --iterations 1 \
     --dest /tmp/pt-mongodb-stalk
 
 Run in stalking mode when host CPU is above 85 percent:
 
   pt-mongodb-stalk \
-    --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
+    --host localhost --port 30001 --user admin --ask-pass \
     --function cpu --threshold 85 --cycles 3 --interval 1 --iterations 1 \
     --dest /tmp/pt-mongodb-stalk
 
 Run in stalking mode when host memory is above 90 percent:
 
   pt-mongodb-stalk \
-    --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
+    --host localhost --port 30001 --user admin --ask-pass \
     --function memory --threshold 90 --cycles 3 --interval 1 --iterations 1 \
     --dest /tmp/pt-mongodb-stalk
 
 Run in stalking mode when replica set lag is above 30 seconds:
 
   pt-mongodb-stalk \
-    --host localhost --port 30001 --user admin --password admin --authenticationDatabase admin \
+    --host localhost --port 30001 --user admin --ask-pass \
     --function repllag --threshold 30 --cycles 2 --interval 1 --iterations 1 \
     --dest /tmp/pt-mongodb-stalk
 
@@ -2093,7 +2167,7 @@ C<$clusterTime>, and C<operationTime> are removed.
 
 System data, depending on tool availability:
 
-  ps faux (ps)
+  ps faux, with passwords hidden (ps)
   pidstat -d (pidstat_d)
   pidstat -u (pidstat_u)
   pidstat -urdwt for mongod or mongos (pidstat_mongod or pidstat_mongos)
@@ -2103,8 +2177,10 @@ System data, depending on tool availability:
   top (top)
   df for --dest (disk-space)
 
-If C</var/log/messages> exists, the tool also copies it to
-C<E<lt>prefixE<gt>-messages>.
+If C<journalctl> is available, the system journal entries from 60 seconds
+before the collection until its end are saved to C<E<lt>prefixE<gt>-journal>.
+C<journalctl> runs as the current user, without C<sudo>, so the entries the
+user cannot read are left out.
 
 =head1 OUTPUT CLEANUP
 

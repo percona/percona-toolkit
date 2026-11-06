@@ -32,6 +32,32 @@ sub write_fake_cmd {
    return $file;
 }
 
+# Like run_capture, but send SIGTERM to the command after $timeout seconds,
+# for runs that only stop on a signal.
+sub run_capture_timeout {
+   my ($timeout, @cmd) = @_;
+   $run_no++;
+   my $out = "$tmpdir/run-$run_no.out";
+   my $pid = fork();
+   die "Cannot fork: $OS_ERROR" unless defined $pid;
+
+   if ( !$pid ) {
+      open STDOUT, ">", $out or die "Cannot redirect stdout: $OS_ERROR";
+      open STDERR, ">&", \*STDOUT or die "Cannot redirect stderr: $OS_ERROR";
+      exec @cmd;
+      die "Cannot exec $cmd[0]: $OS_ERROR";
+   }
+
+   my $waited = 0;
+   while ( waitpid($pid, 1) == 0 ) {  # 1 = WNOHANG
+      if ( $waited++ == $timeout * 10 ) {
+         kill 'TERM', $pid;
+      }
+      select(undef, undef, undef, 0.1);
+   }
+   return slurp_file($out);
+}
+
 sub run_capture {
    my (@cmd) = @_;
    $run_no++;
@@ -58,10 +84,15 @@ sub glob_count {
    return scalar @files;
 }
 
+# mongosh is run as "mongosh --nodb --quiet <script>.js".  MONGOSH_ARGS_LOG
+# records only the command lines; MONGOSH_LOG also records the scripts.
 write_fake_cmd("mongosh", <<'SH');
 #!/usr/bin/env bash
-[ -n "${MONGOSH_LOG:-}" ] && printf '%s\n' "$*" >> "$MONGOSH_LOG"
-case "$*" in
+script_file="${@: -1}"
+script="$(cat "$script_file" 2>/dev/null)"
+[ -n "${MONGOSH_ARGS_LOG:-}" ] && printf '%s\n' "$*" >> "$MONGOSH_ARGS_LOG"
+[ -n "${MONGOSH_LOG:-}" ] && printf '%s\n%s\n' "$*" "$script" >> "$MONGOSH_LOG"
+case "$script" in
    *"__serverStatus.process"*)
       printf 'mongod\tshard\tPRIMARY\trs0\n'
       ;;
@@ -69,7 +100,7 @@ case "$*" in
       printf '{"inprog":[]}\n'
       ;;
    *"serverStatus: 1"*)
-      printf '{"process":"mongod","connections":{"current":5},"globalLock":{"currentQueue":{"writers":0}}}\n'
+      printf '{"process":"mongod","connections":{"current":5,"active":2},"globalLock":{"currentQueue":{"writers":0}}}\n'
       ;;
    *"replSetGetStatus: 1"*)
       printf '{"members":[]}\n'
@@ -78,18 +109,27 @@ esac
 exit 0
 SH
 
-write_fake_cmd("mongostat", <<'SH');
+# mongostat and mongotop record their command line in MONGO_TOOLS_LOG and the
+# contents of their --config file in MONGO_TOOLS_CONFIG_LOG.
+my $fake_mongo_tool = <<'SH';
 #!/usr/bin/env bash
-echo "insert query update delete getmore command dirty used flushes vsize res qrw arw net_in net_out conn time"
-echo "0 0 0 0 0 1|0 0.0% 1.0% 0 100M 50M 0|0 0|0 1k 2k 1 00:00:00"
+[ -n "${MONGO_TOOLS_LOG:-}" ] && printf '%s\n' "$(basename "$0") $*" >> "$MONGO_TOOLS_LOG"
+for arg in "$@"; do
+   case "$arg" in
+      --config=*) [ -n "${MONGO_TOOLS_CONFIG_LOG:-}" ] && cat "${arg#--config=}" >> "$MONGO_TOOLS_CONFIG_LOG" ;;
+   esac
+done
 echo "2026-05-14T00:00:00.000+0000	connected to: mongodb://localhost:27017/" >&2
 SH
 
-write_fake_cmd("mongotop", <<'SH');
-#!/usr/bin/env bash
+write_fake_cmd("mongostat", $fake_mongo_tool . <<'SH');
+echo "insert query update delete getmore command dirty used flushes vsize res qrw arw net_in net_out conn time"
+echo "0 0 0 0 0 1|0 0.0% 1.0% 0 100M 50M 0|0 0|0 1k 2k 1 00:00:00"
+SH
+
+write_fake_cmd("mongotop", $fake_mongo_tool . <<'SH');
 echo "ns total read write"
 echo "admin.system.version 1ms 1ms 0ms"
-echo "2026-05-14T00:00:00.000+0000	connected to: mongodb://localhost:27017/" >&2
 SH
 
 write_fake_cmd("df", <<'SH');
@@ -114,6 +154,13 @@ write_fake_cmd("ps", <<'SH');
 #!/usr/bin/env bash
 echo "USER PID %CPU %MEM COMMAND"
 echo "mongodb 4242 0.0 1.0 mongod --port 27017"
+echo "admin 4343 0.0 0.1 bash pt-mongodb-stalk --user admin --password S3cretPw --port 27017"
+echo "admin 4344 0.0 0.1 mongosh mongodb://admin:S3cretPw@localhost:27017/admin"
+SH
+
+write_fake_cmd("journalctl", <<'SH');
+#!/usr/bin/env bash
+echo "journal entry: $*"
 SH
 
 for my $cmd (qw(vmstat iostat mpstat top pidstat)) {
@@ -123,21 +170,30 @@ echo "$cmd sample"
 SH
 }
 
-local $ENV{PATH}        = "$fakebin:$ENV{PATH}";
-local $ENV{MONGOSH_LOG} = "$tmpdir/mongosh.log";
-local $ENV{PTDEBUG}     = "";
+make_path("$tmpdir/tmp");
+local $ENV{PATH}                   = "$fakebin:$ENV{PATH}";
+local $ENV{TMPDIR}                 = "$tmpdir/tmp";
+local $ENV{MONGOSH_LOG}            = "$tmpdir/mongosh.log";
+local $ENV{MONGOSH_ARGS_LOG}       = "$tmpdir/mongosh-args.log";
+local $ENV{MONGO_TOOLS_LOG}        = "$tmpdir/mongo-tools.log";
+local $ENV{MONGO_TOOLS_CONFIG_LOG} = "$tmpdir/mongo-tools-config.log";
+local $ENV{PTDEBUG}                = "";
 
 my ($status, $output) = run_capture("bash", $tool, "--help");
 is($status, 0, "--help exits 0");
 like($output, qr/Command line options:/, "--help lists the options");
 like($output, qr/Options and values after processing arguments:/, "--help prints option values");
+like($output, qr/--variable\s+connections\.active\n/, "default --variable is connections.active");
+like($output, qr/--threshold\s+25\n/, "default --threshold is 25");
+like($output, qr/--verbose\s+2\n/, "default --verbose is 2");
 
+my $password = 'S3cretPw';
 my $dest = "$tmpdir/collect";
 my @common_args = (
    "--host", "localhost",
    "--port", "27017",
    "--user", "admin",
-   "--password", "admin",
+   "--password", $password,
    "--authenticationDatabase", "admin",
    "--no-stalk",
    "--run-time", "1",
@@ -199,6 +255,64 @@ like(
    qr/currentOp: 1, active: true, idleConnections: false, allUsers: true/,
    "currentOp command includes allUsers"
 );
+
+# Credentials: never on a command line, never in the collected files.
+like($mongosh_log, qr{connect\('mongodb://admin:S3cretPw\@localhost:27017/\?authSource=admin'\)},
+   "mongosh connects using the URI written in its script");
+my $mongosh_args = slurp_file($ENV{MONGOSH_ARGS_LOG});
+like($mongosh_args, qr/^--nodb --quiet \S+\.js$/m, "mongosh runs a script file");
+unlike($mongosh_args, qr/\Q$password\E/, "password not on the mongosh command line");
+
+my $tools_log = slurp_file($ENV{MONGO_TOOLS_LOG});
+like($tools_log, qr/^mongostat --config=\S+ --rowcount 1 1$/m, "mongostat gets only --config");
+like($tools_log, qr/^mongotop --config=\S+ --rowcount 1 1$/m,  "mongotop gets only --config");
+unlike($tools_log, qr/\Q$password\E/, "password not on the mongostat/mongotop command line");
+like(slurp_file($ENV{MONGO_TOOLS_CONFIG_LOG}),
+   qr{^uri: "mongodb://admin:S3cretPw\@localhost:27017/\?authSource=admin"$}m,
+   "mongostat/mongotop get the URI from the --config file");
+
+my $ps = slurp_file("$p-ps");
+like($ps, qr/--password \*\*\* --port 27017/, "ps output hides --password");
+like($ps, qr{mongodb://admin:\*\*\*\@localhost}, "ps output hides URI passwords");
+my @leaks = grep { slurp_file($_) =~ m/\Q$password\E/ } glob("$dest/*");
+is_deeply(\@leaks, [], "password not in any collected file");
+
+like(slurp_file("$p-journal"), qr/journal entry: --no-pager --since \@\d+/,
+   "collects the system journal since a timestamp");
+
+my @tmp_left = glob("$tmpdir/tmp/*");
+is_deeply(\@tmp_left, [], "temporary directory with the connection files is removed");
+
+# Without --user, no authSource is added: mongostat and mongotop would try to
+# authenticate and fail.
+unlink $ENV{MONGO_TOOLS_CONFIG_LOG};
+my $dest_noauth = "$tmpdir/collect-noauth";
+($status, $output) = run_capture(
+   "bash", $tool,
+   "--host", "localhost", "--port", "27017",
+   "--no-stalk", "--run-time", "1", "--sleep-collect", "1",
+   "--disk-pct-free", "1", "--disk-bytes-free", "1",
+   "--iterations", "1", "--sleep", "0",
+   "--dest", $dest_noauth,
+   "--pid", "$tmpdir/pt-mongodb-stalk-noauth.pid",
+);
+is($status, 0, "collection without --user exits 0") or diag($output);
+is(slurp_file($ENV{MONGO_TOOLS_CONFIG_LOG}), qq{uri: "mongodb://localhost:27017/"\nuri: "mongodb://localhost:27017/"\n},
+   "without --user, the URI has no credentials and no authSource");
+
+# --variable is quoted for JavaScript.
+# The field does not exist, so the trigger never matches; stop after 3 seconds.
+unlink $ENV{MONGOSH_LOG};
+$output = run_capture_timeout(
+   3,
+   "bash", $tool,
+   "--host", "localhost", "--port", "27017",
+   "--variable", "it's.a\\path",
+   "--no-collect", "--cycles", "1",
+   "--pid", "$tmpdir/pt-mongodb-stalk-var.pid",
+);
+like(slurp_file($ENV{MONGOSH_LOG}), qr/for \(const __part of 'it\\'s\.a\\\\path'\.split/,
+   "--variable is quoted in the mongosh script");
 
 # --prefix: every file of every collection uses the given prefix.
 my $dest_prefix = "$tmpdir/collect-prefix";
