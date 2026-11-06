@@ -631,6 +631,8 @@ func (s *CollectorSuite) TestResourceOption() {
 
 func validateSummaryByNamespace(archivePath, namespace string) error {
 	switch namespace {
+	case "pxc", "ps":
+		return validateSummary(archivePath, namespace, regexp.MustCompile(`# Percona Toolkit MySQL Summary Report`))
 	case "psmdb":
 		return validateSummary(archivePath, namespace, regexp.MustCompile(`# Report On`))
 	case "pgv2", "crunchy":
