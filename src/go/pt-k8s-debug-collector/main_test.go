@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -1329,4 +1330,45 @@ func (s *CollectorSuite) TestDumpFileOption() {
 		s.Require().Len(archives, 1)
 		s.Regexp(`^ts_\d{14}\.tar\.gz$`, filepath.Base(archives[0]))
 	})
+}
+
+func TestCommandLineParsing(t *testing.T) {
+	conf := filepath.Join(t.TempDir(), "c.conf")
+	if err := os.WriteFile(conf, []byte("no-version-check\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		args []string
+		exit int
+		want string
+	}{
+		{name: "help", args: []string{"--help"}, exit: 0, want: "Usage: pt-k8s-debug-collector"},
+		{name: "unknown_flag", args: []string{"--bogus"}, exit: 80, want: "unknown flag --bogus"},
+		{name: "invalid_number", args: []string{"--concurrent-export-workers=abc", "--version"}, exit: 80, want: "--concurrent-export-workers: expected a valid 64 bit int"},
+		{name: "config_not_first", args: []string{"--namespace=x", "--config", conf}, exit: 1, want: "--config must be the first argument"},
+		{name: "config_with_equals", args: []string{"--config=" + conf, "--version"}, exit: 1, want: "--config must not use '=' syntax"},
+		{name: "config_first", args: []string{"--config", conf, "--version"}, exit: 0, want: "Version"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := exec.Command(TOOL_PATH, tt.args...).CombinedOutput()
+			exit := 0
+			if err != nil {
+				var exitErr *exec.ExitError
+				if !errors.As(err, &exitErr) {
+					t.Fatalf("run %v: %v", tt.args, err)
+				}
+				exit = exitErr.ExitCode()
+			}
+			if exit != tt.exit {
+				t.Errorf("%v: exit code %d, want %d\n%s", tt.args, exit, tt.exit, out)
+			}
+			if !strings.Contains(string(out), tt.want) {
+				t.Errorf("%v: output does not contain %q:\n%s", tt.args, tt.want, out)
+			}
+		})
+	}
 }
