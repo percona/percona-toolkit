@@ -1372,3 +1372,40 @@ func TestCommandLineParsing(t *testing.T) {
 		})
 	}
 }
+
+var cannotStatRE = regexp.MustCompile(`tar: (\S+): Cannot stat: No such file or directory`)
+
+func (s *CollectorSuite) TestMissingPodFilesNotArchived() {
+	err := s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--skip-pod-summary",
+	)
+	s.Require().NoError(err)
+
+	entries, err := readArchive("cluster-dump.tar.gz")
+	s.Require().NoError(err)
+
+	var errorsTxt []byte
+	for _, entry := range entries {
+		if entry.name == "cluster-dump/errors.txt" {
+			errorsTxt = entry.data
+		}
+	}
+
+	pods := s.runningPods()
+	for _, match := range cannotStatRE.FindAllSubmatch(errorsTxt, -1) {
+		missing := "/" + string(match[1])
+		for _, entry := range entries {
+			if strings.HasSuffix(entry.name, missing) {
+				s.NotContainsf(string(entry.data), "Cannot stat", "Archive entry %s holds a tar error instead of file content", entry.name)
+			}
+		}
+		s.Truef(slices.ContainsFunc(pods, func(pod corev1.Pod) bool {
+			return !slices.ContainsFunc(entries, func(entry archiveEntry) bool {
+				return entry.name == "cluster-dump/"+s.Namespace+"/"+pod.Name+missing
+			})
+		}), "errors.txt reports %s as missing, but every pod has it in the archive", match[1])
+	}
+}
