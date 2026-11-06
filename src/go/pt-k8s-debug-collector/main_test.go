@@ -1200,3 +1200,23 @@ func (s *CollectorSuite) TestNamespaceOptionWithSummaries() {
 
 	s.NoError(validateSummaryByNamespace("cluster-dump.tar.gz", s.Namespace))
 }
+
+func (s *CollectorSuite) TestNonexistentNamespace() {
+	err := s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--namespace", "pt-k8s-debug-collector-missing",
+		"--skip-pod-summary",
+	)
+	s.Require().NoError(err)
+
+	entries, err := readArchive("cluster-dump.tar.gz")
+	s.Require().NoError(err)
+
+	for _, entry := range entries {
+		if entry.name != "cluster-dump/errors.txt" && !strings.HasPrefix(entry.name, "cluster-dump/cluster-scope/") {
+			s.Failf("Nonexistent namespace", "Unexpected archive entry %s", entry.name)
+		}
+	}
+}
