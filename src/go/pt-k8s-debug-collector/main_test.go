@@ -1113,3 +1113,90 @@ func (s *CollectorSuite) TestNamespaceOption() {
 	s.Empty(foreign, "Archive has entries outside namespace %s", s.Namespace)
 	s.NotZero(describes, "Expected describe.txt of pods in namespace %s", s.Namespace)
 }
+
+type archiveEntry struct {
+	name string
+	data []byte
+}
+
+func readArchive(archivePath string) ([]archiveEntry, error) {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer gzr.Close()
+
+	var entries []archiveEntry
+	tarReader := tar.NewReader(gzr)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			return entries, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		data, err := io.ReadAll(tarReader)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, archiveEntry{name: header.Name, data: data})
+	}
+}
+
+func (s *CollectorSuite) runningPods() []corev1.Pod {
+	pods, err := s.KubeClient.CoreV1().Pods(s.Namespace).List(s.T().Context(), metav1.ListOptions{})
+	s.Require().NoError(err)
+
+	var running []corev1.Pod
+	for _, pod := range pods.Items {
+		if pod.Status.Phase == corev1.PodRunning {
+			running = append(running, pod)
+		}
+	}
+	return running
+}
+
+func (s *CollectorSuite) TestNamespaceOptionWithSummaries() {
+	pods := s.runningPods()
+	s.Require().NotEmpty(pods, "Expected running pods in namespace %s", s.Namespace)
+
+	err := s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--namespace", s.Namespace,
+	)
+	s.Require().NoError(err)
+
+	entries, err := readArchive("cluster-dump.tar.gz")
+	s.Require().NoError(err)
+
+	nsPrefix := "cluster-dump/" + s.Namespace + "/"
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.name)
+		if entry.name != "cluster-dump/errors.txt" &&
+			!strings.HasPrefix(entry.name, "cluster-dump/cluster-scope/") &&
+			!strings.HasPrefix(entry.name, nsPrefix) {
+			s.Failf("Namespace scope", "Archive entry %s is outside namespace %s", entry.name, s.Namespace)
+		}
+	}
+
+	for _, pod := range pods {
+		podPrefix := nsPrefix + pod.Name + "/"
+		s.Containsf(names, podPrefix+"describe.txt", "Expected describe.txt of pod %s", pod.Name)
+		s.Truef(slices.ContainsFunc(names, func(name string) bool {
+			return strings.HasPrefix(name, podPrefix) && strings.HasSuffix(name, ".log")
+		}), "Expected container logs of pod %s", pod.Name)
+	}
+
+	s.NoError(validateSummaryByNamespace("cluster-dump.tar.gz", s.Namespace))
+}
