@@ -1244,3 +1244,34 @@ func (s *CollectorSuite) TestSkipPodSummaryKeepsIndividualFiles() {
 		return strings.HasSuffix(entry.name, "/var/lib/mysql/grastate.dat")
 	}), "Expected PXC individual files with --skip-pod-summary")
 }
+
+func (s *CollectorSuite) TestClusterOption() {
+	config, err := clientcmd.LoadFromFile(s.KubeConfig)
+	s.Require().NoError(err)
+	s.Require().NotEmpty(config.CurrentContext, "Expected a current context in %s", s.KubeConfig)
+
+	s.Run("existing_context", func() {
+		err := s.runCollector(
+			"--kubeconfig", s.KubeConfig,
+			"--cluster", config.CurrentContext,
+			"--resource", "none",
+			"--namespace", s.Namespace,
+			"--skip-pod-summary",
+		)
+		s.NoError(err)
+	})
+
+	s.Run("missing_context", func() {
+		removeArchives()
+		out, err := exec.Command(TOOL_PATH,
+			"--kubeconfig", s.KubeConfig,
+			"--cluster", "pt-k8s-debug-collector-missing",
+			"--resource", "none",
+		).CombinedOutput()
+		s.Error(err)
+		s.Contains(string(out), `context "pt-k8s-debug-collector-missing" not found`)
+
+		archives, _ := filepath.Glob("cluster-dump*.tar.gz")
+		s.Empty(archives, "Expected no archive when the context does not exist")
+	})
+}
