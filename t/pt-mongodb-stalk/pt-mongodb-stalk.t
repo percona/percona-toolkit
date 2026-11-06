@@ -100,7 +100,7 @@ p_tmpdir="$(sed -n "s/^const P_TMPDIR = '\(.*\)';\$/\1/p" "$script_file")"
 case "$script" in
    *"__try('hostInfo'"*)
       printf 'TS 1.0 2026-01-01 00:00:00\n{"hostname": "fake"}\n' >> "$p_dir/$p_prefix-hostinfo"
-      printf '4242|\n' > "$p_tmpdir/mongo-server"
+      printf '4242||27018\n' > "$p_tmpdir/mongo-server"
       exit 0
       ;;
    *"for (let i = 0; i < P_COUNT"*)
@@ -170,6 +170,35 @@ SH
 write_fake_cmd("pidof", <<'SH');
 #!/usr/bin/env bash
 exit 1
+SH
+
+# --collect-gdb, --collect-strace, --collect-tcpdump and --notify-by-email.
+# strace and tcpdump run until they are killed.
+write_fake_cmd("gdb", <<'SH');
+#!/usr/bin/env bash
+echo "gdb $*"
+SH
+
+write_fake_cmd("strace", <<'SH');
+#!/usr/bin/env bash
+while [ $# -gt 0 ]; do [ "$1" = "-o" ] && out="$2"; shift; done
+echo "strace started" > "$out"
+trap 'echo "strace stopped" >> "$out"; exit 0' INT TERM
+while true; do sleep 0.1; done
+SH
+
+write_fake_cmd("tcpdump", <<'SH');
+#!/usr/bin/env bash
+args="$*"
+while [ $# -gt 0 ]; do [ "$1" = "-w" ] && out="$2"; shift; done
+echo "tcpdump $args" > "$out"
+trap 'exit 0' INT TERM
+while true; do sleep 0.1; done
+SH
+
+write_fake_cmd("mail", <<'SH');
+#!/usr/bin/env bash
+{ echo "mail $*"; cat; } >> "$MAIL_LOG"
 SH
 
 write_fake_cmd("ps", <<'SH');
@@ -422,5 +451,77 @@ close $conf_fh;
 is($status, 1, "uppercase option in --config file exits 1");
 like($output, qr/\Q$conf\E line 2: option 'authenticationDatabase' cannot be set in a config file/,
    "uppercase option in --config file prints a specific error");
+
+# pt-stalk options added in this tool.  Each run is one short collection.
+my $opt_run = 0;
+sub collect_with {
+   my (@args) = @_;
+   my $dir = "$tmpdir/collect-opt-" . ++$opt_run;
+   my ($st, $out) = run_capture(
+      "bash", $tool, @common_args,
+      "--iterations", "1", "--sleep", "0",
+      "--dest", $dir, "--pid", "$tmpdir/opt-$opt_run.pid",
+      @args,
+   );
+   my ($trigger) = glob("$dir/*-trigger");
+   (my $prefix = $trigger || "$dir/none") =~ s/-trigger$//;
+   return ($st, $out, $prefix);
+}
+
+# --skip-collection
+($status, $output) = run_capture("bash", $tool, "--skip-collection", "mongostat,bogus", "--no-stalk");
+is($status, 1, "invalid --skip-collection value exits 1");
+like($output, qr/Invalid --skip-collection value: bogus\.  Valid values are: currentop,metadata,/,
+   "invalid --skip-collection value lists the valid ones");
+
+unlink $ENV{MONGOSH_LOG}, $ENV{MONGO_TOOLS_LOG};
+($status, $output, $p) = collect_with("--skip-collection", "mongostat,metadata");
+is($status, 0, "--skip-collection exits 0") or diag($output);
+like($output, qr/Providing the MongoDB password on the command line is insecure/,
+   "warns when the password is on the command line");
+ok(!-e "$p-mongostat", "--skip-collection mongostat skips mongostat");
+ok(-f "$p-mongotop",   "--skip-collection mongostat keeps mongotop");
+unlike(slurp_file($ENV{MONGO_TOOLS_LOG}), qr/^mongostat/m, "mongostat is not run");
+like(slurp_file($ENV{MONGOSH_LOG}), qr/^const P_SKIP = ',mongostat,metadata,';$/m,
+   "--skip-collection is passed to the mongosh scripts");
+
+# --mongodb-only: no system data except the free disk space.
+($status, $output, $p) = collect_with("--mongodb-only");
+is($status, 0, "--mongodb-only exits 0") or diag($output);
+ok(-f "$p-serverstatus", "--mongodb-only collects MongoDB data");
+ok(-f "$p-disk-space",   "--mongodb-only still checks the free disk space");
+is_deeply([ grep { -e "$p-$_" } qw(vmstat iostat ps top df netstat sysctl lsof pidstat_mongod journal) ], [],
+   "--mongodb-only collects no system data");
+
+# --system-only with a trigger that does not use MongoDB: no mongosh at all.
+unlink $ENV{MONGOSH_ARGS_LOG};
+($status, $output, $p) = collect_with("--system-only", "--function", "cpu");
+is($status, 0, "--system-only exits 0") or diag($output);
+ok(!-e $ENV{MONGOSH_ARGS_LOG}, "--system-only --function cpu does not run mongosh");
+ok(-f "$p-vmstat", "--system-only collects system data");
+is_deeply([ grep { -e "$p-$_" } qw(serverstatus currentop hostinfo mongostat mongotop pmap) ], [],
+   "--system-only collects no MongoDB data");
+
+($status, $output) = collect_with("--system-only", "--mongodb-only");
+like($output, qr/Both options --system-only and --mongodb-only specified/,
+   "--system-only with --mongodb-only is reported");
+
+# --collect-gdb, --collect-strace and --collect-tcpdump, for the PID and port
+# the server reports (4242 and 27018 in the fake mongosh).
+($status, $output, $p) = collect_with("--collect-gdb", "--collect-strace", "--collect-tcpdump");
+is($status, 0, "--collect-gdb/strace/tcpdump exit 0") or diag($output);
+like(slurp_file("$p-stacktrace"), qr/^gdb -ex set pagination 0 -ex thread apply all bt --batch -p 4242$/m,
+   "--collect-gdb prints all stack traces of the server");
+is(slurp_file("$p-strace"), "strace started\nstrace stopped\n", "--collect-strace is stopped at the end");
+like(slurp_file("$p-tcpdump"), qr/^tcpdump -i any -s 4096 -w \S+ port 27018$/m,
+   "--collect-tcpdump captures the server's port");
+my $leftover = `ps -ax -o command 2>/dev/null` =~ m/\Q$fakebin\E\/(?:strace|tcpdump)/ ? 1 : 0;
+is($leftover, 0, "strace and tcpdump are not left running");
+
+# --notify-by-email
+local $ENV{MAIL_LOG} = "$tmpdir/mail.log";
+($status, $output) = collect_with("--notify-by-email", 'dba@example.com');
+like(slurp_file($ENV{MAIL_LOG}), qr/^mail -s Collect triggered on \S+ dba\@example\.com\nNot stalking; collect triggered immediately on /m,
+   "--notify-by-email sends an email");
 
 done_testing;

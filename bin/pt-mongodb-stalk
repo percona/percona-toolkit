@@ -740,6 +740,9 @@ CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
 CMD_JOURNALCTL="${CMD_JOURNALCTL:-"$(_which journalctl)"}"
 CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
 CMD_NETSTAT="${CMD_NETSTAT:-"$(_which netstat)"}"
+CMD_GDB="${CMD_GDB:-"$(_which gdb)"}"
+CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
+CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
 
 # Try to find command manually, as pt-stalk does.
 [ -z "$CMD_SYSCTL" ] && [ -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
@@ -1070,6 +1073,17 @@ run_collector() {
    return 0
 }
 
+# The collection types --skip-collection accepts.
+SUPPORTED_SKIPS="currentop metadata mongod-log mongostat mongotop replsetgetstatus serverstatus"
+
+# True if --skip-collection includes this collection type.
+_should_skip() {
+   case ",${OPT_SKIP_COLLECTION:-}," in
+      *",$1,"*) return 0 ;;
+   esac
+   return 1
+}
+
 # ###########################################################################
 # collection section
 # ###########################################################################
@@ -1110,6 +1124,11 @@ function __cmd(cmd, dbName) {
 
 function __write(name, doc, ts) {
    __fs.appendFileSync(__file(name), (ts || __ts()) + '\n' + EJSON.stringify(doc, null, 2) + '\n');
+}
+
+// --skip-collection: true if this collection type is skipped.
+function __skip(name) {
+   return P_SKIP.indexOf(',' + name + ',') !== -1;
 }
 
 function __try(label, f) {
@@ -1179,35 +1198,39 @@ MONGO_JS
 
 # Metadata collected once at the start of a collection.
 read -r -d '' MONGO_JS_ONCE <<'MONGO_JS'
-__try('hostInfo', () => __write('hostinfo', __cmd({hostInfo: 1})));
-__try('buildInfo', () => __write('buildinfo', __cmd({buildInfo: 1})));
 const __opts = __try('getCmdLineOpts', () => __cmd({getCmdLineOpts: 1}));
-if (__opts) {
-   __write('cmdlineopts', __opts);
-}
-__try('getParameter', () => __write('parameters', __cmd({getParameter: '*'})));
-__try('connPoolStats', () => __write('connpoolstats', __cmd({connPoolStats: 1})));
 
-__try('profiling status', () => {
-   const status = {};
-   for (const d of __cmd({listDatabases: 1, nameOnly: true}).databases) {
-      status[d.name] = __try('profiling status of ' + d.name, () => __cmd({profile: -1}, d.name));
+if (!__skip('metadata')) {
+   __try('hostInfo', () => __write('hostinfo', __cmd({hostInfo: 1})));
+   __try('buildInfo', () => __write('buildinfo', __cmd({buildInfo: 1})));
+   if (__opts) {
+      __write('cmdlineopts', __opts);
    }
-   __write('profiling-status', status);
-});
+   __try('getParameter', () => __write('parameters', __cmd({getParameter: '*'})));
+   __try('connPoolStats', () => __write('connpoolstats', __cmd({connPoolStats: 1})));
 
-if (P_REPLSET) {
-   __try('replSetGetConfig', () => __write('rs-conf', __cmd({replSetGetConfig: 1}).config));
-   __try('printReplicationInfo', () => __write('oplog-info', db.printReplicationInfo().value));
-   __try('printSecondaryReplicationInfo', () => __write('secondary-replication-info', db.printSecondaryReplicationInfo().value));
+   __try('profiling status', () => {
+      const status = {};
+      for (const d of __cmd({listDatabases: 1, nameOnly: true}).databases) {
+         status[d.name] = __try('profiling status of ' + d.name, () => __cmd({profile: -1}, d.name));
+      }
+      __write('profiling-status', status);
+   });
+
+   if (P_REPLSET) {
+      __try('replSetGetConfig', () => __write('rs-conf', __cmd({replSetGetConfig: 1}).config));
+      __try('printReplicationInfo', () => __write('oplog-info', db.printReplicationInfo().value));
+      __try('printSecondaryReplicationInfo', () => __write('secondary-replication-info', db.printSecondaryReplicationInfo().value));
+   }
 }
 
-// Tell the collector the server's PID and log file, so it can collect
-// process data and follow the log if the server runs on this host.
+// Tell the collector the server's PID, log file and port, so it can collect
+// process data, follow the log and capture its traffic.
 const __log = __opts && __opts.parsed && __opts.parsed.systemLog;
 const __status = __try('serverStatus', () => __cmd({serverStatus: 1})) || {};
 __fs.writeFileSync(P_TMPDIR + '/mongo-server', (__status.pid || '') + '|'
-   + (__log && __log.destination === 'file' && __log.path || '') + '\n');
+   + (__log && __log.destination === 'file' && __log.path || '') + '|'
+   + (String(__status.host || '').split(':').pop().replace(/[^0-9]/g, '')) + '\n');
 MONGO_JS
 
 # Time series: one sample every --sleep-collect seconds for --run-time
@@ -1220,14 +1243,18 @@ for (let i = 0; i < P_COUNT; i++) {
       sleep(__wait);
    }
    const ts = __ts();
-   __try('serverStatus', () => {
-      const status = __cmd({serverStatus: 1});
-      __write('serverstatus', status, ts);
-      __fs.appendFileSync(__file('serverstatus-ext'), __extTable(status));
-   });
-   __try('currentOp', () => __write('currentop',
-      __cmd({currentOp: 1, active: true, idleConnections: false, allUsers: true}), ts));
-   if (P_REPLSET) {
+   if (!__skip('serverstatus')) {
+      __try('serverStatus', () => {
+         const status = __cmd({serverStatus: 1});
+         __write('serverstatus', status, ts);
+         __fs.appendFileSync(__file('serverstatus-ext'), __extTable(status));
+      });
+   }
+   if (!__skip('currentop')) {
+      __try('currentOp', () => __write('currentop',
+         __cmd({currentOp: 1, active: true, idleConnections: false, allUsers: true}), ts));
+   }
+   if (P_REPLSET && !__skip('replsetgetstatus')) {
       __try('replSetGetStatus', () => __write('replsetgetstatus', __cmd({replSetGetStatus: 1}), ts));
    }
 }
@@ -1246,6 +1273,7 @@ mongo_collect_params() {
    printf 'const P_COUNT = %d;\n' "$count"
    printf 'const P_INTERVAL = %d;\n' "$OPT_SLEEP_COLLECT"
    printf 'const P_REPLSET = %s;\n' "$replset"
+   printf 'const P_SKIP = %s;\n' "$(_js_quote ",${OPT_SKIP_COLLECTION:-},")"
 }
 
 collect() {
@@ -1256,19 +1284,31 @@ collect() {
    local mongo_pid=""
    local start_time
    local curr_time
+   local strace_pid=""   # set by collect_mongodb_process_data
+   local tcpdump_pid=""  # set by collect_mongodb_process_data
 
    cnt=$(sample_count "$OPT_RUN_TIME" "$OPT_SLEEP_COLLECT")
 
-   collect_mongodb_data_one "$d" "$p"
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      collect_mongodb_data_one "$d" "$p"
+   fi
    mongo_pid=$(local_mongo_pid)
-   collect_mongodb_log "$d" "$p" "$mongo_pid"
 
    # Start the collectors that run for the whole collection.
-   collect_system_data "$d" "$p" "$mongo_pid" "$cnt"
-   collect_mongodb_data_loop "$d" "$p" "$cnt"
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      collect_mongodb_process_data "$d" "$p" "$mongo_pid"
+      collect_mongodb_log "$d" "$p" "$mongo_pid"
+   fi
+   if [ ! "$OPT_MONGODB_ONLY" ]; then
+      collect_system_data "$d" "$p" "$mongo_pid" "$cnt"
+   fi
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      collect_mongodb_data_loop "$d" "$p" "$cnt"
+   fi
 
    # This loop collects the system snapshots every --sleep-collect seconds,
-   # and defines the duration of the collection, as in pt-stalk.
+   # and defines the duration of the collection, as in pt-stalk.  The free
+   # disk space is checked even with --mongodb-only.
    log "Loop start: $(date +'TS %s.%N %F %T')"
    start_time=$(date +%s)
    curr_time=$start_time
@@ -1277,6 +1317,8 @@ collect() {
       curr_time=$(date +%s)
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
+
+   stop_mongodb_process_collectors "$mongo_pid"
 
    hostname > "$d/$p-hostname"
 
@@ -1288,13 +1330,16 @@ collect() {
    wait_for_subshells "$collect_wait"
    kill_all_subshells
 
-   collect_system_journal "$d" "$p" "$start_time"
+   if [ ! "$OPT_MONGODB_ONLY" ]; then
+      collect_system_journal "$d" "$p" "$start_time"
+   fi
 
    # Remove "empty" files, i.e. ones that are truly empty or just contain
-   # timestamp lines, as pt-stalk does.
+   # timestamp lines, as pt-stalk does.  -a: GNU grep prints nothing on stdout
+   # for a binary file such as the tcpdump capture, which would look empty.
    for file in "$d/$p-"*; do
       [ -f "$file" ] || continue
-      if [ -z "$(grep -v '^TS ' --max-count 10 "$file")" ]; then
+      if [ -z "$(grep -a -v '^TS ' --max-count 10 "$file")" ]; then
          log "Removing empty file $file"
          rm "$file"
       fi
@@ -1319,9 +1364,9 @@ $MONGO_JS_ONCE"
 # failed), fall back to finding a local mongod or mongos when connecting to
 # this host.
 local_mongo_pid() {
-   local server_pid="" log_path=""
+   local server_pid="" log_path="" port=""
    if [ -f "$PT_TMPDIR/mongo-server" ]; then
-      IFS='|' read -r server_pid log_path < "$PT_TMPDIR/mongo-server"
+      IFS='|' read -r server_pid log_path port < "$PT_TMPDIR/mongo-server"
    fi
    if [ -n "$server_pid" ]; then
       case "$(ps -p "$server_pid" -o comm= 2>/dev/null)" in
@@ -1336,16 +1381,100 @@ local_mongo_pid() {
    fi
 }
 
+# Process-level data for the server, as pt-stalk collects for mysqld: the
+# memory map, and with --collect-gdb, --collect-strace and --collect-tcpdump,
+# stack traces, system calls and network traffic.  strace and tcpdump run
+# until stop_mongodb_process_collectors; their PIDs are stored in collect()'s
+# strace_pid and tcpdump_pid.
+collect_mongodb_process_data() {
+   local d="$1"
+   local p="$2"
+   local mongo_pid="$3"
+   local server_pid="" log_path="" port=""
+
+   if [ -f "$PT_TMPDIR/mongo-server" ]; then
+      IFS='|' read -r server_pid log_path port < "$PT_TMPDIR/mongo-server"
+   fi
+
+   # Capture the traffic on the server's port, as pt-stalk does for MySQL.
+   # This works whether or not the server runs on this host.
+   if [ "$OPT_COLLECT_TCPDUMP" ]; then
+      [ -n "$port" ] || port="$OPT_PORT"
+      if [ -z "$CMD_TCPDUMP" ]; then
+         warn "--collect-tcpdump: cannot find tcpdump"
+      elif [ -n "$port" ]; then
+         $CMD_TCPDUMP -i any -s 4096 -w "$d/$p-tcpdump" port "$port" &
+         tcpdump_pid=$!
+      fi
+   fi
+
+   if [ -z "$mongo_pid" ]; then
+      [ "$OPT_COLLECT_GDB" ] || [ "$OPT_COLLECT_STRACE" ] \
+         && warn "The MongoDB server does not run on this host; not collecting gdb or strace data"
+      return 0
+   fi
+
+   # Memory map of the server before anything else, as pt-stalk does.
+   if [ -n "$CMD_PMAP" ]; then
+      if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1; then
+         run_collector "$d/$p-pmap" pmap "$CMD_PMAP" -x "$mongo_pid"
+      else
+         run_collector "$d/$p-pmap" pmap "$CMD_PMAP" "$mongo_pid"
+      fi
+   fi
+
+   # gdb freezes the server while it prints the stack traces; pt-pmp can
+   # aggregate them.
+   if [ "$OPT_COLLECT_GDB" ]; then
+      if [ -z "$CMD_GDB" ]; then
+         warn "--collect-gdb: cannot find gdb"
+      else
+         $CMD_GDB                     \
+            -ex "set pagination 0"    \
+            -ex "thread apply all bt" \
+            --batch -p "$mongo_pid"   \
+            >> "$d/$p-stacktrace"
+      fi
+   fi
+
+   if [ "$OPT_COLLECT_STRACE" ]; then
+      if [ -z "$CMD_STRACE" ]; then
+         warn "--collect-strace: cannot find strace"
+      else
+         $CMD_STRACE -T -s 0 -f -p "$mongo_pid" -o "$d/$p-strace" &
+         strace_pid=$!
+      fi
+   fi
+}
+
+# Stop strace and tcpdump at the end of the collection, as pt-stalk does.
+stop_mongodb_process_collectors() {
+   local mongo_pid="$1"
+
+   if [ -n "$strace_pid" ]; then
+      kill -s 2 "$strace_pid" 2>/dev/null
+      sleep 1
+      kill -s 15 "$strace_pid" 2>/dev/null
+      # Sometimes strace leaves threads/processes in T status.
+      [ -n "$mongo_pid" ] && kill -s 18 "$mongo_pid" 2>/dev/null
+   fi
+   if [ -n "$tcpdump_pid" ]; then
+      kill "$tcpdump_pid" 2>/dev/null
+   fi
+   return 0
+}
+
 # Follow the server's log file during the collection, like pt-stalk does with
 # the MySQL error log, if the server runs on this host and the log is readable.
 collect_mongodb_log() {
    local d="$1"
    local p="$2"
    local mongo_pid="$3"
-   local server_pid="" log_path=""
+   local server_pid="" log_path="" port=""
 
+   _should_skip "mongod-log" && return 0
    [ -n "$mongo_pid" ] && [ -f "$PT_TMPDIR/mongo-server" ] || return 0
-   IFS='|' read -r server_pid log_path < "$PT_TMPDIR/mongo-server"
+   IFS='|' read -r server_pid log_path port < "$PT_TMPDIR/mongo-server"
    [ "$server_pid" = "$mongo_pid" ] && [ -n "$log_path" ] || return 0
    if [ ! -r "$log_path" ]; then
       log "Cannot read the MongoDB log $log_path; not collecting it"
@@ -1365,15 +1494,18 @@ collect_mongodb_data_loop() {
    local p="$2"
    local cnt="$3"
 
-   mongo_eval "$(mongo_collect_params "$d" "$p" "$cnt")
+   if ! _should_skip "serverstatus" || ! _should_skip "currentop" \
+      || { [ -n "$MONGO_REPLSET_NAME" ] && ! _should_skip "replsetgetstatus"; }; then
+      mongo_eval "$(mongo_collect_params "$d" "$p" "$cnt")
 $MONGO_JS_LIB
 $MONGO_JS_LOOP" &
+   fi
 
-   if [ -n "$CMD_MONGOSTAT" ]; then
+   if [ -n "$CMD_MONGOSTAT" ] && ! _should_skip "mongostat"; then
       run_collector "$d/$p-mongostat" mongostat \
          mongo_monitor_exec "$CMD_MONGOSTAT" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
    fi
-   if [ -n "$CMD_MONGOTOP" ]; then
+   if [ -n "$CMD_MONGOTOP" ] && ! _should_skip "mongotop"; then
       run_collector "$d/$p-mongotop" mongotop \
          mongo_monitor_exec "$CMD_MONGOTOP" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
    fi
@@ -1388,15 +1520,6 @@ collect_system_data() {
    local mongo_pid="$3"
    local cnt="$4"
    local pidstat_label="pidstat_mongod"
-
-   # Memory map of the server before anything else, as pt-stalk does.
-   if [ -n "$CMD_PMAP" ] && [ -n "$mongo_pid" ]; then
-      if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1; then
-         run_collector "$d/$p-pmap" pmap "$CMD_PMAP" -x "$mongo_pid"
-      else
-         run_collector "$d/$p-pmap" pmap "$CMD_PMAP" "$mongo_pid"
-      fi
-   fi
 
    (ps -eaF | redact_secrets >> "$d/$p-ps") &
 
@@ -1477,6 +1600,9 @@ collect_system_data_loop() {
    # Synchronize onto the clock tick, so samples are --sleep-collect apart.
    sleep "$(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")"
    ts="$(date +"TS %s.%N %F %T")"
+
+   # With --mongodb-only, only the free disk space is checked.
+   [ "$OPT_MONGODB_ONLY" ] && return 0
 
    local file
    for file in diskstats:diskstats stat:procstat vmstat:procvmstat meminfo:meminfo \
@@ -1854,6 +1980,19 @@ stalk() {
       if [ "$matched" ] && [ "$cycles_true" -ge "$OPT_CYCLES" ]; then
          log "Collect $ITER triggered"
 
+         if [ "$OPT_MONGODB_ONLY" ]; then
+            log "MONGODB_ONLY: $OPT_MONGODB_ONLY"
+         elif [ "$OPT_SYSTEM_ONLY" ]; then
+            log "SYSTEM_ONLY: $OPT_SYSTEM_ONLY"
+         fi
+
+         # Send email to whomever that collect has been triggered.
+         if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
+            echo "$msg on $(hostname)" \
+            | mail -s "Collect triggered on $(hostname)" \
+              "$OPT_NOTIFY_BY_EMAIL"
+         fi
+
          if [ "$OPT_COLLECT" ]; then
             local prefix="${OPT_PREFIX:-$(date +%F-%T | tr ':-' '_')}"
             # Check that there will be enough disk space for another
@@ -1930,7 +2069,7 @@ main() {
    # background subshell, which does not inherit the EXIT trap, so set it here.
    trap rm_tmpdir EXIT
 
-   RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --log=$OPT_LOG --pid=$OPT_PID --plugin=$OPT_PLUGIN"
+   RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID --plugin=$OPT_PLUGIN"
 
    log "Starting $0 $RAN_WITH"
 
@@ -1972,6 +2111,30 @@ if [ "${0##*/}" = "$TOOL" ] || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; the
       fi
    fi
 
+   if [ "$OPT_SYSTEM_ONLY" ] && [ "$OPT_MONGODB_ONLY" ]; then
+      log 'Both options --system-only and --mongodb-only specified, collecting only disk-space, hostname, output, and trigger metrics'
+   fi
+
+   if [ "$OPT_SKIP_COLLECTION" ]; then
+      for skip in $(echo "$OPT_SKIP_COLLECTION" | tr ',' ' '); do
+         case " $SUPPORTED_SKIPS " in
+            *" $skip "*) ;;
+            *) option_error "Invalid --skip-collection value: $skip.  Valid values are: $(echo $SUPPORTED_SKIPS | tr ' ' ',')" ;;
+         esac
+      done
+      usage_or_errors "$0" >/dev/null || exit 1
+   fi
+
+   # Warn if the password is on the command line, as pt-stalk does.
+   for arg in "$@"; do
+      case "$arg" in
+         --password|--password=*|-p|-p?*|*://*:*@*)
+            log 'Providing the MongoDB password on the command line is insecure.  It is visible in the operating system process list.  Consider using a config file or the --ask-pass option instead.'
+            break
+            ;;
+      esac
+   done
+
    if [ -n "$OPT_ASK_PASS" ]; then
       stty_orig=$(stty -g)
       echo -n "Enter MongoDB password: "
@@ -1985,16 +2148,27 @@ if [ "${0##*/}" = "$TOOL" ] || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; the
       OPT_CYCLES=0
    fi
 
-   choose_mongo_shell
+   # With --system-only and a trigger that does not use MongoDB, MongoDB is not
+   # needed at all, as pt-stalk does not need MySQL with --system-only.
+   need_mongodb="yes"
+   if [ "$OPT_SYSTEM_ONLY" ]; then
+      case "$TRIGGER_FUNCTION" in
+         trg_cpu|trg_memory|trg_process_cpu|trg_process_memory) need_mongodb="" ;;
+      esac
+   fi
+
+   [ "$need_mongodb" ] && choose_mongo_shell
 
    # The connection files written to $PT_TMPDIR contain the password, so
    # remove the directory however the tool exits.
    mk_tmpdir
    trap rm_tmpdir EXIT
-   setup_mongo_connection
 
-   ping_output="$(mongo_eval "db.runCommand({ping: 1})" 2>&1)" \
-      || die "Cannot connect to MongoDB: $(echo "$ping_output" | tail -n 1)"
+   if [ "$need_mongodb" ]; then
+      setup_mongo_connection
+      ping_output="$(mongo_eval "db.runCommand({ping: 1})" 2>&1)" \
+         || die "Cannot connect to MongoDB: $(echo "$ping_output" | tail -n 1)"
+   fi
 
    if [ "$OPT_COLLECT" ]; then
       [ -d "$OPT_DEST" ] || mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
@@ -2097,6 +2271,44 @@ set in a config file.
 default: yes; negatable: yes
 
 Collect diagnostic data when the trigger occurs.
+
+=item --collect-gdb
+
+Collect GDB stacktraces.
+
+This is achieved by attaching to the MongoDB server and printing stack traces
+from all threads to C<E<lt>prefixE<gt>-stacktrace>, which C<pt-pmp> can
+aggregate.  This will freeze the server for some period of time, ranging from
+a second or so to much longer on very busy systems with a lot of memory and
+many threads in the server.  For this reason, it is disabled by default.
+However, if you are trying to diagnose a server stall or lockup, freezing the
+server causes no additional harm, and the stack traces can be vital for
+diagnosis.
+
+In addition to freezing the server, there is also some risk of the server
+crashing or performing badly after GDB detaches from it.  The server must run
+on the same host as the tool, and attaching to it usually requires root.
+
+=item --collect-strace
+
+Collect strace data.
+
+This is achieved by attaching strace to the server, which will make it run
+very slowly until strace detaches at the end of the collection.  The output is
+saved to C<E<lt>prefixE<gt>-strace>.  The same cautions apply as those listed
+in L<"--collect-gdb">.  You should not enable this option together with
+L<"--collect-gdb">, because GDB and strace can't attach to the server process
+simultaneously.
+
+=item --collect-tcpdump
+
+Collect tcpdump data.
+
+This option causes tcpdump to capture all traffic on all interfaces for the
+port on which the MongoDB server is listening, during the collection, and save
+it to C<E<lt>prefixE<gt>-tcpdump>.  The port is the one the server reports;
+the server does not have to run on the same host.  Capturing traffic usually
+requires root.
 
 =item --config
 
@@ -2208,6 +2420,21 @@ type: string
 
 Regex pattern used with L<"--function"> C<currentop>.
 
+=item --mongodb-only
+
+Trigger only MongoDB related captures, ignoring all others.
+
+The only system data still collected is the free disk space, because it is
+needed to check that there is enough space to write the result files.
+
+=item --notify-by-email
+
+type: string
+
+Send an email to these addresses for every L<"--collect">.
+
+The C<mail> command must be available.
+
 =item --password
 
 short form: -p; type: string
@@ -2271,6 +2498,18 @@ type: int; default: 30
 
 How long interval collectors should run when the trigger occurs.
 
+=item --skip-collection
+
+type: string
+
+A comma-separated list of MongoDB collection types to skip.
+
+Valid values are: C<currentop>, C<metadata> (everything collected once at the
+start: C<hostinfo>, C<buildinfo>, C<cmdlineopts>, C<parameters>,
+C<connpoolstats>, C<profiling-status>, C<rs-conf>, C<oplog-info> and
+C<secondary-replication-info>), C<mongod-log>, C<mongostat>, C<mongotop>,
+C<replsetgetstatus> and C<serverstatus> (also C<serverstatus-ext>).
+
 =item --sleep
 
 type: int; default: 300
@@ -2289,6 +2528,14 @@ default: yes; negatable: yes
 
 Watch the server and wait for the trigger to occur. Specify C<--no-stalk> to
 collect immediately.
+
+=item --system-only
+
+Trigger only operating system related captures, ignoring all others.
+
+If the trigger does not use MongoDB (L<"--function"> C<cpu>, C<memory>,
+C<process-cpu> or C<process-memory>), the tool does not connect to MongoDB at
+all.
 
 =item --threshold
 
@@ -2498,8 +2745,19 @@ L<"--run-time">:
 If the server runs on the same host and its log file is readable, the log is
 followed during the collection and saved to C<E<lt>prefixE<gt>-mongod-log>.
 
+If the server runs on the same host, the memory map of its process is saved
+to C<E<lt>prefixE<gt>-pmap> (C<pmap -x>).  On request, the tool also collects
+stack traces of all its threads with L<"--collect-gdb">
+(C<E<lt>prefixE<gt>-stacktrace>), its system calls with L<"--collect-strace">
+(C<E<lt>prefixE<gt>-strace>), and the traffic on its port with
+L<"--collect-tcpdump"> (C<E<lt>prefixE<gt>-tcpdump>).
+
+L<"--skip-collection"> skips some of these, and L<"--system-only"> skips all of
+them.
+
 System data is collected with the same commands, file names and formats as
 C<pt-stalk>, so C<pt-sift>, C<pt-diskstats> and C<pt-pmp> can read it.
+L<"--mongodb-only"> skips it, except for the free disk space.
 Depending on tool availability:
 
 Collected once, or by commands that run for the whole collection:
@@ -2515,7 +2773,6 @@ Collected once, or by commands that run for the whole collection:
 
 and, if the server runs on this host, for its PID:
 
-  pmap -x (pmap)
   lsof (lsof)
   pidstat -urdwt (pidstat_mongod or pidstat_mongos)
 
