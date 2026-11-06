@@ -2213,6 +2213,8 @@ server.  Before using this tool, please:
 
 =item * Read the tool's documentation
 
+=item * Review the tool's known L<"BUGS">
+
 =item * Test the tool on a non-production server
 
 =item * Backup your production server and verify the backups
@@ -2244,6 +2246,28 @@ MySQL commands.
 The default trigger watches C<serverStatus.connections.active>, the number of
 client connections with an operation in progress.  You can also watch C<currentOp>, host CPU usage, host memory usage, queued writers, and
 replica set replication lag.
+
+=head1 CONFIGURING
+
+You can use standard Percona Toolkit configuration files to set command line
+options.
+
+You will probably want to run the tool as a daemon and customize at least the
+L<"--threshold">.  Here's a sample configuration file for triggering when
+there are more than 50 client connections with an operation in progress:
+
+  daemonize
+  threshold=50
+  user=admin
+  password=...
+
+A config file is also the recommended place for the password; see
+L<"RISKS">.  L<"--authenticationDatabase">, L<"--sslCAFile"> and
+L<"--sslPEMKeyFile"> cannot be set in a config file.
+
+If you don't run the tool as root, then you will need specify several options,
+such as L<"--pid">, L<"--log">, and L<"--dest">, else the tool will probably
+fail to start.
 
 =head1 OPTIONS
 
@@ -2804,20 +2828,167 @@ At the end of a collection, files that are empty or contain only timestamp
 lines are removed.  Old collections are removed according to
 L<"--retention-time">, L<"--retention-count"> and L<"--retention-size">.
 
-=head1 NOTES
+=head1 ENVIRONMENT
 
-This tool is intended for Linux systems.  It requires C<mongosh>; the legacy
-C<mongo> shell is not supported.  A separate summary-style tool should
-collect broader one-time server and MongoDB metadata; C<pt-mongodb-stalk> is
-focused on runtime sampling around a trigger event.
+This tool does not require any environment variables for configuration,
+although it can be influenced to work differently by through several
+variables.  Keep in mind that these are expert settings, and should not
+be used in most cases.
+
+The following variables set the path to the commands the tool runs, for
+example to use a C<mongosh> that is not in C<PATH>:
+
+=over
+
+=item CMD_DMESG
+
+=item CMD_GDB
+
+=item CMD_IOSTAT
+
+=item CMD_JOURNALCTL
+
+=item CMD_MONGOSH
+
+=item CMD_MONGOSTAT
+
+=item CMD_MONGOTOP
+
+=item CMD_MPSTAT
+
+=item CMD_NETSTAT
+
+=item CMD_PIDSTAT
+
+=item CMD_PMAP
+
+=item CMD_STRACE
+
+=item CMD_SYSCTL
+
+=item CMD_TCPDUMP
+
+=item CMD_TOP
+
+=item CMD_VMSTAT
+
+=back
+
+For example:
+
+    CMD_MONGOSH=/opt/mongosh/bin/mongosh pt-mongodb-stalk ...
+
+To enable debugging output, set the C<PTDEBUG> environment variable to a
+non-empty value.
+
+=head1 SYSTEM REQUIREMENTS
+
+This tool requires Bash v3 or newer, Perl, and C<mongosh>; the legacy C<mongo>
+shell is not supported.  It is intended for Linux systems: most of the system
+data comes from C</proc> and from C<sysstat>, C<procps> and C<net-tools>
+commands.
+
+C<mongostat> and C<mongotop> are used if available.  They must support the
+C<--config> option, which they read the connection settings from (tested with
+MongoDB Database Tools 100.12).
+
+Certain options require other programs:
+
+=over
+
+=item L<"--collect-gdb"> requires C<gdb>
+
+=item L<"--collect-strace"> requires C<strace>
+
+=item L<"--collect-tcpdump"> requires C<tcpdump>
+
+=item L<"--notify-by-email"> requires C<mail>
+
+=back
+
+=head1 BUGS
+
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
+
+Please report bugs at L<https://jira.percona.com/projects/PT>.
+Include the following information in your bug report:
+
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool L<"--version">
+
+=item * MongoDB version and topology (standalone, replica set or sharded
+cluster) of the servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
+
+=head1 AUTHORS
+
+Agustin Palazuelos, based on C<pt-stalk> by Baron Schwartz, Justin Swanhart,
+Fernando Ipar, Daniel Nichter, and Brian Fraser
+
+=head1 ABOUT PERCONA TOOLKIT
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools for MySQL, MongoDB and PostgreSQL developed by Percona.  Percona
+Toolkit was forked from two projects in June, 2011: Maatkit and Aspersa.
+Those projects were created by Baron Schwartz and primarily developed by him
+and Daniel Nichter.  Visit L<http://www.percona.com/software/> to learn about
+other free, open-source software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2026 Percona LLC and/or its affiliates.
+This program is copyright 2011-2026 Percona LLC and/or its affiliates,
+2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License, version 2
+along with this program; if not, see <https://www.gnu.org/licenses/>.
+
+=head1 VERSION
+
+pt-mongodb-stalk 3.7.1
 
 =cut
 DOCUMENTATION

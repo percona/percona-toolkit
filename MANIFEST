@@ -24,6 +24,7 @@ bin/pt-index-usage
 bin/pt-ioprofile
 bin/pt-kill
 bin/pt-mext
+bin/pt-mongodb-stalk
 bin/pt-mysql-summary
 bin/pt-online-schema-change
 bin/pt-pmp
