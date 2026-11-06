@@ -7,13 +7,16 @@
 set -u
 
 # ###########################################################################
-# log_warn_die section
-# This section is adapted from the original.  The original
+# log_warn_die package
+# This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/log_warn_die.sh
 #   t/lib/bash/log_warn_die.sh
 # See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
+
+
+set -u
 
 PTFUNCNAME=""
 PTDEBUG="${PTDEBUG:-""}"
@@ -25,15 +28,15 @@ ts() {
 }
 
 info() {
-   [ "${OPT_VERBOSE:-3}" -ge 3 ] && ts "$*"
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
 }
 
 log() {
-   [ "${OPT_VERBOSE:-3}" -ge 2 ] && ts "$*"
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
 }
 
 warn() {
-   [ "${OPT_VERBOSE:-3}" -ge 1 ] && ts "$*" >&2
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
    EXIT_STATUS=1
 }
 
@@ -48,18 +51,20 @@ _d () {
 }
 
 # ###########################################################################
-# End log_warn_die section
+# End log_warn_die package
 # ###########################################################################
 
 # ###########################################################################
-# subshell section
-# This section is adapted from the original.  The original
+# subshell package
+# This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/subshell.sh
 #   t/lib/bash/subshell.sh
 # See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
+
+set -u
 
 wait_for_subshells() {
    local max_wait=$1
@@ -69,14 +74,14 @@ wait_for_subshells() {
       while [ -n "$(jobs)" ]; do
          local subprocess_still_running=""
          for pid in $(jobs -p); do
-            if kill -0 "$pid" >/dev/null 2>&1; then
+            if kill -0 $pid >/dev/null 2>&1; then
                subprocess_still_running=1
             fi
          done
          if [ "$subprocess_still_running" ]; then
             sleep 1
             slept=$((slept + 1))
-            [ "$slept" -ge "$max_wait" ] && break
+            [ $slept -ge $max_wait ] && break
          else
             break
          fi
@@ -87,57 +92,66 @@ wait_for_subshells() {
 kill_all_subshells() {
    if [ "$(jobs)" ]; then
       for pid in $(jobs -p); do
-         if kill -0 "$pid" >/dev/null 2>&1; then
+         if kill -0 $pid >/dev/null 2>&1; then
             log "Killing subprocess $pid"
-            kill "$pid" >/dev/null 2>&1
+            kill $pid >/dev/null 2>&1
          fi
       done
+   else
+      log "All subprocesses have finished"
    fi
 }
 
 # ###########################################################################
-# End subshell section
+# End subshell package
 # ###########################################################################
 
 # ###########################################################################
-# parse_options section
-# This section is adapted from the original.  The original
+# parse_options package
+# This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/parse_options.sh
 #   t/lib/bash/parse_options.sh
 # See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
-ARGV=""              # Non-option args (probably input files)
-EXT_ARGV=""          # Everything after -- (args for an external command)
-HAVE_EXT_ARGV=""     # Got --, everything else is put into EXT_ARGV
-OPT_ERRS=0           # How many command line option errors
-OPT_VERSION=""       # If --version was specified
-OPT_HELP=""          # If --help was specified
-OPT_ASK_PASS=""      # If --ask-pass was specified
-PO_DIR=""            # Directory with program option spec files
-GLOBAL_CONFIG=0      # We ignore non-recognized options in global configs
+
+
+
+
+
+set -u
+
+ARGV=""           # Non-option args (probably input files)
+EXT_ARGV=""       # Everything after -- (args for an external command)
+HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
+OPT_ERRS=0        # How many command line option errors
+OPT_VERSION=""    # If --version was specified
+OPT_HELP=""       # If --help was specified
+OPT_ASK_PASS=""   # If --ask-pass was specified
+PO_DIR=""         # Directory with program option spec files
+GLOBAL_CONFIG=0   # We ignore non-recognized options in global configs
 
 usage() {
    local file="$1"
 
    local usage="$(grep '^Usage: ' "$file")"
-   echo "$usage"
+   echo $usage
    echo
    echo "For more information, 'man $TOOL' or 'perldoc $file'."
 }
 
 usage_or_errors() {
    local file="$1"
+   local version=""
 
    if [ "$OPT_VERSION" ]; then
-      local version
       version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
       return 1
    fi
 
-   if [ -z "$(_which perl)" ]; then
+   if [ -z $(_which perl) ]; then
       echo "Perl binary required to run this tool"
       return 1
    fi
@@ -150,8 +164,8 @@ usage_or_errors() {
       perl -e '
          use strict;
          use warnings FATAL => qw(all);
-         my $lcol = 24;
-         my $rcol = 80 - $lcol;
+         my $lcol = 20;         # Allow this much space for option names.
+         my $rcol = 80 - $lcol; # The terminal is assumed to be 80 chars wide.
          my $name;
          while ( <> ) {
             my $line = $_;
@@ -161,8 +175,8 @@ usage_or_errors() {
             }
             elsif ( $line =~ s/^desc:// ) {
                $line =~ s/ +$//mg;
-               my @lines = grep { $_ }
-                            $line =~ m/(.{0,$rcol})(?:\s+|\Z)/g;
+               my @lines = grep { $_      }
+                           $line =~ m/(.{0,$rcol})(?:\s+|\Z)/g;
                if ( length($name) >= $lcol ) {
                   print $name, "\n", (q{ } x $lcol);
                }
@@ -175,32 +189,28 @@ usage_or_errors() {
          }
       ' "$PO_DIR"/*
       echo
-      echo "Examples:"
+      echo "Options and values after processing arguments:"
       echo
-      perl -e '
-         use strict;
-         use warnings FATAL => qw(all);
-         my $in = 0;
-         while ( <> ) {
-            if ( /^=head1 EXAMPLES/ ) {
-               $in = 1;
-               next;
-            }
-            last if $in && /^=head1 /;
-            next unless $in;
-            next if /^=cut/;
-            next if /^=over/;
-            next if /^=back/;
-            next if /^=pod/;
-            s/^C<([^>]+)>/$1/g;
-            s/L<"[^"]+">//g;
-            print;
-         }
-      ' "$file"
+      (
+         cd "$PO_DIR"
+         for opt in *; do
+            local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+            eval local varvalue=\$$varname
+            if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+               if [ "$varvalue" -a "$varvalue" = "yes" ];
+                  then varvalue="TRUE"
+               else
+                  varvalue="FALSE"
+               fi
+            fi
+            printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+            echo
+         done
+      )
       return 1
    fi
 
-   if [ "$OPT_ERRS" -gt 0 ]; then
+   if [ $OPT_ERRS -gt 0 ]; then
       echo
       usage "$file"
       return 1
@@ -211,7 +221,7 @@ usage_or_errors() {
 
 option_error() {
    local err="$1"
-   OPT_ERRS=$((OPT_ERRS + 1))
+   OPT_ERRS=$(($OPT_ERRS + 1))
    echo "$err" >&2
 }
 
@@ -228,25 +238,36 @@ parse_options() {
    OPT_ASK_PASS=""
    PO_DIR="$PT_TMPDIR/po"
 
-   [ -d "$PO_DIR" ] || mkdir "$PO_DIR" || die "Cannot mkdir $PO_DIR"
-   rm -rf "$PO_DIR"/* || die "Cannot rm -rf $PO_DIR/*"
+   if [ ! -d "$PO_DIR" ]; then
+      mkdir "$PO_DIR"
+      if [ $? -ne 0 ]; then
+         echo "Cannot mkdir $PO_DIR" >&2
+         exit 1
+      fi
+   fi
 
-   _parse_pod "$file"
-   _eval_po
+   rm -rf "$PO_DIR"/*
+   if [ $? -ne 0 ]; then
+      echo "Cannot rm -rf $PO_DIR/*" >&2
+      exit 1
+   fi
 
-   if [ $# -ge 2 ] && [ "$1" = "--config" ]; then
-      shift
+   _parse_pod "$file"  # Parse POD into program option (po) spec files
+   _eval_po            # Eval po into existence with default values
+
+   if [ $# -ge 2 ] &&  [ "$1" = "--config" ]; then
+      shift  # --config
       local user_config_files="$1"
-      shift
+      shift  # that ^
       local IFS=","
       for user_config_file in $user_config_files; do
          _parse_config_files "$user_config_file"
       done
    else
-      GLOBAL_CONFIG=1
+       GLOBAL_CONFIG=1
       _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf"
-      GLOBAL_CONFIG=0
-      _parse_config_files "/etc/percona-toolkit/$TOOL.conf"
+       GLOBAL_CONFIG=0
+       _parse_config_files "/etc/percona-toolkit/$TOOL.conf"
       if [ "${HOME:-}" ]; then
          GLOBAL_CONFIG=1
          _parse_config_files "$HOME/.percona-toolkit.conf"
@@ -303,53 +324,77 @@ _eval_po() {
       local default_val=""
       local neg=0
       local size=0
-      while read -r key val; do
+      while read key val; do
          case "$key" in
             long)
-               opt=$(echo "$val" | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
                ;;
             default)
                default_val="$val"
                ;;
-            "short form"|desc)
+            "short form")
                ;;
             type)
                [ "$val" = "size" ] && size=1
                ;;
+            desc)
+               ;;
             negatable)
-               [ "$val" = "yes" ] && neg=1
+               if [ "$val" = "yes" ]; then
+                  neg=1
+               fi
                ;;
             *)
-               ;;
+               echo "Invalid attribute in $opt_spec: $line" >&2
+               exit 1
          esac
       done < "$opt_spec"
 
-      [ -n "$opt" ] || die "No long attribute in option spec $opt_spec"
-
-      if [ "$size" -eq 1 ] && [ -n "$default_val" ]; then
-         default_val=$(size_to_bytes "$default_val")
+      if [ -z "$opt" ]; then
+         echo "No long attribute in option spec $opt_spec" >&2
+         exit 1
       fi
 
-      eval "OPT_${opt}"='"$default_val"'
-      if [ "$neg" -eq 1 ] && [ "$default_val" = "yes" ]; then
-         :
+      if [ $neg -eq 1 ]; then
+         if [ -z "$default_val" ] || [ "$default_val" != "yes" ]; then
+            echo "Option $opt_spec is negatable but not default: yes" >&2
+            exit 1
+         fi
       fi
+
+      if [ $size -eq 1 -a -n "$default_val" ]; then
+         default_val=$(size_to_bytes $default_val)
+      fi
+
+      eval "OPT_${opt}"="$default_val"
    done
 }
 
 _parse_config_files() {
+
    for config_file in "${@:-""}"; do
       test -f "$config_file" || continue
-      while read -r config_opt; do
+
+      while read config_opt; do
+
          echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
+
          config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
+
          [ "$config_opt" = "" ] && continue
+
+         echo "$config_opt" | grep -v 'version-check' >/dev/null 2>&1 || continue
+
          if ! [ "$HAVE_EXT_ARGV" ]; then
             config_opt="--$config_opt"
          fi
+
          _parse_command_line "$config_opt"
+
       done < "$config_file"
-      HAVE_EXT_ARGV=""
+
+      HAVE_EXT_ARGV=""  # reset for each file
+
    done
 }
 
@@ -379,57 +424,62 @@ _parse_command_line() {
 
       if [ "$next_opt_is_val" ]; then
          next_opt_is_val=""
-         if [ $# -eq 0 ] || [ "$(expr "$opt" : "\-")" -eq 1 ]; then
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "\-") -eq 1 ]; then
             option_error "$real_opt requires a $required_arg argument"
             continue
          fi
          val="$opt"
          opt_is_ok=1
       else
-         if [ "$(expr "$opt" : "\-")" -eq 0 ]; then
-            ARGV="${ARGV:+$ARGV }$opt"
+         if [ $(expr "$opt" : "\-") -eq 0 ]; then
+            if [ -z "$ARGV" ]; then
+               ARGV="$opt"
+            else
+               ARGV="$ARGV $opt"
+            fi
             continue
          fi
 
          real_opt="$opt"
-         if $(echo "$opt" | grep '^--no[^-]' >/dev/null); then
-            local base_opt
-            base_opt=$(echo "$opt" | sed 's/^--no//')
+
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
             if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
                opt_is_negated=1
                opt="$base_opt"
             else
-               opt=$(echo "$opt" | sed 's/^-*//')
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
             fi
          else
-            if $(echo "$opt" | grep '^--no-' >/dev/null); then
+            if $(echo $opt | grep '^--no-' >/dev/null); then
                opt_is_negated=1
-               opt=$(echo "$opt" | sed 's/^--no-//')
+               opt=$(echo $opt | sed 's/^--no-//')
             else
-               opt=$(echo "$opt" | sed 's/^-*//')
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
             fi
          fi
 
-         if $(echo "$opt" | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
+         if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
             val="$(echo "$opt" | awk '{ st = index($0,"="); print substr($0, st+1)}')"
-            opt="$(echo "$opt" | awk -F= '{print $1}')"
+            opt="$(echo $opt | awk -F= '{print $1}')"
          fi
 
          if [ -f "$PT_TMPDIR/po/$opt" ]; then
             spec="$PT_TMPDIR/po/$opt"
          else
-            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* 2>/dev/null | cut -d ':' -f 1)
-            if [ -z "$spec" ]; then
-               if [ "$GLOBAL_CONFIG" -eq 1 ]; then
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
+            if [ -z "$spec"  ]; then
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
                   continue
                else
                   option_error "Unknown option: $real_opt"
-                  continue
                fi
             fi
          fi
 
-         required_arg=$(awk -F: '/^type:/{print $2}' "$spec")
+         required_arg=$(cat "$spec" | awk -F: '/^type:/{print $2}')
          if [ "$required_arg" ]; then
             if [ "$val" ]; then
                opt_is_ok=1
@@ -451,11 +501,14 @@ _parse_command_line() {
       fi
 
       if [ "$opt_is_ok" ]; then
-         opt=$(grep '^long:' "$spec" | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
+
          if grep "^type:size" "$spec" >/dev/null; then
-            val=$(size_to_bytes "$val")
+            val=$(size_to_bytes $val)
          fi
+
          eval "OPT_$opt"='$val'
+
          opt=""
          val=""
          next_opt_is_val=""
@@ -470,24 +523,40 @@ _parse_command_line() {
 
 size_to_bytes() {
    local size="$1"
-   echo "$size" | perl -ne '%f=(B=>1, K=>1_024, M=>1_048_576, G=>1_073_741_824, T=>1_099_511_627_776); m/^(\d+)([kMGT])?/i; print $1 * $f{uc($2 || "B")};'
+   echo $size | perl -ne '%f=(B=>1, K=>1_024, M=>1_048_576, G=>1_073_741_824, T=>1_099_511_627_776); m/^(\d+)([kMGT])?/i; print $1 * $f{uc($2 || "B")};'
 }
 
 # ###########################################################################
-# tmpdir section
+# End parse_options package
 # ###########################################################################
+
+# ###########################################################################
+# tmpdir package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/tmpdir.sh
+#   t/lib/bash/tmpdir.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
 
 PT_TMPDIR=""
 
 mk_tmpdir() {
    local dir="${1:-""}"
+
    if [ -n "$dir" ]; then
-      [ -d "$dir" ] || mkdir "$dir" || die "Cannot make tmpdir $dir"
+      if [ ! -d "$dir" ]; then
+         mkdir "$dir" || die "Cannot make tmpdir $dir"
+      fi
       PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      PT_TMPDIR=$(mktemp -d -t "${tool}.${pid}.XXXXXX") || die "Cannot make secure tmpdir"
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
+         || die "Cannot make secure tmpdir"
    fi
 }
 
@@ -498,15 +567,42 @@ rm_tmpdir() {
    PT_TMPDIR=""
 }
 
-remove_empty_err_files() {
-   local dir="$1"
-   [ -d "$dir" ] || return 0
-   find "$dir" -maxdepth 1 -type f -name '*.err' -size 0 -delete 2>/dev/null || true
-}
+# ###########################################################################
+# End tmpdir package
+# ###########################################################################
 
 # ###########################################################################
-# alt_cmds section
+# alt_cmds package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/alt_cmds.sh
+#   t/lib/bash/alt_cmds.sh
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
+
+
+set -u
+
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+_pidof() {
+   local cmd="$1"
+   if ! pidof "$cmd" 2>/dev/null; then
+      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
+   fi
+}
+
+_lsof() {
+   local pid="$1"
+   if ! lsof -p $pid 2>/dev/null; then
+      /bin/ls -l /proc/$pid/fd 2>/dev/null
+   fi
+}
+
+
 
 _which() {
    if [ -x /usr/bin/which ]; then
@@ -518,16 +614,21 @@ _which() {
    fi
 }
 
-_pidof() {
-   local cmd="$1"
-   if ! pidof "$cmd" 2>/dev/null; then
-      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
-   fi
-}
+# ###########################################################################
+# End alt_cmds package
+# ###########################################################################
 
 # ###########################################################################
-# safeguards section
+# safeguards package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/safeguards.sh
+#   t/lib/bash/safeguards.sh
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
+
+
+set -u
 
 disk_space() {
    local filesystem="${1:-$PWD}"
@@ -540,60 +641,96 @@ check_disk_space() {
    local min_free_pct="${3:-0}"
    local bytes_margin="${4:-0}"
 
-   local used_bytes free_bytes pct_used pct_free real_free_bytes real_pct_free
-   used_bytes=$(tail -n 1 "$file" | perl -ane 'print $F[2] * 1024')
-   free_bytes=$(tail -n 1 "$file" | perl -ane 'print $F[3] * 1024')
-   pct_used=$(tail -n 1 "$file" | perl -ane 'print ($F[4] =~ m/(\d+)/)')
-   pct_free=$((100 - pct_used))
-   real_free_bytes=$free_bytes
-   real_pct_free=$pct_free
+   local used_bytes=$(tail -n 1 "$file" | perl -ane 'print $F[2] * 1024')
+   local free_bytes=$(tail -n 1 "$file" | perl -ane 'print $F[3] * 1024')
+   local pct_used=$(tail -n 1 "$file" | perl -ane 'print ($F[4] =~ m/(\d+)/)')
+   local pct_free=$((100 - $pct_used))
 
-   if [ "$bytes_margin" -gt 0 ]; then
-      used_bytes=$((used_bytes + bytes_margin))
-      free_bytes=$((free_bytes - bytes_margin))
+   local real_free_bytes=$free_bytes
+   local real_pct_free=$pct_free
+
+   if [ $bytes_margin -gt 0 ]; then
+      used_bytes=$(($used_bytes + $bytes_margin))
+      free_bytes=$(($free_bytes - $bytes_margin))
       pct_used=$(perl -e "print int(($used_bytes/($used_bytes + $free_bytes)) * 100)")
-      pct_free=$((100 - pct_used))
+
+      pct_free=$((100 - $pct_used))
    fi
 
-   if [ "$free_bytes" -lt "$min_free_bytes" ] || [ "$pct_free" -lt "$min_free_pct" ]; then
+   if [ $free_bytes -lt $min_free_bytes -o $pct_free -lt $min_free_pct ]; then
       warn "Not enough free disk space:
-   Limit: ${min_free_pct}% free, ${min_free_bytes} bytes free
-  Actual: ${real_pct_free}% free, ${real_free_bytes} bytes free (- $bytes_margin bytes margin)
+    Limit: ${min_free_pct}% free, ${min_free_bytes} bytes free
+   Actual: ${real_pct_free}% free, ${real_free_bytes} bytes free (- $bytes_margin bytes margin)
 "
       cat "$file" >&2
-      return 1
+
+      return 1  # not enough disk space
    fi
 
-   return 0
+   return 0  # disk space is OK
 }
 
 # ###########################################################################
-# daemon section
+# End safeguards package
 # ###########################################################################
+
+# ###########################################################################
+# daemon package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/daemon.sh
+#   t/lib/bash/daemon.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
 
 make_pid_file() {
    local file="$1"
    local pid="$2"
 
+
    if [ -f "$file" ]; then
-      local old_pid
-      old_pid=$(cat "$file")
+      local old_pid=$(cat "$file")
       if [ -z "$old_pid" ]; then
          die "PID file $file already exists but it is empty"
       else
-         kill -0 "$old_pid" 2>/dev/null
+         kill -0 $old_pid 2>/dev/null
          if [ $? -eq 0 ]; then
             die "PID file $file already exists and its PID ($old_pid) is running"
+         else
+            echo "Overwriting PID file $file because its PID ($old_pid)" \
+                 "is not running"
          fi
       fi
    fi
 
-   echo "$pid" > "$file" || die "Cannot create or write PID file $file"
+   echo "$pid" > "$file"
+   if [ $? -ne 0 ]; then
+      die "Cannot create or write PID file $file"
+   fi
 }
 
 remove_pid_file() {
    local file="$1"
-   [ -f "$file" ] && rm "$file"
+   if [ -f "$file" ]; then
+      rm "$file"
+   fi
+}
+
+# ###########################################################################
+# End daemon package
+# ###########################################################################
+
+# ###########################################################################
+# pt-mongodb-stalk helpers
+# ###########################################################################
+
+remove_empty_err_files() {
+   local dir="$1"
+   [ -d "$dir" ] || return 0
+   find "$dir" -maxdepth 1 -type f -name '*.err' -size 0 -delete 2>/dev/null || true
 }
 
 # ###########################################################################
@@ -601,7 +738,6 @@ remove_pid_file() {
 # ###########################################################################
 
 CMD_MONGOSH="${CMD_MONGOSH:-"$(_which mongosh)"}"
-CMD_MONGO="${CMD_MONGO:-"$(_which mongo)"}"
 CMD_MONGOSTAT="${CMD_MONGOSTAT:-"$(_which mongostat)"}"
 CMD_MONGOTOP="${CMD_MONGOTOP:-"$(_which mongotop)"}"
 CMD_IOSTAT="${CMD_IOSTAT:-"$(_which iostat)"}"
@@ -614,7 +750,6 @@ CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
 CMD_JOURNALCTL="${CMD_JOURNALCTL:-"$(_which journalctl)"}"
 
 MONGO_SHELL=""
-MONGO_EVAL_PREFIX=""
 MONGO_AUTH_DB=""
 MONGO_CONNECT_ARGS=""
 MONGO_MONITOR_ARGS=""
@@ -624,15 +759,9 @@ MONGO_PROCESS_TYPE=""
 MONGO_CLUSTER_ROLE=""
 
 choose_mongo_shell() {
-   if [ -n "$CMD_MONGOSH" ]; then
-      MONGO_SHELL="$CMD_MONGOSH"
-      MONGO_EVAL_PREFIX="EJSON.stringify"
-   elif [ -n "$CMD_MONGO" ]; then
-      MONGO_SHELL="$CMD_MONGO"
-      MONGO_EVAL_PREFIX="JSON.stringify"
-   else
-      die "Cannot execute mongosh or mongo. Check that one is in PATH."
-   fi
+   [ -n "$CMD_MONGOSH" ] \
+      || die "Cannot execute mongosh. Check that it is in PATH or set CMD_MONGOSH."
+   MONGO_SHELL="$CMD_MONGOSH"
 }
 
 mongo_connect_args() {
@@ -717,7 +846,7 @@ mongo_admin_json() {
          delete __doc['\$clusterTime'];
          delete __doc.operationTime;
       }
-      print(${MONGO_EVAL_PREFIX}(__doc));
+      print(EJSON.stringify(__doc));
    "
 }
 
@@ -794,7 +923,7 @@ mongo_status_value() {
       if (__val === undefined || __val === null || __val === '') {
          print('');
       } else if (typeof __val === 'object') {
-         print(${MONGO_EVAL_PREFIX}(__val));
+         print(EJSON.stringify(__val));
       } else {
          print(__val);
       }
@@ -827,7 +956,7 @@ mongo_currentop_count() {
          if (__val === undefined || __val === null) {
             return;
          }
-         const __str = typeof __val === 'string' ? __val : ${MONGO_EVAL_PREFIX}(__val);
+         const __str = typeof __val === 'string' ? __val : EJSON.stringify(__val);
          if (!__re || __re.test(__str)) {
             __count++;
          }
@@ -1560,8 +1689,10 @@ first option on the command line.
 
 type: int; default: 5
 
-How many times L<"--variable"> must be greater than L<"--threshold"> before
-triggering L<"--collect">.
+How many times the trigger must be true before collecting.
+
+L<"--variable"> must be greater than L<"--threshold"> this many consecutive
+times before L<"--collect"> is triggered.
 
 =item --daemonize
 
@@ -1673,8 +1804,9 @@ Create the given PID file.
 
 type: string
 
-Load a plugin that defines any of the standard C<before_*> or C<after_*>
-hooks.
+Load a plugin to hook into and extend the tool.
+
+The plugin can define any of the standard C<before_*> or C<after_*> hooks.
 
 =item --port
 
@@ -1732,8 +1864,6 @@ type: float; default: 100
 Collection is triggered when L<"--variable"> is greater than this value.
 
 =item --tls
-
-default: ; negatable: yes
 
 Enable TLS for the MongoDB shell connection.
 
@@ -1911,7 +2041,8 @@ L<"--dest">.
 
 =head1 NOTES
 
-This tool is intended for Linux systems.  A separate summary-style tool should
+This tool is intended for Linux systems.  It requires C<mongosh>; the legacy
+C<mongo> shell is not supported.  A separate summary-style tool should
 collect broader one-time server and MongoDB metadata; C<pt-mongodb-stalk> is
 focused on runtime sampling around a trigger event.
 

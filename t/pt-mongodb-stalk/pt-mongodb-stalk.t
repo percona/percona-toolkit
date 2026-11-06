@@ -129,7 +129,8 @@ local $ENV{PTDEBUG}     = "";
 
 my ($status, $output) = run_capture("bash", $tool, "--help");
 is($status, 0, "--help exits 0");
-like($output, qr/Run immediately without stalking/, "--help prints inline examples");
+like($output, qr/Command line options:/, "--help lists the options");
+like($output, qr/Options and values after processing arguments:/, "--help prints option values");
 
 my $dest = "$tmpdir/collect";
 ($status, $output) = run_capture(
