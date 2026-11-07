@@ -26,11 +26,26 @@ type Filter func(proto.SystemProfile) bool
 // false: the document must be skipped
 func NewFilterByCollection(collectionsToSkip []string) func(proto.SystemProfile) bool {
 	return func(doc proto.SystemProfile) bool {
+		ns := collectionNs(doc)
 		for _, collection := range collectionsToSkip {
-			if strings.HasSuffix(doc.Ns, collection) {
+			if strings.HasSuffix(ns, collection) {
 				return false
 			}
 		}
 		return true
 	}
+}
+
+// collectionNs returns the namespace of the collection the operation runs on. Commands
+// like update and delete (write batches) use the <db>.$cmd namespace, and the collection
+// is the value of the first key of the command.
+func collectionNs(doc proto.SystemProfile) string {
+	db, coll, ok := strings.Cut(doc.Ns, ".")
+	if !ok || coll != "$cmd" || doc.Op != "command" || len(doc.Command) == 0 {
+		return doc.Ns
+	}
+	if c, ok := doc.Command[0].Value.(string); ok && c != "" {
+		return db + "." + c
+	}
+	return doc.Ns
 }

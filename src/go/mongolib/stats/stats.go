@@ -92,34 +92,50 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		Namespace:   fp.Namespace,
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
-		query := proto.NewExampleQuery(doc)
-		queryBson, err := bson.MarshalExtJSON(query, true, true)
-		if err != nil {
-			return err
-		}
 		qiac = &QueryInfoAndCounters{
-			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
-			Operation:   fp.Operation,
-			Fingerprint: fp.Fingerprint,
-			Namespace:   fp.Namespace,
-			TableScan:   false,
-			Query:       string(queryBson),
-			PlanSummary: doc.PlanSummary,
-			QueryHash:   doc.QueryHash,
-			AppName:     doc.AppName,
-			Client:      doc.Client,
-			User:        strings.Split(doc.User, "@")[0],
-			Comments:    doc.Comments,
+			ID:            fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
+			Operation:     fp.Operation,
+			Fingerprint:   fp.Fingerprint,
+			Namespace:     fp.Namespace,
+			TableScan:     false,
+			PlanSummaries: map[string]int{},
+			AppNames:      map[string]int{},
+			Clients:       map[string]int{},
+			Users:         map[string]int{},
 		}
 		s.setQueryInfoAndCounters(key, qiac)
 	}
-	qiac.Count++
-	s.Lock()
-	if qiac.PlanSummary == planSummaryCollScan {
-		qiac.CollScanCount++
+
+	// Like pt-query-digest, keep the worst (slowest) execution as the query sample.
+	// Using >= means that on ties the most recently processed document wins.
+	if qiac.Count == 0 || float64(doc.Millis) >= qiac.SampleQueryTime {
+		queryBson, err := bson.MarshalExtJSON(proto.NewExampleQuery(doc), true, true)
+		if err != nil {
+			return err
+		}
+		s.Lock()
+		qiac.Query = string(queryBson)
+		qiac.SampleTs = doc.Ts
+		qiac.SampleQueryTime = float64(doc.Millis)
+		qiac.PlanSummary = strings.Split(doc.PlanSummary, " ")[0]
+		qiac.QueryHash = doc.QueryHash
+		qiac.AppName = doc.AppName
+		qiac.Client = doc.Client
+		qiac.User = strings.Split(doc.User, "@")[0]
+		qiac.Comments = doc.Comments
+		s.Unlock()
 	}
 
-	qiac.PlanSummary = strings.Split(qiac.PlanSummary, " ")[0]
+	s.Lock()
+	qiac.Count++
+	planSummary := strings.Split(doc.PlanSummary, " ")[0]
+	if planSummary == planSummaryCollScan {
+		qiac.CollScanCount++
+	}
+	countValue(qiac.PlanSummaries, doc.PlanSummary)
+	countValue(qiac.AppNames, doc.AppName)
+	countValue(qiac.Clients, doc.Client)
+	countValue(qiac.Users, strings.Split(doc.User, "@")[0])
 
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
@@ -171,6 +187,38 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	return nil
 }
 
+func countValue(m map[string]int, value string) {
+	if value == "" {
+		return
+	}
+	m[value]++
+}
+
+// ValueCount is the number of times a distinct value was seen
+type ValueCount struct {
+	Value string
+	Count int
+}
+
+// sortValueCounts returns the values sorted by count (desc) and value (asc), the same
+// order used by pt-query-digest for string attributes
+func sortValueCounts(m map[string]int) []ValueCount {
+	if len(m) == 0 {
+		return nil
+	}
+	vc := make([]ValueCount, 0, len(m))
+	for value, count := range m {
+		vc = append(vc, ValueCount{Value: value, Count: count})
+	}
+	sort.Slice(vc, func(i, j int) bool {
+		if vc[i].Count != vc[j].Count {
+			return vc[i].Count > vc[j].Count
+		}
+		return vc[i].Value < vc[j].Value
+	})
+	return vc
+}
+
 // Queries returns all collected statistics
 func (s *Stats) Queries() Queries {
 	s.Lock()
@@ -184,9 +232,23 @@ func (s *Stats) Queries() Queries {
 
 	queries := []QueryInfoAndCounters{}
 	for _, key := range keys {
-		queries = append(queries, *s.queryInfoAndCounters[key])
+		// The maps are copied so the snapshot is not changed by later calls to Add
+		q := *s.queryInfoAndCounters[key]
+		q.PlanSummaries = copyCounts(q.PlanSummaries)
+		q.AppNames = copyCounts(q.AppNames)
+		q.Clients = copyCounts(q.Clients)
+		q.Users = copyCounts(q.Users)
+		queries = append(queries, q)
 	}
 	return queries
+}
+
+func copyCounts(m map[string]int) map[string]int {
+	c := make(map[string]int, len(m))
+	for k, v := range m {
+		c[k] = v
+	}
+	return c
 }
 
 func (s *Stats) getQueryInfoAndCounters(key GroupKey) (*QueryInfoAndCounters, bool) {
@@ -257,6 +319,17 @@ type QueryInfoAndCounters struct {
 	Client       string
 	User         string
 	Comments     string
+
+	// Query, PlanSummary, QueryHash, AppName, Client, User and Comments above belong to
+	// the sample, which is the slowest execution seen for this query.
+	SampleTs        time.Time
+	SampleQueryTime float64 // in milliseconds
+
+	// Number of executions seen for each distinct value
+	PlanSummaries map[string]int
+	AppNames      map[string]int
+	Clients       map[string]int
+	Users         map[string]int
 
 	LocksGlobalAcquireCountReadSharedCount       int
 	LocksGlobalAcquireCountReadShared            int
@@ -339,6 +412,14 @@ type QueryStats struct {
 	User              string
 	Comments          string
 
+	SampleTs        time.Time
+	SampleQueryTime float64 // in milliseconds
+
+	PlanSummaries []ValueCount
+	AppNames      []ValueCount
+	Clients       []ValueCount
+	Users         []ValueCount
+
 	LocksGlobalAcquireCountReadSharedCount          int
 	LocksGlobalAcquireCountReadShared               int
 	LocksGlobalAcquireCountWriteSharedCount         int
@@ -396,6 +477,12 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		Client:                                   query.Client,
 		User:                                     query.User,
 		Comments:                                 query.Comments,
+		SampleTs:                                 query.SampleTs,
+		SampleQueryTime:                          query.SampleQueryTime,
+		PlanSummaries:                            sortValueCounts(query.PlanSummaries),
+		AppNames:                                 sortValueCounts(query.AppNames),
+		Clients:                                  sortValueCounts(query.Clients),
+		Users:                                    sortValueCounts(query.Users),
 		LocksGlobalAcquireCountReadSharedCount:   query.LocksGlobalAcquireCountReadSharedCount,
 		LocksGlobalAcquireCountReadShared:        query.LocksGlobalAcquireCountReadShared,
 		LocksGlobalAcquireCountWriteSharedCount:  query.LocksGlobalAcquireCountWriteSharedCount,
@@ -466,31 +553,42 @@ func calcTotalCounters(queries []QueryInfoAndCounters) totalCounters {
 	for _, query := range queries {
 		tc.Count += query.Count
 
-		returned, _ := stats.Sum(query.NReturned)
+		returned := sum(query.NReturned)
 		tc.Returned += returned
 
-		queryTime, _ := stats.Sum(query.QueryTime)
+		queryTime := sum(query.QueryTime)
 		tc.QueryTime += queryTime
 
-		bytes, _ := stats.Sum(query.ResponseLength)
+		bytes := sum(query.ResponseLength)
 		tc.Bytes += bytes
 
-		docsExamined, _ := stats.Sum(query.DocsExamined)
+		docsExamined := sum(query.DocsExamined)
 		tc.DocsExamined += docsExamined
 
-		keysExamined, _ := stats.Sum(query.KeysExamined)
+		keysExamined := sum(query.KeysExamined)
 		tc.KeysExamined += keysExamined
 
-		locksDatabaseTimeAcquiringMicrosReadShared, _ := stats.Sum(query.LocksDatabaseTimeAcquiringMicrosReadShared)
+		locksDatabaseTimeAcquiringMicrosReadShared := sum(query.LocksDatabaseTimeAcquiringMicrosReadShared)
 		tc.LocksDatabaseTimeAcquiringMicrosReadShared += locksDatabaseTimeAcquiringMicrosReadShared
 
-		storageBytesRead, _ := stats.Sum(query.StorageBytesRead)
+		storageBytesRead := sum(query.StorageBytesRead)
 		tc.StorageBytesRead += storageBytesRead
 
-		storageTimeReadingMicros, _ := stats.Sum(query.StorageTimeReadingMicros)
+		storageTimeReadingMicros := sum(query.StorageTimeReadingMicros)
 		tc.StorageTimeReadingMicros += storageTimeReadingMicros
 	}
 	return tc
+}
+
+// sum returns the sum of the samples. Unlike stats.Sum, it returns 0 (instead of NaN) for
+// no samples, so a query without a metric (e.g. inserts have no docsExamined) doesn't turn
+// the total into NaN.
+func sum(samples []float64) float64 {
+	total := 0.0
+	for _, v := range samples {
+		total += v
+	}
+	return total
 }
 
 func calcStats(samples []float64) Statistics {
