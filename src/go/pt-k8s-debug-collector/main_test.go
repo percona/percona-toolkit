@@ -1041,6 +1041,54 @@ func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
 	}
 }
 
+var unavailableAPIGroupTested bool
+
+func (s *CollectorSuite) TestUnavailableAPIGroup() {
+	if unavailableAPIGroupTested {
+		s.T().Skip("Already tested in another namespace run")
+	}
+	unavailableAPIGroupTested = true
+
+	const apiService = "v1.pt-k8s-debug-collector.example.com"
+	apply := exec.Command("kubectl", "--kubeconfig", s.KubeConfig, "apply", "-f", "-")
+	apply.Stdin = strings.NewReader(`apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: ` + apiService + `
+spec:
+  group: pt-k8s-debug-collector.example.com
+  version: v1
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  insecureSkipTLSVerify: true
+  service:
+    namespace: default
+    name: nonexistent
+`)
+	out, err := apply.CombinedOutput()
+	s.Require().NoError(err, string(out))
+	defer exec.Command("kubectl", "--kubeconfig", s.KubeConfig, "delete", "apiservice", apiService).Run()
+
+	out, err = exec.Command("kubectl", "--kubeconfig", s.KubeConfig, "wait", "apiservice/"+apiService,
+		"--for=condition=Available=false", "--timeout=2m").CombinedOutput()
+	s.Require().NoError(err, string(out))
+
+	out, err = s.runCollectorOutput(
+		"--kubeconfig", s.KubeConfig,
+		"--resource", "none",
+		"--namespace", s.Namespace,
+	)
+	s.Require().NoError(err, string(out))
+
+	listing, err := exec.Command("tar", "-tzf", "cluster-dump.tar.gz").Output()
+	s.Require().NoError(err)
+	s.Contains(strings.Fields(string(listing)), "cluster-dump/"+s.Namespace+"/pods.yaml")
+
+	errorsLog, err := exec.Command("tar", "-xzOf", "cluster-dump.tar.gz", "cluster-dump/errors.txt").Output()
+	s.Require().NoError(err)
+	s.Contains(string(errorsLog), "pt-k8s-debug-collector.example.com/v1")
+}
+
 // PT-2558 - pg_log is collected from the log_directory reported by PostgreSQL
 func (s *CollectorSuite) TestCustomPgLogDirectory() {
 	if s.Namespace != "crunchy" {
