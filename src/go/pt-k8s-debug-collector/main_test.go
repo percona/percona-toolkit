@@ -1077,16 +1077,8 @@ func (s *CollectorSuite) TestCustomPgLogDirectory() {
 	}
 }
 
-var podListForbiddenTested bool
-
-func (s *CollectorSuite) TestPodListForbidden() {
-	if podListForbiddenTested {
-		s.T().Skip("Already tested in another namespace run")
-	}
-	podListForbiddenTested = true
-
+func (s *CollectorSuite) namespaceListerKubeconfig(name string) (string, kubernetes.Interface) {
 	ctx := s.T().Context()
-	name := "pt-k8s-debug-collector-no-pods"
 
 	_, err := s.KubeClient.CoreV1().ServiceAccounts(s.Namespace).Create(ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -1141,21 +1133,80 @@ func (s *CollectorSuite) TestPodListForbidden() {
 		_, err := client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 		return err == nil
 	}, 30*time.Second, time.Second, "Service account cannot list namespaces")
-	_, err = client.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
-	s.Require().True(apierrors.IsForbidden(err), "Expected pod list to be forbidden, got %v", err)
 
+	return kubeconfig, client
+}
+
+func (s *CollectorSuite) runCollectorToArchive(args ...string) string {
 	removeArchives()
-	runCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 2*time.Minute)
 	defer cancel()
-	out, err := exec.CommandContext(runCtx, TOOL_PATH, "--kubeconfig", kubeconfig).CombinedOutput()
-	s.Require().NoError(runCtx.Err(), "Collector did not finish:\n%s", out)
+	out, err := exec.CommandContext(ctx, TOOL_PATH, args...).CombinedOutput()
+	s.Require().NoError(ctx.Err(), "Collector did not finish:\n%s", out)
 	s.Require().NoError(err, string(out))
 
 	archives, _ := filepath.Glob("cluster-dump_*.tar.gz")
 	s.Require().Len(archives, 1)
-	errorsTxt, err := exec.Command("tar", "-xzf", archives[0], "-O", "cluster-dump/errors.txt").Output()
+	return archives[0]
+}
+
+var podListForbiddenTested bool
+
+func (s *CollectorSuite) TestPodListForbidden() {
+	if podListForbiddenTested {
+		s.T().Skip("Already tested in another namespace run")
+	}
+	podListForbiddenTested = true
+
+	kubeconfig, client := s.namespaceListerKubeconfig("pt-k8s-debug-collector-no-pods")
+	_, err := client.CoreV1().Pods(metav1.NamespaceAll).List(s.T().Context(), metav1.ListOptions{})
+	s.Require().True(apierrors.IsForbidden(err), "Expected pod list to be forbidden, got %v", err)
+
+	archive := s.runCollectorToArchive("--kubeconfig", kubeconfig)
+	errorsTxt, err := exec.Command("tar", "-xzf", archive, "-O", "cluster-dump/errors.txt").Output()
 	s.Require().NoError(err)
 	s.Contains(string(errorsTxt), "failed to list pods")
+}
+
+var podListPerNamespaceTested bool
+
+func (s *CollectorSuite) TestPodListPerNamespace() {
+	if podListPerNamespaceTested {
+		s.T().Skip("Already tested in another namespace run")
+	}
+	podListPerNamespaceTested = true
+
+	ctx := s.T().Context()
+	name := "pt-k8s-debug-collector-one-namespace"
+	kubeconfig, client := s.namespaceListerKubeconfig(name)
+
+	_, err := s.KubeClient.RbacV1().RoleBindings(s.Namespace).Create(ctx, &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: "view"},
+		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: name, Namespace: s.Namespace}},
+	}, metav1.CreateOptions{})
+	s.Require().NoError(err)
+	s.T().Cleanup(func() {
+		_ = s.KubeClient.RbacV1().RoleBindings(s.Namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
+	})
+
+	s.Require().Eventually(func() bool {
+		_, err := client.CoreV1().Pods(s.Namespace).List(ctx, metav1.ListOptions{})
+		return err == nil
+	}, 30*time.Second, time.Second, "Service account cannot list pods in namespace %s", s.Namespace)
+	_, err = client.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	s.Require().True(apierrors.IsForbidden(err), "Expected cluster-wide pod list to be forbidden, got %v", err)
+
+	archive := s.runCollectorToArchive("--kubeconfig", kubeconfig, "--skip-pod-summary")
+	listing, err := exec.Command("tar", "-tzf", archive).Output()
+	s.Require().NoError(err)
+	entries := strings.Fields(string(listing))
+	s.True(slices.ContainsFunc(entries, func(entry string) bool {
+		return strings.HasPrefix(entry, "cluster-dump/"+s.Namespace+"/") && strings.HasSuffix(entry, "/describe.txt")
+	}), "Expected describe.txt of pods in namespace %s", s.Namespace)
+	s.False(slices.ContainsFunc(entries, func(entry string) bool {
+		return strings.HasPrefix(entry, "cluster-dump/kube-system/") && strings.HasSuffix(entry, "/describe.txt")
+	}), "Expected no pod data from namespace kube-system")
 }
 
 func (s *CollectorSuite) TestNamespaceOption() {

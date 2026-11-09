@@ -600,6 +600,29 @@ func TestListPodsForbidden(t *testing.T) {
 	}
 }
 
+func TestListPodsPerNamespace(t *testing.T) {
+	client := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "pg-a"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "pg-b"}},
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "app-a", Namespace: "pg-a"}},
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "app-b", Namespace: "pg-b"}},
+	)
+	client.PrependReactor("list", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		if ns := action.GetNamespace(); ns == "" || ns == "pg-b" {
+			return true, nil, apierrors.NewForbidden(corev1.Resource("pods"), "", errors.New("access denied"))
+		}
+		return false, nil, nil
+	})
+
+	pods, err := listPods(t.Context(), client, "")
+	if !apierrors.IsForbidden(err) {
+		t.Fatalf("listPods error = %v, want forbidden for pg-b", err)
+	}
+	if len(pods) != 1 || pods[0].Namespace != "pg-a" || pods[0].Name != "app-a" {
+		t.Errorf("pods = %v, want only pg-a/app-a", pods)
+	}
+}
+
 func TestNewRejectsInvalidNamespace(t *testing.T) {
 	for _, ns := range []string{"pg-a/", "namespace/pg-a", ".", "..", "pg%a", "PG-A", "pg-a,pg-b"} {
 		_, err := New("cluster-dump", "", ns, "", "", "", "none", false, 0)
