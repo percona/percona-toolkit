@@ -15,6 +15,7 @@ package dumper
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -23,8 +24,11 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 )
 
 func TestMatchesCR(t *testing.T) {
@@ -578,6 +582,21 @@ func TestListPods(t *testing.T) {
 				t.Errorf("pods = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestListPodsForbidden(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	client.PrependReactor("list", "pods", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewForbidden(corev1.Resource("pods"), "", errors.New("access denied"))
+	})
+
+	pods, err := listPods(t.Context(), client, "")
+	if !apierrors.IsForbidden(err) {
+		t.Fatalf("listPods error = %v, want forbidden", err)
+	}
+	if len(pods) != 0 {
+		t.Errorf("pods = %v, want none", pods)
 	}
 }
 
