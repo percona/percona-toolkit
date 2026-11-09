@@ -15,6 +15,7 @@ package dumper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -25,6 +26,7 @@ import (
 	"go.yaml.in/yaml/v2"
 	"golang.org/x/sync/semaphore"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -286,10 +288,32 @@ func (d *Dumper) DumpCluster() error {
 
 func listPods(ctx context.Context, client kubernetes.Interface, namespace string) ([]corev1.Pod, error) {
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
+	if err == nil {
+		return pods.Items, nil
+	}
+	if namespace != "" || !apierrors.IsForbidden(err) {
 		return nil, err
 	}
-	return pods.Items, nil
+
+	namespaces, nsErr := client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if nsErr != nil {
+		return nil, errors.Join(err, nsErr)
+	}
+	if len(namespaces.Items) == 0 {
+		return nil, err
+	}
+
+	var all []corev1.Pod
+	var errs []error
+	for _, ns := range namespaces.Items {
+		nsPods, err := client.CoreV1().Pods(ns.Name).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		all = append(all, nsPods.Items...)
+	}
+	return all, errors.Join(errs...)
 }
 
 func (d *Dumper) archiveFileName(t time.Time) string {
