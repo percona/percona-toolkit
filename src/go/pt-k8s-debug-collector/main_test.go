@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -631,6 +632,8 @@ func (s *CollectorSuite) TestResourceOption() {
 
 func validateSummaryByNamespace(archivePath, namespace string) error {
 	switch namespace {
+	case "pxc", "ps":
+		return validateSummary(archivePath, namespace, regexp.MustCompile(`# Percona Toolkit MySQL Summary Report`))
 	case "psmdb":
 		return validateSummary(archivePath, namespace, regexp.MustCompile(`# Report On`))
 	case "pgv2", "crunchy":
@@ -1070,5 +1073,339 @@ func (s *CollectorSuite) TestCustomPgLogDirectory() {
 		out, err = exec.Command("sh", "-c", testcmd).Output()
 		s.NoError(err)
 		s.NotEqual("0", strings.TrimSpace(string(out)), "Expected PostgreSQL log files from %s of pod %s in archive", utils.CRUNCHY_PG_LOG_DIRECTORY, pod.Name)
+	}
+}
+
+func (s *CollectorSuite) TestNamespaceOption() {
+	pods, err := s.KubeClient.CoreV1().Pods(metav1.NamespaceAll).List(s.T().Context(), metav1.ListOptions{})
+	s.Require().NoError(err)
+	s.Require().True(slices.ContainsFunc(pods.Items, func(p corev1.Pod) bool {
+		return p.Namespace != s.Namespace
+	}), "Expected pods outside namespace %s in the cluster", s.Namespace)
+
+	err = s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--namespace", s.Namespace,
+		"--skip-pod-summary",
+	)
+	s.NoError(err)
+
+	out, err := exec.Command("tar", "-tf", "cluster-dump.tar.gz").Output()
+	s.Require().NoError(err)
+
+	allowed := []string{
+		"cluster-dump/errors.txt",
+		"cluster-dump/cluster-scope/",
+		"cluster-dump/" + s.Namespace + "/",
+	}
+	var foreign []string
+	describes := 0
+	for _, entry := range strings.Fields(string(out)) {
+		if !slices.ContainsFunc(allowed, func(prefix string) bool { return strings.HasPrefix(entry, prefix) }) {
+			foreign = append(foreign, entry)
+		}
+		if strings.HasSuffix(entry, "/describe.txt") {
+			describes++
+		}
+	}
+
+	s.Empty(foreign, "Archive has entries outside namespace %s", s.Namespace)
+	s.NotZero(describes, "Expected describe.txt of pods in namespace %s", s.Namespace)
+}
+
+type archiveEntry struct {
+	name string
+	data []byte
+}
+
+func readArchive(archivePath string) ([]archiveEntry, error) {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer gzr.Close()
+
+	var entries []archiveEntry
+	tarReader := tar.NewReader(gzr)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			return entries, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		data, err := io.ReadAll(tarReader)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, archiveEntry{name: header.Name, data: data})
+	}
+}
+
+func (s *CollectorSuite) runningPods() []corev1.Pod {
+	pods, err := s.KubeClient.CoreV1().Pods(s.Namespace).List(s.T().Context(), metav1.ListOptions{})
+	s.Require().NoError(err)
+
+	var running []corev1.Pod
+	for _, pod := range pods.Items {
+		if pod.Status.Phase == corev1.PodRunning {
+			running = append(running, pod)
+		}
+	}
+	return running
+}
+
+func (s *CollectorSuite) TestNamespaceOptionWithSummaries() {
+	pods := s.runningPods()
+	s.Require().NotEmpty(pods, "Expected running pods in namespace %s", s.Namespace)
+
+	err := s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--namespace", s.Namespace,
+	)
+	s.Require().NoError(err)
+
+	entries, err := readArchive("cluster-dump.tar.gz")
+	s.Require().NoError(err)
+
+	nsPrefix := "cluster-dump/" + s.Namespace + "/"
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.name)
+		if entry.name != "cluster-dump/errors.txt" &&
+			!strings.HasPrefix(entry.name, "cluster-dump/cluster-scope/") &&
+			!strings.HasPrefix(entry.name, nsPrefix) {
+			s.Failf("Namespace scope", "Archive entry %s is outside namespace %s", entry.name, s.Namespace)
+		}
+	}
+
+	for _, pod := range pods {
+		podPrefix := nsPrefix + pod.Name + "/"
+		s.Containsf(names, podPrefix+"describe.txt", "Expected describe.txt of pod %s", pod.Name)
+		s.Truef(slices.ContainsFunc(names, func(name string) bool {
+			return strings.HasPrefix(name, podPrefix) && strings.HasSuffix(name, ".log")
+		}), "Expected container logs of pod %s", pod.Name)
+	}
+
+	s.NoError(validateSummaryByNamespace("cluster-dump.tar.gz", s.Namespace))
+}
+
+func (s *CollectorSuite) TestNonexistentNamespace() {
+	err := s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--namespace", "pt-k8s-debug-collector-missing",
+		"--skip-pod-summary",
+	)
+	s.Require().NoError(err)
+
+	entries, err := readArchive("cluster-dump.tar.gz")
+	s.Require().NoError(err)
+
+	for _, entry := range entries {
+		if entry.name != "cluster-dump/errors.txt" && !strings.HasPrefix(entry.name, "cluster-dump/cluster-scope/") {
+			s.Failf("Nonexistent namespace", "Unexpected archive entry %s", entry.name)
+		}
+	}
+}
+
+func (s *CollectorSuite) TestSkipPodSummaryKeepsIndividualFiles() {
+	if s.Namespace != "pxc" {
+		s.T().Skip("Individual files are checked for PXC only")
+	}
+
+	err := s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--skip-pod-summary",
+	)
+	s.Require().NoError(err)
+
+	entries, err := readArchive("cluster-dump.tar.gz")
+	s.Require().NoError(err)
+
+	s.False(slices.ContainsFunc(entries, func(entry archiveEntry) bool {
+		return strings.HasSuffix(entry.name, "/summary.txt")
+	}), "Expected no summary.txt with --skip-pod-summary")
+	s.True(slices.ContainsFunc(entries, func(entry archiveEntry) bool {
+		return strings.HasSuffix(entry.name, "/var/lib/mysql/grastate.dat")
+	}), "Expected PXC individual files with --skip-pod-summary")
+}
+
+func (s *CollectorSuite) TestClusterOption() {
+	config, err := clientcmd.LoadFromFile(s.KubeConfig)
+	s.Require().NoError(err)
+	s.Require().NotEmpty(config.CurrentContext, "Expected a current context in %s", s.KubeConfig)
+
+	s.Run("existing_context", func() {
+		err := s.runCollector(
+			"--kubeconfig", s.KubeConfig,
+			"--cluster", config.CurrentContext,
+			"--resource", "none",
+			"--namespace", s.Namespace,
+			"--skip-pod-summary",
+		)
+		s.NoError(err)
+	})
+
+	s.Run("missing_context", func() {
+		removeArchives()
+		out, err := exec.Command(TOOL_PATH,
+			"--kubeconfig", s.KubeConfig,
+			"--cluster", "pt-k8s-debug-collector-missing",
+			"--resource", "none",
+		).CombinedOutput()
+		s.Error(err)
+		s.Contains(string(out), `context "pt-k8s-debug-collector-missing" not found`)
+
+		archives, _ := filepath.Glob("cluster-dump*.tar.gz")
+		s.Empty(archives, "Expected no archive when the context does not exist")
+	})
+}
+
+var dumpFileTested bool
+
+func (s *CollectorSuite) TestDumpFileOption() {
+	if dumpFileTested {
+		s.T().Skip("Already tested in another namespace run")
+	}
+	dumpFileTested = true
+
+	dir := s.T().TempDir()
+	run := func(dumpFile string) ([]byte, error) {
+		return exec.Command(TOOL_PATH,
+			"--kubeconfig", s.KubeConfig,
+			"--resource", "none",
+			"--namespace", s.Namespace,
+			"--skip-pod-summary",
+			"--dump-file", dumpFile,
+		).CombinedOutput()
+	}
+
+	s.Run("existing_file", func() {
+		archive := filepath.Join(dir, "fixed.tar.gz")
+		out, err := run(archive)
+		s.Require().NoErrorf(err, "First run failed:\n%s", out)
+		before, err := os.Stat(archive)
+		s.Require().NoError(err)
+
+		out, err = run(archive)
+		s.Error(err)
+		s.Contains(string(out), "file exists")
+
+		after, err := os.Stat(archive)
+		s.Require().NoError(err)
+		s.Equal(before.Size(), after.Size())
+		s.Equal(before.ModTime(), after.ModTime())
+	})
+
+	s.Run("missing_directory", func() {
+		archive := filepath.Join(dir, "missing", "x.tar.gz")
+		out, err := run(archive)
+		s.Error(err)
+		s.Contains(string(out), "no such file or directory")
+		s.NoFileExists(archive)
+	})
+
+	s.Run("timestamp", func() {
+		out, err := run(filepath.Join(dir, "ts_{timestamp}.tar.gz"))
+		s.Require().NoErrorf(err, "Run failed:\n%s", out)
+
+		archives, err := filepath.Glob(filepath.Join(dir, "ts_*.tar.gz"))
+		s.Require().NoError(err)
+		s.Require().Len(archives, 1)
+		s.Regexp(`^ts_\d{14}\.tar\.gz$`, filepath.Base(archives[0]))
+	})
+}
+
+func TestCommandLineParsing(t *testing.T) {
+	conf := filepath.Join(t.TempDir(), "c.conf")
+	if err := os.WriteFile(conf, []byte("no-version-check\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		args []string
+		exit int
+		want string
+	}{
+		{name: "help", args: []string{"--help"}, exit: 0, want: "Usage: pt-k8s-debug-collector"},
+		{name: "unknown_flag", args: []string{"--bogus"}, exit: 80, want: "unknown flag --bogus"},
+		{name: "invalid_number", args: []string{"--concurrent-export-workers=abc", "--version"}, exit: 80, want: "--concurrent-export-workers: expected a valid 64 bit int"},
+		{name: "config_not_first", args: []string{"--namespace=x", "--config", conf}, exit: 1, want: "--config must be the first argument"},
+		{name: "config_with_equals", args: []string{"--config=" + conf, "--version"}, exit: 1, want: "--config must not use '=' syntax"},
+		{name: "config_first", args: []string{"--config", conf, "--version"}, exit: 0, want: "Version"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := exec.Command(TOOL_PATH, tt.args...).CombinedOutput()
+			exit := 0
+			if err != nil {
+				var exitErr *exec.ExitError
+				if !errors.As(err, &exitErr) {
+					t.Fatalf("run %v: %v", tt.args, err)
+				}
+				exit = exitErr.ExitCode()
+			}
+			if exit != tt.exit {
+				t.Errorf("%v: exit code %d, want %d\n%s", tt.args, exit, tt.exit, out)
+			}
+			if !strings.Contains(string(out), tt.want) {
+				t.Errorf("%v: output does not contain %q:\n%s", tt.args, tt.want, out)
+			}
+		})
+	}
+}
+
+var cannotStatRE = regexp.MustCompile(`tar: (\S+): Cannot stat: No such file or directory`)
+
+func (s *CollectorSuite) TestMissingPodFilesNotArchived() {
+	err := s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--skip-pod-summary",
+	)
+	s.Require().NoError(err)
+
+	entries, err := readArchive("cluster-dump.tar.gz")
+	s.Require().NoError(err)
+
+	var errorsTxt []byte
+	for _, entry := range entries {
+		if entry.name == "cluster-dump/errors.txt" {
+			errorsTxt = entry.data
+		}
+	}
+
+	pods := s.runningPods()
+	for _, match := range cannotStatRE.FindAllSubmatch(errorsTxt, -1) {
+		missing := "/" + string(match[1])
+		for _, entry := range entries {
+			if strings.HasSuffix(entry.name, missing) {
+				s.NotContainsf(string(entry.data), "Cannot stat", "Archive entry %s holds a tar error instead of file content", entry.name)
+			}
+		}
+		s.Truef(slices.ContainsFunc(pods, func(pod corev1.Pod) bool {
+			return !slices.ContainsFunc(entries, func(entry archiveEntry) bool {
+				return entry.name == "cluster-dump/"+s.Namespace+"/"+pod.Name+missing
+			})
+		}), "errors.txt reports %s as missing, but every pod has it in the archive", match[1])
 	}
 }
