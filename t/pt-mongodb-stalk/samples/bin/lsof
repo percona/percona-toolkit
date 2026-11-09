@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+echo "mongod 4242 user 10u IPv4 1 0t0 TCP localhost:27017 (LISTEN)"
