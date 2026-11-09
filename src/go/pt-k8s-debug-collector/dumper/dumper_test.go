@@ -360,6 +360,39 @@ users:
 	}
 }
 
+func TestNewSingleExportWorker(t *testing.T) {
+	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
+	config := `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://127.0.0.1:1
+  name: unreachable
+contexts:
+- context:
+    cluster: unreachable
+    user: user
+  name: unreachable
+current-context: unreachable
+users:
+- name: user
+  user:
+    token: token
+`
+	if err := os.WriteFile(kubeconfig, []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	d, err := New("cluster-dump", "", "", kubeconfig, "", "", "none", false, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.concurrentExportWorkersCluster != 1 || d.concurrentExportWorkersNamespace != 1 {
+		t.Errorf("export workers = %d for cluster resources and %d for namespaces, want 1 and 1", d.concurrentExportWorkersCluster, d.concurrentExportWorkersNamespace)
+	}
+}
+
 // Tests for individual_files.go
 
 func TestGetSummarySkipPodSummary(t *testing.T) {
