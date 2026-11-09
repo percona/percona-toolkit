@@ -306,6 +306,76 @@ func TestParseResourceSpec(t *testing.T) {
 	}
 }
 
+func TestSelectedResource(t *testing.T) {
+	tests := []struct {
+		resource string
+		want     string
+		wantErr  string
+	}{
+		{resource: "auto", want: "auto"},
+		{resource: "none", want: "none"},
+		{resource: "", want: "none"},
+		{resource: "pxc", want: "pxc"},
+		{resource: "psmdb", want: "psmdb"},
+		{resource: "pg", want: "pg"},
+		{resource: "pgo", want: "pg"},
+		{resource: "pgv2", want: "pgv2"},
+		{resource: "crunchy", want: "crunchy"},
+		{resource: "ps", want: "ps"},
+		{resource: "auto/k3d-pgv2", want: "auto"},
+		{resource: "psmdb/k3d-psmdb", want: "psmdb"},
+		{resource: "foo", wantErr: `unsupported value "foo" for --resource, supported values: pxc, psmdb, pg, pgv2, crunchy, ps, none, auto`},
+		{resource: "PXC", wantErr: `unsupported value "PXC" for --resource, supported values: pxc, psmdb, pg, pgv2, crunchy, ps, none, auto`},
+		{resource: "foo/k3d-pxc", wantErr: `unsupported value "foo" for --resource, supported values: pxc, psmdb, pg, pgv2, crunchy, ps, none, auto`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.resource, func(t *testing.T) {
+			got, err := selectedResource(tt.resource)
+			if tt.wantErr != "" {
+				if err == nil || err.Error() != tt.wantErr {
+					t.Fatalf("selectedResource(%q) error = %v, want %q", tt.resource, err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil || got != tt.want {
+				t.Fatalf("selectedResource(%q) = %q, %v, want %q", tt.resource, got, err, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewRejectsUnsupportedResource(t *testing.T) {
+	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
+	config := `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://127.0.0.1:1
+  name: unreachable
+contexts:
+- context:
+    cluster: unreachable
+    user: user
+  name: unreachable
+current-context: unreachable
+users:
+- name: user
+  user:
+    token: token
+`
+	if err := os.WriteFile(kubeconfig, []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	want := `unsupported value "foo" for --resource, supported values: pxc, psmdb, pg, pgv2, crunchy, ps, none, auto`
+	_, err := New("cluster-dump", "", "", kubeconfig, "", "", "foo", false, 0)
+	if err == nil || err.Error() != want {
+		t.Fatalf("New(resource=foo) error = %v, want %q", err, want)
+	}
+}
+
 func TestBuildRestConfigUsesSelectedContext(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "kubeconfig-*.yaml")
 	if err != nil {
