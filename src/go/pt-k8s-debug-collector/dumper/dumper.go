@@ -27,14 +27,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/flowcontrol"
 )
@@ -254,11 +251,6 @@ func (d *Dumper) DumpCluster() error {
 
 	defer d.logger.DumpToArchive(d.archive, d.DumperLogPath("errors"))
 
-	log.Info("initializing pod cache")
-	factory := newPodInformerFactory(d.clientSet, d.namespace)
-	podInformer := factory.Core().V1().Pods().Informer()
-	factory.Start(ctx.Done())
-
 	log.Info("discovering and exporting API resources")
 	if err := d.export(ctx); err != nil {
 		return fmt.Errorf("error during resource export: %v", err)
@@ -275,20 +267,14 @@ func (d *Dumper) DumpCluster() error {
 		})
 	}
 
-	log.Info("waiting for pod cache to fully sync...")
-	if !cache.WaitForCacheSync(ctx.Done(), podInformer.HasSynced) {
-		return fmt.Errorf("timed out waiting for caches to sync.")
-	}
-
-	podLister := factory.Core().V1().Pods().Lister()
-	allPods, err := podLister.List(labels.Everything())
+	allPods, err := listPods(ctx, d.clientSet, d.namespace)
 	if err != nil {
-		return fmt.Errorf("failed to list all pods: %v", err)
+		log.Errorf("failed to list pods: %v", err)
 	}
 
 	log.Infof("dispatching %d pods to workers...", len(allPods))
 	for _, pod := range allPods {
-		jobsChannel <- exportJob{Pod: *pod}
+		jobsChannel <- exportJob{Pod: pod}
 	}
 
 	close(jobsChannel)
@@ -298,8 +284,12 @@ func (d *Dumper) DumpCluster() error {
 	return nil
 }
 
-func newPodInformerFactory(client kubernetes.Interface, namespace string) informers.SharedInformerFactory {
-	return informers.NewSharedInformerFactoryWithOptions(client, 10*time.Minute, informers.WithNamespace(namespace))
+func listPods(ctx context.Context, client kubernetes.Interface, namespace string) ([]corev1.Pod, error) {
+	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
 }
 
 func (d *Dumper) archiveFileName(t time.Time) string {

@@ -24,9 +24,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/tools/cache"
 )
 
 func TestMatchesCR(t *testing.T) {
@@ -549,7 +547,7 @@ func TestPodDescribePath(t *testing.T) {
 	}
 }
 
-func TestPodInformerFactoryNamespace(t *testing.T) {
+func TestListPods(t *testing.T) {
 	client := fake.NewSimpleClientset(
 		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "app-a", Namespace: "pg-a"}},
 		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "app-b", Namespace: "pg-b"}},
@@ -566,14 +564,7 @@ func TestPodInformerFactoryNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			factory := newPodInformerFactory(client, tt.namespace)
-			informer := factory.Core().V1().Pods().Informer()
-			factory.Start(t.Context().Done())
-			if !cache.WaitForCacheSync(t.Context().Done(), informer.HasSynced) {
-				t.Fatal("pod cache did not sync")
-			}
-
-			pods, err := factory.Core().V1().Pods().Lister().List(labels.Everything())
+			pods, err := listPods(t.Context(), client, tt.namespace)
 			if err != nil {
 				t.Fatal(err)
 			}
