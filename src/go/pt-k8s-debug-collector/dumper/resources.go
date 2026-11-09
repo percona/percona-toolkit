@@ -194,6 +194,21 @@ func parseResourceSpec(resource string) (string, string) {
 	return resourceName, clusterName
 }
 
+var supportedResources = []string{"pxc", "psmdb", "pg", "pgv2", "crunchy", "ps", "none", "auto"}
+
+func selectedResource(resource string) (string, error) {
+	name, _ := parseResourceSpec(resource)
+	if name == "" {
+		return "none", nil
+	}
+
+	selected := resourceType(name)
+	if !slices.Contains(supportedResources, selected) {
+		return "", fmt.Errorf("unsupported value %q for --resource, supported values: %s", name, strings.Join(supportedResources, ", "))
+	}
+	return selected, nil
+}
+
 // TODO: rewrite to use map or switch
 func resourceType(s string) string {
 	if s == "auto" {

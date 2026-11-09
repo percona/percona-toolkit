@@ -174,6 +174,8 @@ Targeted custom resource name. Supported values:
 
 * ``auto`` - Auto-detect custom resource
 
+Any other value is rejected with an error.
+
 Default: ``auto``
 
 ``--namespace``
