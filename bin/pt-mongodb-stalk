@@ -951,7 +951,9 @@ mongo_currentop_count() {
    fi
    mongo_eval "
       const __pt = db.getSiblingDB('admin');
-      const __doc = __pt.runCommand({currentOp: 1, active: true, idleConnections: false, allUsers: true});
+      // In the currentOp command, fields other than currentOp and $-options are
+      // filters; it returns the operations of all users the user may see.
+      const __doc = __pt.runCommand({currentOp: 1, active: true});
       const __parts = $(_js_quote "$field").split('.');
       const __re = ${js_regex};
       let __count = 0;
@@ -1252,7 +1254,7 @@ for (let i = 0; i < P_COUNT; i++) {
    }
    if (!__skip('currentop')) {
       __try('currentOp', () => __write('currentop',
-         __cmd({currentOp: 1, active: true, idleConnections: false, allUsers: true}), ts));
+         __cmd({currentOp: 1, active: true}), ts));
    }
    if (P_REPLSET && !__skip('replsetgetstatus')) {
       __try('replSetGetStatus', () => __write('replsetgetstatus', __cmd({replSetGetStatus: 1}), ts));
@@ -2230,7 +2232,7 @@ removed when the tool exits.
 
 Collecting data adds load to a server that may already be in trouble.  Each
 trigger check and each MongoDB sample starts a C<mongosh> process, and
-C<currentOp> with C<allUsers> lists every operation on the server.
+C<currentOp> lists every active operation on the server.
 
 The collected files can contain sensitive data: the queries and their
 parameters in C<currentOp>, the process list, and the system journal.  Keep
@@ -2745,7 +2747,7 @@ and on replica set members:
 Collected every L<"--sleep-collect"> seconds during L<"--run-time">:
 
   serverStatus (serverstatus)
-  currentOp with active: true and allUsers: true (currentop)
+  currentOp of the active operations of all users (currentop)
   replSetGetStatus, on replica set members (replsetgetstatus)
 
 Each serverStatus sample is also written to C<E<lt>prefixE<gt>-serverstatus-ext>

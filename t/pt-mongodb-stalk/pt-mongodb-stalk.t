@@ -334,11 +334,9 @@ my $mongosh_log = slurp_file($ENV{MONGOSH_LOG});
 like($mongosh_log, qr/^const P_COUNT = 1;$/m, "one sample for --run-time 1 --sleep-collect 1");
 like($mongosh_log, qr/^const P_REPLSET = true;$/m,
    "replica set detected when the cluster role is empty");
-like(
-   $mongosh_log,
-   qr/currentOp: 1, active: true, idleConnections: false, allUsers: true/,
-   "currentOp command includes allUsers"
-);
+like($mongosh_log, qr/currentOp: 1, active: true\}/, "currentOp command asks for the active operations");
+unlike($mongosh_log, qr/idleConnections|allUsers/,
+   "currentOp command has no \$currentOp stage options, which the command reads as filters");
 
 # Credentials: never on a command line, never in the collected files.
 like($mongosh_log, qr{connect\('mongodb://admin:S3cretPw\@localhost:27017/\?authSource=admin'\)},
