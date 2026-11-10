@@ -1490,7 +1490,7 @@ collect() {
       metadata_pid=$!
       collect_mongodb_data_loop "$d" "$p" "$cnt"
    fi
-   collect_server_process_data "$d" "$p" "$start_time" &
+   collect_server_process_data "$d" "$p" &
 
    # This loop collects the system snapshots every --sleep-collect seconds,
    # and defines the duration of the collection, as in pt-stalk.  The free
@@ -1579,13 +1579,14 @@ local_mongo_pid() {
 # They need to know which process is the server, which the metadata script
 # reports first (see MONGO_JS_ONCE).  Wait for it at most 5 seconds (or
 # --run-time, if shorter): if the server is stalled and does not answer,
-# local_mongo_pid looks for it by port instead.  The collectors then run
-# until the end of the --run-time window.
+# local_mongo_pid looks for it by port instead.  The collectors then run for
+# --run-time seconds, though they start a few seconds after the collection:
+# cut to the end of the collection window, strace could capture nothing.
+# collect() waits up to another --run-time for them, then stops them.
 collect_server_process_data() {
    local d="$1"
    local p="$2"
-   local start_time="$3"
-   local mongo_pid="" waited=0 max_wait=5 remaining
+   local mongo_pid="" waited=0 max_wait=5
    local strace_pid=""   # set by collect_mongodb_process_data
    local tcpdump_pid=""  # set by collect_mongodb_process_data
 
@@ -1601,21 +1602,17 @@ collect_server_process_data() {
    mongo_pid=$(local_mongo_pid)
    [ -n "$mongo_pid" ] && echo "$mongo_pid" > "$PT_TMPDIR/collect-mongo-pid"
 
-   remaining=$((start_time + OPT_RUN_TIME - $(date +%s)))
-   [ "$remaining" -lt 1 ] && remaining=1
-
    if [ ! "$OPT_SYSTEM_ONLY" ]; then
       collect_mongodb_process_data "$d" "$p" "$mongo_pid"
-      collect_mongodb_log "$d" "$p" "$mongo_pid" "$remaining"
+      collect_mongodb_log "$d" "$p" "$mongo_pid" "$OPT_RUN_TIME"
    fi
    if [ ! "$OPT_MONGODB_ONLY" ]; then
-      collect_system_process_data "$d" "$p" "$mongo_pid" "$remaining"
+      collect_system_process_data "$d" "$p" "$mongo_pid" "$OPT_RUN_TIME"
    fi
 
-   # gdb may have taken a while; run strace and tcpdump until the end of the
-   # window.
-   remaining=$((start_time + OPT_RUN_TIME - $(date +%s)))
-   [ "$remaining" -gt 0 ] && [ -n "$strace_pid$tcpdump_pid" ] && sleep "$remaining"
+   # strace and tcpdump run for --run-time seconds from when strace starts,
+   # after pmap and gdb.
+   [ -n "$strace_pid$tcpdump_pid" ] && sleep "$OPT_RUN_TIME"
    stop_mongodb_process_collectors "$mongo_pid"
    wait
 }
