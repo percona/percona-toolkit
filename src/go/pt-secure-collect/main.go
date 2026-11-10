@@ -26,11 +26,11 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin"
-	"github.com/go-ini/ini"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/term"
+	"gopkg.in/ini.v1"
 )
 
 type cliOptions struct {
