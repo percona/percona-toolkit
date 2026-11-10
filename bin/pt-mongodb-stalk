@@ -748,10 +748,6 @@ CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
 MONGO_SHELL=""
 MONGO_CONNECT_JS=""    # mongosh script prefix that connects to MongoDB
 MONGO_TOOLS_CONFIG=""  # mongostat/mongotop --config file
-MONGO_REPLSET_NAME=""
-MONGO_REPLICA_SET_ROLE=""
-MONGO_PROCESS_TYPE=""
-MONGO_CLUSTER_ROLE=""
 
 choose_mongo_shell() {
    [ -n "$CMD_MONGOSH" ] \
@@ -897,64 +893,6 @@ redact_secrets() {
       s{(--password(?:=|\s+))(?!\*\*\*)\S+}{$1***}g;
       s{(\s-p\s*)(?!\*\*\*)(?!-)\S+}{$1***}g if m/mongo/;
    ' "${PT_TMPDIR:+$PT_TMPDIR/secrets}"
-}
-
-detect_mongo_topology() {
-   local topology
-   topology=$(mongo_eval "
-      const __pt = db.getSiblingDB('admin');
-      const __serverStatus = __pt.runCommand({serverStatus: 1}) || {};
-      let __clusterRole = '';
-      let __hello = {};
-      try {
-         const __cmdLineOpts = __pt.runCommand({getCmdLineOpts: 1});
-         if (__cmdLineOpts && __cmdLineOpts.parsed && __cmdLineOpts.parsed.sharding && __cmdLineOpts.parsed.sharding.clusterRole) {
-            __clusterRole = __cmdLineOpts.parsed.sharding.clusterRole;
-         }
-      } catch (e) {
-      }
-      try {
-         __hello = __pt.runCommand({hello: 1}) || {};
-      } catch (e) {
-         try {
-            __hello = __pt.runCommand({isMaster: 1}) || {};
-         } catch (e2) {
-            __hello = {};
-         }
-      }
-
-      let __replicaSetRole = '';
-      if (__hello.setName) {
-         if (__hello.isWritablePrimary || __hello.ismaster) {
-            __replicaSetRole = 'PRIMARY';
-         } else if (__hello.secondary) {
-            __replicaSetRole = 'SECONDARY';
-         } else if (__hello.arbiterOnly) {
-            __replicaSetRole = 'ARBITER';
-         } else {
-            __replicaSetRole = 'MEMBER';
-         }
-      }
-
-      if (__clusterRole === 'shardsvr') {
-         __clusterRole = 'shard';
-      } else if (__clusterRole === 'configsvr') {
-         __clusterRole = 'config-server';
-      }
-
-      print([
-         __serverStatus.process || '',
-         __clusterRole,
-         __replicaSetRole,
-         __hello.setName || ''
-      ].join('|'));
-   ")
-
-   # Not a tab: read merges consecutive whitespace separators, which would
-   # shift the fields after an empty one (e.g. no cluster role).
-   IFS='|' read -r MONGO_PROCESS_TYPE MONGO_CLUSTER_ROLE MONGO_REPLICA_SET_ROLE MONGO_REPLSET_NAME <<EOF
-$topology
-EOF
 }
 
 mongo_status_value() {
@@ -1360,6 +1298,21 @@ function __skip(name) {
    return P_SKIP.indexOf(',' + name + ',') !== -1;
 }
 
+// True if the server is a replica set member.  hello replaced isMaster in
+// MongoDB 4.4.2 and 5.0; errors are ignored, as with no replica set.
+function __replset() {
+   for (const cmd of [{hello: 1}, {isMaster: 1}]) {
+      try {
+         const doc = db.getSiblingDB('admin').runCommand(cmd);
+         if (doc && doc.ok) {
+            return !!doc.setName;
+         }
+      } catch (e) {
+      }
+   }
+   return false;
+}
+
 function __try(label, f) {
    try {
       return f();
@@ -1425,9 +1378,19 @@ function __extTable(doc) {
 }
 MONGO_JS
 
-# Metadata collected once at the start of a collection.
+# Metadata collected once at the start of a collection.  First, tell the
+# collector the server's PID, log file, port and start time, so it can check
+# that the server runs on this host, collect process data, follow the log and
+# capture its traffic without waiting for the rest.  The file is renamed into
+# place, so it is never read half-written.
 read -r -d '' MONGO_JS_ONCE <<'MONGO_JS'
+const __status = __try('serverStatus', () => __cmd({serverStatus: 1})) || {};
 const __opts = __try('getCmdLineOpts', () => __cmd({getCmdLineOpts: 1}));
+const __log = __opts && __opts.parsed && __opts.parsed.systemLog;
+const __id = __server_identity(__status);
+__fs.writeFileSync(P_TMPDIR + '/mongo-server.tmp', [__id.pid,
+   __log && __log.destination === 'file' && __log.path || '', __id.port, __id.start].join('|') + '\n');
+__fs.renameSync(P_TMPDIR + '/mongo-server.tmp', P_TMPDIR + '/mongo-server');
 
 if (!__skip('metadata')) {
    __try('hostInfo', () => __write('hostinfo', __cmd({hostInfo: 1})));
@@ -1446,26 +1409,18 @@ if (!__skip('metadata')) {
       __write('profiling-status', status);
    });
 
-   if (P_REPLSET) {
+   if (__replset()) {
       __try('replSetGetConfig', () => __write('rs-conf', __cmd({replSetGetConfig: 1}).config));
       __try('printReplicationInfo', () => __write('oplog-info', db.printReplicationInfo().value));
       __try('printSecondaryReplicationInfo', () => __write('secondary-replication-info', db.printSecondaryReplicationInfo().value));
    }
 }
-
-// Tell the collector the server's PID, log file, port and start time, so it
-// can check that the server runs on this host, collect process data, follow
-// the log and capture its traffic.
-const __log = __opts && __opts.parsed && __opts.parsed.systemLog;
-const __status = __try('serverStatus', () => __cmd({serverStatus: 1})) || {};
-const __id = __server_identity(__status);
-__fs.writeFileSync(P_TMPDIR + '/mongo-server', [__id.pid,
-   __log && __log.destination === 'file' && __log.path || '', __id.port, __id.start].join('|') + '\n');
 MONGO_JS
 
 # Time series: one sample every --sleep-collect seconds for --run-time
 # seconds.  All files of a sample share its TS line.
 read -r -d '' MONGO_JS_LOOP <<'MONGO_JS'
+const __is_replset = __replset();
 const __start = Date.now();
 for (let i = 0; i < P_COUNT; i++) {
    const __wait = __start + i * P_INTERVAL * 1000 - Date.now();
@@ -1484,7 +1439,7 @@ for (let i = 0; i < P_COUNT; i++) {
       __try('currentOp', () => __write('currentop',
          __cmd({currentOp: 1, active: true}), ts));
    }
-   if (P_REPLSET && !__skip('replsetgetstatus')) {
+   if (__is_replset && !__skip('replsetgetstatus')) {
       __try('replSetGetStatus', () => __write('replsetgetstatus', __cmd({replSetGetStatus: 1}), ts));
    }
 }
@@ -1495,14 +1450,11 @@ mongo_collect_params() {
    local d="$1"
    local p="$2"
    local count="${3:-1}"
-   local replset="false"
-   [ -n "$MONGO_REPLSET_NAME" ] && replset="true"
    printf 'const P_DIR = %s;\n' "$(_js_quote "$d")"
    printf 'const P_PREFIX = %s;\n' "$(_js_quote "$p")"
    printf 'const P_TMPDIR = %s;\n' "$(_js_quote "$PT_TMPDIR")"
    printf 'const P_COUNT = %d;\n' "$count"
    printf 'const P_INTERVAL = %d;\n' "$OPT_SLEEP_COLLECT"
-   printf 'const P_REPLSET = %s;\n' "$replset"
    printf 'const P_SKIP = %s;\n' "$(_js_quote ",${OPT_SKIP_COLLECTION:-},")"
 }
 
@@ -1511,44 +1463,39 @@ collect() {
    local p="$2"  # prefix for each result file
    local cnt
    local collect_wait
-   local mongo_pid=""
    local start_time
    local curr_time
-   local strace_pid=""   # set by collect_mongodb_process_data
-   local tcpdump_pid=""  # set by collect_mongodb_process_data
+   local metadata_pid=""
 
    cnt=$(sample_count "$OPT_RUN_TIME" "$OPT_SLEEP_COLLECT")
+   start_time=$(date +%s)
+   rm -f "$PT_TMPDIR/mongo-server" "$PT_TMPDIR/collect-mongo-pid"
 
-   if [ ! "$OPT_SYSTEM_ONLY" ]; then
-      collect_mongodb_data_one "$d" "$p"
-   fi
-   mongo_pid=$(local_mongo_pid)
-
-   # Start the collectors that run for the whole collection.
-   if [ ! "$OPT_SYSTEM_ONLY" ]; then
-      collect_mongodb_process_data "$d" "$p" "$mongo_pid"
-      collect_mongodb_log "$d" "$p" "$mongo_pid"
-   fi
+   # Nothing waits for MongoDB: when the server stalls, which is when the
+   # data matters most, the system data must still be collected.  The system
+   # collectors start first, then the MongoDB ones, all in the background.
+   # The metadata queries have no deadline of their own: like every
+   # collector, they are stopped when the collection ends.
    if [ ! "$OPT_MONGODB_ONLY" ]; then
-      collect_system_data "$d" "$p" "$mongo_pid" "$cnt"
+      collect_system_data "$d" "$p" "$cnt"
    fi
    if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      collect_mongodb_data_one "$d" "$p" &
+      metadata_pid=$!
       collect_mongodb_data_loop "$d" "$p" "$cnt"
    fi
+   collect_server_process_data "$d" "$p" "$start_time" &
 
    # This loop collects the system snapshots every --sleep-collect seconds,
    # and defines the duration of the collection, as in pt-stalk.  The free
    # disk space is checked even with --mongodb-only.
    log "Loop start: $(date +'TS %s.%N %F %T')"
-   start_time=$(date +%s)
    curr_time=$start_time
    while [ $((curr_time - start_time)) -lt "$OPT_RUN_TIME" ]; do
       collect_system_data_loop "$d" "$p" || break
       curr_time=$(date +%s)
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
-
-   stop_mongodb_process_collectors "$mongo_pid"
 
    hostname > "$d/$p-hostname"
 
@@ -1558,7 +1505,15 @@ collect() {
    collect_wait="$OPT_RUN_TIME"
    [ "$collect_wait" -lt 2 ] && collect_wait=2
    wait_for_subshells "$collect_wait"
+   if [ -n "$metadata_pid" ] && kill -0 "$metadata_pid" 2>/dev/null; then
+      warn "The MongoDB metadata queries did not finish in $((OPT_RUN_TIME + collect_wait)) seconds; stopping them"
+   fi
    kill_collectors
+   # If strace was stopped with the other collectors, it may have left the
+   # server's threads stopped, as stop_mongodb_process_collectors says.
+   if [ "$OPT_COLLECT_STRACE" ] && [ -s "$PT_TMPDIR/collect-mongo-pid" ]; then
+      kill -s 18 "$(cat "$PT_TMPDIR/collect-mongo-pid")" 2>/dev/null
+   fi
 
    if [ ! "$OPT_MONGODB_ONLY" ]; then
       collect_system_journal "$d" "$p" "$start_time"
@@ -1576,13 +1531,11 @@ collect() {
    done
 }
 
+# The server's identity (see MONGO_JS_ONCE), then the metadata.
 collect_mongodb_data_one() {
    local d="$1"
    local p="$2"
 
-   detect_mongo_topology
-
-   rm -f "$PT_TMPDIR/mongo-server"
    mongo_eval "$(mongo_collect_params "$d" "$p")
 $MONGO_JS_LIB
 $MONGO_JS_ONCE"
@@ -1615,25 +1568,76 @@ local_mongo_pid() {
    return 0
 }
 
+# Data about the server's own process, run in the background by collect():
+# the process data, the server's log, and with --collect-tcpdump its traffic.
+# They need to know which process is the server, which the metadata script
+# reports first (see MONGO_JS_ONCE).  Wait for it at most 5 seconds (or
+# --run-time, if shorter): if the server is stalled and does not answer,
+# local_mongo_pid looks for it by port instead.  The collectors then run
+# until the end of the --run-time window.
+collect_server_process_data() {
+   local d="$1"
+   local p="$2"
+   local start_time="$3"
+   local mongo_pid="" waited=0 max_wait=5 remaining
+   local strace_pid=""   # set by collect_mongodb_process_data
+   local tcpdump_pid=""  # set by collect_mongodb_process_data
+
+   [ "$OPT_RUN_TIME" -lt "$max_wait" ] && max_wait="$OPT_RUN_TIME"
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      while [ ! -f "$PT_TMPDIR/mongo-server" ] && [ "$waited" -lt "$max_wait" ]; do
+         sleep 1
+         waited=$((waited + 1))
+      done
+      [ -f "$PT_TMPDIR/mongo-server" ] \
+         || log "The MongoDB server did not report its PID in $max_wait seconds; looking for it by port"
+   fi
+   mongo_pid=$(local_mongo_pid)
+   [ -n "$mongo_pid" ] && echo "$mongo_pid" > "$PT_TMPDIR/collect-mongo-pid"
+
+   remaining=$((start_time + OPT_RUN_TIME - $(date +%s)))
+   [ "$remaining" -lt 1 ] && remaining=1
+
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      collect_mongodb_process_data "$d" "$p" "$mongo_pid"
+      collect_mongodb_log "$d" "$p" "$mongo_pid" "$remaining"
+   fi
+   if [ ! "$OPT_MONGODB_ONLY" ]; then
+      collect_system_process_data "$d" "$p" "$mongo_pid" "$remaining"
+   fi
+
+   # gdb may have taken a while; run strace and tcpdump until the end of the
+   # window.
+   remaining=$((start_time + OPT_RUN_TIME - $(date +%s)))
+   [ "$remaining" -gt 0 ] && [ -n "$strace_pid$tcpdump_pid" ] && sleep "$remaining"
+   stop_mongodb_process_collectors "$mongo_pid"
+   wait
+}
+
 # Process-level data for the server, as pt-stalk collects for mysqld: the
 # memory map, and with --collect-gdb, --collect-strace and --collect-tcpdump,
 # stack traces, system calls and network traffic.  strace and tcpdump run
-# until stop_mongodb_process_collectors; their PIDs are stored in collect()'s
-# strace_pid and tcpdump_pid.
+# until stop_mongodb_process_collectors; their PIDs are stored in the
+# caller's strace_pid and tcpdump_pid.
 collect_mongodb_process_data() {
    local d="$1"
    local p="$2"
    local mongo_pid="$3"
-   local server_pid="" log_path="" port="" server_start=""
+   local server_pid="" log_path="" port="" server_start="" host
 
    if [ -f "$PT_TMPDIR/mongo-server" ]; then
       IFS='|' read -r server_pid log_path port server_start < "$PT_TMPDIR/mongo-server"
    fi
 
    # Capture the traffic on the server's port, as pt-stalk does for MySQL.
-   # This works whether or not the server runs on this host.
+   # This works whether or not the server runs on this host.  If the server
+   # did not report its port, use the one the tool connects to.
    if [ "$OPT_COLLECT_TCPDUMP" ]; then
-      [ -n "$port" ] || port="$OPT_PORT"
+      if [ -z "$port" ]; then
+         read -r host port <<EOF
+$(mongo_target)
+EOF
+      fi
       if [ -z "$CMD_TCPDUMP" ]; then
          warn "--collect-tcpdump: cannot find tcpdump"
       elif [ -n "$port" ]; then
@@ -1698,12 +1702,14 @@ stop_mongodb_process_collectors() {
    return 0
 }
 
-# Follow the server's log file during the collection, like pt-stalk does with
-# the MySQL error log, if the server runs on this host and the log is readable.
+# Follow the server's log file for the rest of the collection, like pt-stalk
+# does with the MySQL error log, if the server runs on this host and the log
+# is readable.
 collect_mongodb_log() {
    local d="$1"
    local p="$2"
    local mongo_pid="$3"
+   local run_time="$4"
    local server_pid="" log_path="" port="" server_start=""
 
    _should_skip "mongod-log" && return 0
@@ -1718,7 +1724,7 @@ collect_mongodb_log() {
    (
       tail -f "$log_path" >> "$d/$p-mongod-log" &
       local tail_pid=$!
-      sleep "$OPT_RUN_TIME"
+      sleep "$run_time"
       kill "$tail_pid" 2>/dev/null
    ) &
 }
@@ -1728,8 +1734,10 @@ collect_mongodb_data_loop() {
    local p="$2"
    local cnt="$3"
 
+   # replSetGetStatus is collected only on replica set members, which the
+   # script checks itself.
    if ! _should_skip "serverstatus" || ! _should_skip "currentop" \
-      || { [ -n "$MONGO_REPLSET_NAME" ] && ! _should_skip "replsetgetstatus"; }; then
+      || ! _should_skip "replsetgetstatus"; then
       mongo_eval "$(mongo_collect_params "$d" "$p" "$cnt")
 $MONGO_JS_LIB
 $MONGO_JS_LOOP" &
@@ -1751,9 +1759,7 @@ $MONGO_JS_LOOP" &
 collect_system_data() {
    local d="$1"
    local p="$2"
-   local mongo_pid="$3"
-   local cnt="$4"
-   local pidstat_label="pidstat_mongod"
+   local cnt="$3"
 
    (ps -eaF | redact_secrets >> "$d/$p-ps") &
 
@@ -1763,10 +1769,6 @@ collect_system_data() {
       elif top -l 1 >/dev/null 2>&1; then
          run_collector "$d/$p-top" top "$CMD_TOP" -l "$cnt" -s "$OPT_SLEEP_COLLECT" &
       fi
-   fi
-
-   if [ -n "$mongo_pid" ]; then
-      (_lsof "$mongo_pid" >> "$d/$p-lsof") &
    fi
 
    if [ -n "$CMD_SYSCTL" ]; then
@@ -1798,11 +1800,24 @@ collect_system_data() {
    if [ -n "$CMD_PIDSTAT" ]; then
       run_collector "$d/$p-pidstat_d" pidstat "$CMD_PIDSTAT" -d "$OPT_SLEEP_COLLECT" "$cnt" &
       run_collector "$d/$p-pidstat_u" pidstat "$CMD_PIDSTAT" -u "$OPT_SLEEP_COLLECT" "$cnt" &
-      if [ -n "$mongo_pid" ]; then
-         [ "$MONGO_PROCESS_TYPE" = "mongos" ] && pidstat_label="pidstat_mongos"
-         run_collector "$d/$p-$pidstat_label" pidstat \
-            "$CMD_PIDSTAT" -urdwt -h -p "$mongo_pid" "$OPT_SLEEP_COLLECT" "$cnt" &
-      fi
+   fi
+}
+
+# System data about the server's process, for the rest of the collection,
+# if the server runs on this host: open files, and pidstat in a
+# pidstat_mongod or pidstat_mongos file.
+collect_system_process_data() {
+   local d="$1"
+   local p="$2"
+   local mongo_pid="$3"
+   local run_time="$4"
+
+   [ -n "$mongo_pid" ] || return 0
+   (_lsof "$mongo_pid" >> "$d/$p-lsof") &
+   if [ -n "$CMD_PIDSTAT" ]; then
+      run_collector "$d/$p-pidstat_$(_process_name "$mongo_pid")" pidstat \
+         "$CMD_PIDSTAT" -urdwt -h -p "$mongo_pid" "$OPT_SLEEP_COLLECT" \
+         "$(sample_count "$run_time" "$OPT_SLEEP_COLLECT")" &
    fi
 }
 
@@ -3026,8 +3041,17 @@ Time series are collected every L<"--sleep-collect"> seconds for
 L<"--run-time"> seconds.  For example, C<--run-time 5 --sleep-collect 1> takes
 5 samples of serverStatus and runs commands like C<vmstat 1 5>.
 
+All collectors start at once, and none waits for MongoDB: if the server
+stalls, the operating system data is still collected.  The process data
+(C<pmap>, C<lsof>, C<pidstat>, the server's log, and L<"--collect-gdb">,
+L<"--collect-strace"> and L<"--collect-tcpdump">) needs the server to report
+its PID, which it does before the other metadata queries; if it does not
+answer within 5 seconds, the tool looks for the mongod or mongos listening on
+the port it connects to, on this host.
+
 Collectors that are still running L<"--run-time"> seconds after the end of the
-collection window are stopped.  As in C<pt-stalk>, the collection runs in the
+collection window, the MongoDB queries included, are stopped together with
+the commands they started.  As in C<pt-stalk>, the collection runs in the
 background: when it starts, the tool sleeps L<"--sleep"> seconds before the
 next trigger check or collection.  If L<"--sleep"> is shorter than a
 collection, collections can overlap.

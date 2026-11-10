@@ -1,8 +1,9 @@
 #!/usr/bin/env perl
 
 # Collectors that do not finish in time are stopped with everything they
-# started: the commands, not only the Bash wrappers that run them.  Uses the
-# fake commands, made to hang like commands on a stalled server.
+# started: the commands, not only the Bash wrappers that run them.  A stalled
+# server delays nothing else.  Uses the fake commands, made to hang like
+# commands on a stalled server.
 
 BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
@@ -58,6 +59,33 @@ sub left_running {
    my @left = left_running(732);
    is_deeply(\@left, [], "collector ignoring SIGTERM: mongotop and its children are not left running")
       or system("pkill -9 -f 'sleep 732'");
+}
+
+# The metadata queries hang, like on a stalled server.  The system data is
+# collected anyway, the collection ends in time, and the server's process is
+# found by the port the tool connects to (27017).
+{
+   local $ENV{FAKE_ONCE_BLOCK} = 733;
+   local $ENV{FAKE_PROCS}      = "4242:mongod:27017:1000:1";
+   my $start = time;
+   my ($status, $output, $p) = collect_with("--run-time", "3");
+   my $elapsed = time - $start;
+   is($status, 0, "hanging metadata: collection exits 0") or diag($output);
+   ok($elapsed < 25, "hanging metadata: the collection ends in time")
+      or diag("took $elapsed seconds");
+   is_deeply([ grep { !-f "$p-$_" } qw(ps vmstat iostat df serverstatus mongostat) ], [],
+      "hanging metadata: system data and the MongoDB time series are collected");
+   ok(!-e "$p-hostinfo", "hanging metadata: no metadata");
+   my $out = slurp_file("$p-output");
+   like($out, qr/did not report its PID in 3 seconds; looking for it by port/,
+      "hanging metadata: the server's process is looked up by port");
+   like(slurp_file("$p-pmap"), qr/^pmap -x 4242$/m,
+      "hanging metadata: process data for the mongod on the connection's port");
+   like($out, qr/The MongoDB metadata queries did not finish in 6 seconds; stopping them/,
+      "hanging metadata: the queries are stopped when the collection ends");
+   my @left = left_running(733);
+   is_deeply(\@left, [], "hanging metadata: mongosh is not left running")
+      or system("pkill -f 'sleep 733'");
 }
 
 done_testing;

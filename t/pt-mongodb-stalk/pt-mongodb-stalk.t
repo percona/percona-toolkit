@@ -73,8 +73,8 @@ ok(-f "$p-mongotop",         "collects mongotop");
 
 my $mongosh_log = slurp_file($ENV{MONGOSH_LOG});
 like($mongosh_log, qr/^const P_COUNT = 1;$/m, "one sample for --run-time 1 --sleep-collect 1");
-like($mongosh_log, qr/^const P_REPLSET = true;$/m,
-   "replica set detected when the cluster role is empty");
+my @replset_checks = $mongosh_log =~ m/__replset\(\)/g;
+ok(scalar @replset_checks >= 2, "the metadata and time-series scripts check for a replica set themselves");
 like($mongosh_log, qr/currentOp: 1, active: true\}/, "currentOp command asks for the active operations");
 unlike($mongosh_log, qr/idleConnections|allUsers/,
    "currentOp command has no \$currentOp stage options, which the command reads as filters");

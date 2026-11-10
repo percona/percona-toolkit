@@ -14,6 +14,9 @@ p_count="$(sed -n 's/^const P_COUNT = \([0-9]*\);$/\1/p' "$script_file")"
 p_tmpdir="$(sed -n "s/^const P_TMPDIR = '\(.*\)';\$/\1/p" "$script_file")"
 case "$script" in
    *"__try('hostInfo'"*)
+      # FAKE_ONCE_BLOCK: hang for that many seconds before reporting anything,
+      # like a stalled server.
+      [ -n "${FAKE_ONCE_BLOCK:-}" ] && sleep "$FAKE_ONCE_BLOCK"
       printf 'TS 1.0 2026-01-01 00:00:00\n{"hostname": "fake"}\n' >> "$p_dir/$p_prefix-hostinfo"
       # The server's PID, log file, port and start time: by default, the
       # mongod in FAKE_PROCS (see procs.sh), which started 1000 seconds ago.
