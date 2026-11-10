@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
-# --plugin hooks and a trg_plugin trigger, as in pt-stalk.  Uses the fake
-# commands; no MongoDB server.
+# --plugin hooks and a trg_plugin trigger, as in pt-stalk, and the plugins'
+# connection to MongoDB.  Uses the fake commands; no MongoDB server.
 
 BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
@@ -103,5 +103,51 @@ like($output, qr/Check results: \Q$trigger\E\(connections\.active\)=100, matched
    "trg_plugin value above the threshold matches");
 like($output, qr/Collect 1 triggered/, "trg_plugin triggers the collection");
 is(slurp_file($trg_counter), "3\n", "trg_plugin is called once per check");
+
+# ###########################################################################
+# Plugins run MongoDB commands connected as the tool is: a script with
+# "$CMD_MONGOSH $EXT_ARGV script.js", or with mongo_eval.  The connection
+# script is copied, as the tool removes it when it exits.
+# ###########################################################################
+
+my $plugin_js    = write_file("$tmpdir/plugin-script.js", "printjson(db.runCommand({ping: 1}));\n");
+my $connect_copy = "$tmpdir/connect-copy.js";
+my $mongo_plugin = write_file("$tmpdir/mongo-plugin.sh", <<"SH");
+before_collect() {
+   echo "\$EXT_ARGV" > "$tmpdir/ext-argv"
+   cp "\${EXT_ARGV##* }" "$connect_copy"
+   ls -l "\${EXT_ARGV##* }" > "$tmpdir/connect-mode"
+   \$CMD_MONGOSH \$EXT_ARGV "$plugin_js"
+   mongo_eval 'print("from mongo_eval")'
+}
+SH
+
+unlink $ENV{MONGOSH_ARGS_LOG}, $ENV{MONGOSH_LOG};
+($status, $output) = run_capture(
+   "bash", $tool, @common_args,
+   "--plugin", $mongo_plugin,
+   "--iterations", "1", "--sleep", "0",
+   "--dest", "$tmpdir/collect-mongo-plugin",
+   "--pid", "$tmpdir/mongo-plugin.pid",
+);
+is($status, 0, "plugin running MongoDB commands exits 0") or diag($output);
+
+my ($ext_argv) = split /\n/, slurp_file("$tmpdir/ext-argv");
+like($ext_argv, qr{^--nodb --quiet \S+/mongo-connect\.js$},
+   "\$EXT_ARGV is --nodb --quiet and the connection script");
+like(slurp_file($connect_copy),
+   qr{^db = connect\('mongodb://admin:S3cretPw\@localhost:27017/\?authSource=admin'\)\.getSiblingDB\("admin"\);$}m,
+   "the connection script connects with the tool's URI and credentials");
+like(slurp_file("$tmpdir/connect-mode"), qr/^-rw-------/,
+   "the connection script is readable only by the user running the tool");
+
+my @mongosh_args = split /\n/, slurp_file($ENV{MONGOSH_ARGS_LOG});
+ok((grep { $_ eq "$ext_argv $plugin_js" } @mongosh_args),
+   "\$CMD_MONGOSH \$EXT_ARGV runs the connection script, then the plugin's script")
+   or diag(join("\n", @mongosh_args));
+like(slurp_file($ENV{MONGOSH_LOG}), qr/^print\("from mongo_eval"\)$/m,
+   "mongo_eval runs the plugin's script");
+is_deeply([ grep { m/\Q$password\E/ } @mongosh_args ], [],
+   "no password on the plugin's mongosh command lines");
 
 done_testing;

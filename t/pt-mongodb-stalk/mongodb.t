@@ -138,4 +138,34 @@ for my $kind ( sort keys %servers ) {
    }
 }
 
+# A plugin runs MongoDB commands connected as the tool is, with
+# "$CMD_MONGOSH $EXT_ARGV script.js" and with mongo_eval.
+{
+   my ($kind) = sort keys %servers;
+   my $uri    = $servers{$kind};
+   my $script = "$tmpdir/plugin-script.js";
+   open my $fh, ">", $script or die "Cannot write $script: $OS_ERROR";
+   print {$fh} "print('script: db=' + db.getName() + ' ping=' + db.runCommand({ping: 1}).ok);\n";
+   close $fh;
+   my $plugin = "$tmpdir/plugin.sh";
+   open $fh, ">", $plugin or die "Cannot write $plugin: $OS_ERROR";
+   print {$fh} <<"SH";
+before_collect() {
+   \$CMD_MONGOSH \$EXT_ARGV "$script" > "$tmpdir/plugin.out" 2>&1
+   mongo_eval 'print("eval: ok=" + db.runCommand({ping: 1}).ok)' >> "$tmpdir/plugin.out" 2>&1
+}
+SH
+   close $fh;
+
+   my ($status, $output) = run_capture(
+      "bash", $tool, "--uri", $uri, "--plugin", $plugin,
+      "--no-stalk", "--iterations", "1", "--run-time", "1", "--sleep", "0",
+      "--disk-pct-free", "1",
+      "--dest", "$tmpdir/collect-plugin", "--pid", "$tmpdir/plugin.pid",
+   );
+   is($status, 0, "$kind: collection with a MongoDB plugin exits 0") or diag($output);
+   is(slurp_file("$tmpdir/plugin.out"), "script: db=admin ping=1\neval: ok=1\n",
+      "$kind: the plugin's script and mongo_eval run connected to the server");
+}
+
 done_testing;

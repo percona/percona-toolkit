@@ -821,6 +821,12 @@ setup_mongo_connection() {
       printf 'uri: "%s"\n' "$(printf '%s' "$uri" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')" \
          > "$MONGO_TOOLS_CONFIG"
    ) || die "Cannot write the MongoDB connection files in $PT_TMPDIR"
+
+   # For plugins, as pt-stalk's $EXT_ARGV holds the mysql connection options:
+   # "$CMD_MONGOSH $EXT_ARGV script.js" runs the connection script, then
+   # script.js, connected as the tool is.  mongosh runs --eval before any
+   # file, so --eval cannot use it; plugins use mongo_eval instead.
+   EXT_ARGV="--nodb --quiet $MONGO_CONNECT_JS"
 }
 
 # Run a mongosh script against the server.  The script is written to a file
@@ -2394,6 +2400,14 @@ if [ "${0##*/}" = "$TOOL" ] || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; the
       exit 0
    fi
 
+   # pt-stalk passes the arguments after -- to mysql.  Here the connection
+   # comes from --uri or the connection options, and $EXT_ARGV is set for
+   # plugins (see --plugin), so refuse them rather than ignore them.
+   if [ -n "$EXT_ARGV" ]; then
+      option_error "Arguments after -- are not supported: use --uri or the connection options"
+      usage_or_errors "$0" >/dev/null || exit 1
+   fi
+
    if ! set_trg_func "$OPT_FUNCTION"; then
       option_error "Invalid --function value: $OPT_FUNCTION"
       usage_or_errors "$0" >/dev/null || exit 1
@@ -2808,7 +2822,87 @@ type: string
 
 Load a plugin to hook into and extend the tool.
 
-The plugin can define any of the standard C<before_*> or C<after_*> hooks.
+The specified file does not need to be executable, nor does its first line
+need to be a shebang line.  It only needs to define one or more of these Bash
+functions, which are the same as C<pt-stalk>'s:
+
+=over
+
+=item before_stalk
+
+Called before stalking.
+
+=item before_collect
+
+Called when the trigger occurs, before running a L<"--collect"> subprocess in
+the background.
+
+=item after_collect
+
+Called after starting a collector process.  The PID of the collector process
+is passed as the first argument.  This hook is called before
+C<after_collect_sleep>.
+
+=item after_collect_sleep
+
+Called after sleeping L<"--sleep"> seconds, which start when the collection
+starts.  This hook is called after C<after_collect>.
+
+=item after_interval_sleep
+
+Called after sleeping L<"--interval"> seconds after each trigger check.
+
+=item after_stalk
+
+Called after stalking.  Since the tool stalks forever by default, this hook
+is only called if L<"--iterations"> is specified.
+
+=back
+
+For example, a very simple plugin that touches a file when L<"--collect"> is
+triggered:
+
+   before_collect() {
+      touch /tmp/foo
+   }
+
+Since the plugin is completely sourced (imported) into the tool's namespace,
+be careful not to define other functions or global variables that already
+exist in the tool.  You should prefix all plugin-specific functions and
+global variables with C<plugin_> or C<PLUGIN_>.
+
+Plugins have access to all command line options but they should not modify
+them.  Each option is a global variable like C<$OPT_DEST> which corresponds
+to L<"--dest">.  Therefore, the global variable for each command line option
+is C<OPT_> plus the option name in all caps with hyphens replaced by
+underscores.
+
+Plugins can stop the tool by setting the global variable C<OKTORUN> to C<0>.
+In this case, the global variable C<EXIT_REASON> should also be set to
+indicate why the tool was stopped.
+
+Plugin writers should keep in mind that the file destination prefix currently
+in use should be accessed through the C<$prefix> variable, rather than
+C<$OPT_PREFIX>.
+
+Plugins can run MongoDB commands connected as the tool is, with the same URI,
+credentials and TLS options, without the password on any command line.
+C<$CMD_MONGOSH $EXT_ARGV> followed by a script file runs the script with
+C<db> connected to the C<admin> database.  C<$EXT_ARGV> is
+C<--nodb --quiet> and a script that connects, readable only by the user
+running the tool, and removed when the tool exits.  mongosh runs C<--eval>
+before any script file, so C<--eval> cannot be used this way; to run a short
+script, use the C<mongo_eval> function, which takes the script as its
+argument:
+
+   before_collect() {
+      $CMD_MONGOSH $EXT_ARGV /path/to/plugin-script.js > "$OPT_DEST/$prefix-plugin"
+      mongo_eval 'printjson(db.runCommand({top: 1}))' > "$OPT_DEST/$prefix-top"
+   }
+
+Both are available unless the tool does not connect to MongoDB at all (see
+L<"--system-only">).  Unlike C<pt-stalk>, the tool does not accept arguments
+after C<-->.
 
 =item --port
 

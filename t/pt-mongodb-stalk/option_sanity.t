@@ -99,4 +99,10 @@ is($status, 0, "uppercase option in the global config file does not stop the too
 like($output, qr/\.percona-toolkit\.conf line 1: option 'sslCAFile' is ignored in this config file/,
    "uppercase option in the global config file is reported as ignored");
 
+# pt-stalk passes the arguments after -- to mysql; this tool refuses them.
+($status, $output) = run_capture("bash", $tool, "--host", "localhost", "--", "--tls");
+is($status, 1, "arguments after -- exit 1");
+like($output, qr/Arguments after -- are not supported: use --uri or the connection options/,
+   "arguments after -- print a specific error");
+
 done_testing;
