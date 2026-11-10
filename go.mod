@@ -29,7 +29,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.5
 	golang.org/x/crypto v0.58.0
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
-	golang.org/x/sync v0.24.0
+	golang.org/x/sync v0.25.0
 	golang.org/x/term v0.47.0
 	gopkg.in/ini.v1 v1.67.3
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
