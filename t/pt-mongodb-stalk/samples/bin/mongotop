@@ -8,5 +8,11 @@ for arg in "$@"; do
    esac
 done
 echo "2026-05-14T00:00:00.000+0000	connected to: mongodb://localhost:27017/" >&2
+# FAKE_BLOCK_IGNORE_TERM: hang for that many seconds and ignore SIGTERM, so
+# only SIGKILL stops it.  The sleep inherits the ignored signal.
+if [ -n "${FAKE_BLOCK_IGNORE_TERM:-}" ]; then
+   trap "" TERM
+   sleep "$FAKE_BLOCK_IGNORE_TERM"
+fi
 echo "ns total read write"
 echo "admin.system.version 1ms 1ms 0ms"

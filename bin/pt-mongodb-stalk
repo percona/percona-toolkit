@@ -1220,6 +1220,75 @@ run_collector() {
    return 0
 }
 
+# ###########################################################################
+# Stopping collectors.  The subshell package's kill_all_subshells kills this
+# shell's background jobs, but most jobs are Bash functions or subshells that
+# run a command (mongosh, mongostat, mongotop, vmstat, ...), and killing the
+# wrapper leaves that command running, still querying the server and writing
+# to the collection's files.  kill_collectors stops whole process trees.
+# ###########################################################################
+
+# All descendants of the given processes, children before their children.
+_descendants() {
+   ps -A -o pid= -o ppid= 2>/dev/null | awk -v roots="$*" '
+      { children[$2] = children[$2] " " $1 }
+      END {
+         n = split(roots, queue, " ")
+         for (i = 1; i <= n; i++) {
+            m = split(children[queue[i]], kids, " ")
+            for (j = 1; j <= m; j++) {
+               if (!(kids[j] in seen)) {
+                  seen[kids[j]] = 1
+                  queue[++n] = kids[j]
+                  print kids[j]
+               }
+            }
+         }
+      }'
+}
+
+# True if a process runs, i.e. exists and is not a zombie.
+_running() {
+   kill -0 "$1" 2>/dev/null || return 1
+   case "$(ps -o stat= -p "$1" 2>/dev/null)" in
+      Z*|"") return 1 ;;
+   esac
+   return 0
+}
+
+# Stop this shell's background jobs and every process they started: send
+# TERM to all of them at once, wait up to 5 seconds for them to exit, then
+# KILL what is left, and reap the jobs.  The process tree is read before
+# anything is killed, as a killed wrapper's children are given to init.
+kill_collectors() {
+   local jobs_pids pids pid left waited=0
+   jobs_pids=$(jobs -p)
+   if [ -z "$jobs_pids" ]; then
+      log "All subprocesses have finished"
+      return 0
+   fi
+   pids="$jobs_pids $(_descendants $jobs_pids)"
+   pids=$(echo $pids)
+   log "Killing subprocesses $pids"
+   kill $pids >/dev/null 2>&1
+   while :; do
+      left=""
+      for pid in $pids; do
+         _running "$pid" && left="$left $pid"
+      done
+      [ -z "$left" ] && break
+      if [ "$waited" -ge 5 ]; then
+         log "Subprocesses did not exit; killing them with SIGKILL:$left"
+         kill -9 $left >/dev/null 2>&1
+         break
+      fi
+      sleep 1
+      waited=$((waited + 1))
+   done
+   wait $jobs_pids 2>/dev/null
+   return 0
+}
+
 # The collection types --skip-collection accepts.
 SUPPORTED_SKIPS="currentop metadata mongod-log mongostat mongotop replsetgetstatus serverstatus"
 
@@ -1489,7 +1558,7 @@ collect() {
    collect_wait="$OPT_RUN_TIME"
    [ "$collect_wait" -lt 2 ] && collect_wait=2
    wait_for_subshells "$collect_wait"
-   kill_all_subshells
+   kill_collectors
 
    if [ ! "$OPT_MONGODB_ONLY" ]; then
       collect_system_journal "$d" "$p" "$start_time"
@@ -2266,8 +2335,12 @@ stalk() {
       purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME" "$OPT_RETENTION_COUNT" "$OPT_RETENTION_SIZE"
    fi
 
-   wait_for_subshells $((OPT_RUN_TIME * 3))
-   kill_all_subshells
+   # Give the last collection time to finish and stop its own collectors:
+   # --run-time, then up to --run-time more for the collectors, then up to 5
+   # seconds for kill_collectors, plus some time for the journal and the
+   # cleanup of empty files.
+   wait_for_subshells $((OPT_RUN_TIME * 3 + 15))
+   kill_collectors
 }
 
 main() {
