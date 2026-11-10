@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Fake ps: a mongod with PID 4242, and command lines with passwords to hide.
+# FAKE_PS_PASSWORD sets the password on the pt-mongodb-stalk command line.
 echo "USER PID %CPU %MEM COMMAND"
 echo "mongodb 4242 0.0 1.0 mongod --port 27017"
-echo "admin 4343 0.0 0.1 bash pt-mongodb-stalk --user admin --password S3cretPw --port 27017"
+echo "admin 4343 0.0 0.1 bash pt-mongodb-stalk --user admin --password ${FAKE_PS_PASSWORD:-S3cretPw} --port 27017"
 echo "admin 4344 0.0 0.1 mongosh mongodb://admin:S3cretPw@localhost:27017/admin"

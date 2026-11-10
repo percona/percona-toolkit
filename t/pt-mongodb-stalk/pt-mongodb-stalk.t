@@ -131,6 +131,19 @@ like($ps, qr{mongodb://admin:\*\*\*\@localhost}, "ps output hides URI passwords"
 my @leaks = grep { slurp_file($_) =~ m/\Q$password\E/ } glob("$dest/*");
 is_deeply(\@leaks, [], "password not in any collected file");
 
+# A password with spaces and regex characters is hidden whole, not only up to
+# the first space.
+{
+   my $spaced = 'two words.* S3c';
+   local $ENV{FAKE_PS_PASSWORD} = $spaced;
+   my ($status, $output, $sp) = collect_with("--password", $spaced);
+   is($status, 0, "collection with a password with spaces exits 0") or diag($output);
+   my $ps = slurp_file("$sp-ps");
+   like($ps, qr/--password \*\*\* --port 27017$/m, "ps output hides a password with spaces");
+   unlike($ps, qr/words|S3c/, "no part of the password with spaces is left");
+   ok(!-e "$tmpdir/tmp/secrets", "the file with the passwords to hide is removed");
+}
+
 my @tmp_left = glob("$tmpdir/tmp/*");
 is_deeply(\@tmp_left, [], "temporary directory with the connection files is removed");
 

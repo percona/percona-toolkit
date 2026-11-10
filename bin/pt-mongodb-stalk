@@ -849,13 +849,54 @@ mongo_monitor_exec() {
    "$cmd" "--config=$MONGO_TOOLS_CONFIG" "$@" "$interval"
 }
 
-# Hide credentials in command lines, for the ps samples.
+# Write the known passwords to $PT_TMPDIR/secrets, readable only by the
+# current user, for redact_secrets: --password as given and URL-encoded, and
+# the password in --uri as given and decoded.  The passwords are passed in the
+# environment, never as arguments.
+write_secrets_file() {
+   (
+      umask 077
+      PT_URI="$OPT_URI" PT_PASSWORD="$OPT_PASSWORD" perl -e '
+         use strict;
+         use warnings;
+         my %secrets;
+         my $password = defined $ENV{PT_PASSWORD} ? $ENV{PT_PASSWORD} : "";
+         if ( $password ne "" ) {
+            $secrets{$password} = 1;
+            (my $esc = $password) =~ s/([^A-Za-z0-9\-._~])/sprintf("%%%02X", ord($1))/ge;
+            $secrets{$esc} = 1;
+         }
+         my $uri = defined $ENV{PT_URI} ? $ENV{PT_URI} : "";
+         if ( $uri =~ m{^mongodb(?:\+srv)?://[^/\@]*?:([^/\@]*)\@} && $1 ne "" ) {
+            my $esc = $1;
+            $secrets{$esc} = 1;
+            (my $raw = $esc) =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/ge;
+            $secrets{$raw} = 1;
+         }
+         print "$_\n" for grep { m/\S/ && !m/\n/ } keys %secrets;
+      ' > "$PT_TMPDIR/secrets"
+   ) || die "Cannot write $PT_TMPDIR/secrets"
+}
+
+# Hide credentials in command lines, for the ps samples: every known password
+# (see write_secrets_file), then anything that looks like one.
 redact_secrets() {
    perl -pe '
+      BEGIN {
+         my $file = shift @ARGV;
+         our @secrets;
+         if ( $file && open my $fh, "<", $file ) {
+            chomp(@secrets = <$fh>);
+            # Longest first, so a password that contains another is hidden whole.
+            @secrets = sort { length($b) <=> length($a) } grep { length } @secrets;
+         }
+      }
+      our @secrets;
+      for my $secret ( @secrets ) { s{\Q$secret\E}{***}g }
       s{(mongodb(?:\+srv)?://[^:/@\s]*):[^@\s]*@}{$1:***@}g;
       s{(--password(?:=|\s+))(?!\*\*\*)\S+}{$1***}g;
       s{(\s-p\s*)(?!\*\*\*)(?!-)\S+}{$1***}g if m/mongo/;
-   '
+   ' "${PT_TMPDIR:+$PT_TMPDIR/secrets}"
 }
 
 detect_mongo_topology() {
@@ -2163,6 +2204,7 @@ if [ "${0##*/}" = "$TOOL" ] || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; the
    # remove the directory however the tool exits.
    mk_tmpdir
    trap rm_tmpdir EXIT
+   write_secrets_file
 
    if [ "$need_mongodb" ]; then
       setup_mongo_connection
