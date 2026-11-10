@@ -1072,16 +1072,122 @@ _js_quote() {
    printf '%s' "$1" | perl -0pe 's/\\/\\\\/g; s/'"'"'/\\'"'"'/g; $_="'"'"'$_'"'"'"'
 }
 
-get_mongo_pid() {
-   local pid=""
-   if [ -n "$OPT_PORT" ]; then
-      pid=$(lsof -i ":${OPT_PORT}" 2>/dev/null | awk '/LISTEN/ && ($1=="mongod" || $1=="mongos") {print $2; exit}')
+# ###########################################################################
+# Finding the server's process on this host.  Process data (pmap, lsof,
+# pidstat, gdb, strace, the log) and the process triggers must only use the
+# process of the server the tool is connected to, never another mongod or
+# mongos that happens to run here.
+# ###########################################################################
+
+# The program name of a process, or nothing if it does not run.
+_process_name() {
+   local comm
+   comm=$(ps -p "$1" -o comm= 2>/dev/null | awk 'NF {print $1; exit}')
+   echo "${comm##*/}"
+}
+
+# The epoch second a process started, from ps's [[dd-]hh:]mm:ss elapsed time.
+_process_start() {
+   ps -p "$1" -o etime= 2>/dev/null | awk -v now="$(date +%s)" '
+      NF {
+         t = $1; d = 0
+         if (index(t, "-")) {
+            d = substr(t, 1, index(t, "-") - 1)
+            t = substr(t, index(t, "-") + 1)
+         }
+         n = split(t, a, ":")
+         s = (n == 3) ? a[1] * 3600 + a[2] * 60 + a[3] : a[1] * 60 + a[2]
+         print now - (d * 86400 + s)
+         exit
+      }'
+}
+
+# The TCP ports a process listens on, one per line.  Empty if lsof is missing
+# or cannot see the process, e.g. another user's process when not root.
+_listening_ports() {
+   lsof -nP -a -p "$1" -iTCP -sTCP:LISTEN -Fn 2>/dev/null \
+      | sed -n 's/^n.*:\([0-9][0-9]*\)$/\1/p' | sort -u
+}
+
+# Succeed if PID is the server identified by its port and start time, as the
+# server reported them; else print why not and fail.  The name alone is not
+# enough: the server may run on another host or in a container, where its PID
+# can belong to an unrelated local mongod.  The listening port is checked only
+# when lsof can see the process.
+verify_mongo_pid() {
+   local pid="$1" port="$2" start="$3"
+   local name local_start ports
+
+   name=$(_process_name "$pid")
+   case "$name" in
+      mongod|mongos) ;;
+      *) echo "no mongod or mongos with PID $pid runs on this host"; return 1 ;;
+   esac
+   if [ -n "$start" ]; then
+      local_start=$(_process_start "$pid")
+      if [ -z "$local_start" ] \
+         || [ "$((local_start - start))" -gt 10 ] || [ "$((start - local_start))" -gt 10 ]; then
+         echo "the local $name with PID $pid did not start when the server did, so it is another server"
+         return 1
+      fi
    fi
-   if [ -z "$pid" ]; then
-      pid=$(_pidof mongod | awk '{print $1; exit}')
+   if [ -n "$port" ]; then
+      ports=$(_listening_ports "$pid")
+      if [ -n "$ports" ] && ! echo "$ports" | grep -qx "$port"; then
+         echo "the local $name with PID $pid does not listen on the server's port $port"
+         return 1
+      fi
    fi
+   return 0
+}
+
+# The host and port the tool connects to, as "host port", if there is one
+# host: from --uri, or --host and --port.  Nothing for mongodb+srv:// or a
+# list of hosts.
+mongo_target() {
+   PT_URI="$OPT_URI" PT_HOST="$OPT_HOST" PT_PORT="$OPT_PORT" perl -e '
+      my ($host, $port);
+      if ( ($ENV{PT_URI} || "") ne "" ) {
+         my ($hosts) = $ENV{PT_URI} =~ m{^mongodb://(?:[^/\@]*\@)?([^/?]*)} or exit;
+         exit if $hosts =~ m/,/;
+         ($host, $port) = $hosts =~ m/^\[([^\]]+)\](?::(\d+))?$/;
+         ($host, $port) = $hosts =~ m/^([^:]+)(?::(\d+))?$/ unless defined $host;
+      }
+      else {
+         ($host, $port) = ($ENV{PT_HOST}, $ENV{PT_PORT});
+      }
+      exit unless defined $host && $host ne "";
+      print "$host ", ($port || 27017), "\n";
+   '
+}
+
+# The PID of the mongod or mongos listening on the port the tool connects to,
+# if that host is this host.  Used when the server cannot report its PID,
+# e.g. with --system-only.  Prints the PID, or why there is none and fails.
+mongo_pid_by_port() {
+   local host port
+   read -r host port <<EOF
+$(mongo_target)
+EOF
+   if [ -z "$host" ]; then
+      echo "cannot tell which host the connection options point to"
+      return 1
+   fi
+   case "$host" in
+      localhost|127.*|::1|"$(hostname)"|"$(hostname -s 2>/dev/null)") ;;
+      *) echo "$host:$port is not this host"; return 1 ;;
+   esac
+   local pid
+   pid=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -Fpc 2>/dev/null | awk '
+      /^p/ { pid = substr($0, 2) }
+      /^c/ { c = substr($0, 2); if (c == "mongod" || c == "mongos") { print pid; exit } }')
    if [ -z "$pid" ]; then
-      pid=$(_pidof mongos | awk '{print $1; exit}')
+      if [ "$(id -u)" -ne 0 ]; then
+         echo "no mongod or mongos listening on port $port found on this host; lsof can only see other users' processes when run as root"
+      else
+         echo "no mongod or mongos listening on port $port found on this host"
+      fi
+      return 1
    fi
    echo "$pid"
 }
@@ -1137,6 +1243,19 @@ _should_skip() {
 # on stdout, which goes to <prefix>-output.
 read -r -d '' MONGO_JS_LIB <<'MONGO_JS'
 const __fs = require('fs');
+
+// What identifies the server process on its host: its PID, its port and
+// when it started (epoch seconds, from this host's clock and its uptime).
+function __server_identity(status) {
+   status = status || {};
+   const uptime = status.uptimeMillis !== undefined ? Number(status.uptimeMillis)
+                : status.uptime !== undefined ? Number(status.uptime) * 1000 : NaN;
+   return {
+      pid:   status.pid !== undefined ? String(status.pid) : '',
+      port:  String(status.host || '').split(':').pop().replace(/[^0-9]/g, ''),
+      start: isNaN(uptime) ? '' : String(Math.round((Date.now() - uptime) / 1000)),
+   };
+}
 
 function __ts() {
    const d = new Date();
@@ -1265,13 +1384,14 @@ if (!__skip('metadata')) {
    }
 }
 
-// Tell the collector the server's PID, log file and port, so it can collect
-// process data, follow the log and capture its traffic.
+// Tell the collector the server's PID, log file, port and start time, so it
+// can check that the server runs on this host, collect process data, follow
+// the log and capture its traffic.
 const __log = __opts && __opts.parsed && __opts.parsed.systemLog;
 const __status = __try('serverStatus', () => __cmd({serverStatus: 1})) || {};
-__fs.writeFileSync(P_TMPDIR + '/mongo-server', (__status.pid || '') + '|'
-   + (__log && __log.destination === 'file' && __log.path || '') + '|'
-   + (String(__status.host || '').split(':').pop().replace(/[^0-9]/g, '')) + '\n');
+const __id = __server_identity(__status);
+__fs.writeFileSync(P_TMPDIR + '/mongo-server', [__id.pid,
+   __log && __log.destination === 'file' && __log.path || '', __id.port, __id.start].join('|') + '\n');
 MONGO_JS
 
 # Time series: one sample every --sleep-collect seconds for --run-time
@@ -1399,27 +1519,31 @@ $MONGO_JS_LIB
 $MONGO_JS_ONCE"
 }
 
-# Print the PID of the server if it runs on this host, else nothing.  The
-# server reports its own PID; it is used if a mongod or mongos with that PID
-# runs here.  If the server did not report it (e.g. the metadata collection
-# failed), fall back to finding a local mongod or mongos when connecting to
-# this host.
+# Print the PID of the server if it runs on this host, else nothing, and log
+# why.  The server reports its PID, port and start time, and the local process
+# with that PID must match all of them (see verify_mongo_pid).  If the server
+# did not report them (e.g. the metadata collection failed or was skipped),
+# use the mongod or mongos listening on the port the tool connects to, if
+# that is this host.
 local_mongo_pid() {
-   local server_pid="" log_path="" port=""
+   local server_pid="" log_path="" port="" server_start="" out
    if [ -f "$PT_TMPDIR/mongo-server" ]; then
-      IFS='|' read -r server_pid log_path port < "$PT_TMPDIR/mongo-server"
+      IFS='|' read -r server_pid log_path port server_start < "$PT_TMPDIR/mongo-server"
    fi
    if [ -n "$server_pid" ]; then
-      case "$(ps -p "$server_pid" -o comm= 2>/dev/null)" in
-         *mongod*|*mongos*) echo "$server_pid" ;;
-      esac
+      if out=$(verify_mongo_pid "$server_pid" "$port" "$server_start"); then
+         echo "$server_pid"
+      else
+         log "Not collecting process data for the server: $out" >&2
+      fi
       return 0
    fi
-   if [ -z "$OPT_URI" ]; then
-      case "$OPT_HOST" in
-         localhost|127.*|::1) get_mongo_pid ;;
-      esac
+   if out=$(mongo_pid_by_port); then
+      echo "$out"
+   else
+      log "Not collecting process data for the server: $out" >&2
    fi
+   return 0
 }
 
 # Process-level data for the server, as pt-stalk collects for mysqld: the
@@ -1431,10 +1555,10 @@ collect_mongodb_process_data() {
    local d="$1"
    local p="$2"
    local mongo_pid="$3"
-   local server_pid="" log_path="" port=""
+   local server_pid="" log_path="" port="" server_start=""
 
    if [ -f "$PT_TMPDIR/mongo-server" ]; then
-      IFS='|' read -r server_pid log_path port < "$PT_TMPDIR/mongo-server"
+      IFS='|' read -r server_pid log_path port server_start < "$PT_TMPDIR/mongo-server"
    fi
 
    # Capture the traffic on the server's port, as pt-stalk does for MySQL.
@@ -1511,11 +1635,11 @@ collect_mongodb_log() {
    local d="$1"
    local p="$2"
    local mongo_pid="$3"
-   local server_pid="" log_path="" port=""
+   local server_pid="" log_path="" port="" server_start=""
 
    _should_skip "mongod-log" && return 0
    [ -n "$mongo_pid" ] && [ -f "$PT_TMPDIR/mongo-server" ] || return 0
-   IFS='|' read -r server_pid log_path port < "$PT_TMPDIR/mongo-server"
+   IFS='|' read -r server_pid log_path port server_start < "$PT_TMPDIR/mongo-server"
    [ "$server_pid" = "$mongo_pid" ] && [ -n "$log_path" ] || return 0
    if [ ! -r "$log_path" ]; then
       log "Cannot read the MongoDB log $log_path; not collecting it"
@@ -1868,20 +1992,67 @@ trg_memory() {
    ' /proc/meminfo
 }
 
+# The PID of the server for the process triggers.  Connected to MongoDB, the
+# server reports its PID, port and start time, which the local process must
+# match (see verify_mongo_pid).  With --system-only the tool does not connect,
+# and uses the mongod or mongos listening on the port it would connect to,
+# on this host.  The result is cached in $PT_TMPDIR/trigger-mongo-pid while
+# that process runs.  Prints the PID, or why there is none and fails; never
+# falls back to another local mongod or mongos.
+trigger_mongo_pid() {
+   local cache="$PT_TMPDIR/trigger-mongo-pid"
+   local pid="" port="" start="" out host
+
+   if [ -f "$cache" ]; then
+      IFS='|' read -r pid port start < "$cache"
+      if verify_mongo_pid "$pid" "$port" "$start" >/dev/null; then
+         echo "$pid"
+         return 0
+      fi
+      rm -f "$cache"
+   fi
+
+   if [ -n "$MONGO_CONNECT_JS" ]; then
+      out=$(mongo_eval "$MONGO_JS_LIB
+const __id = __server_identity(db.getSiblingDB('admin').runCommand({serverStatus: 1}));
+print('identity|' + [__id.pid, __id.port, __id.start].join('|'));" 2>/dev/null \
+         | sed -n 's/^identity|//p' | tail -n 1)
+      IFS='|' read -r pid port start <<EOF
+$out
+EOF
+      if [ -z "$pid" ]; then
+         echo "the server did not report its PID"
+         return 1
+      fi
+      out=$(verify_mongo_pid "$pid" "$port" "$start") || { echo "$out"; return 1; }
+   else
+      pid=$(mongo_pid_by_port) || { echo "$pid"; return 1; }
+      read -r host port <<EOF
+$(mongo_target)
+EOF
+      start=$(_process_start "$pid")
+   fi
+   echo "$pid|$port|$start" > "$cache"
+   echo "$pid"
+}
+
+# A ps field (%cpu or %mem) of the server's process.
+_trg_process_stat() {
+   local field="$1" pid
+   if ! pid=$(trigger_mongo_pid); then
+      warn "Cannot find the MongoDB server's process on this host: $pid"
+      return 1
+   fi
+   ps -p "$pid" -o "$field=" 2>/dev/null \
+      | awk 'NF {gsub(/,/, "."); printf "%.2f\n", $1 + 0; exit}'
+}
+
 trg_process_cpu() {
-   local pid value
-   pid=$(get_mongo_pid)
-   [ -n "$pid" ] || return 1
-   value=$(ps -p "$pid" -o %cpu= 2>/dev/null | awk '{gsub(/,/, "."); printf "%.2f\n", $1 + 0; exit}')
-   [ -n "$value" ] && echo "$value"
+   _trg_process_stat %cpu
 }
 
 trg_process_memory() {
-   local pid value
-   pid=$(get_mongo_pid)
-   [ -n "$pid" ] || return 1
-   value=$(ps -p "$pid" -o %mem= 2>/dev/null | awk '{gsub(/,/, "."); printf "%.2f\n", $1 + 0; exit}')
-   [ -n "$value" ] && echo "$value"
+   _trg_process_stat %mem
 }
 
 trg_writewait() {
@@ -2208,6 +2379,18 @@ if [ "${0##*/}" = "$TOOL" ] || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; the
          || die "Cannot connect to MongoDB: $(echo "$ping_output" | tail -n 1)"
    fi
 
+   # The process triggers measure the server's own process, so it must run
+   # on this host; never measure another mongod or mongos instead.
+   if [ "$OPT_STALK" ]; then
+      case "$TRIGGER_FUNCTION" in
+         trg_process_cpu|trg_process_memory)
+            trigger_pid="$(trigger_mongo_pid)" \
+               || die "--function $OPT_FUNCTION needs the MongoDB server to run on this host, but $trigger_pid"
+            log "--function $OPT_FUNCTION measures the server's process, PID $trigger_pid"
+            ;;
+      esac
+   fi
+
    if [ "$OPT_COLLECT" ]; then
       [ -d "$OPT_DEST" ] || mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
       (
@@ -2349,7 +2532,12 @@ diagnosis.
 
 In addition to freezing the server, there is also some risk of the server
 crashing or performing badly after GDB detaches from it.  The server must run
-on the same host as the tool, and attaching to it usually requires root.
+on the same host as the tool, and attaching to it usually requires root.  The
+tool attaches only to the process with the PID the server reports in
+C<serverStatus>, if that process also started when the server did and listens
+on the server's port, so it never attaches to another mongod or mongos on
+this host.  The same applies to all process data: L<"--collect-strace">,
+C<pmap>, C<lsof>, C<pidstat> and the server's log.
 
 =item --collect-strace
 
@@ -2415,7 +2603,7 @@ Do not collect if the disk has less than this percent free space.
 type: string; default: status
 
 Trigger source. Valid built-in values are C<status>, C<currentop>, C<cpu>,
-C<memory>, C<writewait>, and C<repllag>.
+C<memory>, C<process-cpu>, C<process-memory>, C<writewait>, and C<repllag>.
 
 With C<status>, L<"--variable"> is a dot-separated path inside
 C<serverStatus>. Example:
@@ -2434,6 +2622,20 @@ C</proc/meminfo>. C<mem> is accepted as an alias for C<memory>. Example:
 
   --function cpu --threshold 85
   --function memory --threshold 90
+
+With C<process-cpu> and C<process-memory>, the trigger value is the C<%cpu> or
+C<%mem> that C<ps> reports for the server's own mongod or mongos process,
+which must run on this host.  C<processcpu>, C<proc-cpu>, C<proc_cpu>, C<processmemory>,
+C<proc-memory> and C<proc_memory> are accepted as aliases.  The process is the one with the PID
+the server reports in C<serverStatus>, if it also started when the server did
+and listens on the server's port; another mongod or mongos on this host is
+never used instead.  With L<"--system-only"> the tool does not connect to
+MongoDB, and uses the mongod or mongos listening on the port of L<"--uri"> or
+L<"--port">, if L<"--uri"> or L<"--host"> is this host; finding another user's
+process this way needs root, for C<lsof>.  The tool exits with an error if the
+process cannot be found when it starts.  Example:
+
+  --function process-cpu --threshold 90
 
 With C<writewait>, the trigger value is
 C<serverStatus.globalLock.currentQueue.writers>. Example:

@@ -1,2 +1,26 @@
 #!/usr/bin/env bash
-echo "mongod 4242 user 10u IPv4 1 0t0 TCP localhost:27017 (LISTEN)"
+# Fake lsof.  The listening sockets come from FAKE_PROCS (see procs.sh):
+#   lsof -nP -a -p PID -iTCP -sTCP:LISTEN -Fn   the ports PID listens on
+#   lsof -nP -iTCP:PORT -sTCP:LISTEN -Fpc       the process listening on PORT
+# Anything else prints an open file of the mongod with PID 4242.
+. "$(dirname "$0")/procs.sh"
+
+case "$*" in
+   "-nP -a -p "*" -iTCP -sTCP:LISTEN -Fn")
+      read -r pid name port rest <<END
+$(fake_proc pid "$4")
+END
+      [ -n "$pid" ] || exit 1
+      printf 'p%s\nn*:%s\n' "$pid" "$port"
+      ;;
+   "-nP -iTCP:"*" -sTCP:LISTEN -Fpc")
+      read -r pid name port rest <<END
+$(fake_proc port "${2#-iTCP:}")
+END
+      [ -n "$pid" ] || exit 1
+      printf 'p%s\nc%s\nn*:%s\n' "$pid" "$name" "$port"
+      ;;
+   *)
+      echo "mongod 4242 user 10u IPv4 1 0t0 TCP localhost:27017 (LISTEN)"
+      ;;
+esac
