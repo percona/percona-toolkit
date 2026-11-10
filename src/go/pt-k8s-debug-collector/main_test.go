@@ -1072,3 +1072,42 @@ func (s *CollectorSuite) TestCustomPgLogDirectory() {
 		s.NotEqual("0", strings.TrimSpace(string(out)), "Expected PostgreSQL log files from %s of pod %s in archive", utils.CRUNCHY_PG_LOG_DIRECTORY, pod.Name)
 	}
 }
+
+func (s *CollectorSuite) TestNamespaceOption() {
+	pods, err := s.KubeClient.CoreV1().Pods(metav1.NamespaceAll).List(s.T().Context(), metav1.ListOptions{})
+	s.Require().NoError(err)
+	s.Require().True(slices.ContainsFunc(pods.Items, func(p corev1.Pod) bool {
+		return p.Namespace != s.Namespace
+	}), "Expected pods outside namespace %s in the cluster", s.Namespace)
+
+	err = s.runCollector(
+		"--kubeconfig", s.KubeConfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--namespace", s.Namespace,
+		"--skip-pod-summary",
+	)
+	s.NoError(err)
+
+	out, err := exec.Command("tar", "-tf", "cluster-dump.tar.gz").Output()
+	s.Require().NoError(err)
+
+	allowed := []string{
+		"cluster-dump/errors.txt",
+		"cluster-dump/cluster-scope/",
+		"cluster-dump/" + s.Namespace + "/",
+	}
+	var foreign []string
+	describes := 0
+	for _, entry := range strings.Fields(string(out)) {
+		if !slices.ContainsFunc(allowed, func(prefix string) bool { return strings.HasPrefix(entry, prefix) }) {
+			foreign = append(foreign, entry)
+		}
+		if strings.HasSuffix(entry, "/describe.txt") {
+			describes++
+		}
+	}
+
+	s.Empty(foreign, "Archive has entries outside namespace %s", s.Namespace)
+	s.NotZero(describes, "Expected describe.txt of pods in namespace %s", s.Namespace)
+}

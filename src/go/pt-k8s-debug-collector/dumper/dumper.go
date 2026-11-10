@@ -25,6 +25,7 @@ import (
 	"go.yaml.in/yaml/v2"
 	"golang.org/x/sync/semaphore"
 	corev1 "k8s.io/api/core/v1"
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -98,6 +99,12 @@ type exportJob struct {
 
 // New return new Dumper object
 func New(location, dumpFile, namespace, kubeconfig, clusterName, forwardport, resource string, skipPodSummary bool, concurrentExportWorkers int) (*Dumper, error) {
+	if namespace != "" {
+		if errs := apivalidation.ValidateNamespaceName(namespace, false); len(errs) > 0 {
+			return nil, fmt.Errorf("invalid namespace %q: %s", namespace, strings.Join(errs, "; "))
+		}
+	}
+
 	safeLog := NewSafeLogger()
 
 	log.AddHook(&ErrorArchiveHook{safeLogger: safeLog})
@@ -248,7 +255,7 @@ func (d *Dumper) DumpCluster() error {
 	defer d.logger.DumpToArchive(d.archive, d.DumperLogPath("errors"))
 
 	log.Info("initializing pod cache")
-	factory := informers.NewSharedInformerFactory(d.clientSet, 10*time.Minute)
+	factory := newPodInformerFactory(d.clientSet, d.namespace)
 	podInformer := factory.Core().V1().Pods().Informer()
 	factory.Start(ctx.Done())
 
@@ -289,6 +296,10 @@ func (d *Dumper) DumpCluster() error {
 
 	log.Infof("export complete\ndata saved to %s", archivePath)
 	return nil
+}
+
+func newPodInformerFactory(client kubernetes.Interface, namespace string) informers.SharedInformerFactory {
+	return informers.NewSharedInformerFactoryWithOptions(client, 10*time.Minute, informers.WithNamespace(namespace))
 }
 
 func (d *Dumper) archiveFileName(t time.Time) string {

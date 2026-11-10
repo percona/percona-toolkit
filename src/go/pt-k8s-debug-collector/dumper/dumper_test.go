@@ -17,11 +17,16 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
 )
 
 func TestMatchesCR(t *testing.T) {
@@ -541,5 +546,55 @@ func TestPodDescribePath(t *testing.T) {
 	want := filepath.Join("cluster-dump", "pxc", "pxc-node-0", "describe.txt")
 	if got != want {
 		t.Fatalf("PodDescribePath = %q, want %q", got, want)
+	}
+}
+
+func TestPodInformerFactoryNamespace(t *testing.T) {
+	client := fake.NewSimpleClientset(
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "app-a", Namespace: "pg-a"}},
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "app-b", Namespace: "pg-b"}},
+	)
+
+	tests := []struct {
+		name      string
+		namespace string
+		want      []string
+	}{
+		{name: "single namespace", namespace: "pg-a", want: []string{"pg-a/app-a"}},
+		{name: "all namespaces", namespace: "", want: []string{"pg-a/app-a", "pg-b/app-b"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			factory := newPodInformerFactory(client, tt.namespace)
+			informer := factory.Core().V1().Pods().Informer()
+			factory.Start(t.Context().Done())
+			if !cache.WaitForCacheSync(t.Context().Done(), informer.HasSynced) {
+				t.Fatal("pod cache did not sync")
+			}
+
+			pods, err := factory.Core().V1().Pods().Lister().List(labels.Everything())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var got []string
+			for _, p := range pods {
+				got = append(got, p.Namespace+"/"+p.Name)
+			}
+			slices.Sort(got)
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("pods = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewRejectsInvalidNamespace(t *testing.T) {
+	for _, ns := range []string{"pg-a/", "namespace/pg-a", ".", "..", "pg%a", "PG-A", "pg-a,pg-b"} {
+		_, err := New("cluster-dump", "", ns, "", "", "", "none", false, 0)
+		if err == nil || !strings.Contains(err.Error(), "invalid namespace") {
+			t.Errorf("New(namespace=%q) error = %v, want invalid namespace", ns, err)
+		}
 	}
 }
