@@ -1318,15 +1318,14 @@ sub explain_report {
          }
          my $sth;
          eval {
-             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ $query");
+             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ /*!90700 FORMAT=TRADITIONAL */ $query");
              $sth->execute();
          };
          if ($EVAL_ERROR) { # MySQL 8.0+ doesn't support PARTITIONS
              $self->{no_partitions} = 1;
-             $sth = $dbh->prepare("EXPLAIN $query");
+             $sth = $dbh->prepare("EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $query");
              $sth->execute();
          }
-         $sth->execute();
          my $i = 1;
          while ( my @row = $sth->fetchrow_array() ) {
             $explain .= "# *************************** $i. "

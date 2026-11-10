@@ -1,15 +1,24 @@
 package dumper
 
 import (
+	"context"
 	"fmt"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 )
 
-var resourcesRe = regexp.MustCompile(`(\w+\.(\w+).percona\.com)`)
+var resourcesRe = regexp.MustCompile(`(\w+\.([\w-]+)\.(percona|crunchydata)\.com)`)
+
+const (
+	pgLogDirectoryVar     = "PG_LOG_DIRECTORY"
+	pgLogDirectoryTimeout = 30 * time.Second
+)
 
 func (d *Dumper) addPg1() error {
 	dirpaths := map[string][]string{
@@ -17,24 +26,77 @@ func (d *Dumper) addPg1() error {
 	}
 
 	d.individualFiles = append(d.individualFiles, individualFile{
-		resourceName:  "pgo",
-		containerName: "database",
-		dirpaths:      dirpaths,
+		resourceName:   "pgo",
+		containerNames: []string{"database"},
+		dirpaths:       dirpaths,
 	})
 	return nil
 }
 
 func (d *Dumper) addPg2() error {
-	dirpaths := map[string][]string{
-		"pg_log": {"$PGDATA/log"},
+	d.individualFiles = append(d.individualFiles, d.pg2IndividualFile("pgv2"))
+	return nil
+}
+
+func (d *Dumper) addCrunchy() error {
+	d.individualFiles = append(d.individualFiles, d.pg2IndividualFile("crunchy"))
+	return nil
+}
+
+func (d *Dumper) pgLogDirectory(ctx context.Context, pod corev1.Pod, container string, env map[string]string) string {
+	pgdata := env["PGDATA"]
+
+	ctx, cancel := context.WithTimeout(ctx, pgLogDirectoryTimeout)
+	defer cancel()
+
+	out, stderr, err := d.executeInPod(ctx, []string{"psql", "-XAtc", "SHOW log_directory"}, pod, container, nil)
+	if err != nil {
+		fallback := resolvePgLogDirectory("", pgdata)
+		log.Warnf("Failed to get log_directory in pod %s/%s, using %q: %v (stderr: %s)", pod.Namespace, pod.Name, fallback, err, stderr.String())
+		return fallback
 	}
 
-	d.individualFiles = append(d.individualFiles, individualFile{
-		resourceName:  "pgv2",
-		containerName: "database",
-		dirpaths:      dirpaths,
-	})
-	return nil
+	return resolvePgLogDirectory(out.String(), pgdata)
+}
+
+func resolvePgLogDirectory(out, pgdata string) string {
+	dir := strings.TrimSpace(out)
+	switch {
+	case dir == "":
+		return path.Join(pgdata, "log")
+	case path.IsAbs(dir):
+		return dir
+	default:
+		return path.Join(pgdata, dir)
+	}
+}
+
+func (d *Dumper) pg2IndividualFile(resourceName string) individualFile {
+	dirpaths := map[string][]string{
+		"pg_log":         {"$" + pgLogDirectoryVar},
+		"pgbackrest_log": {"pgdata/pgbackrest/log"},
+	}
+
+	tools := map[string][]toolLog{
+		"": {
+			{
+				filename: "patronictl-list.log",
+				args:     []string{"patronictl", "list"},
+			},
+			{
+				filename: "pgbackrest-info.log",
+				args:     []string{"pgbackrest", "info"},
+			},
+		},
+	}
+
+	return individualFile{
+		resourceName:   resourceName,
+		containerNames: []string{"database"},
+		dirpaths:       dirpaths,
+		toolCmds:       tools,
+		dynamicEnv:     map[string]dynamicEnvFunc{pgLogDirectoryVar: d.pgLogDirectory},
+	}
 }
 
 func (d *Dumper) addPxc() error {
@@ -50,9 +112,9 @@ func (d *Dumper) addPxc() error {
 	}
 
 	d.individualFiles = append(d.individualFiles, individualFile{
-		resourceName:  "pxc",
-		containerName: "logs",
-		filepaths:     filepaths,
+		resourceName:   "pxc",
+		containerNames: []string{"logs", "pxc"},
+		filepaths:      filepaths,
 	})
 	return nil
 }
@@ -118,6 +180,20 @@ func (d *Dumper) autoCustomResource() ([]string, error) {
 	return result, nil
 }
 
+func parseResourceSpec(resource string) (string, string) {
+	resource = strings.TrimSpace(resource)
+	if resource == "" {
+		return "", ""
+	}
+
+	resourceName, clusterName, found := strings.Cut(resource, "/")
+	if !found {
+		return resourceName, ""
+	}
+
+	return resourceName, clusterName
+}
+
 // TODO: rewrite to use map or switch
 func resourceType(s string) string {
 	if s == "auto" {
@@ -134,6 +210,8 @@ func resourceType(s string) string {
 		return "pgv2"
 	} else if s == "ps" || strings.HasPrefix(s, "ps/") {
 		return "ps"
+	} else if s == "postgres-operator" {
+		return "crunchy"
 	}
 	return s
 }

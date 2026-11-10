@@ -829,7 +829,7 @@ SKIP: {
 
    like(
       $config->mysql_version(),
-      qr/8\.\d+\.\d+/,
+      qr/\d\d?\.\d+\.\d+/,
       "MySQL version from dbh"
    ) if ($sandbox_version ge '8.0');
 }

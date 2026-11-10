@@ -30,6 +30,7 @@ Getting Percona Toolkit
 
    installation
    get-help
+   contribute
 
 Tools
 =====

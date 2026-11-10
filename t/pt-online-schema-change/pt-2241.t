@@ -98,10 +98,9 @@ unlike(
 diag("Setting replica delay to 0 seconds");
 $replica1_dbh->do("STOP ${replica_name}");
 $replica2_dbh->do("STOP ${replica_name}");
-$source_dbh->do("RESET ${source_reset}");
-$replica1_dbh->do("RESET ${replica_name}");
+$replica1_dbh->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
+$replica2_dbh->do("CHANGE ${source_change} TO ${source_name}_DELAY=0");
 $replica1_dbh->do("START ${replica_name}");
-$replica2_dbh->do("RESET ${replica_name}");
 $replica2_dbh->do("START ${replica_name}");
 
 $sb->wipe_clean($source_dbh);

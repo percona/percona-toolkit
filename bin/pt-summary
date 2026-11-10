@@ -560,12 +560,10 @@ _lsof() {
 
 
 _which() {
-   if [ -x /usr/bin/which ]; then
-      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
-   elif which which 1>/dev/null 2>&1; then
+   if which "$1" 1>/dev/null 2>&1; then
       which "$1" 2>/dev/null | awk '{print $1}'
-   else
-      echo "$1"
+   elif command -v "$1" 1>/dev/null 2>&1; then
+      command -v "$1" 2>/dev/null | awk '{print $1}'
    fi
 }
 
@@ -2807,7 +2805,7 @@ along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 
-pt-summary 3.7.1
+pt-summary 3.7.2
 
 =cut
 

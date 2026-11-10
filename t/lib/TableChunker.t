@@ -303,6 +303,9 @@ SKIP: {
       'Datetime column chunks OK',
    );
 
+SKIP: {
+   skip 'MySQL 9.7 does not support zero dates in interval calculations', 1 if $sandbox_version ge '9.7';
+
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
       chunk_col     => 'a',
@@ -323,6 +326,7 @@ SKIP: {
       ],
       'Datetime where min is 0000-00-00 00:00:00',
    );
+}
 
    $t = $tp->parse( load_file('t/lib/samples/timecol.sql') );
    @chunks = $c->calculate_chunks(

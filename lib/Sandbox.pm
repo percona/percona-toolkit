@@ -133,12 +133,7 @@ sub create_dbs {
 sub get_dbh_for {
    my ( $self, $server, $cxn_ops, $user ) = @_;
    _check_server($server);
-   if ($ENV{FORK} || "" eq 'mariadb') {
-      $cxn_ops ||= { AutoCommit => 1, mysql_enable_utf8 => 1, mysql_ssl => 0 };
-   }
-   else {
-      $cxn_ops ||= { AutoCommit => 1, mysql_enable_utf8 => 1, mysql_ssl => 1 };
-   }
+   $cxn_ops ||= { AutoCommit => 1, mysql_enable_utf8 => 1, mysql_ssl => 1, mysql_ssl_optional => 1 };
    $user    ||= 'msandbox';
    PTDEBUG && _d('dbh for', $server, 'on port', $port_for{$server});
    my $dp = $self->{DSNParser};
@@ -353,7 +348,7 @@ sub wait_for_replicas {
    my ($self, %args) = @_;
    my $source_dbh = $self->get_dbh_for($args{source} || 'source');
    my $replica2_dbh = $self->get_dbh_for($args{replica}  || 'replica2');
-   my ($ping) = $source_dbh->selectrow_array("SELECT MD5(RAND())");
+   my ($ping) = $source_dbh->selectrow_array("SELECT SHA2(RAND(), 256)");
    $source_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1 /* wait_for_replicas */");
    PerconaTest::wait_until(
       sub {
@@ -384,6 +379,7 @@ sub verify_test_data {
                           grep { !/user$/ }
                           grep { !/proxies_priv$/ }
                           grep { !/global_grants$/ }
+                          grep { !/gtid_executed$/ }
                           @{$source->selectcol_arrayref('SHOW TABLES FROM mysql')};
    my @tables_in_sakila = qw(actor address category city country customer
                              film film_actor film_category film_text inventory

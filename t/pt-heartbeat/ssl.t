@@ -20,7 +20,22 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
-if ( !$dbh ) {
+my ($output, $exit_code);
+my $cnf       = '/tmp/12345/my.sandbox.cnf';
+my $cmd       = "$trunk/bin/pt-heartbeat -F $cnf ";
+
+# Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
+($output, $exit_code) = full_output(
+   sub { pt_heartbeat::main("F=$cnf,h=127.1,P=12345,u=msandbox,p=msandbox,s=1",
+      qw(-D test --check)),
+   },
+   stderr => 1,
+);
+
+if ( $exit_code != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+}
+elsif ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox source';
 }
 elsif ( $sandbox_version lt '8.0' ) {
@@ -28,10 +43,6 @@ elsif ( $sandbox_version lt '8.0' ) {
 }
 
 $sb->create_dbs($dbh, ['test']);
-
-my ($output, $exit_code);
-my $cnf       = '/tmp/12345/my.sandbox.cnf';
-my $cmd       = "$trunk/bin/pt-heartbeat -F $cnf ";
 
 $dbh->do('drop table if exists test.heartbeat');
 $dbh->do(q{CREATE TABLE test.heartbeat (
@@ -151,6 +162,62 @@ like(
    qr/SSL connection error: Unable to get private key at/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
+
+# #############################################################################
+# Test mysql_ssl_optional option
+# #############################################################################
+
+($output, $exit_code) = full_output(
+   sub { pt_heartbeat::main("F=$cnf,h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1",
+      qw(-D test --check)) },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option mysql_ssl_optional"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option mysql_ssl_optional'
+) or diag($output);
+
+$row = $dbh->selectall_hashref('select * from test.heartbeat', 'id');
+is(
+   $row->{1}->{id},
+   1,
+   "Automatically inserts heartbeat row (issue 1292) with option mysql_ssl_optional"
+);
+
+($output, $exit_code) = full_output(
+   sub { pt_heartbeat::main(
+         qw(--host 127.1 --port 12345 --user sha256_user),
+         qw(--password sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1),
+      qw(-D test --check)) },
+   stderr => 1,
+);
+
+is(
+   $exit_code,
+   0,
+   "No error for user, identified with caching_sha2_password with option --mysql_ssl and --mysql_ssl_optional"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with option --mysql_ssl and --mysql_ssl_optional'
+) or diag($output);
+
+$row = $dbh->selectall_hashref('select * from test.heartbeat', 'id');
+is(
+   $row->{1}->{id},
+   1,
+   "Automatically inserts heartbeat row (issue 1292) with option --mysql_ssl and --mysql_ssl_optional"
+);
 
 # #############################################################################
 # Done.

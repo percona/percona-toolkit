@@ -162,7 +162,7 @@ sub _make_range_query {
    my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
    push @where, $q->quote($col) . " >= " . $condition;
 
-   my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
            . "WHERE " . join(' AND ', @where)
            . " /*key_len*/";

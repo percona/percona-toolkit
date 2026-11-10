@@ -32,7 +32,7 @@ $output = output(
 );
 like(
    $output,
-   qr/# \S+ KILL 3 \(Query 9 sec\) select c from t where id='foo';\n# \S+ KILL 2 \(Query 9 sec\) select c from t where id='foo';\n# \S+ KILL 4 \(Query 5 sec\) select c from t where id='foo';/,
+   qr/# \S+ KILL 3 \(Db: foo\) \(Query 9 sec\) select c from t where id='foo';\n# \S+ KILL 2 \(Db: foo\) \(Query 9 sec\) select c from t where id='foo';\n# \S+ KILL 4 \(Db: foo\) \(Query 5 sec\) select c from t where id='foo';/,
    "Kill all but oldest"
 );
 
@@ -44,7 +44,7 @@ $output = output(
 );
 like(
    $output,
-   qr/# \S+ KILL 3 \(Query 9 sec\) select c from t where id='foo';\n# \S+ KILL 2 \(Query 9 sec\) select c from t where id='foo';/,
+   qr/# \S+ KILL 3 \(Db: foo\) \(Query 9 sec\) select c from t where id='foo';\n# \S+ KILL 2 \(Db: foo\) \(Query 9 sec\) select c from t where id='foo';/,
    "Kill all but oldest, matching specific user"
 );
 
@@ -70,7 +70,7 @@ $output = output(
 );
 like(
    $output,
-   qr/# \S+ KILL 1 \(Query 10 sec\)/,
+   qr/# \S+ KILL 1 \(Db: foo\) \(Query 10 sec\)/,
    "Any busy time matches"
 );
 
@@ -94,7 +94,7 @@ $output = output(
 );
 like(
    $output,
-   qr/# \S+ KILL 3 \(Query 9 sec\) select c from t where id='foo';\n# \S+ KILL 2 \(Query 9 sec\) select c from t where id='foo';/,
+   qr/# \S+ KILL 3 \(Db: foo\) \(Query 9 sec\) select c from t where id='foo';\n# \S+ KILL 2 \(Db: foo\) \(Query 9 sec\) select c from t where id='foo';/,
    "Each busy time matches"
 );
 

@@ -51,10 +51,6 @@ my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-# We need to reset source, because otherwise later RESET REPLICA call
-# will let sandbox to re-apply all previous events, executed on the sandbox.
-$source_dbh->do("RESET ${source_reset}");
-
 if ( $sandbox_version ge '8.4' ) {
     diag("Setting replication filters on replica 2");
     $sb->load_file('replica2', "t/pt-online-schema-change/samples/pt-1455_replica.sql", undef, no_wait => 1);
@@ -102,7 +98,6 @@ like(
     qr/Successfully altered/s,
     "PT-1455 Got successfully altered message.",
 );
-$source_dbh->do("RESET ${source_reset}");
 $source_dbh->do("DROP DATABASE IF EXISTS employees");
 
 diag("Resetting replication filters on replica 2");

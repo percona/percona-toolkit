@@ -516,9 +516,9 @@ cleanup();
 
 $retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --sleep 2 --dest $dest --pid $pid_file --iterations 5 -- --defaults-file=$cnf >$log_file 2>&1");
 
-$output = `du -s $dest | cut -f 1`;
-
 PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `du -s $dest | cut -f 1`;
 
 $retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-size 1 --pid $pid_file --iterations 2 -- --defaults-file=$cnf >$log_file 2>&1");
 
@@ -531,7 +531,7 @@ ok(
    # Keep up to –retention-size MB of data. It will keep at least 1 run even if the size is bigger than the specified in this parameter
    $output >= 1,
    "Retention test 4: retention by size works as expected"
-);
+) or diag($output, `ls -lh $dest`);
 
 # ###########################################################################
 # Test if retention by count works as expected
@@ -779,8 +779,11 @@ SKIP: {
       $sb->load_file('chan_source2', "sandbox/gtid_on-legacy.sql", undef, no_wait => 1);
       $sb->load_file('chan_replica1', "sandbox/replica_channels_t-legacy.sql", undef, no_wait => 1);
    } else {
-      $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
-      $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+      if ( $sandbox_version lt '9.7' ) {
+         $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+         $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+         $sb->load_file('chan_replica1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+      }
       $sb->load_file('chan_replica1', "sandbox/replica_channels_t.sql", undef, no_wait => 1);
    }
 

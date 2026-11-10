@@ -63,7 +63,7 @@ sub explain_query {
          (length $query <= 100 ? $query : substr($query, 0, 100) . "..."));
       return;
    }
-   my $sql = "EXPLAIN $query";
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $query";
    PTDEBUG && _d($dbh, $sql);
    my $explain = $dbh->selectall_arrayref($sql, { Slice => {} });
    PTDEBUG && _d("Result of EXPLAIN:", Dumper($explain));

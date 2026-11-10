@@ -23,7 +23,7 @@ if ( $sandbox_version lt '5.6' ) {
 diag("Stopping/reconfiguring/restarting sandboxes 12345, 12346 and 12347");
 
 diag(`$trunk/sandbox/test-env stop >/dev/null`);
-diag(`REPLICATION_THREADS=2 GTID=ON_PERMISSIVE $trunk/sandbox/test-env start >/dev/null`);
+diag(`REPLICATION_THREADS=2 GTID=1 $trunk/sandbox/test-env start >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);

@@ -13,6 +13,7 @@ html_theme_options = {
     'repo_name': 'percona/percona-toolkit',
     'edit_uri': 'edit/3.x/docs/',
     'globaltoc_collapse': True,
+    'font': False,
     "features": [
         "navigation.top",
         "navigation.footer",

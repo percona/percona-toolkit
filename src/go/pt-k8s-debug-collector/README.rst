@@ -4,7 +4,7 @@
 :program:`pt-k8s-debug-collector`
 ==================================
 
-Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster. Data is packed into the ``cluster-dump.tar.gz`` archive in the current working directory.
+Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster. Data is packed into the ``cluster-dump_<YYYYMMDDHHMMSS>.tar.gz`` archive in the current working directory, where the suffix is the UTC time the collection started (e.g. ``cluster-dump_20260929210811.tar.gz``). Use ``--dump-file`` to set a custom archive name. An existing file is never overwritten.
 
 Data that will be collected
 ===========================
@@ -35,6 +35,14 @@ Data that will be collected
    "persistentvolumes",
    "modes",
    "your-custom-resource" (depends on 'resource' flag)
+
+Per-pod describe output (available in file describe.txt)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For every collected pod, the output of ``kubectl describe pod`` is stored in
+``<namespace>/<pod>/describe.txt``. It includes per-container ``State``,
+``Last State``, ``Reason`` and ``Exit Code``, together with the pod ``Events`` —
+useful for debugging crashed or restarting pods.
 
 Data, collected for PXC
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -105,6 +113,7 @@ Data, collected for PostgreSQL
 .. code-block:: bash
 
    "perconapgclusters",
+   "postgresclusters",
    "pgclusters",
    "pgpolicies",
    "pgreplicas",
@@ -116,6 +125,22 @@ Summary, collected for PostgreSQL (available in file summary.txt)
 .. code-block:: bash
 
    "pg_gather"
+
+Individual files, collected for PostgreSQL (PostgreSQL Operator v2 and Crunchy Postgres Operator)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   "log_directory" (from SHOW log_directory, relative to $PGDATA; $PGDATA/log if the query fails)
+   "pgdata/pgbackrest/log"
+
+Command outputs, collected for PostgreSQL (PostgreSQL Operator v2 and Crunchy Postgres Operator)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   "patronictl list"
+   "pgbackrest info"
 
 Usage
 =====
@@ -141,6 +166,8 @@ Targeted custom resource name. Supported values:
 
 * ``pgv2`` - PostgreSQL Operator v2
 
+* ``crunchy`` - Crunchy Postgres Operator
+
 * ``ps`` - MySQL
 
 * ``none`` - Collect only general Kubernetes data, do not collect anything specific to the particular operator).
@@ -160,6 +187,9 @@ Default: ``auto``
 
 ``--forwardport``
     Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
+
+``--dump-file``
+    Archive file name, used as is. ``{timestamp}`` in the name is replaced with the UTC time the collection started in ``YYYYMMDDHHMMSS`` format, e.g. ``--dump-file=prod-cluster_{timestamp}.tar.gz`` creates ``prod-cluster_20260929210811.tar.gz`` and ``--dump-file=prod-cluster.tar.gz`` creates ``prod-cluster.tar.gz``. The archive is always a gzip-compressed tar regardless of the name. Default: ``cluster-dump_{timestamp}.tar.gz``.
 
 ``--concurrent-export-workers``
     Number of concurrent workers for exporting Kubernetes resources. Default: ``16``.
@@ -209,7 +239,7 @@ This warning is harmless and does not affect data collection. We will remove pod
 Authors
 =======
 
-Max Dudin, Andrii Dema, Carlos Salguero, Sveta Smirnova
+Max Dudin, Andrii Dema, Carlos Salguero, Sveta Smirnova, Vladyslav Yurchenko, Eugene Slavyansky
 
 ABOUT PERCONA TOOLKIT
 =====================
@@ -243,5 +273,5 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 VERSION
 =======
 
-:program:`pt-k8s-debug-collector` 3.7.1
+:program:`pt-k8s-debug-collector` 3.7.2
 

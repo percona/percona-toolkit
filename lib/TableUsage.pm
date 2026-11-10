@@ -849,7 +849,7 @@ sub _explain_query {
       $sql = "EXPLAIN EXTENDED $query";
    }
    else {
-      $sql = "EXPLAIN $query"; # EXTENDED is implicit as of 5.7.3
+      $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $query"; # EXTENDED is implicit as of 5.7.3
    }
 
    PTDEBUG && _d($dbh, $sql);

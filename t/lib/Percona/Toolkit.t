@@ -10,6 +10,14 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+
+# Fix for Amazon Linux 2023 strict security header parsing
+BEGIN {
+    if (-f '/etc/os-release' && qx(cat /etc/os-release) =~ /amzn/) {
+        $ENV{PERL_CCFLAGS} //= '-O2';
+    }
+}
+
 use IPC::Cmd qw(can_run run);
 
 use PerconaTest;
@@ -26,17 +34,17 @@ my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ } glob("$trunk/bin/*"
 
 foreach my $tool ( @vc_tools ) {
    my $output = `$tool --version 2>/dev/null`;
-   my ($tool_version) = $output =~ /(\b[0-9]\.[0-9]\.[0-9]\b)/;
+   my ($tool_version) = $output =~ /(\b[0-9]\.[0-9]\.[0-9](\-[0-9]+)?\b)/;
    next unless $tool_version; # Some tools don't have --version implemented
    my $base = basename($tool);
    is(
       $tool_version,
       $version,
       "$base --version and Percona::Toolkit::VERSION agree"
-   );
+   ) or diag("Tool version: $tool_version, Base version: $version, output: $output");
 
    # Now let's check that lib/Percona/Toolkit.pm and each tool's
-   # $Percona::Toolkit::VERSION agree, sow e can avoid the 2.1.4 pt-table-sync
+   # $Percona::Toolkit::VERSION agree, so we can avoid the 2.1.4 pt-table-sync
    # debacle
    open my $tmp_fh, q{<}, $tool or die "$!";
    my $is_perl = scalar(<$tmp_fh>) =~ /perl/;
@@ -48,21 +56,21 @@ foreach my $tool ( @vc_tools ) {
    print { $fh } "require q{$tool}; print \$Percona::Toolkit::VERSION, qq{\\n}";
    close $fh;
    
-   my ($success, undef, $full_buf) =
+   my ($success, undef, $full_buf, $stdout_buf) =
       run( command => [ $perl, $filename ] );
 
    if ( !$success ) {
-      fail("Failed to get \$Percona::Toolkit::VERSION from $base: " . $full_buf ? join("", @$full_buf) : '')
+      fail("Failed to get \$Percona::Toolkit::VERSION from $base: " . $stdout_buf ? join("", @$stdout_buf) : '')
    }
    else {
-      chomp(@$full_buf);
-      my $out = join "", @$full_buf;
+      chomp(@$stdout_buf);
+      my $out = join "", @$stdout_buf;
       if ($out) {
          is(
-            "@$full_buf",
+            "@$stdout_buf",
             $version,
             "$base and lib/Percona/Toolkit.pm agree"
-         );
+         ) or diag("full_buf: @$full_buf, version: $version");
       }
    }
 }
