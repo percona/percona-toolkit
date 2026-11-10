@@ -56,6 +56,7 @@ my @err_files = glob("$dest/*.err");
 is(scalar @err_files, 0, "no .err files");
 
 like(slurp_file("$p-trigger"), qr/pt-mongodb-stalk ran with/, "trigger file records the options");
+like(slurp_file("$p-trigger"), qr/Collect 1 finished in \d+s$/m, "trigger file records when the collection ends");
 like(slurp_file("$p-output"), qr/connected to: mongodb:\/\/localhost:27017/,
    "command stderr goes to <prefix>-output");
 

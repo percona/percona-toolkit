@@ -2055,26 +2055,22 @@ stalk() {
 
                before_collect
 
-               local collect_start_epoch
-               local collect_end_epoch
-               local collect_elapsed
-               collect_start_epoch=$(date +%s)
                ts "Collect $ITER started; run-time=$OPT_RUN_TIME; sleep-collect=$OPT_SLEEP_COLLECT" >> "$OPT_DEST/$prefix-trigger"
 
+               # As in pt-stalk, the collection runs in the background and the
+               # tool goes on to sleep --sleep seconds while it runs.
                (
+                  collect_start_epoch=$(date +%s)
                   collect "$OPT_DEST" "$prefix"
+                  collect_status=$?
+                  [ "$collect_status" -ne 0 ] \
+                     && warn "Collect $ITER exited with status $collect_status"
+                  ts "Collect $ITER finished in $(($(date +%s) - collect_start_epoch))s" \
+                     >> "$OPT_DEST/$prefix-trigger"
                ) >> "$OPT_DEST/$prefix-output" 2>&1 &
                local collector_pid=$!
                log "Collect $ITER PID $collector_pid"
                after_collect "$collector_pid"
-               wait "$collector_pid"
-               local collector_status=$?
-               if [ "$collector_status" -ne 0 ]; then
-                  warn "Collect $ITER exited with status $collector_status"
-               fi
-               collect_end_epoch=$(date +%s)
-               collect_elapsed=$((collect_end_epoch - collect_start_epoch))
-               ts "Collect $ITER finished in ${collect_elapsed}s; sleep=$OPT_SLEEP before next iteration" >> "$OPT_DEST/$prefix-trigger"
             else
                warn "Collect canceled because there will not be enough disk space after collecting another $margin bytes"
             fi
@@ -2580,7 +2576,11 @@ C<replsetgetstatus> and C<serverstatus> (also C<serverstatus-ext>).
 
 type: int; default: 300
 
-How long to sleep after collecting.
+How long to sleep after L<"--collect">.  As in C<pt-stalk>, the sleep starts
+when the collection starts, while it runs in the background.  This prevents
+the tool from triggering continuously, which might be a problem if the
+collection process is intrusive.  It also prevents filling up the disk or
+gathering too much data to analyze reasonably.
 
 =item --sleep-collect
 
@@ -2752,9 +2752,10 @@ L<"--run-time"> seconds.  For example, C<--run-time 5 --sleep-collect 1> takes
 5 samples of serverStatus and runs commands like C<vmstat 1 5>.
 
 Collectors that are still running L<"--run-time"> seconds after the end of the
-collection window are stopped.  After a collection
-finishes, the tool waits L<"--sleep"> seconds before the next trigger check or
-collection.  Collections do not overlap.
+collection window are stopped.  As in C<pt-stalk>, the collection runs in the
+background: when it starts, the tool sleeps L<"--sleep"> seconds before the
+next trigger check or collection.  If L<"--sleep"> is shorter than a
+collection, collections can overlap.
 
 If L<"--prefix"> is given, every collection writes to the same files and the
 output is appended.

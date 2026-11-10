@@ -33,11 +33,16 @@ sub write_file {
 
 # Every hook appends its name to the log.  before_collect also records the
 # prefix of the collection, which plugins can use, as in pt-stalk.
+# after_collect_sleep records whether the collection still runs: as in
+# pt-stalk, --sleep starts when the collection starts, not when it ends.
 my $plugin = write_file("$tmpdir/plugin.sh", <<"SH");
 before_stalk()         { echo "before_stalk" >> "$hooks_log"; }
 before_collect()       { echo "before_collect \$prefix" >> "$hooks_log"; }
-after_collect()        { echo "after_collect \$1" >> "$hooks_log"; }
-after_collect_sleep()  { echo "after_collect_sleep" >> "$hooks_log"; }
+after_collect()        { collector=\$1; echo "after_collect \$1" >> "$hooks_log"; }
+after_collect_sleep()  {
+   kill -0 "\$collector" 2>/dev/null && state=running || state=done
+   echo "after_collect_sleep \$state" >> "$hooks_log"
+}
 after_interval_sleep() { echo "after_interval_sleep" >> "$hooks_log"; }
 after_stalk()          { echo "after_stalk" >> "$hooks_log"; }
 SH
@@ -84,7 +89,7 @@ is_deeply(
       "after_interval_sleep",
       "before_collect " . ($prefix || ''),
       "after_collect " . ($collector_pid || ''),
-      "after_collect_sleep",
+      "after_collect_sleep running",
       "after_stalk",
    ],
    "hooks are called in order"
