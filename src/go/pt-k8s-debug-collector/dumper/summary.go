@@ -45,22 +45,16 @@ func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName strin
 
 	switch crName {
 	case "pxc", "ps":
-		var port string
-		if d.forwardport != "" {
-			port = d.forwardport
-		}
-
 		pass, err := d.getSecretValueFromPod(ctx, pod, "root")
 		if err != nil {
 			return nil, fmt.Errorf("failed to get password from pxc/ps users secret: %w", err)
 		}
 
-		localport, err := d.portForwardPod(ctx, pod, port, "3306")
+		localport, stop, err := d.portForwardPod(ctx, pod, "3306")
 		if err != nil {
-			if !errors.Is(err, ERR_PORT_ALREADY_FORWARDED) {
-				return nil, err
-			}
+			return nil, err
 		}
+		defer stop()
 
 		summCmdName = "pt-mysql-summary"
 		summCmdArgs = []string{"--host=127.0.0.1", "--port=" + fmt.Sprintf("%d", localport), "--user=root", "--password=" + pass}
@@ -85,13 +79,6 @@ func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName strin
 		return outb.Bytes(), nil
 
 	case "psmdb":
-		var port string
-		if d.forwardport != "" {
-			port = d.forwardport
-		} else {
-			port = ""
-		}
-
 		user, err := d.getSecretValueFromPod(ctx, pod, "MONGODB_DATABASE_ADMIN_USER")
 		if err != nil {
 			return nil, fmt.Errorf("get user name from psmdb users secret: %w", err)
@@ -101,12 +88,11 @@ func (d *Dumper) getPodSummary(ctx context.Context, pod corev1.Pod, crName strin
 			return nil, fmt.Errorf("get password from psmdb users secret: %w", err)
 		}
 
-		localport, err := d.portForwardPod(ctx, pod, port, "27017")
+		localport, stop, err := d.portForwardPod(ctx, pod, "27017")
 		if err != nil {
-			if !errors.Is(err, ERR_PORT_ALREADY_FORWARDED) {
-				return nil, err
-			}
+			return nil, err
 		}
+		defer stop()
 
 		summCmdName = "pt-mongodb-summary"
 		summCmdArgs = []string{"--username=" + user, "--password=" + string(pass), "--authenticationDatabase=admin", "127.0.0.1:" + fmt.Sprintf("%d", localport)}
