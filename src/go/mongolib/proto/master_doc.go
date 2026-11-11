@@ -14,7 +14,25 @@
 package proto
 
 type MasterDoc struct {
-	SetName interface{} `bson:"setName"`
-	Hosts   interface{} `bson:"hosts"`
-	Msg     string      `bson:"msg"`
+	SetName     interface{} `bson:"setName"`
+	Hosts       interface{} `bson:"hosts"`
+	Msg         string      `bson:"msg"`
+	ArbiterOnly bool        `bson:"arbiterOnly"`
+	Me          string      `bson:"me"`
+	Arbiters    []string    `bson:"arbiters"`
+}
+
+func (md MasterDoc) IsArbiter() bool {
+	if md.ArbiterOnly {
+		return true
+	}
+	if md.Me == "" {
+		return false
+	}
+	for _, a := range md.Arbiters {
+		if a == md.Me {
+			return true
+		}
+	}
+	return false
 }

@@ -13,27 +13,48 @@
 
 package templates
 
-const HostInfo = `# This host
-{{ if .ProcPath -}}
+const HostInfo = `
+# This host
+{{ if and .IsLocal .ProcPath -}}
 # Mongo Executable #######################################################################################
        Path to executable | {{.ProcPath }}
 {{ end -}}
 # Report On {{.Hostname}} ########################################
-{{- if .ProcUserName }}
+{{- if and .IsLocal .ProcUserName }}
                      User | {{.ProcUserName }}
 {{- end }}
+{{- if .ProcessName }}
                 PID Owner | {{.ProcessName}}
+{{- end }}
                  Hostname | {{.Hostname}}
+{{- if .Version }}
                   Version | {{.Version}}
+{{- end }}
+{{- with .FCVSummary }}
+                      FCV | {{.}}
+{{- end }}
+{{- if or .HostOsType .HostSystemCPUArch }}
                  Built On | {{.HostOsType}} {{.HostSystemCPUArch}}
-                  Started | {{.ProcCreateTime}}
+{{- end }}
+{{- if not .ProcCreateTime.IsZero }}
+                  Started | {{utc .ProcCreateTime}}
+{{- end }}
 {{- if .DBPath }}
                   Datadir | {{.DBPath}}
 {{- end }}
+{{- if .IsLocal }}
                 Processes | {{.ProcProcessCount}}
+{{- end }}
              Process Type | {{.NodeType}}
 {{- if .ReplicasetName }}
                   ReplSet | {{.ReplicasetName}}
               Repl Status |
-{{- end -}}
+{{- end }}
+{{- if .IsArbiter }}
+
+# Arbiter ################################################################################################
+This node is a replica-set ARBITER: it holds no data and does not accept user logins,
+so host facts, startup warnings, user/role counts, FCV, profiler settings, database inventory,
+mongos and oplog details are not collected from it.
+{{- end }}
 `
