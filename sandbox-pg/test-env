@@ -1,0 +1,397 @@
+#!/bin/bash
+
+set -u
+
+SANDBOX_PG_DIR=$(cd "$(dirname "$0")" && pwd)
+TMP_DIR=${TMP_DIR:-/tmp}
+CLUSTER_DIR="$TMP_DIR/pt-pg-sandbox/pt"
+CLUSTER_NAME=$(basename "$CLUSTER_DIR")
+ENV_FILE=${PT_PG_SANDBOX_ENV:-$TMP_DIR/pt-pg-sandbox/env}
+
+PRIMARY_DIR="$CLUSTER_DIR/${CLUSTER_NAME}_p"
+REPLICA_DIR="$CLUSTER_DIR/${CLUSTER_NAME}_s1"
+
+MIN_PGS_VERSION="1.0.1"
+REQUIRED_PG_MAJOR=18
+
+err() {
+    for msg; do
+        echo "$msg" >&2
+    done
+}
+
+usage() {
+    err "Usage: test-env start|stop|restart|status|checkconfig|kill|test"    \
+        ""                                                                   \
+        "  start       Deploy the primary + standby cluster in $CLUSTER_DIR" \
+        "  stop        Destroy the cluster and remove the env file"          \
+        "  kill        Force-stop the servers (use if stop fails)"           \
+        "  restart     Stop and start the cluster"                           \
+        "  status      Print cluster status and the discovered settings"     \
+        "  checkconfig Check the test environment prerequisites"             \
+        "  test        Run the pt-pg-summary tests, starting and stopping"   \
+        "              the cluster unless one is already running"            \
+        ""
+}
+
+pg_sandbox_bin() {
+    if [ -n "${PG_SANDBOX_BIN:-}" ]; then
+        echo "$PG_SANDBOX_BIN"
+        return 0
+    fi
+    command -v pg_sandbox 2>/dev/null
+}
+
+version_lt() {
+    [ "$1" = "$2" ] && return 1
+    local older
+    older=$(printf '%s\n%s\n' "$1" "$2" | sort -t. -k1,1n -k2,2n -k3,3n | head -n1)
+    [ "$older" = "$1" ]
+}
+
+pg_major() {
+    local version
+    version=$("${PT_PG_SANDBOX_BASEDIR:-}/bin/postgres" --version 2>/dev/null | awk '{print $3}')
+    local major=${version%%.*}
+
+    case "$major" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+
+    echo "$major"
+}
+
+basedir_ok() {
+    local basedir=$1
+
+    if [ -z "$basedir" ] || [ ! -d "$basedir" ]; then
+        return 1
+    fi
+
+    for bin in initdb pg_basebackup pg_ctl postgres psql pg_isready; do
+        if [ ! -x "$basedir/bin/$bin" ]; then
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+checkconfig() {
+    local print_conf=$1
+    local stat=""
+    conf_err=0
+
+    if [ -z "${PERCONA_TOOLKIT_BRANCH:-}" ] || [ ! -d "${PERCONA_TOOLKIT_BRANCH:-}" ]; then
+        conf_err=1
+        stat="INVALID"
+    else
+        stat="ok"
+    fi
+    [ "$print_conf" ] && echo "PERCONA_TOOLKIT_BRANCH=${PERCONA_TOOLKIT_BRANCH:-} - $stat"
+
+    local basedir_valid=1
+    if basedir_ok "${PT_PG_SANDBOX_BASEDIR:-}"; then
+        stat="ok"
+    else
+        conf_err=1
+        basedir_valid=0
+        stat="INVALID"
+    fi
+    [ "$print_conf" ] && echo "PT_PG_SANDBOX_BASEDIR=${PT_PG_SANDBOX_BASEDIR:-} - $stat"
+
+    local major=""
+    if [ "$basedir_valid" -eq 1 ]; then
+        major=$(pg_major)
+    fi
+    if [ "$basedir_valid" -eq 1 ] && [ "$major" = "$REQUIRED_PG_MAJOR" ]; then
+        stat="ok"
+    else
+        conf_err=1
+        stat="INVALID (need $REQUIRED_PG_MAJOR)"
+    fi
+    [ "$print_conf" ] && echo "PostgreSQL major version=${major:-unknown} - $stat"
+
+    local pgs
+    pgs=$(pg_sandbox_bin)
+    if [ -z "$pgs" ] || [ ! -x "$pgs" ]; then
+        conf_err=1
+        [ "$print_conf" ] && echo "pg_sandbox= - INVALID (not found, set PG_SANDBOX_BIN)"
+    else
+        local raw ver
+        raw=$("$pgs" --version 2>&1)
+        ver=$(echo "$raw" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+        if [ "${raw#*pg_sandbox}" = "$raw" ]; then
+            conf_err=1
+            stat="INVALID (not pg_sandbox)"
+        elif [ "${raw#*dev}" != "$raw" ]; then
+            stat="ok (dev build)"
+        elif [ -z "$ver" ]; then
+            conf_err=1
+            stat="INVALID (cannot parse version)"
+        elif version_lt "$ver" "$MIN_PGS_VERSION"; then
+            conf_err=1
+            stat="INVALID (need $MIN_PGS_VERSION or newer)"
+        else
+            stat="ok"
+        fi
+        [ "$print_conf" ] && echo "pg_sandbox=$pgs ($raw) - $stat"
+    fi
+
+    return $conf_err
+}
+
+write_env_file() {
+    local pgs=$1
+    local host sport rport user sockdir
+
+    host=$("$pgs" config get -s "$PRIMARY_DIR" host)       || return 1
+    sport=$("$pgs" config get -s "$PRIMARY_DIR" port)      || return 1
+    rport=$("$pgs" config get -s "$REPLICA_DIR" port)      || return 1
+    user=$("$pgs" config get -s "$PRIMARY_DIR" superuser)  || return 1
+
+    sockdir=$("$PT_PG_SANDBOX_BASEDIR/bin/psql" -X -h "$host" -p "$sport" -U "$user" \
+        -d postgres -Atc 'SHOW unix_socket_directories') || return 1
+    sockdir=$(echo "$sockdir" | cut -d, -f1 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+    [ -n "$sockdir" ] || return 1
+
+    mkdir -p "$(dirname "$ENV_FILE")" || return 1
+    cat > "$ENV_FILE" <<EOF
+PG_IPV4_HOST=$host
+PG_USERNAME=$user
+PG_SOURCE_PORT=$sport
+PG_REPLICA_PORT=$rport
+PG_SOCKET_DIR=$sockdir
+EOF
+}
+
+wait_streaming() {
+    local n
+    for _ in $(seq 1 30); do
+        n=$("$PT_PG_SANDBOX_BASEDIR/bin/psql" -X -h "$PG_IPV4_HOST" -p "$PG_SOURCE_PORT" -U "$PG_USERNAME" \
+            -d postgres -Atc "SELECT count(*) FROM pg_stat_replication WHERE state = 'streaming' AND replay_lsn IS NOT NULL")
+        [ "$n" = 1 ] && return 0
+        sleep 1
+    done
+    return 1
+}
+
+setup_ssl() {
+    local dir="$PRIMARY_DIR/ssl" library
+
+    library=$("$PT_PG_SANDBOX_BASEDIR/bin/psql" -X -h "$PG_IPV4_HOST" -p "$PG_SOURCE_PORT" -U "$PG_USERNAME" \
+        -d postgres -Atc 'SHOW ssl_library') || return 1
+    if [ -z "$library" ]; then
+        echo "PostgreSQL is built without SSL, skipping the SSL setup."
+        return 0
+    fi
+
+    mkdir -m 700 "$dir" || return 1
+    (
+        cd "$dir" &&
+        openssl req -new -x509 -days 3650 -nodes -subj "/CN=pt-pg-sandbox CA" \
+            -keyout ca.key -out ca.crt &&
+        openssl req -new -nodes -subj "/CN=$PG_IPV4_HOST" -keyout server.key -out server.csr &&
+        printf 'subjectAltName=IP:%s,DNS:localhost\nextendedKeyUsage=serverAuth\n' "$PG_IPV4_HOST" > server.ext &&
+        openssl x509 -req -days 3650 -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
+            -extfile server.ext -out server.crt &&
+        openssl req -new -nodes -subj "/CN=$PG_USERNAME" -keyout client.key -out client.csr &&
+        printf 'extendedKeyUsage=clientAuth\n' > client.ext &&
+        openssl x509 -req -days 3650 -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
+            -extfile client.ext -out client.crt &&
+        chmod 600 ./*.key
+    ) > "$dir/openssl.log" 2>&1 || return 1
+
+    "$PT_PG_SANDBOX_BASEDIR/bin/psql" -X -q -h "$PG_IPV4_HOST" -p "$PG_SOURCE_PORT" -U "$PG_USERNAME" -d postgres \
+        -c "ALTER SYSTEM SET ssl_cert_file = '$dir/server.crt'" \
+        -c "ALTER SYSTEM SET ssl_key_file = '$dir/server.key'" \
+        -c "ALTER SYSTEM SET ssl_ca_file = '$dir/ca.crt'" \
+        -c "ALTER SYSTEM SET ssl = on" \
+        -c "SELECT pg_reload_conf()" > /dev/null || return 1
+
+    for _ in $(seq 1 10); do
+        if [ "$("$PT_PG_SANDBOX_BASEDIR/bin/psql" -X -Atc 'SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()' \
+                "host=$PG_IPV4_HOST port=$PG_SOURCE_PORT user=$PG_USERNAME dbname=postgres sslmode=require" 2>/dev/null)" = t ]; then
+            echo "PG_SSL_DIR=$dir" >> "$ENV_FILE"
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+start() {
+    local pgs
+    if ! checkconfig "" ; then
+        err "bad config, run '$0 checkconfig'"
+        return 1
+    fi
+    pgs=$(pg_sandbox_bin)
+
+    if [ -e "$CLUSTER_DIR" ]; then
+        err "$CLUSTER_DIR exists, run '$0 stop' or '$0 restart' first"
+        return 1
+    fi
+
+    if ! "$pgs" cluster deploy \
+            -s "$CLUSTER_DIR" \
+            -N 1 \
+            --bin-dir "$PT_PG_SANDBOX_BASEDIR/bin" \
+            --host 127.0.0.1 \
+            --user postgres \
+            --init-sql "$SANDBOX_PG_DIR/init.sql"; then
+        err "cluster deploy failed, left $CLUSTER_DIR for inspection"
+        return 1
+    fi
+
+    if ! write_env_file "$pgs"; then
+        err "cannot read the cluster settings"
+        return 1
+    fi
+
+    . "$ENV_FILE"
+    if ! "$PT_PG_SANDBOX_BASEDIR/bin/pg_isready" -h "$PG_IPV4_HOST" -p "$PG_SOURCE_PORT" -q; then
+        err "primary not answering on port $PG_SOURCE_PORT, left $CLUSTER_DIR for inspection"
+        return 1
+    fi
+    if ! "$PT_PG_SANDBOX_BASEDIR/bin/pg_isready" -h "$PG_IPV4_HOST" -p "$PG_REPLICA_PORT" -q; then
+        err "standby not answering on port $PG_REPLICA_PORT, left $CLUSTER_DIR for inspection"
+        return 1
+    fi
+    if ! wait_streaming; then
+        err "standby not streaming after 30s, left $CLUSTER_DIR for inspection"
+        return 1
+    fi
+    if ! setup_ssl; then
+        err "cannot enable SSL on the primary, see $PRIMARY_DIR/ssl, left $CLUSTER_DIR for inspection"
+        return 1
+    fi
+
+    echo "PostgreSQL sandbox started."
+    cat "$ENV_FILE"
+    echo "cluster dir: $CLUSTER_DIR"
+}
+
+stop() {
+    local pgs
+    pgs=$(pg_sandbox_bin)
+    if [ -z "$pgs" ]; then
+        err "pg_sandbox not found; cannot stop. Try '$0 kill'."
+        return 1
+    fi
+
+    if [ ! -d "$CLUSTER_DIR" ]; then
+        rm -f "$ENV_FILE"
+        echo "PostgreSQL sandbox is not running."
+        return 0
+    fi
+
+    if ! "$pgs" cluster destroy -s "$CLUSTER_DIR" --force; then
+        err "pg_sandbox cluster destroy failed. Try '$0 kill'."
+        return 1
+    fi
+
+    rm -f "$ENV_FILE"
+    if [ -z "${PT_PG_SANDBOX_ENV:-}" ]; then
+        rmdir "$(dirname "$ENV_FILE")" 2>/dev/null
+    fi
+    echo "PostgreSQL sandbox stopped."
+}
+
+kill_servers() {
+    local m pgctl
+    pgctl="${PT_PG_SANDBOX_BASEDIR:-}/bin/pg_ctl"
+    if [ -z "${PT_PG_SANDBOX_BASEDIR:-}" ] || [ ! -x "$pgctl" ]; then
+        err "cannot find pg_ctl, set PT_PG_SANDBOX_BASEDIR"
+        return 1
+    fi
+
+    for m in "$REPLICA_DIR" "$PRIMARY_DIR"; do
+        if [ -d "$m/data" ]; then
+            "$pgctl" -D "$m/data" -m immediate stop 2>/dev/null
+        fi
+    done
+    rm -rf "$CLUSTER_DIR"
+    rm -f "$ENV_FILE"
+    echo "PostgreSQL sandbox killed."
+}
+
+status() {
+    local pgs
+    pgs=$(pg_sandbox_bin)
+    if [ ! -d "$CLUSTER_DIR" ]; then
+        echo "PostgreSQL sandbox is not running."
+        return 0
+    fi
+    if [ -z "$pgs" ]; then
+        err "pg_sandbox not found; cannot get status."
+        return 1
+    fi
+    "$pgs" cluster status -s "$CLUSTER_DIR"
+    echo
+    if [ -f "$ENV_FILE" ]; then
+        echo "Settings for the Go test suite ($ENV_FILE):"
+        cat "$ENV_FILE"
+    else
+        err "$ENV_FILE is missing, run '$0 restart'"
+        return 1
+    fi
+}
+
+running() {
+    [ -f "$ENV_FILE" ] || return 1
+    (
+        . "$ENV_FILE" &&
+        "$PT_PG_SANDBOX_BASEDIR/bin/pg_isready" -h "$PG_IPV4_HOST" -p "$PG_SOURCE_PORT" -q &&
+        "$PT_PG_SANDBOX_BASEDIR/bin/pg_isready" -h "$PG_IPV4_HOST" -p "$PG_REPLICA_PORT" -q
+    )
+}
+
+go_tests() {
+    (
+        cd "$SANDBOX_PG_DIR/../src/go" &&
+        PT_PG_SANDBOX_REQUIRED=1 go test -v -count=1 ./pt-pg-summary/... ./lib/pginfo/...
+    )
+}
+
+run_tests() {
+    local rc
+
+    if ! checkconfig "" ; then
+        err "bad config, run '$0 checkconfig'"
+        return 1
+    fi
+
+    if running; then
+        echo "Using the running PostgreSQL sandbox."
+        go_tests
+        return
+    fi
+
+    if [ -e "$CLUSTER_DIR" ]; then
+        err "$CLUSTER_DIR exists but the sandbox is not answering, run '$0 stop' first"
+        return 1
+    fi
+
+    start || return 1
+    trap 'stop; exit 130' INT TERM
+    go_tests
+    rc=$?
+    trap - INT TERM
+
+    if ! stop && [ "$rc" -eq 0 ]; then
+        rc=1
+    fi
+    return $rc
+}
+
+case "${1:-}" in
+    start)       start ;;
+    stop)        stop ;;
+    restart)     stop && start ;;
+    status)      status ;;
+    kill)        kill_servers ;;
+    checkconfig) checkconfig 1 ;;
+    test)        run_tests ;;
+    *)           usage; exit 1 ;;
+esac
