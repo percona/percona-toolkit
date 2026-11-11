@@ -49,6 +49,19 @@ Options
 
   Enabled by default.
 
+``--sslmode``
+  SSL mode for the connection, as in libpq: ``disable``, ``allow``, ``prefer``,
+  ``require``, ``verify-ca`` or ``verify-full``. Overrides ``--disable-ssl``.
+
+``--sslrootcert``
+  File with the certificate authorities that verify the server certificate.
+
+``--sslcert``
+  Client certificate file.
+
+``--sslkey``
+  Client private key file.
+
 ``--verbose``
   Show verbose log.
 
@@ -87,6 +100,7 @@ Output example
     |         Name         |                      Setting                       |
     +----------------------+----------------------------------------------------+
     | data_directory       | /var/lib/postgresql/data                           |
+    | port                 | 5432                                               |
     +----------------------+----------------------------------------------------+
 
     ##### --- List of Tablespaces ---- ######
