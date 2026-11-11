@@ -13,6 +13,7 @@ processes under `/tmp`.
 ## Prerequisites
 
 - PostgreSQL 18 binaries.
+- The `openssl` command, to make the SSL certificates.
 - Go 1.27 or newer, to build and run the tests. If your distribution ships an
   older Go, set `GOTOOLCHAIN=auto` and `go` downloads the required version.
 - [`pg_sandbox`][pgs] v1.0.1 or newer, on `PATH` or pointed at by
@@ -80,12 +81,12 @@ export PT_PG_SANDBOX_BASEDIR=$(brew --prefix postgresql@18)
 Instead of installing packages, `pg_sandbox` can download and compile
 PostgreSQL itself. This works on Linux and macOS, needs no root, and keeps
 several versions side by side. It needs a C compiler, `make`, `bison`, `flex`,
-Perl and the readline and zlib headers. On Fedora:
+Perl and the readline, zlib and OpenSSL headers. On Fedora:
 
 ```sh
-sudo dnf install -y gcc make bison flex perl readline-devel zlib-devel
+sudo dnf install -y gcc make bison flex perl readline-devel zlib-devel openssl-devel
 export PERCONA_TOOLKIT_BRANCH=$(pwd)
-export PT_PG_SANDBOX_BASEDIR=$(pg_sandbox build --bin-dir ~/pgsql 18.4)
+export PT_PG_SANDBOX_BASEDIR=$(pg_sandbox build --bin-dir ~/pgsql --with-openssl 18.4)
 ```
 
 ## Usage
@@ -118,6 +119,12 @@ sandbox-pg/test-env stop          # destroy everything
 Ports are allocated by `pg_sandbox`, not fixed, so `start` writes the values it
 discovered to `${TMP_DIR:-/tmp}/pt-pg-sandbox/env`. The Go tests read that file,
 and `test-env status` prints it. Set `PT_PG_SANDBOX_ENV` to move it.
+
+`start` also turns SSL on for the primary; the standby stays without it. It
+makes a CA, a server certificate and a client certificate for `$PG_USERNAME`
+in the primary's `ssl` directory and writes that directory to the env file as
+`PG_SSL_DIR`. A PostgreSQL built without SSL skips this and leaves `PG_SSL_DIR`
+unset.
 
 To reach an instance by hand:
 

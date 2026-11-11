@@ -176,6 +176,50 @@ wait_streaming() {
     return 1
 }
 
+setup_ssl() {
+    local dir="$PRIMARY_DIR/ssl" library
+
+    library=$("$PT_PG_SANDBOX_BASEDIR/bin/psql" -X -h "$PG_IPV4_HOST" -p "$PG_SOURCE_PORT" -U "$PG_USERNAME" \
+        -d postgres -Atc 'SHOW ssl_library') || return 1
+    if [ -z "$library" ]; then
+        echo "PostgreSQL is built without SSL, skipping the SSL setup."
+        return 0
+    fi
+
+    mkdir -m 700 "$dir" || return 1
+    (
+        cd "$dir" &&
+        openssl req -new -x509 -days 3650 -nodes -subj "/CN=pt-pg-sandbox CA" \
+            -keyout ca.key -out ca.crt &&
+        openssl req -new -nodes -subj "/CN=$PG_IPV4_HOST" -keyout server.key -out server.csr &&
+        printf 'subjectAltName=IP:%s,DNS:localhost\nextendedKeyUsage=serverAuth\n' "$PG_IPV4_HOST" > server.ext &&
+        openssl x509 -req -days 3650 -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
+            -extfile server.ext -out server.crt &&
+        openssl req -new -nodes -subj "/CN=$PG_USERNAME" -keyout client.key -out client.csr &&
+        printf 'extendedKeyUsage=clientAuth\n' > client.ext &&
+        openssl x509 -req -days 3650 -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
+            -extfile client.ext -out client.crt &&
+        chmod 600 ./*.key
+    ) > "$dir/openssl.log" 2>&1 || return 1
+
+    "$PT_PG_SANDBOX_BASEDIR/bin/psql" -X -q -h "$PG_IPV4_HOST" -p "$PG_SOURCE_PORT" -U "$PG_USERNAME" -d postgres \
+        -c "ALTER SYSTEM SET ssl_cert_file = '$dir/server.crt'" \
+        -c "ALTER SYSTEM SET ssl_key_file = '$dir/server.key'" \
+        -c "ALTER SYSTEM SET ssl_ca_file = '$dir/ca.crt'" \
+        -c "ALTER SYSTEM SET ssl = on" \
+        -c "SELECT pg_reload_conf()" > /dev/null || return 1
+
+    for _ in $(seq 1 10); do
+        if [ "$("$PT_PG_SANDBOX_BASEDIR/bin/psql" -X -Atc 'SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()' \
+                "host=$PG_IPV4_HOST port=$PG_SOURCE_PORT user=$PG_USERNAME dbname=postgres sslmode=require" 2>/dev/null)" = t ]; then
+            echo "PG_SSL_DIR=$dir" >> "$ENV_FILE"
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
 start() {
     local pgs
     if ! checkconfig "" ; then
@@ -216,6 +260,10 @@ start() {
     fi
     if ! wait_streaming; then
         err "standby not streaming after 30s, left $CLUSTER_DIR for inspection"
+        return 1
+    fi
+    if ! setup_ssl; then
+        err "cannot enable SSL on the primary, see $PRIMARY_DIR/ssl, left $CLUSTER_DIR for inspection"
         return 1
     fi
 

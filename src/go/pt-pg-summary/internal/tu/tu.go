@@ -45,6 +45,7 @@ var (
 	ReplicaPort = resolve("PG_REPLICA_PORT", fileVars["PG_REPLICA_PORT"], replicaPort)
 
 	SocketDir = resolve("PG_SOCKET_DIR", fileVars["PG_SOCKET_DIR"], "")
+	SSLDir    = resolve("PG_SSL_DIR", fileVars["PG_SSL_DIR"], "")
 )
 
 func envFilePath() string {
