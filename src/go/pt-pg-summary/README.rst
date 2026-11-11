@@ -28,7 +28,12 @@ Options
   All if not specified.
 
 ``-h``, ``--host``
-  Host or local Unix socket for connection.
+  Host or local Unix socket directory for connection.
+
+  If not given, and ``PGHOST``, ``PGHOSTADDR`` and ``PGSERVICE`` are not set,
+  connects through the local Unix socket for the port in ``/var/run/postgresql``
+  or ``/tmp``, in that order, and to ``localhost`` over TCP when neither has one.
+  SSL is not used over a Unix socket.
 
 ``-W``, ``--password``
   Password to use when connecting.                                           |

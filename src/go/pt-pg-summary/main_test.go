@@ -17,9 +17,12 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"text/template"
@@ -401,5 +404,84 @@ func TestVerboseEnablesInfoLog(t *testing.T) {
 				t.Errorf("info log shown = %v, want %v; stderr:\n%s", gotInfo, test.wantInfo, stderr.String())
 			}
 		})
+	}
+}
+
+func TestDefaultHost(t *testing.T) {
+	root, err := os.MkdirTemp("/tmp", "pt-pg-summary-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(root) })
+	notSocket := filepath.Join(root, "file")
+	socket := filepath.Join(root, "socket")
+	for _, dir := range []string{notSocket, socket} {
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(notSocket, ".s.PGSQL.5432"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	l, err := net.Listen("unix", filepath.Join(socket, ".s.PGSQL.5432"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	dirs := []string{notSocket, socket}
+
+	for _, test := range []struct {
+		name string
+		opts connOpts
+		env  map[string]string
+		want string
+	}{
+		{"socket for the default port", connOpts{}, nil, socket},
+		{"no socket for --port", connOpts{Port: 6432}, nil, ""},
+		{"no socket for PGPORT", connOpts{}, map[string]string{"PGPORT": "6432"}, ""},
+		{"--host", connOpts{Host: "db.example.com"}, nil, "db.example.com"},
+		{"PGHOST", connOpts{}, map[string]string{"PGHOST": "db.example.com"}, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			for _, name := range []string{"PGHOST", "PGHOSTADDR", "PGSERVICE", "PGPORT"} {
+				t.Setenv(name, "")
+				os.Unsetenv(name)
+			}
+			for name, value := range test.env {
+				t.Setenv(name, value)
+			}
+			if got := defaultHost(test.opts, dirs); got != test.want {
+				t.Errorf("defaultHost(%+v) with %v = %q, want %q", test.opts, test.env, got, test.want)
+			}
+		})
+	}
+}
+
+func TestNoHostUsesLocalSocket(t *testing.T) {
+	skipIfNoSandbox(t)
+	if !slices.Contains(socketDirs, tu.SocketDir) {
+		t.Skipf("the sandbox socket directory %q is not one of %v", tu.SocketDir, socketDirs)
+	}
+
+	args := []string{
+		"--port=" + tu.SourcePort,
+		"--username=" + tu.Username,
+		"--password=" + tu.Password,
+		"--verbose",
+		"--sleep=1",
+	}
+	var stderr bytes.Buffer
+	cmd := exec.Command("../../../bin/"+toolname, args...)
+	cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
+		name, _, _ := strings.Cut(kv, "=")
+		return slices.Contains([]string{"PGHOST", "PGHOSTADDR", "PGSERVICE", "PGPORT"}, name)
+	})
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("%s %v: %s\n%s", toolname, args, err, stderr.String())
+	}
+	target := fmt.Sprintf("host=%s port=%s ", tu.SocketDir, tu.SourcePort)
+	if !strings.Contains(stderr.String(), target) {
+		t.Errorf("the log does not show a connection to %q; stderr:\n%s", target, stderr.String())
 	}
 }

@@ -17,6 +17,8 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -81,6 +83,7 @@ func main() {
 		logger.SetLevel(logrus.DebugLevel)
 	}
 
+	opts.connOpts.Host = defaultHost(opts.connOpts, socketDirs)
 	dsn := buildConnString(opts.connOpts, "postgres")
 	logger.Infof("Connecting to the database server using: %s", safeConnString(opts.connOpts, "postgres"))
 
@@ -174,6 +177,37 @@ func funcsMap() template.FuncMap {
 			}
 		},
 	}
+}
+
+var socketDirs = []string{"/var/run/postgresql", "/tmp"}
+
+func localSocketDir(dirs []string, port int) string {
+	for _, dir := range dirs {
+		fi, err := os.Stat(filepath.Join(dir, fmt.Sprintf(".s.PGSQL.%d", port)))
+		if err == nil && fi.Mode()&os.ModeSocket != 0 {
+			return dir
+		}
+	}
+	return ""
+}
+
+func defaultHost(opts connOpts, dirs []string) string {
+	if opts.Host != "" {
+		return opts.Host
+	}
+	for _, name := range []string{"PGHOST", "PGHOSTADDR", "PGSERVICE"} {
+		if os.Getenv(name) != "" {
+			return ""
+		}
+	}
+	port := opts.Port
+	if port == 0 {
+		port = 5432
+		if v := os.Getenv("PGPORT"); v != "" {
+			port, _ = strconv.Atoi(v)
+		}
+	}
+	return localSocketDir(dirs, port)
 }
 
 func buildConnString(opts connOpts, dbName string) string {
