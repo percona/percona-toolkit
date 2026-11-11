@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -43,11 +44,15 @@ var (
 )
 
 type connOpts struct {
-	Host       string
-	Port       int
-	User       string
-	Password   string
-	DisableSSL bool
+	Host        string
+	Port        int
+	User        string
+	Password    string
+	DisableSSL  bool
+	SSLMode     string
+	SSLRootCert string
+	SSLCert     string
+	SSLKey      string
 }
 
 type cliOptions struct {
@@ -177,55 +182,53 @@ func funcsMap() template.FuncMap {
 }
 
 func buildConnString(opts connOpts, dbName string) string {
-	parts := []string{}
-	if opts.Host != "" {
-		parts = append(parts, fmt.Sprintf("host=%s", opts.Host))
-	}
-	if opts.Port != 0 {
-		parts = append(parts, fmt.Sprintf("port=%d", opts.Port))
-	}
-	if opts.User != "" {
-		parts = append(parts, fmt.Sprintf("user=%s", opts.User))
-	}
+	return connString(opts, dbName, opts.Password)
+}
+
+func safeConnString(opts connOpts, dbName string) string {
+	password := ""
 	if opts.Password != "" {
-		parts = append(parts, fmt.Sprintf("password=%s", opts.Password))
+		password = "******"
 	}
-	if opts.DisableSSL {
-		parts = append(parts, "sslmode=disable")
-	}
+	return connString(opts, dbName, password)
+}
+
+func connString(opts connOpts, dbName, password string) string {
 	if dbName == "" {
 		dbName = "postgres"
 	}
-	parts = append(parts, fmt.Sprintf("dbname=%s", dbName))
-
+	port := ""
+	if opts.Port != 0 {
+		port = strconv.Itoa(opts.Port)
+	}
+	sslMode := opts.SSLMode
+	if sslMode == "" && opts.DisableSSL {
+		sslMode = "disable"
+	}
+	parts := []string{}
+	for _, kv := range [][2]string{
+		{"host", opts.Host},
+		{"port", port},
+		{"user", opts.User},
+		{"password", password},
+		{"sslmode", sslMode},
+		{"sslrootcert", opts.SSLRootCert},
+		{"sslcert", opts.SSLCert},
+		{"sslkey", opts.SSLKey},
+		{"dbname", dbName},
+	} {
+		if kv[1] != "" {
+			parts = append(parts, kv[0]+"="+quoteConnValue(kv[1]))
+		}
+	}
 	return strings.Join(parts, " ")
 }
 
-// build the same connection string as buildConnString but the password is hidden so
-// we can display this in the logs
-func safeConnString(opts connOpts, dbName string) string {
-	parts := []string{}
-	if opts.Host != "" {
-		parts = append(parts, fmt.Sprintf("host=%s", opts.Host))
+func quoteConnValue(value string) string {
+	if !strings.ContainsAny(value, " \t\n\r'\\") {
+		return value
 	}
-	if opts.Port != 0 {
-		parts = append(parts, fmt.Sprintf("port=%d", opts.Port))
-	}
-	if opts.User != "" {
-		parts = append(parts, fmt.Sprintf("user=%s", opts.User))
-	}
-	if opts.Password != "" {
-		parts = append(parts, "password=******")
-	}
-	if opts.DisableSSL {
-		parts = append(parts, "sslmode=disable")
-	}
-	if dbName == "" {
-		dbName = "postgres"
-	}
-	parts = append(parts, fmt.Sprintf("dbname=%s", dbName))
-
-	return strings.Join(parts, " ")
+	return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(value) + "'"
 }
 
 func parseCommandLineOpts(args []string) (cliOptions, error) {
@@ -266,6 +269,14 @@ func parseCommandLineOpts(args []string) (cliOptions, error) {
 		StringVar(&opts.connOpts.User)
 	app.Flag("disable-ssl", "Disable SSL for the connection").
 		Default("true").BoolVar(&opts.connOpts.DisableSSL)
+	app.Flag("sslmode", "SSL mode: disable, allow, prefer, require, verify-ca or verify-full. Overrides --disable-ssl").
+		EnumVar(&opts.connOpts.SSLMode, "disable", "allow", "prefer", "require", "verify-ca", "verify-full")
+	app.Flag("sslrootcert", "File with the certificate authorities that verify the server certificate").
+		StringVar(&opts.connOpts.SSLRootCert)
+	app.Flag("sslcert", "Client certificate file").
+		StringVar(&opts.connOpts.SSLCert)
+	app.Flag("sslkey", "Client private key file").
+		StringVar(&opts.connOpts.SSLKey)
 	app.Flag("verbose", "Show verbose log").
 		Default("false").BoolVar(&opts.Verbose)
 	app.Flag("debug", "Show debug information in the logs").

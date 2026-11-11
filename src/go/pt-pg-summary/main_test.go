@@ -19,11 +19,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"text/template"
 
+	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 
 	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
@@ -401,5 +404,82 @@ func TestVerboseEnablesInfoLog(t *testing.T) {
 				t.Errorf("info log shown = %v, want %v; stderr:\n%s", gotInfo, test.wantInfo, stderr.String())
 			}
 		})
+	}
+}
+
+func TestConnStringSSL(t *testing.T) {
+	for _, name := range []string{"PGSSLMODE", "PGSSLROOTCERT", "PGSSLCERT", "PGSSLKEY", "PGSERVICE", "PGPASSWORD"} {
+		t.Setenv(name, "")
+		os.Unsetenv(name)
+	}
+	for _, test := range []struct {
+		name     string
+		args     []string
+		mode     pq.SSLMode
+		rootCert string
+		cert     string
+		key      string
+		password string
+	}{
+		{"default", nil, "disable", "", "", "", ""},
+		{"--sslmode over --disable-ssl", []string{"--disable-ssl", "--sslmode=require"}, "require", "", "", "", ""},
+		{"certificates", []string{
+			"--sslmode=verify-full", "--sslrootcert=/certs/ca.crt", "--sslcert=/certs/client.crt", "--sslkey=/certs/client.key",
+		}, "verify-full", "/certs/ca.crt", "/certs/client.crt", "/certs/client.key", ""},
+		{"values with spaces, quotes and backslashes", []string{
+			"--sslmode=verify-ca", `--sslrootcert=/my certs/it's.crt`, `--password=a b\c'd`,
+		}, "verify-ca", "/my certs/it's.crt", "", "", `a b\c'd`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			opts, err := parseCommandLineOpts(test.args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dsn := buildConnString(opts.connOpts, "postgres")
+			cfg, err := pq.NewConfig(dsn)
+			if err != nil {
+				t.Fatalf("pq.NewConfig(%q): %s", dsn, err)
+			}
+			got := []string{string(cfg.SSLMode), cfg.SSLRootCert, cfg.SSLCert, cfg.SSLKey, cfg.Password}
+			want := []string{string(test.mode), test.rootCert, test.cert, test.key, test.password}
+			if !slices.Equal(got, want) {
+				t.Errorf("%v gives %q, read back as %q, want %q", test.args, dsn, got, want)
+			}
+		})
+	}
+}
+
+func TestSSLConnection(t *testing.T) {
+	skipIfNoSandbox(t)
+	if tu.SSLDir == "" {
+		t.Skip("no PG_SSL_DIR: PostgreSQL is built without SSL, or the sandbox predates the SSL setup (test-env restart)")
+	}
+
+	opts, err := parseCommandLineOpts([]string{
+		"--host=" + tu.IPv4Host,
+		"--port=" + tu.SourcePort,
+		"--username=" + tu.Username,
+		"--sslmode=verify-full",
+		"--sslrootcert=" + filepath.Join(tu.SSLDir, "ca.crt"),
+		"--sslcert=" + filepath.Join(tu.SSLDir, "client.crt"),
+		"--sslkey=" + filepath.Join(tu.SSLDir, "client.key"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := connect(buildConnString(opts.connOpts, "postgres"))
+	if err != nil {
+		t.Fatalf("Cannot connect using %q: %s", safeConnString(opts.connOpts, "postgres"), err)
+	}
+	defer db.Close()
+
+	var ssl bool
+	var clientDN sql.NullString
+	if err := db.QueryRow("SELECT ssl, client_dn FROM pg_stat_ssl WHERE pid = pg_backend_pid()").Scan(&ssl, &clientDN); err != nil {
+		t.Fatal(err)
+	}
+	if !ssl || !strings.Contains(clientDN.String, "CN="+tu.Username) {
+		t.Errorf("pg_stat_ssl shows ssl = %v, client_dn = %q; want an SSL connection with the %s client certificate",
+			ssl, clientDN.String, tu.Username)
 	}
 }
