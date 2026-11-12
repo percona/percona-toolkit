@@ -97,6 +97,8 @@ $output = stalk($uri, $first_check, "--function", "currentop", "--variable", "ns
    "--match", "^$test_db\\.slow\$", "--threshold", "0", "--cycles", "1");
 like($output, qr/Check results: currentop\(ns\)=0, matched=no/,
    "currentop: no matching operations is 0");
+like($output, qr/--function=currentop --variable=ns --match=\^\Q$test_db\E\\.slow\$ --threshold=/,
+   "currentop: the options logged include --variable and --match");
 
 mongosh_eval($uri, "db.getSiblingDB(\"$test_db\").slow.insertOne({x: 1})");
 my $slow = fork();
@@ -133,7 +135,7 @@ waitpid($slow, 0);
 # ###########################################################################
 
 $output = stalk($uri, $first_check, "--function", "writewait", "--threshold", "0", "--cycles", "1");
-like($output, qr/Check results: writewait\(connections\.active\)=0, matched=no/,
+like($output, qr/Check results: writewait=0, matched=no/,
    "writewait: 0 on an idle server");
 
 # ###########################################################################
@@ -147,7 +149,7 @@ SKIP: {
       unless $primary && $secondary;
 
    $output = stalk($primary, $first_check, "--function", "repllag", "--threshold", "1000", "--cycles", "1");
-   like($output, qr/Check results: repllag\(connections\.active\)=\d+, matched=no/,
+   like($output, qr/Check results: repllag=\d+, matched=no/,
       "repllag: a number on a replica set primary");
 
    my $lock = mongosh_eval($secondary, "print(db.fsyncLock().ok)");
@@ -169,7 +171,7 @@ SKIP: {
    waitpid($writer, 0);
    mongosh_eval($secondary, "db.fsyncUnlock()");
 
-   my ($lag) = $output =~ m/Check results: repllag\(connections\.active\)=(\d+), matched=yes/;
+   my ($lag) = $output =~ m/Check results: repllag=(\d+), matched=yes/;
    ok(defined $lag && $lag > 3, "repllag: the lag of the locked secondary is above the threshold")
       or diag($output);
    like($output, qr/Collect 1 triggered/, "repllag: triggers");
@@ -180,7 +182,7 @@ SKIP: {
 
 # repllag on a server that is not in a replica set has no value.
 $output = stalk($uri, $first_check, "--function", "repllag", "--threshold", "0", "--cycles", "1");
-if ( $output =~ m/repllag\(connections\.active\)=\d/ ) {
+if ( $output =~ m/repllag=\d/ ) {
    pass("repllag: the server is in a replica set");
 }
 else {

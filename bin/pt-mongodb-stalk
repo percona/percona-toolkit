@@ -1977,6 +1977,27 @@ after_stalk() { :; }
 # Trigger and control flow
 # ###########################################################################
 
+# Only status and currentop read --variable, and a --function file gets it as
+# its argument; only currentop reads --match.  The other functions read their
+# own source, so their logs must not show these options' values.
+
+# The trigger as logged with its value: e.g. status(connections.active), but
+# process-memory alone.
+trigger_label() {
+   case "$TRIGGER_FUNCTION" in
+      trg_status|trg_currentop|trg_plugin) echo "$OPT_FUNCTION($OPT_VARIABLE)" ;;
+      *) echo "$OPT_FUNCTION" ;;
+   esac
+}
+
+# The trigger options the function uses, for the options logged in RAN_WITH.
+trigger_options() {
+   case "$TRIGGER_FUNCTION" in
+      trg_currentop) echo " --variable=$OPT_VARIABLE --match=$OPT_MATCH" ;;
+      trg_status|trg_plugin) echo " --variable=$OPT_VARIABLE" ;;
+   esac
+}
+
 set_trg_func() {
    local func="$1"
    if [ -f "$func" ]; then
@@ -2263,7 +2284,7 @@ stalk() {
             cycles_true=0
          fi
 
-         msg="Check results: $OPT_FUNCTION($OPT_VARIABLE)=$value, matched=${matched:-no}, cycles_true=$cycles_true"
+         msg="Check results: $(trigger_label)=$value, matched=${matched:-no}, cycles_true=$cycles_true"
          if [ "$matched" ]; then
             log "$msg"
          else
@@ -2368,7 +2389,7 @@ main() {
    # background subshell, which does not inherit the EXIT trap, so set it here.
    trap rm_tmpdir EXIT
 
-   RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID --plugin=$OPT_PLUGIN"
+   RAN_WITH="--function=$OPT_FUNCTION$(trigger_options) --threshold=$OPT_THRESHOLD --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID --plugin=$OPT_PLUGIN"
 
    log "Starting $0 $RAN_WITH"
 
@@ -2747,7 +2768,8 @@ C<waitForReplicationLag> are accepted as aliases. Example:
 
   --function repllag --threshold 30
 
-You can also specify a file that defines C<trg_plugin>.
+You can also specify a file that defines C<trg_plugin>, which gets
+L<"--variable"> as its first argument and prints the trigger value.
 
 =item --help
 
@@ -3034,8 +3056,11 @@ User for login.
 
 type: string; default: connections.active
 
-Variable to watch inside C<serverStatus> or C<currentOp>. This option is ignored
-by C<cpu>, C<memory>, C<writewait>, and C<repllag>.
+Variable to watch inside C<serverStatus> or C<currentOp>.
+
+Only the C<status> and C<currentop> functions use it, and the C<trg_plugin>
+function of a L<"--function"> file gets it as its first argument.  The other
+functions ignore it, and the tool does not log it for them.
 
 =item --verbose
 

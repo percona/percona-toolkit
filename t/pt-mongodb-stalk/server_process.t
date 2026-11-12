@@ -91,11 +91,13 @@ sub stalk_process_cpu {
 $output = stalk_process_cpu("--uri", "mongodb://localhost:27018/", "--system-only");
 like($output, qr/measures the server's process, PID 4343/,
    "--system-only --uri port 27018: uses the mongod on 27018");
-like($output, qr/Check results: process-cpu\(connections\.active\)=90\.00/,
+like($output, qr/Check results: process-cpu=90\.00/,
    "--system-only --uri port 27018: measures the mongod on 27018, not the one on 27017");
+like($output, qr/--function=process-cpu --threshold=/,
+   "process-cpu: the options logged have no --variable or --match, which it does not use");
 
 $output = stalk_process_cpu("--host", "localhost", "--port", "27017", "--system-only");
-like($output, qr/Check results: process-cpu\(connections\.active\)=5\.00/,
+like($output, qr/Check results: process-cpu=5\.00/,
    "--system-only --port 27017: measures the mongod on 27017");
 
 # Connected: the PID the server reports, checked against the local process.
@@ -103,7 +105,7 @@ like($output, qr/Check results: process-cpu\(connections\.active\)=5\.00/,
    local $ENV{FAKE_SERVER_PID}  = 4343;
    local $ENV{FAKE_SERVER_PORT} = 27018;
    $output = stalk_process_cpu("--uri", "mongodb://localhost:27018/");
-   like($output, qr/Check results: process-cpu\(connections\.active\)=90\.00/,
+   like($output, qr/Check results: process-cpu=90\.00/,
       "connected: measures the process the server reports");
 }
 
