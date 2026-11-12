@@ -35,11 +35,15 @@ import (
 	"github.com/percona/percona-toolkit/src/go/tests/utils"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/suite"
+	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 /*
@@ -779,6 +783,71 @@ func (s *CollectorSuite) TestBusyPortError() {
 		s.NoError(err)
 		s.Equal("3", strings.TrimSpace(string(out)), "Should find error logs in summary files due to busy port")
 	})
+}
+
+func (s *CollectorSuite) TestNamespaceOnlyAccess() {
+	ctx := s.T().Context()
+	name := "pt-k8s-debug-collector-namespace-only"
+
+	_, err := s.KubeClient.CoreV1().ServiceAccounts(s.Namespace).Create(ctx, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+	}, metav1.CreateOptions{})
+	s.Require().NoError(err)
+	s.T().Cleanup(func() {
+		_ = s.KubeClient.CoreV1().ServiceAccounts(s.Namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
+	})
+
+	_, err = s.KubeClient.RbacV1().RoleBindings(s.Namespace).Create(ctx, &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: "admin"},
+		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: name, Namespace: s.Namespace}},
+	}, metav1.CreateOptions{})
+	s.Require().NoError(err)
+	s.T().Cleanup(func() {
+		_ = s.KubeClient.RbacV1().RoleBindings(s.Namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
+	})
+
+	token, err := s.KubeClient.CoreV1().ServiceAccounts(s.Namespace).CreateToken(ctx, name, &authenticationv1.TokenRequest{}, metav1.CreateOptions{})
+	s.Require().NoError(err)
+
+	config, err := clientcmd.LoadFromFile(s.KubeConfig)
+	s.Require().NoError(err)
+	current, ok := config.Contexts[config.CurrentContext]
+	s.Require().True(ok, "Context %q not found in %s", config.CurrentContext, s.KubeConfig)
+
+	restricted := clientcmdapi.NewConfig()
+	restricted.Clusters[current.Cluster] = config.Clusters[current.Cluster]
+	restricted.AuthInfos[name] = &clientcmdapi.AuthInfo{Token: token.Status.Token}
+	restricted.Contexts[name] = &clientcmdapi.Context{Cluster: current.Cluster, AuthInfo: name}
+	restricted.CurrentContext = name
+	kubeconfig := filepath.Join(s.T().TempDir(), "kubeconfig")
+	s.Require().NoError(clientcmd.WriteToFile(*restricted, kubeconfig))
+
+	client, err := getKubeClient(kubeconfig)
+	s.Require().NoError(err)
+	s.Require().Eventually(func() bool {
+		_, err := client.CoreV1().Pods(s.Namespace).List(ctx, metav1.ListOptions{})
+		return err == nil
+	}, 30*time.Second, time.Second, "Service account cannot list pods in namespace %s", s.Namespace)
+	_, err = client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	s.Require().True(apierrors.IsForbidden(err), "Expected namespace list to be forbidden, got %v", err)
+
+	out, err := s.runCollectorOutput(
+		"--kubeconfig", kubeconfig,
+		"--forwardport", s.ForwardPort,
+		"--resource", s.Namespace,
+		"--namespace", s.Namespace,
+		"--skip-pod-summary",
+	)
+	s.Require().NoError(err, string(out))
+
+	listing, err := exec.Command("tar", "-tf", "cluster-dump.tar.gz").Output()
+	s.Require().NoError(err)
+	entries := strings.Fields(string(listing))
+	s.Contains(entries, "cluster-dump/"+s.Namespace+"/pods.yaml")
+	s.True(slices.ContainsFunc(entries, func(entry string) bool {
+		return strings.HasPrefix(entry, "cluster-dump/"+s.Namespace+"/") && strings.HasSuffix(entry, "/describe.txt")
+	}), "Expected describe.txt of pods in namespace %s", s.Namespace)
 }
 
 type CmdCompare struct {

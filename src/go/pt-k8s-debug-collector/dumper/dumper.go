@@ -338,18 +338,14 @@ func (d *Dumper) export(ctx context.Context) error {
 		}(gvr)
 	}
 
-	namespaces, err := d.clientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	namespaces, err := listNamespaces(ctx, d.clientSet, d.namespace)
 	if err != nil {
 		return err
 	}
 
 	semNS := semaphore.NewWeighted(int64(d.concurrentExportWorkersNamespace))
 
-	for _, ns := range namespaces.Items {
-		if d.namespace != "" && d.namespace != ns.Name {
-			continue
-		}
-
+	for _, ns := range namespaces {
 		wg.Add(1)
 		go func(namespace string) {
 			defer wg.Done()
@@ -363,7 +359,7 @@ func (d *Dumper) export(ctx context.Context) error {
 			if err := d.dumpSSLInfo(ctx, namespace); err != nil {
 				log.Printf("error dumping secrets for namespace %q: %s", namespace, err)
 			}
-		}(ns.Name)
+		}(ns)
 
 		for _, gvr := range resources.NamespaceScoped {
 			// Do not collect secrets
@@ -386,12 +382,29 @@ func (d *Dumper) export(ctx context.Context) error {
 					log.Errorf("failed to export resource %q for namespace %q: %s", gvr.Resource, namespace, err)
 					return
 				}
-			}(ns.Name, gvr)
+			}(ns, gvr)
 		}
 	}
 
 	wg.Wait()
 	return nil
+}
+
+func listNamespaces(ctx context.Context, client kubernetes.Interface, namespace string) ([]string, error) {
+	if namespace != "" {
+		return []string{namespace}, nil
+	}
+
+	list, err := client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	names := make([]string, 0, len(list.Items))
+	for _, ns := range list.Items {
+		names = append(names, ns.Name)
+	}
+	return names, nil
 }
 
 func (d *Dumper) exportGeneric(ctx context.Context, gvr schema.GroupVersionResource, ns string) error {
