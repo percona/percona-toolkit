@@ -1,0 +1,7 @@
+2024-06-01T14:00:00.050+0000 I  CONTROL  [initandlisten] MongoDB starting : pid=6001 port=27018 dbpath=/data/db 64-bit host=shard0-rs0-0
+2024-06-01T14:00:01.000+0000 I  NETWORK  [listener] waiting for connections on port 27018
+2024-06-01T14:00:02.000+0000 I  REPL     [initandlisten] replica set shard0-rs starting up
+2024-06-01T14:00:03.000+0000 I  REPL     [conn1] Replica Set Member State: PRIMARY
+2024-06-01T14:00:04.000+0000 I  SHARDING [conn2] sharding metadata refresh for database test
+2024-06-01T14:00:10.000+0000 I  REPL     [conn4] Applying batch of operations from oplog for namespace test.orders
+2024-06-01T14:00:12.000+0000 W  WRITE    [conn6] command test.orders command: insert { insert: "orders" } write concern error: wtimeout

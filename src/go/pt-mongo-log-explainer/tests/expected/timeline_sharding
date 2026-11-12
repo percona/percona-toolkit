@@ -1,0 +1,7 @@
+[2024-06-01 14:00:05] [mongos-router-1] [mongos-router-1:27017] [BALANCER] [INFO] [2024-06-01T14:00:05.000+0000 I  SHARDING [Balancer] balancer enabled for cluster]
+[2024-06-01 14:00:10] [mongos-router-1] [mongos-router-1:27017] [CHUNK_MIGRATION] [INFO] [2024-06-01T14:00:10.000+0000 I  SHARDING [Balancer] balancer round complete: moved 2 chunks]
+[2024-06-01 14:00:15] [mongos-router-1] [mongos-router-1:27017] [CHUNK_MIGRATION] [INFO] [2024-06-01T14:00:15.000+0000 I  SHARDING [conn2] chunk move scheduled from shard shard0 to shard shard1 ns=test.orders]
+[2024-06-01 14:00:16] [mongos-router-1] [mongos-router-1:27017] [CHUNK_MIGRATION] [INFO] [phase=start 2024-06-01T14:00:16.000+0000 I  SHARDING [conn2] migration started for namespace test.orders]
+[2024-06-01 14:00:18] [mongos-router-1] [mongos-router-1:27017] [CHUNK_MIGRATION] [SUCCESS] [phase=complete 2024-06-01T14:00:18.500+0000 I  SHARDING [conn2] migration committed for namespace test.orders]
+[2024-06-01 14:00:25] [mongos-router-1] [mongos-router-1:27017] [CHUNK_MIGRATION] [FAILURE] [phase=abort 2024-06-01T14:00:25.000+0000 W  SHARDING [conn3] migration aborted for namespace test.inventory due to lock timeout]
+[2024-06-01 14:00:30] [mongos-router-1] [mongos-router-1:27017] [BALANCER] [INFO] [2024-06-01T14:00:30.000+0000 I  SHARDING [Balancer] balancer disabled by user command]

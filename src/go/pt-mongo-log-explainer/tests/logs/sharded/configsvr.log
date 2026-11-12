@@ -1,0 +1,5 @@
+2024-06-01T14:00:00.020+0000 I  CONTROL  [initandlisten] MongoDB starting : pid=7001 port=27019 dbpath=/data/config 64-bit host=configsvr-0
+2024-06-01T14:00:01.000+0000 I  NETWORK  [listener] waiting for connections on port 27019
+2024-06-01T14:00:05.000+0000 I  SHARDING [conn1] replica set config for shard shard0 updated
+2024-06-01T14:00:08.000+0000 I  SHARDING [conn2] chunk migration between shards for ns=test.orders
+2024-06-01T14:00:20.000+0000 W  NETWORK  [conn3] network error while communicating with host shard0-rs0-1:27018: connection reset by peer
