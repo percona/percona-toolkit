@@ -1746,13 +1746,23 @@ $MONGO_JS_LIB
 $MONGO_JS_LOOP" &
    fi
 
-   if [ -n "$CMD_MONGOSTAT" ] && ! _should_skip "mongostat"; then
-      run_collector "$d/$p-mongostat" mongostat \
-         mongo_monitor_exec "$CMD_MONGOSTAT" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
+   # mongostat and mongotop come with the MongoDB Database Tools, which may
+   # not be installed; say so, as for gdb, strace and tcpdump.
+   if ! _should_skip "mongostat"; then
+      if [ -z "$CMD_MONGOSTAT" ]; then
+         warn "Cannot find mongostat; not collecting it.  Install the MongoDB Database Tools, set CMD_MONGOSTAT, or use --skip-collection mongostat."
+      else
+         run_collector "$d/$p-mongostat" mongostat \
+            mongo_monitor_exec "$CMD_MONGOSTAT" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
+      fi
    fi
-   if [ -n "$CMD_MONGOTOP" ] && ! _should_skip "mongotop"; then
-      run_collector "$d/$p-mongotop" mongotop \
-         mongo_monitor_exec "$CMD_MONGOTOP" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
+   if ! _should_skip "mongotop"; then
+      if [ -z "$CMD_MONGOTOP" ]; then
+         warn "Cannot find mongotop; not collecting it.  Install the MongoDB Database Tools, set CMD_MONGOTOP, or use --skip-collection mongotop."
+      else
+         run_collector "$d/$p-mongotop" mongotop \
+            mongo_monitor_exec "$CMD_MONGOTOP" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
+      fi
    fi
 }
 

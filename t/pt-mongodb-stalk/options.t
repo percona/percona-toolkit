@@ -43,6 +43,36 @@ is($status, 0, "--skip-collection of the whole time series exits 0") or diag($ou
 unlike(slurp_file($ENV{MONGOSH_LOG}), qr/for \(let i = 0; i < P_COUNT/,
    "the mongosh collection loop is not started");
 
+# Without the MongoDB Database Tools: mongostat and mongotop are not found,
+# which <prefix>-output says, unless they are skipped.  PATH has the fake
+# commands except those two, and the system directories.
+SKIP: {
+   skip "mongostat or mongotop is installed in /usr/bin or /bin", 6
+      if grep { -x $_ } map { ("/usr/bin/$_", "/bin/$_") } qw(mongostat mongotop);
+   my $no_tools = "$tmpdir/bin-no-mongo-tools";
+   mkdir $no_tools;
+   for my $file ( glob("$fakebin/*") ) {
+      (my $name = $file) =~ s{.*/}{};
+      next if $name eq 'mongostat' || $name eq 'mongotop';
+      symlink $file, "$no_tools/$name" or die "Cannot symlink $file: $OS_ERROR";
+   }
+   local $ENV{PATH} = "$no_tools:/usr/bin:/bin:/usr/sbin:/sbin";
+
+   ($status, $output, $p) = collect_with();
+   is($status, 0, "no mongostat or mongotop: collection exits 0") or diag($output);
+   my $out = slurp_file("$p-output");
+   like($out, qr/Cannot find mongostat; not collecting it\./,
+      "no mongostat: <prefix>-output says so");
+   like($out, qr/Cannot find mongotop; not collecting it\./,
+      "no mongotop: <prefix>-output says so");
+   ok(-f "$p-serverstatus", "no mongostat or mongotop: the rest is collected");
+
+   ($status, $output, $p) = collect_with("--skip-collection", "mongostat,mongotop");
+   unlike(slurp_file("$p-output"), qr/Cannot find mongo(?:stat|top)/,
+      "no mongostat or mongotop: no warning when they are skipped");
+   is($status, 0, "no mongostat or mongotop, skipped: collection exits 0") or diag($output);
+}
+
 # --mongodb-only: no system data except the free disk space.
 ($status, $output, $p) = collect_with("--mongodb-only");
 is($status, 0, "--mongodb-only exits 0") or diag($output);
