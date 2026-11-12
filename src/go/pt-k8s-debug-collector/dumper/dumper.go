@@ -565,7 +565,10 @@ func filterResource(resourceName string) bool {
 func (d *Dumper) discoverResources() (*resourceMap, error) {
 	lists, err := d.discoveryClient.ServerPreferredResources()
 	if err != nil {
-		return nil, err
+		if !discovery.IsGroupDiscoveryFailedError(err) {
+			return nil, err
+		}
+		log.Errorf("failed to discover some API groups, collecting the rest: %v", err)
 	}
 	rm := &resourceMap{}
 
