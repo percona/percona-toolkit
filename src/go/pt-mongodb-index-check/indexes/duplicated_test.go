@@ -183,3 +183,70 @@ func TestDuplicatePairsListsSkippedPairs(t *testing.T) {
 		{Namespace: "db.people", Name: "s_1", ContainerName: "s_1_x_1", Reason: "sparse differs"},
 	}, skipped)
 }
+
+func TestFindDuplicatedPrefixRules(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client, err := tu.TestClient(ctx, tu.MongoDBStandalonePort)
+	require.NoError(t, err)
+
+	defer client.Disconnect(ctx) //nolint:errcheck
+
+	const dbname = "test_prefix_rules"
+
+	db := client.Database(dbname)
+	require.NoError(t, db.Drop(ctx))
+
+	defer db.Drop(ctx) //nolint:errcheck
+
+	create := func(coll string, models ...mongo.IndexModel) {
+		t.Helper()
+
+		_, err := db.Collection(coll).Indexes().CreateMany(ctx, models)
+		require.NoError(t, err)
+	}
+
+	ab := primitive.D{{Key: "a", Value: 1}, {Key: "b", Value: 1}}
+	a := primitive.D{{Key: "a", Value: 1}}
+
+	create("uq",
+		mongo.IndexModel{Keys: a, Options: options.Index().SetUnique(true)},
+		mongo.IndexModel{Keys: ab, Options: options.Index().SetUnique(true)})
+	create("ttl",
+		mongo.IndexModel{Keys: a, Options: options.Index().SetExpireAfterSeconds(60)},
+		mongo.IndexModel{Keys: ab})
+	create("names",
+		mongo.IndexModel{Keys: a},
+		mongo.IndexModel{Keys: primitive.D{{Key: "ab", Value: 1}, {Key: "x", Value: 1}}})
+	create("people",
+		mongo.IndexModel{
+			Keys:    primitive.D{{Key: "name", Value: 1}},
+			Options: options.Index().SetPartialFilterExpression(primitive.M{"age": primitive.M{"$gt": 50}}),
+		},
+		mongo.IndexModel{
+			Keys:    primitive.D{{Key: "name", Value: 1}, {Key: "surname", Value: 1}},
+			Options: options.Index().SetPartialFilterExpression(primitive.M{"age": primitive.M{"$lte": 30}}),
+		})
+
+	dups, _, err := FindDuplicated(ctx, client, dbname, "uq")
+	require.NoError(t, err)
+	require.Len(t, dups, 1)
+	assert.Equal(t, "unique", dups[0].Constraint)
+
+	dups, _, err = FindDuplicated(ctx, client, dbname, "ttl")
+	require.NoError(t, err)
+	require.Len(t, dups, 1)
+	assert.Equal(t, "TTL", dups[0].Constraint)
+
+	dups, _, err = FindDuplicated(ctx, client, dbname, "names")
+	require.NoError(t, err)
+	assert.Empty(t, dups)
+
+	dups, skipped, err := FindDuplicated(ctx, client, dbname, "people")
+	require.NoError(t, err)
+	assert.Empty(t, dups)
+	assert.Equal(t, []SkippedDuplicate{{
+		Namespace: dbname + ".people", Name: "name_1", ContainerName: "name_1_surname_1", Reason: "partialFilterExpression differs",
+	}}, skipped)
+}
