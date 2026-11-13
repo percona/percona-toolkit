@@ -48,9 +48,9 @@ func TestUnusedIndexes(t *testing.T) {
 	defer database.Drop(ctx) //nolint:errcheck
 
 	testCases := []primitive.D{
-		{{"f1", 1}, {"f2", -1}, {"f3", 1}, {"f4", 1}},
-		{{"f3", -1}},
-		{{"f4", -1}},
+		{{Key: "f1", Value: 1}, {Key: "f2", Value: -1}, {Key: "f3", Value: 1}, {Key: "f4", Value: 1}},
+		{{Key: "f3", Value: -1}},
+		{{Key: "f4", Value: -1}},
 	}
 
 	errCount := 0
