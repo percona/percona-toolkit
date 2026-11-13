@@ -213,7 +213,11 @@ func FindDuplicated(ctx context.Context, client *mongo.Client, database, collect
 }
 
 func isKeyPrefix(prefix, key primitive.D) bool {
-	if len(prefix) >= len(key) {
+	return len(prefix) < len(key) && keyStartsWith(key, prefix)
+}
+
+func keyStartsWith(key, prefix primitive.D) bool {
+	if len(prefix) == 0 || len(prefix) > len(key) {
 		return false
 	}
 

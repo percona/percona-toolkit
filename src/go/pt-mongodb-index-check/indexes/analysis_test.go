@@ -61,6 +61,21 @@ func TestScoreIndex(t *testing.T) {
 			wantConfidence: ConfidenceHigh,
 		},
 		{
+			name: "shard key index is always kept",
+			rec: IndexRecord{
+				IndexName:      "_id_hashed",
+				AccessOps:      0,
+				AccessSince:    thirtyDaysAgo,
+				IndexSizeBytes: 50 * 1024 * 1024,
+				CollDocCount:   100000,
+				IsShardKey:     true,
+			},
+			wantRec:        RecommendKeepConstraint,
+			wantScoreMin:   0,
+			wantScoreMax:   0,
+			wantConfidence: ConfidenceHigh,
+		},
+		{
 			name: "unique index is always kept",
 			rec: IndexRecord{
 				IndexName:   "email_1",
@@ -632,6 +647,25 @@ func TestCrossReferenceDuplicates(t *testing.T) {
 	assert.Equal(t, "idx_full", records[0].DuplicateContainerName)
 	assert.Equal(t, int64(5000), records[0].DuplicateContainerOps)
 	assert.False(t, records[1].IsDuplicatePrefix)
+}
+
+func TestMarkShardKeyIndexes(t *testing.T) {
+	records := []IndexRecord{
+		{IndexName: "_id_", IndexKey: primitive.D{{Key: "_id", Value: int32(1)}}},
+		{IndexName: "_id_hashed", IndexKey: primitive.D{{Key: "_id", Value: "hashed"}}},
+		{IndexName: "region_1_date_1", IndexKey: primitive.D{{Key: "region", Value: int32(1)}, {Key: "date", Value: int32(1)}}},
+		{IndexName: "date_1", IndexKey: primitive.D{{Key: "date", Value: int32(1)}}},
+	}
+
+	MarkShardKeyIndexes(records, nil)
+	MarkShardKeyIndexes(records, primitive.D{{Key: "_id", Value: "hashed"}})
+	MarkShardKeyIndexes(records, primitive.D{{Key: "region", Value: float64(1)}})
+
+	marked := map[string]bool{}
+	for _, r := range records {
+		marked[r.IndexName] = r.IsShardKey
+	}
+	assert.Equal(t, map[string]bool{"_id_": false, "_id_hashed": true, "region_1_date_1": true, "date_1": false}, marked)
 }
 
 func TestScoreRecordsSkipsIDIndex(t *testing.T) {

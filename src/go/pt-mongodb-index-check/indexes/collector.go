@@ -15,6 +15,8 @@ package indexes
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -40,6 +42,73 @@ type collectionStats struct {
 	Size           int64            `bson:"size"`
 	TotalIndexSize int64            `bson:"totalIndexSize"`
 	IndexSizes     map[string]int64 `bson:"indexSizes"`
+}
+
+type shardedCollection struct {
+	Namespace string      `bson:"_id"`
+	Key       primitive.D `bson:"key"`
+}
+
+func CollectShardKeys(ctx context.Context, client *mongo.Client) (map[string]primitive.D, error) {
+	keys := make(map[string]primitive.D)
+	filter := primitive.D{
+		{Key: "dropped", Value: primitive.D{{Key: "$ne", Value: true}}},
+		{Key: "unsplittable", Value: primitive.D{{Key: "$ne", Value: true}}},
+	}
+
+	var failures []string
+
+	for _, name := range []string{"collections", "cache.collections"} {
+		var docs []shardedCollection
+
+		cursor, err := client.Database("config").Collection(name).Find(ctx, filter)
+		if err == nil {
+			err = cursor.All(ctx, &docs)
+		}
+		if err != nil {
+			failures = append(failures, fmt.Sprintf("config.%s: %s", name, errorName(err)))
+			continue
+		}
+
+		for _, d := range docs {
+			if len(d.Key) > 0 {
+				keys[d.Namespace] = d.Key
+			}
+		}
+	}
+
+	if len(failures) == 2 {
+		return nil, errors.New(strings.Join(failures, "; "))
+	}
+
+	return keys, nil
+}
+
+func ConnectedToMongos(ctx context.Context, client *mongo.Client) bool {
+	var reply struct {
+		Msg string `bson:"msg"`
+	}
+
+	err := client.Database("admin").RunCommand(ctx, bson.D{{Key: "isMaster", Value: 1}}).Decode(&reply)
+
+	return err == nil && reply.Msg == "isdbgrid"
+}
+
+func errorName(err error) string {
+	var cmdErr mongo.CommandError
+	if errors.As(err, &cmdErr) && cmdErr.Name != "" {
+		return cmdErr.Name
+	}
+
+	return err.Error()
+}
+
+func MarkShardKeyIndexes(records []IndexRecord, shardKey primitive.D) {
+	for i := range records {
+		if keyStartsWith(records[i].IndexKey, shardKey) {
+			records[i].IsShardKey = true
+		}
+	}
 }
 
 // CollectIndexMetadata retrieves index properties from listIndexes for a collection.

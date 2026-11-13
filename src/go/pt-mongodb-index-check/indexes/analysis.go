@@ -77,11 +77,12 @@ type IndexAnalysis struct {
 	CollTotalIdxSize int64   `json:"collTotalIdxSize"`
 	IndexSizePct     float64 `json:"indexSizePct"`
 
-	IsPartial bool `json:"isPartial"`
-	IsSparse  bool `json:"isSparse"`
-	IsUnique  bool `json:"isUnique"`
-	IsTTL     bool `json:"isTTL"`
-	IsHidden  bool `json:"isHidden"`
+	IsPartial  bool `json:"isPartial"`
+	IsSparse   bool `json:"isSparse"`
+	IsUnique   bool `json:"isUnique"`
+	IsTTL      bool `json:"isTTL"`
+	IsHidden   bool `json:"isHidden"`
+	IsShardKey bool `json:"isShardKey"`
 
 	Score          float64 `json:"score"`
 	Recommendation string  `json:"recommendation"`
@@ -103,11 +104,12 @@ type IndexRecord struct {
 	CollDocCount     int64
 	CollTotalIdxSize int64
 
-	IsPartial bool
-	IsSparse  bool
-	IsUnique  bool
-	IsTTL     bool
-	IsHidden  bool
+	IsPartial  bool
+	IsSparse   bool
+	IsUnique   bool
+	IsTTL      bool
+	IsHidden   bool
+	IsShardKey bool
 
 	// Set by cross-reference with duplicate check results
 	IsDuplicatePrefix      bool
@@ -155,6 +157,7 @@ func ScoreIndex(rec IndexRecord, cfg AnalysisConfig) IndexAnalysis {
 		IsUnique:         rec.IsUnique,
 		IsTTL:            rec.IsTTL,
 		IsHidden:         rec.IsHidden,
+		IsShardKey:       rec.IsShardKey,
 	}
 
 	// Hard guards
@@ -177,6 +180,13 @@ func ScoreIndex(rec IndexRecord, cfg AnalysisConfig) IndexAnalysis {
 		a.Recommendation = RecommendKeepConstraint
 		a.Confidence = ConfidenceHigh
 		a.Reason = "TTL index for automatic document expiration"
+		return a
+	}
+	if rec.IsShardKey {
+		a.Score = 0
+		a.Recommendation = RecommendKeepConstraint
+		a.Confidence = ConfidenceHigh
+		a.Reason = "supports the shard key; chunk migrations and splits need it"
 		return a
 	}
 	if rec.IsHidden {

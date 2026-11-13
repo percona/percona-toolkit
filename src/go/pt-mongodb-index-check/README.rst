@@ -112,6 +112,9 @@ these recommendations:
 - Unique indexes (enforce data integrity constraints)
 - TTL indexes (provide automatic document expiration)
 - Hidden indexes (intentionally excluded from planner by admin)
+- Indexes that support a shard key (chunk migrations and splits need them; the
+  shard keys are read from ``config.collections`` and, on a shard member, from
+  ``config.cache.collections``)
 - Indexes in system databases (admin, config, local)
 - Collections whose names begin with ``system.`` (internal collections such as ``system.profile``)
 

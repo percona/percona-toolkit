@@ -453,6 +453,8 @@ func renderAnalysisReport(buf *bytes.Buffer, analysis []indexes.IndexAnalysis, s
 				return "  [UNIQUE]"
 			case a.IsTTL:
 				return "  [TTL]"
+			case a.IsShardKey:
+				return "  [SHARD KEY]"
 			case a.IsHidden:
 				return "  [HIDDEN]"
 			default:
@@ -477,15 +479,23 @@ func analyzeUnused(
 	var allAnalysis []indexes.IndexAnalysis
 	var scope analysisScope
 
-	var err error
-
 	colls := make([]string, len(collections))
 	copy(colls, collections)
+
+	shardKeys, err := indexes.CollectShardKeys(ctx, client)
+	if err != nil {
+		if indexes.ConnectedToMongos(ctx, client) {
+			log.Warnf("cannot read the shard keys, so indexes that support a shard key are not protected: %s", err)
+		} else {
+			log.Debugf("cannot read the shard keys: %s", err)
+		}
+	}
 
 	for _, database := range databases {
 		if indexes.IsSystemDB(database) {
 			continue
 		}
+
 		if len(collections) == 0 {
 			colls, err = indexes.CollectionNames(ctx, client, database)
 			if err != nil {
@@ -527,6 +537,8 @@ func analyzeUnused(
 			if len(records) == 0 {
 				continue
 			}
+
+			indexes.MarkShardKeyIndexes(records, shardKeys[ns])
 
 			analysed++
 			scope.Collections++
