@@ -357,7 +357,7 @@ func initLoggingForPTDEBUG() {
 func redactMongoURI(uri string) string {
 	parsed, err := url.Parse(uri)
 	if err != nil {
-		return "<unparseable-uri>"
+		return "<unparsable-uri>"
 	}
 	if parsed.User != nil {
 		if _, hasPass := parsed.User.Password(); hasPass {

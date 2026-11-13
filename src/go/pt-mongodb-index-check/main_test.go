@@ -110,8 +110,8 @@ func TestRedactMongoURI(t *testing.T) {
 }
 
 func TestRedactMongoURI_invalid(t *testing.T) {
-	if g := redactMongoURI("://"); g != "<unparseable-uri>" {
-		t.Errorf("expected unparseable sentinel, got %q", g)
+	if g := redactMongoURI("://"); g != "<unparsable-uri>" {
+		t.Errorf("expected unparsable sentinel, got %q", g)
 	}
 }
 
