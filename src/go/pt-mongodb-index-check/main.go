@@ -141,14 +141,6 @@ func buildDuplicateReportData(dups []indexes.Duplicate, sizeByNS map[string]map[
 		CollectionCount: len(nsSet),
 	}
 
-	collNameFn := func(ns string) string {
-		parts := strings.SplitN(ns, ".", 2)
-		if len(parts) == 2 {
-			return parts[1]
-		}
-		return ns
-	}
-
 	for _, d := range dups {
 		reason := fmt.Sprintf("'%s' is a key-order prefix of '%s'; any query served by '%s' can also use '%s'.",
 			d.Name, d.ContainerName, d.Name, d.ContainerName)
@@ -163,7 +155,7 @@ func buildDuplicateReportData(dups []indexes.Duplicate, sizeByNS map[string]map[
 		}
 
 		if d.Warning == "" {
-			row.Action = fmt.Sprintf("db.%s.dropIndex(%q)", collNameFn(d.Namespace), d.Name)
+			row.Action = dropIndexAction(d.Namespace, d.Name)
 		}
 
 		if d.Constraint != "" {
@@ -184,6 +176,11 @@ func buildDuplicateReportData(dups []indexes.Duplicate, sizeByNS map[string]map[
 	}
 
 	return data
+}
+
+func dropIndexAction(namespace, index string) string {
+	database, collection, _ := strings.Cut(namespace, ".")
+	return fmt.Sprintf("db.getSiblingDB(%q).getCollection(%q).dropIndex(%q)", database, collection, index)
 }
 
 // collectDuplicateSizes fetches collStats for each unique namespace in the
@@ -449,13 +446,7 @@ func renderAnalysisReport(buf *bytes.Buffer, analysis []indexes.IndexAnalysis, s
 
 	funcMap := template.FuncMap{
 		"formatBytes": indexes.FormatBytes,
-		"collName": func(ns string) string {
-			parts := strings.SplitN(ns, ".", 2)
-			if len(parts) == 2 {
-				return parts[1]
-			}
-			return ns
-		},
+		"dropAction":  dropIndexAction,
 		"tagFor": func(a indexes.IndexAnalysis) string {
 			switch {
 			case a.IsUnique:

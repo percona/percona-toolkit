@@ -253,7 +253,7 @@ Sample output
        Prefix:    'idx_region' {region:1}  4.0 KB
        Container: 'idx_region_date' {region:1, date:-1}  8.0 KB
        Reason: 'idx_region' is a key-order prefix of 'idx_region_date'; any query served by 'idx_region' can also use 'idx_region_date'.
-       Action: db.orders.dropIndex("idx_region")
+       Action: db.getSiblingDB("mydb").getCollection("orders").dropIndex("idx_region")
 
    # Summary: 1 redundant prefix pair(s), 0 pair(s) kept for a constraint
 
@@ -268,7 +268,7 @@ Sample output
      mydb.orders  index 'idx_old_status' {status:1, date:-1}
        Ops: 0 in 45 days | Size: 128.0 MB | Score: 0.95
        Reason: Zero reads in 45 days; index is 128.0 MB and costs write amplification
-       Action: db.orders.dropIndex("idx_old_status")
+       Action: db.getSiblingDB("mydb").getCollection("orders").dropIndex("idx_old_status")
 
    # ---- LIKELY UNUSED (review recommended) ----------------------
 

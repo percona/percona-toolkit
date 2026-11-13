@@ -160,8 +160,7 @@ func TestBuildDuplicateReportData(t *testing.T) {
 		assert.Equal(t, 2, d.CollectionCount, "distinct namespaces")
 		assert.Len(t, d.Standard, 1)
 		assert.Len(t, d.WithWarning, 1)
-		assert.Contains(t, d.Standard[0].Action, `dropIndex("idx_a")`)
-		assert.Contains(t, d.Standard[0].Action, "db.orders.")
+		assert.Equal(t, `db.getSiblingDB("mydb").getCollection("orders").dropIndex("idx_a")`, d.Standard[0].Action)
 		assert.True(t, d.Standard[0].HasSizes)
 		assert.Equal(t, int64(100), d.Standard[0].PrefixSize)
 		assert.Equal(t, int64(500), d.Standard[0].ContainerSize)
@@ -295,11 +294,19 @@ func TestOutput_checkAll_bothSections(t *testing.T) {
 			Recommendation: indexes.RecommendMonitor,
 			Reason:         "monitoring",
 		},
+		{
+			Namespace:      "mydb.orders.archive",
+			IndexName:      "idx_old",
+			IndexKey:       primitive.D{{Key: "old", Value: int32(1)}},
+			Recommendation: indexes.RecommendSafeToDrop,
+			Reason:         "unused",
+		},
 	}
 	out := output(resp, false, analysis, analysisScope{Databases: 1, Collections: 1}, dupReport, true, true)
 	assert.Contains(t, out, "Duplicate Prefix Index Report")
 	assert.Contains(t, out, "Unused Index Analysis")
 	assert.Contains(t, out, `dropIndex("idx_a")`)
+	assert.Contains(t, out, `Action: db.getSiblingDB("mydb").getCollection("orders.archive").dropIndex("idx_old")`)
 }
 
 // Regression: no database selected must produce an error, not blank output

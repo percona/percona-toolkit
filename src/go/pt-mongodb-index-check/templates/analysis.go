@@ -27,7 +27,7 @@ var Analysis = `
   {{ .Namespace }}  index '{{ .IndexName }}' { {{- range $i, $val := .IndexKey }}{{if $i}}, {{end}}{{ $val.Key }}:{{ $val.Value }}{{ end -}} }
     Ops: {{ .AccessOps }} in {{ .AgeDays }} days | Size: {{ formatBytes .IndexSizeBytes }} | Score: {{ printf "%.2f" .Score }}
     Reason: {{ .Reason }}
-    Action: db.{{ collName .Namespace }}.dropIndex("{{ .IndexName }}")
+    Action: {{ dropAction .Namespace .IndexName }}
 {{ end }}{{ end }}{{ if .LikelyUnused }}
 # ---- LIKELY UNUSED (review recommended) ----------------------
 {{ range .LikelyUnused }}
