@@ -20,7 +20,7 @@ scanned for duplicate prefixes, consistent with the unused-index path.
 The sectioned **Duplicate Prefix Index Report** (banner, per-pair reason,
 ``dropIndex`` action, optional index sizes from ``collStats``, a separate block
 for unique and TTL prefixes that must be kept, and a ``NOT REPORTED`` list of
-pairs whose index options differ) is printed in text mode for
+key prefixes that are not redundant) is printed in text mode for
 ``check-duplicates`` and ``check-all`` only; ``check-unused`` output focuses on
 unused-index analysis.
 
@@ -49,9 +49,14 @@ The ``_id_`` index is always excluded from duplicate candidates since it is a
 MongoDB requirement and cannot be dropped.
 
 **Index type awareness:** Hashed, text, and geospatial index types (``2dsphere``,
-``2d``) are treated as distinct types in the key comparison. An index on
-``{_id: 1}`` and ``{_id: "hashed"}`` are never considered prefix duplicates
-because they use fundamentally different index structures.
+``2d``, ``geoHaystack``) are treated as distinct types in the key comparison. An
+index on ``{_id: 1}`` and ``{_id: "hashed"}`` are never considered prefix
+duplicates because they use fundamentally different index structures.
+
+A prefix of a hidden index, or of an index that adds a text or ``2dsphere`` key
+after the prefix fields, is not reported as redundant either, because such an
+index cannot serve the prefix's queries. These pairs are also listed under
+``NOT REPORTED``.
 
 Key fields are compared one by one, so ``{a: 1}`` is not a prefix of
 ``{ab: 1, x: 1}``.

@@ -40,7 +40,7 @@ var Duplicated = `
     Container: '{{ .ContainerName }}' { {{- range $i, $v := .ContainerKey }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }{{ if .HasSizes }}  {{ formatBytes .ContainerSize }}{{ end }}
     WARNING: {{ .Warning }}
 {{ end }}{{ end }}{{ if .Skipped }}
-# ---- NOT REPORTED (key prefix, but index options differ) -----
+# ---- NOT REPORTED (key prefix, but not redundant) ------------
 {{ range .Skipped }}
   {{ .Namespace }}  '{{ .Name }}' is a key prefix of '{{ .ContainerName }}', but {{ .Reason }}
 {{- end }}

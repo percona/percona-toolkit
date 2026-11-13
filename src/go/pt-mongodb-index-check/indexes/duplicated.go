@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -34,6 +35,7 @@ type collectionIndex struct {
 	Sparse        bool        `bson:"sparse,omitempty"`
 	Unique        bool        `bson:"unique,omitempty"`
 	Collation     primitive.M `bson:"collation,omitempty"`
+	Hidden        bool        `bson:"hidden,omitempty"`
 
 	ExpireAfterSeconds interface{} `bson:"expireAfterSeconds,omitempty"`
 }
@@ -48,7 +50,7 @@ func (di collectionIndex) ComparableKey() string {
 
 // keyToken produces a unique prefix token for an index key element.
 // Numeric directions map to "+" or "-", while string index types
-// (hashed, text, 2dsphere, 2d) use "type:" so they never collide
+// (hashed, text, 2dsphere, 2d, geoHaystack) use "type:" so they never collide
 // with B-tree directions.
 //
 // MongoDB 8.x may encode the "hashed" key value as BSON Symbol (type 0x0E)
@@ -75,7 +77,7 @@ func keyToken(elem primitive.E) string {
 		return "+" + elem.Key
 	case string:
 		switch v {
-		case "hashed", "text", "2dsphere", "2d":
+		case "hashed", "text", "2dsphere", "2d", "geoHaystack":
 			return v + ":" + elem.Key
 		default:
 			return "+" + elem.Key
@@ -83,7 +85,7 @@ func keyToken(elem primitive.E) string {
 	case primitive.Symbol:
 		s := string(v)
 		switch s {
-		case "hashed", "text", "2dsphere", "2d":
+		case "hashed", "text", "2dsphere", "2d", "geoHaystack":
 			return s + ":" + elem.Key
 		default:
 			return "+" + elem.Key
@@ -91,7 +93,7 @@ func keyToken(elem primitive.E) string {
 	case []byte:
 		s := string(v)
 		switch s {
-		case "hashed", "text", "2dsphere", "2d":
+		case "hashed", "text", "2dsphere", "2d", "geoHaystack":
 			return s + ":" + elem.Key
 		default:
 			return "+" + elem.Key
@@ -99,7 +101,7 @@ func keyToken(elem primitive.E) string {
 	default:
 		s := fmt.Sprint(elem.Value)
 		switch s {
-		case "hashed", "text", "2dsphere", "2d":
+		case "hashed", "text", "2dsphere", "2d", "geoHaystack":
 			return s + ":" + elem.Key
 		default:
 			return "+" + elem.Key
@@ -176,6 +178,24 @@ func differingIndexOption(shorter, longer collectionIndex) string {
 	return ""
 }
 
+func unusableContainer(prefix, container collectionIndex) string {
+	if container.Hidden {
+		return "the container is hidden"
+	}
+
+	for _, elem := range container.Key[len(prefix.Key):] {
+		token := keyToken(elem)
+		if strings.HasPrefix(token, "text:") {
+			return "the container is a text index"
+		}
+		if strings.HasPrefix(token, "2dsphere:") || strings.HasPrefix(token, "2d:") || strings.HasPrefix(token, "geoHaystack:") {
+			return "the container is a geospatial index"
+		}
+	}
+
+	return ""
+}
+
 func FindDuplicated(ctx context.Context, client *mongo.Client, database, collection string) ([]Duplicate, []SkippedDuplicate, error) {
 	cursor, err := client.Database(database).Collection(collection).Indexes().List(ctx, nil)
 	if err != nil {
@@ -229,6 +249,16 @@ func duplicatePairs(namespace string, results []collectionIndex) ([]Duplicate, [
 					Name:          results[i].Name,
 					ContainerName: results[j].Name,
 					Reason:        opt + " differs",
+				})
+
+				continue
+			}
+			if reason := unusableContainer(results[i], results[j]); reason != "" {
+				skipped = append(skipped, SkippedDuplicate{
+					Namespace:     namespace,
+					Name:          results[i].Name,
+					ContainerName: results[j].Name,
+					Reason:        reason,
 				})
 
 				continue

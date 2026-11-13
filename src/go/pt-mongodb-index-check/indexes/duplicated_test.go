@@ -184,6 +184,34 @@ func TestDuplicatePairsListsSkippedPairs(t *testing.T) {
 	}, skipped)
 }
 
+func TestDuplicatePairsSkipsUnusableContainers(t *testing.T) {
+	dups, skipped := duplicatePairs("db.c", []collectionIndex{
+		{Name: "s_1", Key: primitive.D{{Key: "s", Value: int32(1)}}},
+		{Name: "s_1_body_text", Key: primitive.D{{Key: "s", Value: int32(1)}, {Key: "_fts", Value: "text"}, {Key: "_ftsx", Value: int32(1)}}},
+		{Name: "g_1", Key: primitive.D{{Key: "g", Value: int32(1)}}},
+		{Name: "g_1_loc_2dsphere", Key: primitive.D{{Key: "g", Value: int32(1)}, {Key: "loc", Value: "2dsphere"}}},
+		{Name: "h_1", Key: primitive.D{{Key: "h", Value: int32(1)}}},
+		{Name: "h_1_x_1", Key: primitive.D{{Key: "h", Value: int32(1)}, {Key: "x", Value: int32(1)}}, Hidden: true},
+		{Name: "p_1", Key: primitive.D{{Key: "p", Value: int32(1)}}},
+		{Name: "p_geoHaystack_t_1", Key: primitive.D{{Key: "p", Value: "geoHaystack"}, {Key: "t", Value: int32(1)}}},
+		{Name: "loc_2dsphere", Key: primitive.D{{Key: "loc", Value: "2dsphere"}}},
+		{Name: "loc_2dsphere_b_1", Key: primitive.D{{Key: "loc", Value: "2dsphere"}, {Key: "b", Value: int32(1)}}},
+	})
+
+	require.Len(t, dups, 1)
+	assert.Equal(t, "loc_2dsphere", dups[0].Name)
+
+	reasons := map[string]string{}
+	for _, s := range skipped {
+		reasons[s.Name] = s.Reason
+	}
+	assert.Equal(t, map[string]string{
+		"s_1": "the container is a text index",
+		"g_1": "the container is a geospatial index",
+		"h_1": "the container is hidden",
+	}, reasons)
+}
+
 func TestFindDuplicatedPrefixRules(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -228,6 +256,12 @@ func TestFindDuplicatedPrefixRules(t *testing.T) {
 			Keys:    primitive.D{{Key: "name", Value: 1}, {Key: "surname", Value: 1}},
 			Options: options.Index().SetPartialFilterExpression(primitive.M{"age": primitive.M{"$lte": 30}}),
 		})
+	create("text",
+		mongo.IndexModel{Keys: a},
+		mongo.IndexModel{Keys: primitive.D{{Key: "a", Value: 1}, {Key: "body", Value: "text"}}})
+	create("geo",
+		mongo.IndexModel{Keys: a},
+		mongo.IndexModel{Keys: primitive.D{{Key: "a", Value: 1}, {Key: "loc", Value: "2dsphere"}}})
 
 	dups, _, err := FindDuplicated(ctx, client, dbname, "uq")
 	require.NoError(t, err)
@@ -249,4 +283,16 @@ func TestFindDuplicatedPrefixRules(t *testing.T) {
 	assert.Equal(t, []SkippedDuplicate{{
 		Namespace: dbname + ".people", Name: "name_1", ContainerName: "name_1_surname_1", Reason: "partialFilterExpression differs",
 	}}, skipped)
+
+	dups, skipped, err = FindDuplicated(ctx, client, dbname, "text")
+	require.NoError(t, err)
+	assert.Empty(t, dups)
+	require.Len(t, skipped, 1)
+	assert.Equal(t, "the container is a text index", skipped[0].Reason)
+
+	dups, skipped, err = FindDuplicated(ctx, client, dbname, "geo")
+	require.NoError(t, err)
+	assert.Empty(t, dups)
+	require.Len(t, skipped, 1)
+	assert.Equal(t, "the container is a geospatial index", skipped[0].Reason)
 }

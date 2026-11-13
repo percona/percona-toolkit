@@ -354,7 +354,7 @@ func TestRenderDuplicateReport_skipped(t *testing.T) {
 	renderDuplicateReport(buf, data)
 	out := buf.String()
 	assert.Contains(t, out, "# No duplicate prefix indexes detected.")
-	assert.Contains(t, out, "# ---- NOT REPORTED (key prefix, but index options differ) -----\n")
+	assert.Contains(t, out, "# ---- NOT REPORTED (key prefix, but not redundant) ------------\n")
 	assert.Contains(t, out, "  db.people  'name_1' is a key prefix of 'name_1_surname_1', but partialFilterExpression differs\n")
 }
 
