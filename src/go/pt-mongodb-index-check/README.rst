@@ -191,6 +191,10 @@ Available flags
 +----------------------------------+------------------------------------------+
 | --json                           | Show output as JSON.                     |
 +----------------------------------+------------------------------------------+
+| --timeout=60s                    | Time limit for the whole run, e.g. 90s   |
+|                                  | or 5m. The tool exits with an error      |
+|                                  | when the limit is reached.               |
++----------------------------------+------------------------------------------+
 | --warmup-days=7                  | Minimum observation window (days)        |
 |                                  | before flagging unused indexes.          |
 +----------------------------------+------------------------------------------+

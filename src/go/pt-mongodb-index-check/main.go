@@ -51,6 +51,8 @@ type cmdlineArgs struct {
 	URI            string   `name:"mongodb.uri" required:"" placeholder:"mongodb://host:port/admindb?options" help:"Connection URI"`
 	JSON           bool     `name:"json" help:"Show output as JSON"`
 
+	Timeout time.Duration `name:"timeout" default:"60s" help:"Time limit for the whole run, e.g. 90s or 5m"`
+
 	WarmupDays               float64 `name:"warmup-days" default:"7" help:"Minimum observation window (days) before flagging unused indexes"`
 	LowUsageThreshold        float64 `name:"low-usage-threshold" default:"1.0" help:"Ops/day below which an index is considered low-usage"`
 	LargeIndexSize           int64   `name:"large-index-size" default:"10485760" help:"Index size threshold in bytes for 'large' classification (default 10MB)"`
@@ -237,15 +239,19 @@ func main() {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	if args.Timeout <= 0 {
+		log.Fatalf("--timeout must be greater than 0, got %s", args.Timeout)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), args.Timeout)
 	defer cancel()
 
 	if !strings.HasPrefix(args.URI, "mongodb") && !strings.HasPrefix(args.URI, "mongodb+srv") {
 		args.URI = "mongodb://" + args.URI
 	}
 
-	log.Debugf("command=%s json=%v all-databases=%v all-collections=%v warmup-days=%.4f low-usage-threshold=%.4f large-index-size=%d include-low-usage=%v cross-reference-duplicates=%v",
-		cmd, args.JSON, args.AllDatabases, args.AllCollections,
+	log.Debugf("command=%s json=%v timeout=%s all-databases=%v all-collections=%v warmup-days=%.4f low-usage-threshold=%.4f large-index-size=%d include-low-usage=%v cross-reference-duplicates=%v",
+		cmd, args.JSON, args.Timeout, args.AllDatabases, args.AllCollections,
 		args.WarmupDays, args.LowUsageThreshold, args.LargeIndexSize,
 		args.IncludeLowUsage, args.CrossReferenceDuplicates)
 
@@ -320,6 +326,10 @@ func main() {
 		}
 		dupReport = buildDuplicateReportData(duplicates, sizeByNS)
 		dupReport.Skipped = skipped
+	}
+
+	if ctx.Err() != nil {
+		log.Fatalf("The --timeout=%s limit was reached before all collections were checked; run again with a larger --timeout", args.Timeout)
 	}
 
 	showAnalysis := cmd == "check-unused" || cmd == "check-all"

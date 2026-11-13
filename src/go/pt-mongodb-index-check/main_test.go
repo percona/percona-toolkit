@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/indexes"
@@ -385,4 +386,18 @@ func TestOutput_noAnalysis(t *testing.T) {
 
 	out = output(response{}, false, nil, analysisScope{Databases: 1, Collections: 2}, duplicateReportData{}, false, true)
 	assert.NotContains(t, out, "No unused index candidates found.")
+}
+
+func TestTimeoutFlag(t *testing.T) {
+	start := time.Now()
+	out, err := exec.Command("../../../bin/"+toolname, "check-all", "--databases=test", "--timeout=1ms",
+		"--mongodb.uri=mongodb://127.0.0.1:1").CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "context deadline exceeded")
+	assert.Less(t, time.Since(start), 10*time.Second)
+
+	out, err = exec.Command("../../../bin/"+toolname, "check-all", "--databases=test", "--timeout=0s",
+		"--mongodb.uri=mongodb://127.0.0.1:1").CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "--timeout must be greater than 0")
 }
