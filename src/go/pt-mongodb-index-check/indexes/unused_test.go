@@ -23,6 +23,7 @@ import (
 
 	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -106,4 +107,29 @@ func TestIsSystemCollection(t *testing.T) {
 	assert.True(t, IsSystemCollection("system.js"))
 	assert.False(t, IsSystemCollection("orders"))
 	assert.False(t, IsSystemCollection("users"))
+}
+
+func TestCollectionNamesSkipsViews(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client, err := tu.TestClient(ctx, tu.MongoDBStandalonePort)
+	require.NoError(t, err)
+
+	defer client.Disconnect(ctx) //nolint:errcheck
+
+	const dbname = "test_collection_names"
+
+	db := client.Database(dbname)
+	require.NoError(t, db.Drop(ctx))
+
+	defer db.Drop(ctx) //nolint:errcheck
+
+	require.NoError(t, db.CreateCollection(ctx, "orders"))
+	require.NoError(t, db.CreateView(ctx, "orders_view", "orders", mongo.Pipeline{}))
+
+	names, err := CollectionNames(ctx, client, dbname)
+	require.NoError(t, err)
+	assert.Contains(t, names, "orders")
+	assert.NotContains(t, names, "orders_view")
 }

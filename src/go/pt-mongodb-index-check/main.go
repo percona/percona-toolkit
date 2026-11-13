@@ -486,22 +486,21 @@ func analyzeUnused(
 		if indexes.IsSystemDB(database) {
 			continue
 		}
-		scope.Databases++
-
 		if len(collections) == 0 {
-			colls, err = client.Database(database).ListCollectionNames(ctx, primitive.D{})
+			colls, err = indexes.CollectionNames(ctx, client, database)
 			if err != nil {
 				log.Errorf("cannot get the list of collections for the database %s: %s", database, err)
 				continue
 			}
 		}
 
+		analysed := 0
+
 		for _, collection := range colls {
 			if indexes.IsSystemCollection(collection) {
 				continue
 			}
 
-			scope.Collections++
 			ns := database + "." + collection
 
 			log.Debugf("analyze-unused start namespace=%s", ns)
@@ -525,7 +524,12 @@ func analyzeUnused(
 			}
 
 			records := indexes.DeduplicateIndexRecords(indexes.BuildIndexRecords(stats, metadata, cs, ns))
+			if len(records) == 0 {
+				continue
+			}
 
+			analysed++
+			scope.Collections++
 			scope.Indexes += len(records)
 			for _, r := range records {
 				if !r.AccessSince.IsZero() && (scope.OldestSince.IsZero() || r.AccessSince.Before(scope.OldestSince)) {
@@ -541,6 +545,10 @@ func analyzeUnused(
 			}
 
 			allAnalysis = append(allAnalysis, indexes.ScoreRecords(records, cfg)...)
+		}
+
+		if analysed > 0 {
+			scope.Databases++
 		}
 	}
 
@@ -561,9 +569,9 @@ func findDuplicated(ctx context.Context, client *mongo.Client, databases []strin
 		}
 
 		if len(collections) == 0 {
-			colls, err = client.Database(database).ListCollectionNames(ctx, primitive.D{})
+			colls, err = indexes.CollectionNames(ctx, client, database)
 			if err != nil {
-				log.Errorf("cannot get the list of collections for the database %s", database)
+				log.Errorf("cannot get the list of collections for the database %s: %s", database, err)
 				continue
 			}
 		}

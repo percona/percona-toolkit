@@ -75,6 +75,11 @@ func IsSystemCollection(collection string) bool {
 	return strings.HasPrefix(collection, "system.")
 }
 
+func CollectionNames(ctx context.Context, client *mongo.Client, database string) ([]string, error) {
+	filter := primitive.D{{Key: "type", Value: primitive.D{{Key: "$ne", Value: "view"}}}}
+	return client.Database(database).ListCollectionNames(ctx, filter)
+}
+
 // FindUnusedIndexes returns a list of unused indexes for the given database and collection.
 func FindUnused(ctx context.Context, client *mongo.Client, database, collection string) ([]IndexStat, error) {
 	aggregation := mongo.Pipeline{
