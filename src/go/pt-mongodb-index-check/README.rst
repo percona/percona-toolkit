@@ -134,30 +134,6 @@ errors are written to standard error; if you paste output from several runs
 or from a wrapper that merges streams, a failed authentication line can appear
 above a successful report from a different invocation.
 
-Environment
-===========
-
-PTDEBUG
-~~~~~~~
-
-The environment variable ``PTDEBUG`` enables verbose diagnostic logging on
-**standard error**, consistent with other Percona Toolkit tools. Set it to any
-non-empty value except ``0`` (for example ``PTDEBUG=1``). Unset or empty turns
-debugging off; ``PTDEBUG=0`` is treated as off (same as Perl toolkit
-``$ENV{PTDEBUG} || 0``).
-
-The normal report (text templates or ``--json``) is still written to **standard
-output** only. To capture everything in one file:
-
-.. code-block:: bash
-
-   PTDEBUG=1 pt-mongodb-index-check check-all --mongodb.uri=mongodb://127.0.0.1:27017 --all-databases --all-collections > report.txt 2>&1
-
-Diagnostic lines intentionally avoid printing raw connection passwords (the
-password in ``--mongodb.uri`` is redacted in debug output).
-
-Debug output can grow large on clusters with many databases and collections.
-
 Available commands
 ~~~~~~~~~~~~~~~~~~
 
@@ -202,7 +178,7 @@ Available flags
 |                                  | considered low-usage.                    |
 +----------------------------------+------------------------------------------+
 | --large-index-size=10485760      | Index size threshold in bytes for        |
-|                                  | "large" classification (default 10 MB). |
+|                                  | "large" classification (default 10 MB).  |
 +----------------------------------+------------------------------------------+
 | --include-low-usage              | Also report indexes with low but         |
 |                                  | non-zero usage.                          |
@@ -212,6 +188,30 @@ Available flags
 +----------------------------------+------------------------------------------+
 | --version                        | Show version information.                |
 +----------------------------------+------------------------------------------+
+
+Environment
+===========
+
+PTDEBUG
+~~~~~~~
+
+The environment variable ``PTDEBUG`` enables verbose diagnostic logging on
+**standard error**, consistent with other Percona Toolkit tools. Set it to any
+non-empty value except ``0`` (for example ``PTDEBUG=1``). Unset or empty turns
+debugging off; ``PTDEBUG=0`` is treated as off (same as Perl toolkit
+``$ENV{PTDEBUG} || 0``).
+
+The normal report (text templates or ``--json``) is still written to **standard
+output** only. To capture everything in one file:
+
+.. code-block:: bash
+
+   PTDEBUG=1 pt-mongodb-index-check check-all --mongodb.uri=mongodb://127.0.0.1:27017 --all-databases --all-collections > report.txt 2>&1
+
+Diagnostic lines intentionally avoid printing raw connection passwords (the
+password in ``--mongodb.uri`` is redacted in debug output).
+
+Debug output can grow large on clusters with many databases and collections.
 
 Examples
 ========
