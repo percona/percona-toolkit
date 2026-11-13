@@ -200,6 +200,37 @@ Available flags
 | --version                        | Show version information.                |
 +----------------------------------+------------------------------------------+
 
+Required privileges
+~~~~~~~~~~~~~~~~~~~
+
+The user in ``--mongodb.uri`` needs these privileges on every database it checks:
+
+- ``indexStats``, ``listIndexes`` and ``collStats`` for ``check-unused``
+  (``collStats`` gives the document count and the index sizes);
+- ``listIndexes`` for ``check-duplicates``, plus ``collStats`` for the index sizes;
+- ``listCollections``, unless ``--collections`` names the collections to check;
+- ``listDatabases`` on the cluster for ``--all-databases``; without it, only the
+  databases the user has privileges on are checked;
+- ``find`` on the ``config`` database, to read the shard keys on sharded clusters.
+
+The built-in ``read`` and ``readAnyDatabase`` roles lack ``indexStats``, and
+``clusterMonitor`` lacks ``listCollections`` and ``listIndexes`` on user
+databases, so none of them is enough on its own. ``clusterMonitor`` together
+with ``readAnyDatabase`` works, or create a role like this one:
+
+.. code-block:: javascript
+
+   db.getSiblingDB("admin").createRole({
+     role: "indexCheck",
+     privileges: [
+       { resource: { db: "", collection: "" },
+         actions: ["listCollections", "listIndexes", "indexStats", "collStats"] },
+       { resource: { db: "config", collection: "" }, actions: ["find"] },
+       { resource: { cluster: true }, actions: ["listDatabases"] }
+     ],
+     roles: []
+   })
+
 Environment
 ===========
 
