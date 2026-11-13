@@ -341,3 +341,17 @@ func TestNoCommand(t *testing.T) {
 		t.Errorf("Output missmatch. Output %q should contain %q", string(out), want)
 	}
 }
+
+func TestRenderDuplicateReport_skipped(t *testing.T) {
+	data := buildDuplicateReportData(nil, nil)
+	data.Skipped = []indexes.SkippedDuplicate{
+		{Namespace: "db.people", Name: "name_1", ContainerName: "name_1_surname_1", Reason: "partialFilterExpression differs"},
+	}
+
+	buf := new(bytes.Buffer)
+	renderDuplicateReport(buf, data)
+	out := buf.String()
+	assert.Contains(t, out, "# No duplicate prefix indexes detected.")
+	assert.Contains(t, out, "# ---- NOT REPORTED (key prefix, but index options differ) -----\n")
+	assert.Contains(t, out, "  db.people  'name_1' is a key prefix of 'name_1_surname_1', but partialFilterExpression differs\n")
+}

@@ -18,8 +18,9 @@ whose names start with ``system.`` (for example ``system.profile``) are not
 scanned for duplicate prefixes, consistent with the unused-index path.
 
 The sectioned **Duplicate Prefix Index Report** (banner, per-pair reason,
-``dropIndex`` action, optional index sizes from ``collStats``, and a separate
-block for unique and TTL prefixes that must be kept) is printed in text mode for
+``dropIndex`` action, optional index sizes from ``collStats``, a separate block
+for unique and TTL prefixes that must be kept, and a ``NOT REPORTED`` list of
+pairs whose index options differ) is printed in text mode for
 ``check-duplicates`` and ``check-all`` only; ``check-unused`` output focuses on
 unused-index analysis.
 
@@ -40,6 +41,9 @@ The duplicate check is property-aware: two indexes with the same key prefix are
 - ``partialFilterExpression`` -- indexes covering different document subsets
 - ``sparse`` -- sparse and non-sparse indexes have different null-handling behavior
 - ``collation`` -- indexes with different collation rules serve different queries
+
+Such pairs are listed in a short ``NOT REPORTED`` section that names the option
+that differs (``SkippedDuplicates`` in JSON output).
 
 The ``_id_`` index is always excluded from duplicate candidates since it is a
 MongoDB requirement and cannot be dropped.

@@ -149,48 +149,47 @@ type Duplicate struct {
 	Constraint    string `json:",omitempty"`
 }
 
-// compatibleIndexProperties returns true if two indexes have compatible
-// properties for a prefix-duplicate relationship. Indexes with different
-// partialFilterExpression, sparse settings, or collation serve different
-// purposes and should not be considered duplicates.
-func compatibleIndexProperties(shorter, longer collectionIndex) bool {
+type SkippedDuplicate struct {
+	Namespace     string
+	Name          string
+	ContainerName string
+	Reason        string
+}
+
+func differingIndexOption(shorter, longer collectionIndex) string {
 	hasPartialI := len(shorter.PartialFilter) > 0
 	hasPartialJ := len(longer.PartialFilter) > 0
-	if hasPartialI != hasPartialJ {
-		return false
-	}
-	if hasPartialI && hasPartialJ && !reflect.DeepEqual(shorter.PartialFilter, longer.PartialFilter) {
-		return false
+	if hasPartialI != hasPartialJ || (hasPartialI && !reflect.DeepEqual(shorter.PartialFilter, longer.PartialFilter)) {
+		return "partialFilterExpression"
 	}
 
 	if shorter.Sparse != longer.Sparse {
-		return false
+		return "sparse"
 	}
 
 	hasCollI := len(shorter.Collation) > 0
 	hasCollJ := len(longer.Collation) > 0
-	if hasCollI != hasCollJ {
-		return false
-	}
-	if hasCollI && hasCollJ && !reflect.DeepEqual(shorter.Collation, longer.Collation) {
-		return false
+	if hasCollI != hasCollJ || (hasCollI && !reflect.DeepEqual(shorter.Collation, longer.Collation)) {
+		return "collation"
 	}
 
-	return true
+	return ""
 }
 
-func FindDuplicated(ctx context.Context, client *mongo.Client, database, collection string) ([]Duplicate, error) {
+func FindDuplicated(ctx context.Context, client *mongo.Client, database, collection string) ([]Duplicate, []SkippedDuplicate, error) {
 	cursor, err := client.Database(database).Collection(collection).Indexes().List(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var results []collectionIndex
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, errors.Wrap(err, "cannot decode index list")
+		return nil, nil, errors.Wrap(err, "cannot decode index list")
 	}
 
-	return duplicatePairs(database+"."+collection, results), nil
+	dups, skipped := duplicatePairs(database+"."+collection, results)
+
+	return dups, skipped, nil
 }
 
 func isKeyPrefix(prefix, key primitive.D) bool {
@@ -207,8 +206,10 @@ func isKeyPrefix(prefix, key primitive.D) bool {
 	return true
 }
 
-func duplicatePairs(namespace string, results []collectionIndex) []Duplicate {
+func duplicatePairs(namespace string, results []collectionIndex) ([]Duplicate, []SkippedDuplicate) {
 	di := []Duplicate{}
+
+	var skipped []SkippedDuplicate
 
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].ComparableKey() < results[j].ComparableKey()
@@ -222,7 +223,14 @@ func duplicatePairs(namespace string, results []collectionIndex) []Duplicate {
 			if !isKeyPrefix(results[i].Key, results[j].Key) {
 				continue
 			}
-			if !compatibleIndexProperties(results[i], results[j]) {
+			if opt := differingIndexOption(results[i], results[j]); opt != "" {
+				skipped = append(skipped, SkippedDuplicate{
+					Namespace:     namespace,
+					Name:          results[i].Name,
+					ContainerName: results[j].Name,
+					Reason:        opt + " differs",
+				})
+
 				continue
 			}
 
@@ -249,5 +257,5 @@ func duplicatePairs(namespace string, results []collectionIndex) []Duplicate {
 		}
 	}
 
-	return di
+	return di, skipped
 }

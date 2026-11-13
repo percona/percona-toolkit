@@ -59,9 +59,10 @@ type cmdlineArgs struct {
 }
 
 type response struct {
-	Unused     []indexes.IndexStat     `json:"Unused,omitempty"`
-	Duplicated []indexes.Duplicate     `json:"Duplicated,omitempty"`
-	Analysis   []indexes.IndexAnalysis `json:"Analysis,omitempty"`
+	Unused            []indexes.IndexStat        `json:"Unused,omitempty"`
+	Duplicated        []indexes.Duplicate        `json:"Duplicated,omitempty"`
+	SkippedDuplicates []indexes.SkippedDuplicate `json:"SkippedDuplicates,omitempty"`
+	Analysis          []indexes.IndexAnalysis    `json:"Analysis,omitempty"`
 }
 
 // analysisReportData is the template data for the sectioned analysis report.
@@ -111,6 +112,7 @@ type duplicateReportData struct {
 	CollectionCount int
 	Standard        []duplicateDisplayRow
 	WithWarning     []duplicateDisplayRow
+	Skipped         []indexes.SkippedDuplicate
 }
 
 // buildDuplicateReportData transforms a raw []Duplicate into the display struct
@@ -286,6 +288,7 @@ func main() {
 	resp := response{}
 	var allAnalysis []indexes.IndexAnalysis
 	var duplicates []indexes.Duplicate
+	var skipped []indexes.SkippedDuplicate
 	var dbCount, collCount int
 
 	switch cmd {
@@ -293,11 +296,11 @@ func main() {
 		allAnalysis, dbCount, collCount = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, nil)
 		resp.Analysis = allAnalysis
 	case "check-duplicates":
-		duplicates = findDuplicated(ctx, client, args.Databases, args.Collections)
-		resp.Duplicated = duplicates
+		duplicates, skipped = findDuplicated(ctx, client, args.Databases, args.Collections)
+		resp.Duplicated, resp.SkippedDuplicates = duplicates, skipped
 	case "check-all":
-		duplicates = findDuplicated(ctx, client, args.Databases, args.Collections)
-		resp.Duplicated = duplicates
+		duplicates, skipped = findDuplicated(ctx, client, args.Databases, args.Collections)
+		resp.Duplicated, resp.SkippedDuplicates = duplicates, skipped
 		allAnalysis, dbCount, collCount = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, duplicates)
 		resp.Analysis = allAnalysis
 	}
@@ -310,6 +313,7 @@ func main() {
 			sizeByNS = collectDuplicateSizes(ctx, client, duplicates)
 		}
 		dupReport = buildDuplicateReportData(duplicates, sizeByNS)
+		dupReport.Skipped = skipped
 	}
 
 	fmt.Println(output(resp, args.JSON, allAnalysis, dbCount, collCount, dupReport, showDupReport))
@@ -554,8 +558,9 @@ func analyzeUnused(
 	return allAnalysis, dbCount, collCount
 }
 
-func findDuplicated(ctx context.Context, client *mongo.Client, databases []string, collections []string) []indexes.Duplicate {
+func findDuplicated(ctx context.Context, client *mongo.Client, databases []string, collections []string) ([]indexes.Duplicate, []indexes.SkippedDuplicate) {
 	duplicated := []indexes.Duplicate{}
+	var skipped []indexes.SkippedDuplicate
 	var err error
 
 	colls := make([]string, len(collections))
@@ -581,7 +586,7 @@ func findDuplicated(ctx context.Context, client *mongo.Client, databases []strin
 
 			log.Debugf("check-duplicates start namespace=%s.%s", database, collection)
 
-			dups, err := indexes.FindDuplicated(ctx, client, database, collection)
+			dups, skips, err := indexes.FindDuplicated(ctx, client, database, collection)
 			if err != nil {
 				log.Errorf("error while checking duplicated indexes in %s.%s: %s", database, collection, err)
 				continue
@@ -590,10 +595,11 @@ func findDuplicated(ctx context.Context, client *mongo.Client, databases []strin
 			log.Debugf("check-duplicates done namespace=%s.%s duplicate-groups=%d", database, collection, len(dups))
 
 			duplicated = append(duplicated, dups...)
+			skipped = append(skipped, skips...)
 		}
 	}
 
-	return duplicated
+	return duplicated, skipped
 }
 
 // extractDBFromURI parses the MongoDB connection URI and returns the database

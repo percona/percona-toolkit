@@ -239,18 +239,18 @@ func TestScoreIndex(t *testing.T) {
 	}
 }
 
-func TestCompatibleIndexProperties(t *testing.T) {
+func TestDifferingIndexOption(t *testing.T) {
 	tests := []struct {
 		name     string
 		shorter  collectionIndex
 		longer   collectionIndex
-		expected bool
+		expected string
 	}{
 		{
 			name:     "identical properties - compatible",
 			shorter:  collectionIndex{Name: "a"},
 			longer:   collectionIndex{Name: "b"},
-			expected: true,
+			expected: "",
 		},
 		{
 			name: "both partial, same filter - compatible",
@@ -262,7 +262,7 @@ func TestCompatibleIndexProperties(t *testing.T) {
 				Name:          "b",
 				PartialFilter: primitive.M{"status": "active"},
 			},
-			expected: true,
+			expected: "",
 		},
 		{
 			name: "both partial, different filter - NOT compatible",
@@ -274,7 +274,7 @@ func TestCompatibleIndexProperties(t *testing.T) {
 				Name:          "b",
 				PartialFilter: primitive.M{"status": "inactive"},
 			},
-			expected: false,
+			expected: "partialFilterExpression",
 		},
 		{
 			name: "one partial, one not - NOT compatible",
@@ -285,7 +285,7 @@ func TestCompatibleIndexProperties(t *testing.T) {
 			longer: collectionIndex{
 				Name: "b",
 			},
-			expected: false,
+			expected: "partialFilterExpression",
 		},
 		{
 			name: "different sparse - NOT compatible",
@@ -297,7 +297,7 @@ func TestCompatibleIndexProperties(t *testing.T) {
 				Name:   "b",
 				Sparse: false,
 			},
-			expected: false,
+			expected: "sparse",
 		},
 		{
 			name: "both sparse - compatible",
@@ -309,7 +309,7 @@ func TestCompatibleIndexProperties(t *testing.T) {
 				Name:   "b",
 				Sparse: true,
 			},
-			expected: true,
+			expected: "",
 		},
 		{
 			name: "different collation - NOT compatible",
@@ -321,7 +321,7 @@ func TestCompatibleIndexProperties(t *testing.T) {
 				Name:      "b",
 				Collation: primitive.M{"locale": "fr"},
 			},
-			expected: false,
+			expected: "collation",
 		},
 		{
 			name: "one collation, one not - NOT compatible",
@@ -332,7 +332,7 @@ func TestCompatibleIndexProperties(t *testing.T) {
 			longer: collectionIndex{
 				Name: "b",
 			},
-			expected: false,
+			expected: "collation",
 		},
 		{
 			name: "same collation - compatible",
@@ -344,14 +344,13 @@ func TestCompatibleIndexProperties(t *testing.T) {
 				Name:      "b",
 				Collation: primitive.M{"locale": "en"},
 			},
-			expected: true,
+			expected: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := compatibleIndexProperties(tt.shorter, tt.longer)
-			assert.Equal(t, tt.expected, result)
+			assert.Equal(t, tt.expected, differingIndexOption(tt.shorter, tt.longer))
 		})
 	}
 }
@@ -567,7 +566,7 @@ func TestAggregateShardStats_afterNormalize(t *testing.T) {
 }
 
 func TestFindDuplicated_skips_id(t *testing.T) {
-	dups := duplicatePairs("db.c", []collectionIndex{
+	dups, _ := duplicatePairs("db.c", []collectionIndex{
 		{Name: "_id_", Key: primitive.D{{Key: "_id", Value: int32(1)}}},
 		{Name: "id_status", Key: primitive.D{{Key: "_id", Value: int32(1)}, {Key: "status", Value: int32(1)}}},
 	})
@@ -576,7 +575,7 @@ func TestFindDuplicated_skips_id(t *testing.T) {
 }
 
 func TestFindDuplicated_hashed_not_prefix(t *testing.T) {
-	dups := duplicatePairs("db.c", []collectionIndex{
+	dups, _ := duplicatePairs("db.c", []collectionIndex{
 		{Name: "field_1", Key: primitive.D{{Key: "field", Value: int32(1)}}},
 		{Name: "field_hashed_x_1", Key: primitive.D{{Key: "field", Value: "hashed"}, {Key: "x", Value: int32(1)}}},
 	})

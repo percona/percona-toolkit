@@ -39,6 +39,11 @@ var Duplicated = `
     Prefix:    '{{ .Name }}' { {{- range $i, $v := .Key }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }{{ with .Tag }}  {{ . }}{{ end }}{{ if .HasSizes }}  {{ formatBytes .PrefixSize }}{{ end }}
     Container: '{{ .ContainerName }}' { {{- range $i, $v := .ContainerKey }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }{{ if .HasSizes }}  {{ formatBytes .ContainerSize }}{{ end }}
     WARNING: {{ .Warning }}
-{{ end }}{{ end }}
+{{ end }}{{ end }}{{ if .Skipped }}
+# ---- NOT REPORTED (key prefix, but index options differ) -----
+{{ range .Skipped }}
+  {{ .Namespace }}  '{{ .Name }}' is a key prefix of '{{ .ContainerName }}', but {{ .Reason }}
+{{- end }}
+{{ end }}
 # Summary: {{ len .Standard }} redundant prefix pair(s), {{ len .WithWarning }} pair(s) kept for a constraint
 `

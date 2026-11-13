@@ -125,13 +125,13 @@ func TestDuplicateIndexes(t *testing.T) {
 		},
 	}
 
-	di, err := FindDuplicated(ctx, client, dbname, collname)
+	di, _, err := FindDuplicated(ctx, client, dbname, collname)
 	assert.NoError(t, err)
 	assert.Equal(t, want, di)
 }
 
 func TestDuplicatePairsComparesWholeFieldNames(t *testing.T) {
-	got := duplicatePairs("db.c", []collectionIndex{
+	got, _ := duplicatePairs("db.c", []collectionIndex{
 		{Name: "a_1", Key: primitive.D{{Key: "a", Value: int32(1)}}},
 		{Name: "ab_1_x_1", Key: primitive.D{{Key: "ab", Value: int32(1)}, {Key: "x", Value: int32(1)}}},
 		{Name: "a_1_b_1", Key: primitive.D{{Key: "a", Value: int32(1)}, {Key: "b", Value: int32(1)}}},
@@ -143,7 +143,7 @@ func TestDuplicatePairsComparesWholeFieldNames(t *testing.T) {
 }
 
 func TestDuplicatePairsMarksConstraintPrefixes(t *testing.T) {
-	got := duplicatePairs("db.c", []collectionIndex{
+	got, _ := duplicatePairs("db.c", []collectionIndex{
 		{Name: "u_1", Key: primitive.D{{Key: "u", Value: int32(1)}}, Unique: true},
 		{Name: "u_1_b_1", Key: primitive.D{{Key: "u", Value: int32(1)}, {Key: "b", Value: int32(1)}}, Unique: true},
 		{Name: "t_1", Key: primitive.D{{Key: "t", Value: int32(1)}}, ExpireAfterSeconds: int32(60)},
@@ -164,4 +164,22 @@ func TestDuplicatePairsMarksConstraintPrefixes(t *testing.T) {
 	assert.Contains(t, byName["t_1"].Warning, "stops document expiry")
 	assert.Empty(t, byName["p_1"].Constraint)
 	assert.Empty(t, byName["p_1"].Warning)
+}
+
+func TestDuplicatePairsListsSkippedPairs(t *testing.T) {
+	dups, skipped := duplicatePairs("db.people", []collectionIndex{
+		{Name: "name_1", Key: primitive.D{{Key: "name", Value: int32(1)}}, PartialFilter: primitive.M{"age": primitive.M{"$gt": 50}}},
+		{
+			Name: "name_1_surname_1", Key: primitive.D{{Key: "name", Value: int32(1)}, {Key: "surname", Value: int32(1)}},
+			PartialFilter: primitive.M{"age": primitive.M{"$lte": 30}},
+		},
+		{Name: "s_1", Key: primitive.D{{Key: "s", Value: int32(1)}}, Sparse: true},
+		{Name: "s_1_x_1", Key: primitive.D{{Key: "s", Value: int32(1)}, {Key: "x", Value: int32(1)}}},
+	})
+
+	assert.Empty(t, dups)
+	assert.Equal(t, []SkippedDuplicate{
+		{Namespace: "db.people", Name: "name_1", ContainerName: "name_1_surname_1", Reason: "partialFilterExpression differs"},
+		{Namespace: "db.people", Name: "s_1", ContainerName: "s_1_x_1", Reason: "sparse differs"},
+	}, skipped)
 }
