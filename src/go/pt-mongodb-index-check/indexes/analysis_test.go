@@ -441,7 +441,7 @@ func TestAggregateShardStats(t *testing.T) {
 
 	assert.Equal(t, "idx_a", merged[0].Name)
 	assert.Equal(t, int64(350), merged[0].Accesses.Ops)
-	assert.Equal(t, since1, merged[0].Accesses.Since, "should use the oldest since")
+	assert.Equal(t, since3, merged[0].Accesses.Since, "should use the newest since")
 	assert.Equal(t, 3, merged[0].ShardCount)
 
 	assert.Equal(t, "idx_b", merged[1].Name)
@@ -529,15 +529,15 @@ func TestDeduplicateIndexRecords(t *testing.T) {
 	t1 := time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)
 	t2 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	recs := []IndexRecord{
-		{IndexName: "idx_a", AccessOps: 10, AccessSince: t1},
 		{IndexName: "idx_a", AccessOps: 5, AccessSince: t2},
+		{IndexName: "idx_a", AccessOps: 10, AccessSince: t1},
 		{IndexName: "idx_b", AccessOps: 3, AccessSince: t1},
 	}
 	out := DeduplicateIndexRecords(recs)
 	assert.Len(t, out, 2)
 	assert.Equal(t, "idx_a", out[0].IndexName)
 	assert.Equal(t, int64(15), out[0].AccessOps)
-	assert.Equal(t, t2, out[0].AccessSince)
+	assert.Equal(t, t1, out[0].AccessSince)
 	assert.Equal(t, "idx_b", out[1].IndexName)
 }
 
@@ -561,7 +561,7 @@ func TestAggregateShardStats_afterNormalize(t *testing.T) {
 	assert.Len(t, merged, 1)
 	assert.Equal(t, "same_idx", merged[0].Name)
 	assert.Equal(t, int64(3), merged[0].Accesses.Ops)
-	assert.Equal(t, since1, merged[0].Accesses.Since)
+	assert.Equal(t, since2, merged[0].Accesses.Since)
 	assert.Equal(t, 2, merged[0].ShardCount)
 }
 

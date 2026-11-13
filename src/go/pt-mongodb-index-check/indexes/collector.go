@@ -98,7 +98,7 @@ func CollectIndexStats(ctx context.Context, client *mongo.Client, database, coll
 
 // AggregateShardStats deduplicates $indexStats entries that appear once per
 // shard on sharded clusters. It groups by index name, sums ops across shards,
-// and uses the oldest accesses.since as the observation window.
+// and uses the newest accesses.since, the window every shard has observed.
 func AggregateShardStats(stats []IndexStat) []IndexStat {
 	type group struct {
 		merged IndexStat
@@ -120,7 +120,7 @@ func AggregateShardStats(stats []IndexStat) []IndexStat {
 		g.count++
 		g.merged.ShardCount = g.count
 		g.merged.Accesses.Ops += s.Accesses.Ops
-		if s.Accesses.Since < g.merged.Accesses.Since {
+		if s.Accesses.Since > g.merged.Accesses.Since {
 			g.merged.Accesses.Since = s.Accesses.Since
 		}
 	}
@@ -133,7 +133,7 @@ func AggregateShardStats(stats []IndexStat) []IndexStat {
 }
 
 // DeduplicateIndexRecords merges duplicate rows for the same index name (e.g.
-// if stats were not aggregated) by summing ops and using the oldest AccessSince.
+// if stats were not aggregated) by summing ops and using the newest AccessSince.
 func DeduplicateIndexRecords(records []IndexRecord) []IndexRecord {
 	if len(records) <= 1 {
 		return records
@@ -148,7 +148,7 @@ func DeduplicateIndexRecords(records []IndexRecord) []IndexRecord {
 			continue
 		}
 		prev.AccessOps += r.AccessOps
-		if !r.AccessSince.IsZero() && (prev.AccessSince.IsZero() || r.AccessSince.Before(prev.AccessSince)) {
+		if !r.AccessSince.IsZero() && (prev.AccessSince.IsZero() || r.AccessSince.After(prev.AccessSince)) {
 			prev.AccessSince = r.AccessSince
 		}
 		byName[r.IndexName] = prev

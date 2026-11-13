@@ -310,9 +310,10 @@ Sharded clusters
 
 On sharded clusters, ``$indexStats`` returns one entry per shard per index. The
 tool automatically aggregates these entries by index name: it sums
-``accesses.ops`` across all shards and uses the oldest ``accesses.since`` as the
-observation window (most conservative). This produces one row per index in the
-report instead of N rows for N shards.
+``accesses.ops`` across all shards and uses the most recent ``accesses.since``,
+the window every shard has observed, so a shard restarted within
+``--warmup-days`` keeps the collection's indexes in ``MONITOR``. This produces
+one row per index in the report instead of N rows for N shards.
 
 When a row omits the top-level ``name`` field but includes ``spec.name`` (seen on
 some mongos responses), the tool normalizes the document before aggregation so
