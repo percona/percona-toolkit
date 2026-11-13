@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Fake df with plenty of free space.
+cat <<DF
+Filesystem 1024-blocks Used Available Capacity Mounted on
+/dev/fake 1000000 1 999999 1% /tmp
+DF

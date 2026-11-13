@@ -548,7 +548,11 @@ build_deb(){
     echo ${GOBINPATH}
     cp /usr/local/go/bin/dep ${GOBINPATH}/
     cp /usr/local/go/bin/glide ${GOBINPATH}/
-    rm -rf bin/pt-mongo*
+    # Remove only the Go MongoDB tools, which are rebuilt below; bin/ also
+    # has pt-mongodb-stalk, a Bash tool that is not built from src/go.
+    for tool in src/go/pt-mongo*; do
+        rm -rf "bin/$(basename "$tool")"
+    done
     cd src/go
     sed -i "s|dep ensure|${GOBINPATH}/dep ensure|g" Makefile
     if [ x"$ARCH" = "xx86_64" ]; then
