@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -178,8 +177,6 @@ func compatibleIndexProperties(shorter, longer collectionIndex) bool {
 }
 
 func FindDuplicated(ctx context.Context, client *mongo.Client, database, collection string) ([]Duplicate, error) {
-	di := []Duplicate{}
-
 	cursor, err := client.Database(database).Collection(collection).Indexes().List(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -190,6 +187,26 @@ func FindDuplicated(ctx context.Context, client *mongo.Client, database, collect
 		return nil, errors.Wrap(err, "cannot decode index list")
 	}
 
+	return duplicatePairs(database+"."+collection, results), nil
+}
+
+func isKeyPrefix(prefix, key primitive.D) bool {
+	if len(prefix) >= len(key) {
+		return false
+	}
+
+	for i := range prefix {
+		if keyToken(prefix[i]) != keyToken(key[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func duplicatePairs(namespace string, results []collectionIndex) []Duplicate {
+	di := []Duplicate{}
+
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].ComparableKey() < results[j].ComparableKey()
 	})
@@ -199,11 +216,7 @@ func FindDuplicated(ctx context.Context, client *mongo.Client, database, collect
 			continue
 		}
 		for j := i + 1; j < len(results); j++ {
-			ki, kj := results[i].ComparableKey(), results[j].ComparableKey()
-			if ki == kj {
-				continue
-			}
-			if !strings.HasPrefix(kj, ki) {
+			if !isKeyPrefix(results[i].Key, results[j].Key) {
 				continue
 			}
 			if !compatibleIndexProperties(results[i], results[j]) {
@@ -211,7 +224,7 @@ func FindDuplicated(ctx context.Context, client *mongo.Client, database, collect
 			}
 
 			idx := Duplicate{
-				Namespace:     database + "." + collection,
+				Namespace:     namespace,
 				Name:          results[i].Name,
 				Key:           make([]primitive.E, len(results[i].Key)),
 				ContainerName: results[j].Name,
@@ -228,5 +241,5 @@ func FindDuplicated(ctx context.Context, client *mongo.Client, database, collect
 		}
 	}
 
-	return di, nil
+	return di
 }

@@ -567,44 +567,21 @@ func TestAggregateShardStats_afterNormalize(t *testing.T) {
 }
 
 func TestFindDuplicated_skips_id(t *testing.T) {
-	idIdx := collectionIndex{
-		Name: "_id_",
-		Key:  primitive.D{{Key: "_id", Value: int32(1)}},
-	}
-	idHashedIdx := collectionIndex{
-		Name: "_id_hashed",
-		Key:  primitive.D{{Key: "_id", Value: "hashed"}},
-	}
-	compoundIdx := collectionIndex{
-		Name: "id_status",
-		Key:  primitive.D{{Key: "_id", Value: int32(1)}, {Key: "status", Value: int32(1)}},
-	}
+	dups := duplicatePairs("db.c", []collectionIndex{
+		{Name: "_id_", Key: primitive.D{{Key: "_id", Value: int32(1)}}},
+		{Name: "id_status", Key: primitive.D{{Key: "_id", Value: int32(1)}, {Key: "status", Value: int32(1)}}},
+	})
 
-	_ = idIdx
-	_ = idHashedIdx
-	_ = compoundIdx
-	// _id_ has ComparableKey "+_id" which is a prefix of "+_id+status"
-	// Without the _id_ skip, _id_ would be flagged as duplicate of id_status.
-	// We can't call FindDuplicated directly (needs a real DB), but we can
-	// verify that _id_hashed != _id_ via ComparableKey.
-	assert.NotEqual(t, "+_id", "hashed:_id")
+	assert.Empty(t, dups)
 }
 
 func TestFindDuplicated_hashed_not_prefix(t *testing.T) {
-	btreeKey := collectionIndex{
-		Name: "field_1",
-		Key:  primitive.D{{Key: "field", Value: int32(1)}},
-	}
-	hashedKey := collectionIndex{
-		Name: "field_hashed",
-		Key:  primitive.D{{Key: "field", Value: "hashed"}},
-	}
-	assert.False(t,
-		strings.HasPrefix(hashedKey.ComparableKey(), btreeKey.ComparableKey()),
-		"hashed index should not be a prefix of B-tree index")
-	assert.False(t,
-		strings.HasPrefix(btreeKey.ComparableKey(), hashedKey.ComparableKey()),
-		"B-tree index should not be a prefix of hashed index")
+	dups := duplicatePairs("db.c", []collectionIndex{
+		{Name: "field_1", Key: primitive.D{{Key: "field", Value: int32(1)}}},
+		{Name: "field_hashed_x_1", Key: primitive.D{{Key: "field", Value: "hashed"}, {Key: "x", Value: int32(1)}}},
+	})
+
+	assert.Empty(t, dups)
 }
 
 // TestComparableKey_hashedSymbol ensures that a key value encoded as

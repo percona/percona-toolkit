@@ -21,6 +21,7 @@ import (
 
 	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -127,4 +128,16 @@ func TestDuplicateIndexes(t *testing.T) {
 	di, err := FindDuplicated(ctx, client, dbname, collname)
 	assert.NoError(t, err)
 	assert.Equal(t, want, di)
+}
+
+func TestDuplicatePairsComparesWholeFieldNames(t *testing.T) {
+	got := duplicatePairs("db.c", []collectionIndex{
+		{Name: "a_1", Key: primitive.D{{Key: "a", Value: int32(1)}}},
+		{Name: "ab_1_x_1", Key: primitive.D{{Key: "ab", Value: int32(1)}, {Key: "x", Value: int32(1)}}},
+		{Name: "a_1_b_1", Key: primitive.D{{Key: "a", Value: int32(1)}, {Key: "b", Value: int32(1)}}},
+	})
+
+	require.Len(t, got, 1)
+	assert.Equal(t, "a_1", got[0].Name)
+	assert.Equal(t, "a_1_b_1", got[0].ContainerName)
 }

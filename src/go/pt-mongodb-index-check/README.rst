@@ -48,6 +48,9 @@ MongoDB requirement and cannot be dropped.
 ``{_id: 1}`` and ``{_id: "hashed"}`` are never considered prefix duplicates
 because they use fundamentally different index structures.
 
+Key fields are compared one by one, so ``{a: 1}`` is not a prefix of
+``{ab: 1, x: 1}``.
+
 If a **unique** index is detected as a prefix of a non-unique container index,
 a warning is emitted because dropping the unique index would remove the
 uniqueness constraint.
