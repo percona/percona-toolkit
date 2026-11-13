@@ -321,10 +321,20 @@ shards still group under the same index name.
 Read preference routing
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Applications using ``readPreference: secondary`` route reads to secondaries.
-If ``$indexStats`` is collected only from the primary, indexes used exclusively
-by secondary reads appear unused. Run with a connection URI pointing to each
-replica set member or use ``readPreference=secondaryPreferred`` in the URI.
+Each replica set member keeps its own ``$indexStats`` counters, and they count
+only the operations that member served. The tool reads them from the primary
+(on a sharded cluster, from the primary of each shard), whatever
+``readPreference`` the URI sets. An index used only by reads that applications
+send to secondaries therefore shows 0 ops and can be reported as unused.
+
+If applications read from secondaries, run the check once against every
+data-bearing member, each time with a single-host URI and
+``directConnection=true`` (for example
+``mongodb://host2:27017/?directConnection=true``), and keep an index that any
+member uses. Without ``directConnection=true`` a single-host URI still connects
+to the whole replica set and reads the primary. On a sharded cluster these are
+the members of every shard, and users created through ``mongos`` cannot log in
+to them, so create the user on each shard replica set too.
 
 Background index builds
 ~~~~~~~~~~~~~~~~~~~~~~~

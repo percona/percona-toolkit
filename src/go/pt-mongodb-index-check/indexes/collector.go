@@ -20,6 +20,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 // indexMetadata holds index properties from listIndexes that $indexStats doesn't provide.
@@ -78,7 +80,8 @@ func CollectIndexStats(ctx context.Context, client *mongo.Client, database, coll
 		{{Key: "$indexStats", Value: primitive.M{}}},
 	}
 
-	cursor, err := client.Database(database).Collection(collection).Aggregate(ctx, aggregation)
+	coll := client.Database(database).Collection(collection, options.Collection().SetReadPreference(readpref.Primary()))
+	cursor, err := coll.Aggregate(ctx, aggregation)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot run $indexStats")
 	}
