@@ -34,6 +34,8 @@ type collectionIndex struct {
 	Sparse        bool        `bson:"sparse,omitempty"`
 	Unique        bool        `bson:"unique,omitempty"`
 	Collation     primitive.M `bson:"collation,omitempty"`
+
+	ExpireAfterSeconds interface{} `bson:"expireAfterSeconds,omitempty"`
 }
 
 func (di collectionIndex) ComparableKey() string {
@@ -144,6 +146,7 @@ type Duplicate struct {
 	ContainerName string
 	ContainerKey  IndexKey
 	Warning       string `json:",omitempty"`
+	Constraint    string `json:",omitempty"`
 }
 
 // compatibleIndexProperties returns true if two indexes have compatible
@@ -233,8 +236,13 @@ func duplicatePairs(namespace string, results []collectionIndex) []Duplicate {
 			copy(idx.Key, results[i].Key)
 			copy(idx.ContainerKey, results[j].Key)
 
-			if results[i].Unique && !results[j].Unique {
-				idx.Warning = "prefix index enforces unique constraint; dropping requires the container index to also be unique"
+			switch {
+			case results[i].Unique:
+				idx.Constraint = "unique"
+				idx.Warning = "the prefix index enforces uniqueness on its own fields; the container cannot, so dropping it loses the unique constraint"
+			case results[i].ExpireAfterSeconds != nil:
+				idx.Constraint = "TTL"
+				idx.Warning = "the prefix index is a TTL index; dropping it stops document expiry"
 			}
 
 			di = append(di, idx)

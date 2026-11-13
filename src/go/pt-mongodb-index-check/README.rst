@@ -19,8 +19,9 @@ scanned for duplicate prefixes, consistent with the unused-index path.
 
 The sectioned **Duplicate Prefix Index Report** (banner, per-pair reason,
 ``dropIndex`` action, optional index sizes from ``collStats``, and a separate
-block for unique-prefix warnings) is printed in text mode for ``check-duplicates``
-and ``check-all`` only; ``check-unused`` output focuses on unused-index analysis.
+block for unique and TTL prefixes that must be kept) is printed in text mode for
+``check-duplicates`` and ``check-all`` only; ``check-unused`` output focuses on
+unused-index analysis.
 
 Check for indexes that are the prefix of other indexes. For example if we have these 2 indexes
 
@@ -51,13 +52,22 @@ because they use fundamentally different index structures.
 Key fields are compared one by one, so ``{a: 1}`` is not a prefix of
 ``{ab: 1, x: 1}``.
 
-If a **unique** index is detected as a prefix of a non-unique container index,
-a warning is emitted because dropping the unique index would remove the
-uniqueness constraint.
+A **unique** or **TTL** prefix is never offered for dropping. It is listed in a
+separate section without a ``dropIndex`` command, because a longer index, even a
+unique one, does not enforce uniqueness on the prefix fields alone, and dropping
+a TTL index stops document expiry.
 
 .. code-block:: text
 
-   WARNING: prefix index enforces unique constraint; dropping requires the container index to also be unique
+   # ---- PREFIX ENFORCES A CONSTRAINT (keep it) ------------------
+
+     mydb.users
+       Prefix:    'email_1' {email:1}  [UNIQUE]
+       Container: 'email_1_status_1' {email:1, status:1}
+       WARNING: the prefix index enforces uniqueness on its own fields; the container cannot, so dropping it loses the unique constraint
+
+In ``--json`` output these pairs stay in ``Duplicated`` with ``Constraint`` set
+to ``unique`` or ``TTL``; only entries without ``Constraint`` are drop candidates.
 
 Unused indexes (enhanced analysis)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -233,7 +243,7 @@ Sample output
        Reason: 'idx_region' is a key-order prefix of 'idx_region_date'; any query served by 'idx_region' can also use 'idx_region_date'.
        Action: db.orders.dropIndex("idx_region")
 
-   # Summary: 1 redundant prefix pair(s), 0 with unique/constraint warning(s)
+   # Summary: 1 redundant prefix pair(s), 0 pair(s) kept for a constraint
 
    # ============================================================
    # Unused Index Analysis

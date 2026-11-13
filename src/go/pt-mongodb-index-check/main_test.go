@@ -144,7 +144,8 @@ func TestBuildDuplicateReportData(t *testing.T) {
 					{Key: "email", Value: int32(1)},
 					{Key: "status", Value: int32(1)},
 				},
-				Warning: "prefix index enforces unique constraint",
+				Warning:    "prefix index enforces unique constraint",
+				Constraint: "unique",
 			},
 		}
 		sizes := map[string]map[string]int64{
@@ -165,8 +166,8 @@ func TestBuildDuplicateReportData(t *testing.T) {
 		assert.Contains(t, d.Standard[0].Reason, "idx_a")
 		assert.Contains(t, d.Standard[0].Reason, "idx_ab")
 		assert.Equal(t, "prefix index enforces unique constraint", d.WithWarning[0].Warning)
-		assert.Contains(t, d.WithWarning[0].Action, `dropIndex("email_1")`)
-		assert.Contains(t, d.WithWarning[0].Action, "db.users.")
+		assert.Equal(t, "[UNIQUE]", d.WithWarning[0].Tag)
+		assert.Empty(t, d.WithWarning[0].Action)
 	})
 
 	t.Run("nil size map omits sizes", func(t *testing.T) {
@@ -220,19 +221,35 @@ func TestRenderDuplicateReport_uniqueWarning(t *testing.T) {
 				{Key: "email", Value: int32(1)},
 				{Key: "status", Value: int32(1)},
 			},
-			Warning: "prefix index enforces unique constraint; dropping requires the container index to also be unique",
+			Warning:    "the prefix index enforces uniqueness on its own fields; the container cannot, so dropping it loses the unique constraint",
+			Constraint: "unique",
+		},
+		{
+			Namespace:     "mydb.sessions",
+			Name:          "expires_1",
+			Key:           indexes.IndexKey{{Key: "expires", Value: int32(1)}},
+			ContainerName: "expires_1_user_1",
+			ContainerKey: indexes.IndexKey{
+				{Key: "expires", Value: int32(1)},
+				{Key: "user", Value: int32(1)},
+			},
+			Warning:    "the prefix index is a TTL index; dropping it stops document expiry",
+			Constraint: "TTL",
 		},
 	}, nil)
 
 	buf := new(bytes.Buffer)
 	renderDuplicateReport(buf, data)
 	out := buf.String()
-	assert.Contains(t, out, "UNIQUE / CONSTRAINT WARNING")
-	assert.Contains(t, out, "[UNIQUE]")
-	assert.Contains(t, out, "WARNING: prefix index enforces unique constraint")
-	assert.Contains(t, out, `dropIndex("email_unique")`)
-	assert.Empty(t, data.Standard, "unique pair should not be in Standard section")
-	assert.Len(t, data.WithWarning, 1)
+	assert.Contains(t, out, "PREFIX ENFORCES A CONSTRAINT (keep it)")
+	assert.Contains(t, out, "{email:1}  [UNIQUE]")
+	assert.Contains(t, out, "{expires:1}  [TTL]")
+	assert.Contains(t, out, "WARNING: the prefix index is a TTL index; dropping it stops document expiry")
+	assert.NotContains(t, out, "dropIndex")
+	assert.NotContains(t, out, "Reason:")
+	assert.Contains(t, out, "# Summary: 0 redundant prefix pair(s), 2 pair(s) kept for a constraint")
+	assert.Empty(t, data.Standard, "constraint pairs should not be in Standard section")
+	assert.Len(t, data.WithWarning, 2)
 }
 
 // Regression: check-unused output must NOT include the duplicate report section

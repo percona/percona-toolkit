@@ -33,14 +33,12 @@ var Duplicated = `
     Reason: {{ .Reason }}
     Action: {{ .Action }}
 {{ end }}{{ end }}{{ if .WithWarning }}
-# ---- UNIQUE / CONSTRAINT WARNING ----------------------------
+# ---- PREFIX ENFORCES A CONSTRAINT (keep it) ------------------
 {{ range .WithWarning }}
   {{ .Namespace }}
-    Prefix:    '{{ .Name }}' { {{- range $i, $v := .Key }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }  [UNIQUE]{{ if .HasSizes }}  {{ formatBytes .PrefixSize }}{{ end }}
+    Prefix:    '{{ .Name }}' { {{- range $i, $v := .Key }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }{{ with .Tag }}  {{ . }}{{ end }}{{ if .HasSizes }}  {{ formatBytes .PrefixSize }}{{ end }}
     Container: '{{ .ContainerName }}' { {{- range $i, $v := .ContainerKey }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }{{ if .HasSizes }}  {{ formatBytes .ContainerSize }}{{ end }}
-    Reason: {{ .Reason }}
     WARNING: {{ .Warning }}
-    Action: {{ .Action }}
 {{ end }}{{ end }}
-# Summary: {{ len .Standard }} redundant prefix pair(s), {{ len .WithWarning }} with unique/constraint warning(s)
+# Summary: {{ len .Standard }} redundant prefix pair(s), {{ len .WithWarning }} pair(s) kept for a constraint
 `

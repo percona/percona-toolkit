@@ -141,3 +141,27 @@ func TestDuplicatePairsComparesWholeFieldNames(t *testing.T) {
 	assert.Equal(t, "a_1", got[0].Name)
 	assert.Equal(t, "a_1_b_1", got[0].ContainerName)
 }
+
+func TestDuplicatePairsMarksConstraintPrefixes(t *testing.T) {
+	got := duplicatePairs("db.c", []collectionIndex{
+		{Name: "u_1", Key: primitive.D{{Key: "u", Value: int32(1)}}, Unique: true},
+		{Name: "u_1_b_1", Key: primitive.D{{Key: "u", Value: int32(1)}, {Key: "b", Value: int32(1)}}, Unique: true},
+		{Name: "t_1", Key: primitive.D{{Key: "t", Value: int32(1)}}, ExpireAfterSeconds: int32(60)},
+		{Name: "t_1_b_1", Key: primitive.D{{Key: "t", Value: int32(1)}, {Key: "b", Value: int32(1)}}},
+		{Name: "p_1", Key: primitive.D{{Key: "p", Value: int32(1)}}},
+		{Name: "p_1_b_1", Key: primitive.D{{Key: "p", Value: int32(1)}, {Key: "b", Value: int32(1)}}},
+	})
+
+	byName := map[string]Duplicate{}
+	for _, d := range got {
+		byName[d.Name] = d
+	}
+
+	require.Len(t, byName, 3)
+	assert.Equal(t, "unique", byName["u_1"].Constraint)
+	assert.Contains(t, byName["u_1"].Warning, "loses the unique constraint")
+	assert.Equal(t, "TTL", byName["t_1"].Constraint)
+	assert.Contains(t, byName["t_1"].Warning, "stops document expiry")
+	assert.Empty(t, byName["p_1"].Constraint)
+	assert.Empty(t, byName["p_1"].Warning)
+}

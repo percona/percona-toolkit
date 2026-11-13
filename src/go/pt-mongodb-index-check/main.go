@@ -96,6 +96,7 @@ type duplicateDisplayRow struct {
 	ContainerName string
 	ContainerKey  indexes.IndexKey
 	Warning       string
+	Tag           string
 	Reason        string
 	Action        string
 	PrefixSize    int64
@@ -141,8 +142,6 @@ func buildDuplicateReportData(dups []indexes.Duplicate, sizeByNS map[string]map[
 	for _, d := range dups {
 		reason := fmt.Sprintf("'%s' is a key-order prefix of '%s'; any query served by '%s' can also use '%s'.",
 			d.Name, d.ContainerName, d.Name, d.ContainerName)
-		action := fmt.Sprintf("db.%s.dropIndex(%q)", collNameFn(d.Namespace), d.Name)
-
 		row := duplicateDisplayRow{
 			Namespace:     d.Namespace,
 			Name:          d.Name,
@@ -151,7 +150,14 @@ func buildDuplicateReportData(dups []indexes.Duplicate, sizeByNS map[string]map[
 			ContainerKey:  d.ContainerKey,
 			Warning:       d.Warning,
 			Reason:        reason,
-			Action:        action,
+		}
+
+		if d.Warning == "" {
+			row.Action = fmt.Sprintf("db.%s.dropIndex(%q)", collNameFn(d.Namespace), d.Name)
+		}
+
+		if d.Constraint != "" {
+			row.Tag = "[" + strings.ToUpper(d.Constraint) + "]"
 		}
 
 		if sizes, ok := sizeByNS[d.Namespace]; ok {
