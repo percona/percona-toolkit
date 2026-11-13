@@ -25,26 +25,26 @@ var Analysis = `
 # ---- SAFE TO DROP (high confidence) --------------------------
 {{ range .SafeToDrop }}
   {{ .Namespace }}  index '{{ .IndexName }}' { {{- range $i, $val := .IndexKey }}{{if $i}}, {{end}}{{ $val.Key }}:{{ $val.Value }}{{ end -}} }
-    Ops: {{ .AccessOps }} in {{ .AgeDays }} days | Size: {{ formatBytes .IndexSizeBytes }} | Score: {{ printf "%.2f" .Score }}
+    Ops: {{ .AccessOps }} in {{ .AgeDays }} days{{ if .IndexSizeBytes }} | Size: {{ formatBytes .IndexSizeBytes }}{{ end }} | Score: {{ printf "%.2f" .Score }}
     Reason: {{ .Reason }}
     Action: {{ dropAction .Namespace .IndexName }}
 {{ end }}{{ end }}{{ if .LikelyUnused }}
 # ---- LIKELY UNUSED (review recommended) ----------------------
 {{ range .LikelyUnused }}
   {{ .Namespace }}  index '{{ .IndexName }}' { {{- range $i, $val := .IndexKey }}{{if $i}}, {{end}}{{ $val.Key }}:{{ $val.Value }}{{ end -}} }
-    Ops: {{ .AccessOps }} in {{ .AgeDays }} days | Size: {{ formatBytes .IndexSizeBytes }} | Score: {{ printf "%.2f" .Score }}
+    Ops: {{ .AccessOps }} in {{ .AgeDays }} days{{ if .IndexSizeBytes }} | Size: {{ formatBytes .IndexSizeBytes }}{{ end }} | Score: {{ printf "%.2f" .Score }}
     Reason: {{ .Reason }}
 {{ end }}{{ end }}{{ if .LowUsage }}
 # ---- LOW USAGE (non-zero but minimal) ------------------------
 {{ range .LowUsage }}
   {{ .Namespace }}  index '{{ .IndexName }}' { {{- range $i, $val := .IndexKey }}{{if $i}}, {{end}}{{ $val.Key }}:{{ $val.Value }}{{ end -}} }
-    Ops: {{ .AccessOps }} in {{ .AgeDays }} days ({{ printf "%.1f" .OpsPerDay }}/day) | Size: {{ formatBytes .IndexSizeBytes }} | Score: {{ printf "%.2f" .Score }}
+    Ops: {{ .AccessOps }} in {{ .AgeDays }} days ({{ printf "%.1f" .OpsPerDay }}/day){{ if .IndexSizeBytes }} | Size: {{ formatBytes .IndexSizeBytes }}{{ end }} | Score: {{ printf "%.2f" .Score }}
     Reason: {{ .Reason }}
 {{ end }}{{ end }}{{ if .Monitor }}
 # ---- MONITOR (insufficient data) -----------------------------
 {{ range .Monitor }}
   {{ .Namespace }}  index '{{ .IndexName }}' { {{- range $i, $val := .IndexKey }}{{if $i}}, {{end}}{{ $val.Key }}:{{ $val.Value }}{{ end -}} }
-    Ops: {{ .AccessOps }} in {{ .AgeDays }} days | Size: {{ formatBytes .IndexSizeBytes }} | Score: {{ printf "%.2f" .Score }}
+    Ops: {{ .AccessOps }} in {{ .AgeDays }} days{{ if .IndexSizeBytes }} | Size: {{ formatBytes .IndexSizeBytes }}{{ end }} | Score: {{ printf "%.2f" .Score }}
     Reason: {{ .Reason }}
 {{ end }}{{ end }}{{ if .Keep }}
 # ---- KEEP (constraints / special) ----------------------------

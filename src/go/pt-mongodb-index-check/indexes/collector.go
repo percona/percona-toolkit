@@ -142,6 +142,31 @@ func CollectCollStats(ctx context.Context, client *mongo.Client, database, colle
 	return stats, nil
 }
 
+func CollectDocCount(ctx context.Context, client *mongo.Client, database, collection string) (collectionStats, error) {
+	var stats collectionStats
+
+	pipeline := mongo.Pipeline{{{Key: "$collStats", Value: primitive.D{{Key: "count", Value: primitive.D{}}}}}}
+	coll := client.Database(database).Collection(collection, options.Collection().SetReadPreference(readpref.Primary()))
+
+	cursor, err := coll.Aggregate(ctx, pipeline)
+	if err != nil {
+		return stats, errors.Wrap(err, "cannot run $collStats")
+	}
+
+	var shards []struct {
+		Count int64 `bson:"count"`
+	}
+	if err := cursor.All(ctx, &shards); err != nil {
+		return stats, errors.Wrap(err, "cannot decode $collStats")
+	}
+
+	for _, s := range shards {
+		stats.Count += s.Count
+	}
+
+	return stats, nil
+}
+
 // CollectIndexStats retrieves $indexStats for all indexes on a collection.
 // Unlike FindUnused, this returns ALL indexes (not just ops==0) for the scoring engine.
 func CollectIndexStats(ctx context.Context, client *mongo.Client, database, collection string) ([]IndexStat, error) {

@@ -183,29 +183,55 @@ func dropIndexAction(namespace, index string) string {
 	return fmt.Sprintf("db.getSiblingDB(%q).getCollection(%q).dropIndex(%q)", database, collection, index)
 }
 
-// collectDuplicateSizes fetches collStats for each unique namespace in the
-// duplicate list and returns a map of namespace → index name → size in bytes.
-// Errors per namespace are logged as warnings and that namespace is omitted.
-func collectDuplicateSizes(ctx context.Context, client *mongo.Client, dups []indexes.Duplicate) map[string]map[string]int64 {
-	nsSet := make(map[string]struct{})
+// collectDuplicateSizes returns namespace → index name → size in bytes. Sizes in
+// known are reused for any namespace; collStats runs only for the other namespaces
+// that have a redundant pair. Errors are logged and the namespace omitted.
+func collectDuplicateSizes(
+	ctx context.Context,
+	client *mongo.Client,
+	dups []indexes.Duplicate,
+	known map[string]map[string]int64,
+) map[string]map[string]int64 {
+	result := make(map[string]map[string]int64)
+	tried := make(map[string]bool)
+
 	for _, d := range dups {
-		nsSet[d.Namespace] = struct{}{}
+		if tried[d.Namespace] {
+			continue
+		}
+
+		if sizes, ok := known[d.Namespace]; ok {
+			tried[d.Namespace] = true
+			result[d.Namespace] = sizes
+			continue
+		}
+
+		if d.Warning != "" {
+			continue
+		}
+		tried[d.Namespace] = true
+
+		database, collection, _ := strings.Cut(d.Namespace, ".")
+		cs, err := indexes.CollectCollStats(ctx, client, database, collection)
+		if err != nil {
+			log.Warnf("cannot get collStats for %s (sizes omitted from duplicate report): %s", d.Namespace, err)
+			continue
+		}
+		result[d.Namespace] = cs.IndexSizes
 	}
 
-	result := make(map[string]map[string]int64, len(nsSet))
-	for ns := range nsSet {
-		parts := strings.SplitN(ns, ".", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		cs, err := indexes.CollectCollStats(ctx, client, parts[0], parts[1])
-		if err != nil {
-			log.Warnf("cannot get collStats for %s (sizes omitted from duplicate report): %s", ns, err)
-			continue
-		}
-		result[ns] = cs.IndexSizes
-	}
 	return result
+}
+
+func needsSizes(analysis []indexes.IndexAnalysis) bool {
+	for _, a := range analysis {
+		switch a.Recommendation {
+		case indexes.RecommendSafeToDrop, indexes.RecommendLikelyUnused, indexes.RecommendLowUsage:
+			return true
+		}
+	}
+
+	return false
 }
 
 const (
@@ -299,10 +325,11 @@ func main() {
 	var duplicates []indexes.Duplicate
 	var skipped []indexes.SkippedDuplicate
 	var scope analysisScope
+	var sizeByNS map[string]map[string]int64
 
 	switch cmd {
 	case "check-unused":
-		allAnalysis, scope = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, nil)
+		allAnalysis, scope, _ = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, nil)
 		resp.Analysis = allAnalysis
 	case "check-duplicates":
 		duplicates, skipped = findDuplicated(ctx, client, args.Databases, args.Collections)
@@ -310,18 +337,14 @@ func main() {
 	case "check-all":
 		duplicates, skipped = findDuplicated(ctx, client, args.Databases, args.Collections)
 		resp.Duplicated, resp.SkippedDuplicates = duplicates, skipped
-		allAnalysis, scope = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, duplicates)
+		allAnalysis, scope, sizeByNS = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, duplicates)
 		resp.Analysis = allAnalysis
 	}
 
 	showDupReport := cmd == "check-duplicates" || cmd == "check-all"
 	var dupReport duplicateReportData
-	if showDupReport {
-		var sizeByNS map[string]map[string]int64
-		if len(duplicates) > 0 {
-			sizeByNS = collectDuplicateSizes(ctx, client, duplicates)
-		}
-		dupReport = buildDuplicateReportData(duplicates, sizeByNS)
+	if showDupReport && !args.JSON {
+		dupReport = buildDuplicateReportData(duplicates, collectDuplicateSizes(ctx, client, duplicates, sizeByNS))
 		dupReport.Skipped = skipped
 	}
 
@@ -475,9 +498,10 @@ func analyzeUnused(
 	databases, collections []string,
 	cfg indexes.AnalysisConfig,
 	duplicates []indexes.Duplicate,
-) ([]indexes.IndexAnalysis, analysisScope) {
+) ([]indexes.IndexAnalysis, analysisScope, map[string]map[string]int64) {
 	var allAnalysis []indexes.IndexAnalysis
 	var scope analysisScope
+	sizes := make(map[string]map[string]int64)
 
 	colls := make([]string, len(collections))
 	copy(colls, collections)
@@ -521,6 +545,9 @@ func analyzeUnused(
 				continue
 			}
 			stats = indexes.AggregateShardStats(stats)
+			if len(stats) == 0 {
+				continue
+			}
 
 			metadata, err := indexes.CollectIndexMetadata(ctx, client, database, collection)
 			if err != nil {
@@ -528,17 +555,35 @@ func analyzeUnused(
 				continue
 			}
 
-			cs, err := indexes.CollectCollStats(ctx, client, database, collection)
+			cs, err := indexes.CollectDocCount(ctx, client, database, collection)
 			if err != nil {
-				log.Warnf("cannot get collStats for %s (sizes will be 0): %s", ns, err)
+				log.Warnf("cannot count the documents in %s: %s", ns, err)
 			}
 
-			records := indexes.DeduplicateIndexRecords(indexes.BuildIndexRecords(stats, metadata, cs, ns))
+			build := func() []indexes.IndexRecord {
+				records := indexes.DeduplicateIndexRecords(indexes.BuildIndexRecords(stats, metadata, cs, ns))
+				indexes.MarkShardKeyIndexes(records, shardKeys[ns])
+				if cfg.CrossReferenceDuplicates && duplicates != nil {
+					indexes.CrossReferenceDuplicates(records, duplicates, stats)
+				}
+				return records
+			}
+
+			records := build()
 			if len(records) == 0 {
 				continue
 			}
 
-			indexes.MarkShardKeyIndexes(records, shardKeys[ns])
+			if needsSizes(indexes.ScoreRecords(records, cfg)) {
+				full, err := indexes.CollectCollStats(ctx, client, database, collection)
+				if err != nil {
+					log.Warnf("cannot get collStats for %s (sizes will be 0): %s", ns, err)
+				} else {
+					cs = full
+					records = build()
+					sizes[ns] = full.IndexSizes
+				}
+			}
 
 			analysed++
 			scope.Collections++
@@ -552,10 +597,6 @@ func analyzeUnused(
 			log.Debugf("analyze-unused done namespace=%s indexStats=%d metadata=%d records=%d",
 				ns, len(stats), len(metadata), len(records))
 
-			if cfg.CrossReferenceDuplicates && duplicates != nil {
-				indexes.CrossReferenceDuplicates(records, duplicates, stats)
-			}
-
 			allAnalysis = append(allAnalysis, indexes.ScoreRecords(records, cfg)...)
 		}
 
@@ -564,7 +605,7 @@ func analyzeUnused(
 		}
 	}
 
-	return allAnalysis, scope
+	return allAnalysis, scope, sizes
 }
 
 func findDuplicated(ctx context.Context, client *mongo.Client, databases []string, collections []string) ([]indexes.Duplicate, []indexes.SkippedDuplicate) {

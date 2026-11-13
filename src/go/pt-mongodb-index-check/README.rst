@@ -86,7 +86,10 @@ metric. It uses a multi-signal scoring system that collects data from three sour
 
 1. **$indexStats** -- read access counts and the stats reset timestamp
 2. **listIndexes** -- index properties (unique, sparse, partial, TTL, hidden)
-3. **collStats** -- per-index sizes, collection document count, total index size
+3. **collStats** -- the document count of every collection (``$collStats`` with
+   ``count``), and per-index sizes only for collections that have an index listed
+   as ``SAFE_TO_DROP``, ``LIKELY_UNUSED`` or ``LOW_USAGE`` (see *Index sizes and
+   open files* below)
 
 Each index is evaluated through a scoring decision tree that produces one of
 these recommendations:
@@ -282,7 +285,7 @@ Sample output
    # ---- MONITOR (insufficient data) -----------------------------
 
      mydb.logs  index 'idx_new_feature' {featureFlag:1}
-       Ops: 0 in 3 days | Size: 500.0 KB | Score: 0.10
+       Ops: 0 in 3 days | Score: 0.10
        Reason: Index created/stats reset 3 days ago; re-check after 7 days
 
    # ---- KEEP (constraints / special) ----------------------------
@@ -295,7 +298,9 @@ Sample output
 
 JSON output includes the full ``IndexAnalysis`` array with all fields
 (``score``, ``recommendation``, ``confidence``, ``reason``, ``indexSizeBytes``,
-``ageDays``, ``opsPerDay``, etc.) for programmatic consumption.
+``ageDays``, ``opsPerDay``, etc.) for programmatic consumption. ``indexSizeBytes``,
+``collTotalIdxSize`` and ``indexSizePct`` are 0 when the sizes were not read (see
+*Index sizes and open files*).
 
 Edge cases and caveats
 ======================
@@ -339,6 +344,20 @@ member uses. Without ``directConnection=true`` a single-host URI still connects
 to the whole replica set and reads the primary. On a sharded cluster these are
 the members of every shard, and users created through ``mongos`` cannot log in
 to them, so create the user on each shard replica set too.
+
+Index sizes and open files
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To report index sizes, ``collStats`` makes ``mongod`` open the data file of the
+collection and of every index, and WiredTiger keeps these files open long after
+the run (about a day on MongoDB 4.2). The tool therefore reads sizes only for
+collections with an index listed as ``SAFE_TO_DROP``, ``LIKELY_UNUSED`` or
+``LOW_USAGE``, and for collections with a redundant prefix pair. The document
+count comes from ``$collStats`` with ``count``, which opens no files. On a
+``mongod`` with a low open-files limit, such as Docker's default soft limit of
+1024, a run over many such collections can still exhaust the limit and stop the
+server. Check the limit first (MongoDB recommends 64000), or narrow the run with
+``--databases`` and ``--collections``.
 
 Background index builds
 ~~~~~~~~~~~~~~~~~~~~~~~

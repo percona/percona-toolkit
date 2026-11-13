@@ -15,6 +15,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -24,7 +25,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 
+	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/indexes"
 )
 
@@ -268,6 +271,7 @@ func TestOutput_checkUnused_noDuplicateSection(t *testing.T) {
 	out := output(resp, false, analysis, analysisScope{Databases: 1, Collections: 1}, duplicateReportData{}, false, true)
 	assert.NotContains(t, out, "Duplicate Prefix Index Report")
 	assert.Contains(t, out, "Unused Index Analysis")
+	assert.NotContains(t, out, "Size:")
 }
 
 // Regression: check-all output must include BOTH duplicate and unused sections
@@ -415,4 +419,74 @@ func TestConnectionErrorHidesPassword(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, string(out), "Cannot connect to MongoDB at mongodb://user:xxx@127.0.0.1:1")
 	assert.NotContains(t, string(out), "secret")
+}
+
+func TestNeedsSizes(t *testing.T) {
+	analysis := func(recs ...string) []indexes.IndexAnalysis {
+		var out []indexes.IndexAnalysis
+		for _, r := range recs {
+			out = append(out, indexes.IndexAnalysis{Recommendation: r})
+		}
+		return out
+	}
+
+	assert.False(t, needsSizes(nil))
+	assert.False(t, needsSizes(analysis(indexes.RecommendMonitor, indexes.RecommendKeepConstraint, indexes.RecommendKeepPartial)))
+	assert.True(t, needsSizes(analysis(indexes.RecommendMonitor, indexes.RecommendLikelyUnused)))
+	assert.True(t, needsSizes(analysis(indexes.RecommendSafeToDrop)))
+	assert.True(t, needsSizes(analysis(indexes.RecommendLowUsage)))
+}
+
+func TestAnalyzeUnusedReadsSizesOnlyWhenNeeded(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	client, err := tu.TestClient(ctx, tu.MongoDBStandalonePort)
+	require.NoError(t, err)
+
+	defer client.Disconnect(ctx) //nolint:errcheck
+
+	const dbname = "test_analyze_unused"
+
+	db := client.Database(dbname)
+	require.NoError(t, db.Drop(ctx))
+
+	defer db.Drop(ctx) //nolint:errcheck
+
+	_, err = db.Collection("unused").InsertMany(ctx, []interface{}{primitive.M{"a": 1}, primitive.M{"a": 2}})
+	require.NoError(t, err)
+	_, err = db.Collection("unused").Indexes().CreateOne(ctx, mongo.IndexModel{Keys: primitive.D{{Key: "a", Value: 1}}})
+	require.NoError(t, err)
+	_, err = db.Collection("empty").Indexes().CreateOne(ctx, mongo.IndexModel{Keys: primitive.D{{Key: "b", Value: 1}}})
+	require.NoError(t, err)
+
+	cfg := indexes.DefaultAnalysisConfig()
+	cfg.WarmupDays = 0
+
+	analysis, scope, sizes := analyzeUnused(ctx, client, []string{dbname}, []string{"unused", "empty", "missing"}, cfg, nil)
+
+	byName := map[string]indexes.IndexAnalysis{}
+	for _, a := range analysis {
+		byName[a.Namespace+" "+a.IndexName] = a
+	}
+
+	require.Contains(t, byName, dbname+".unused a_1")
+	assert.Equal(t, indexes.RecommendLikelyUnused, byName[dbname+".unused a_1"].Recommendation)
+	assert.Positive(t, byName[dbname+".unused a_1"].IndexSizeBytes)
+	require.Contains(t, byName, dbname+".empty b_1")
+	assert.Equal(t, indexes.RecommendMonitor, byName[dbname+".empty b_1"].Recommendation)
+	assert.Zero(t, byName[dbname+".empty b_1"].IndexSizeBytes)
+
+	assert.Contains(t, sizes, dbname+".unused")
+	assert.NotContains(t, sizes, dbname+".empty")
+	assert.Equal(t, 1, scope.Databases)
+	assert.Equal(t, 2, scope.Collections)
+	assert.Equal(t, 4, scope.Indexes)
+
+	dups := []indexes.Duplicate{
+		{Namespace: dbname + ".unused", Name: "a_1"},
+		{Namespace: dbname + ".other", Name: "u_1", Warning: "unique"},
+	}
+	assert.Equal(t, map[string]map[string]int64{dbname + ".unused": sizes[dbname+".unused"]},
+		collectDuplicateSizes(ctx, nil, dups, sizes))
 }
