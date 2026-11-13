@@ -401,3 +401,11 @@ func TestTimeoutFlag(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, string(out), "--timeout must be greater than 0")
 }
+
+func TestConnectionErrorHidesPassword(t *testing.T) {
+	out, err := exec.Command("../../../bin/"+toolname, "check-all", "--databases=test", "--timeout=1ms",
+		"--mongodb.uri=mongodb://user:secret@127.0.0.1:1").CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "Cannot connect to MongoDB at mongodb://user:xxx@127.0.0.1:1")
+	assert.NotContains(t, string(out), "secret")
+}

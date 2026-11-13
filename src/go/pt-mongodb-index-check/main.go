@@ -261,7 +261,7 @@ func main() {
 	}
 
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
-		log.Fatalf("Cannot connect to MongoDB at %s: %s", args.URI, err)
+		log.Fatalf("Cannot connect to MongoDB at %s: %s", redactMongoURI(args.URI), err)
 	}
 
 	log.Debugf("connected (redacted-uri=%s)", redactMongoURI(args.URI))
