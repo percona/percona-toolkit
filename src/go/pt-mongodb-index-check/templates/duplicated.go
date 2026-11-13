@@ -13,11 +13,37 @@
 
 package templates
 
-// {{if $i}},{{end}} adds a comma after the first element.
-// When $i == 0 (first element) {{ if $i }} returns false (0)
+// Duplicated is the sectioned text template for the duplicate prefix index
+// report. It is rendered by renderDuplicateReport in main.go which supplies
+// a duplicateReportData value and registers formatBytes / collName helpers.
 
 var Duplicated = `
-Duplicated indexes
-{{ range . }}
-{{ .Namespace }}, index '{{ .Name }}', with fields { {{- range $i, $val := .Key }}{{if $i}}, {{end}}{{ $val.Key }}:{{ $val.Value }}{{ end -}} } is the prefix of '{{ .ContainerName }}' with fields { {{- range $i, $val := .ContainerKey }}{{if $i}}, {{end}}{{ $val.Key }}:{{ $val.Value }}{{ end -}} }{{ end}}
+# ============================================================
+# Duplicate Prefix Index Report
+# ============================================================
+# Pairs found: {{ .TotalPairs }} across {{ .DatabaseCount }} database(s), {{ .CollectionCount }} collection(s)
+{{ if eq .TotalPairs 0 }}
+# No duplicate prefix indexes detected.
+{{ end }}{{ if .Standard }}
+# ---- REDUNDANT PREFIX (shorter index is candidate to drop) ---
+{{ range .Standard }}
+  {{ .Namespace }}
+    Prefix:    '{{ .Name }}' { {{- range $i, $v := .Key }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }{{ if .HasSizes }}  {{ formatBytes .PrefixSize }}{{ end }}
+    Container: '{{ .ContainerName }}' { {{- range $i, $v := .ContainerKey }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }{{ if .HasSizes }}  {{ formatBytes .ContainerSize }}{{ end }}
+    Reason: {{ .Reason }}
+    Action: {{ .Action }}
+{{ end }}{{ end }}{{ if .WithWarning }}
+# ---- PREFIX ENFORCES A CONSTRAINT (keep it) ------------------
+{{ range .WithWarning }}
+  {{ .Namespace }}
+    Prefix:    '{{ .Name }}' { {{- range $i, $v := .Key }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }{{ with .Tag }}  {{ . }}{{ end }}{{ if .HasSizes }}  {{ formatBytes .PrefixSize }}{{ end }}
+    Container: '{{ .ContainerName }}' { {{- range $i, $v := .ContainerKey }}{{if $i}}, {{end}}{{ $v.Key }}:{{ $v.Value }}{{ end -}} }{{ if .HasSizes }}  {{ formatBytes .ContainerSize }}{{ end }}
+    WARNING: {{ .Warning }}
+{{ end }}{{ end }}{{ if .Skipped }}
+# ---- NOT REPORTED (key prefix, but not redundant) ------------
+{{ range .Skipped }}
+  {{ .Namespace }}  '{{ .Name }}' is a key prefix of '{{ .ContainerName }}', but {{ .Reason }}
+{{- end }}
+{{ end }}
+# Summary: {{ len .Standard }} redundant prefix pair(s), {{ len .WithWarning }} pair(s) kept for a constraint
 `

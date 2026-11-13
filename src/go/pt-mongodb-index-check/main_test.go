@@ -14,10 +14,21 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"os/exec"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+
+	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/indexes"
 )
 
 // semVerRE is the SemVer pattern from https://semver.org (RE2-compatible
@@ -41,6 +52,296 @@ func TestVersionOption(t *testing.T) {
 	}
 }
 
+func TestExtractDBFromURI(t *testing.T) {
+	tests := []struct {
+		uri  string
+		want string
+	}{
+		{"mongodb://localhost:27017/mydb", "mydb"},
+		{"mongodb://localhost:27017/admin", ""},
+		{"mongodb://localhost:27017", ""},
+		{"mongodb://localhost:27017/", ""},
+		{"mongodb://user:pass@host:27017/testdb?authSource=admin", "testdb"},
+		{"mongodb+srv://host/appdb", "appdb"},
+		{"not-a-valid-uri", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.uri, func(t *testing.T) {
+			got := extractDBFromURI(tt.uri)
+			if got != tt.want {
+				t.Errorf("extractDBFromURI(%q) = %q, want %q", tt.uri, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRedactMongoURI(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string // substring checks unless full is set via containsOnly
+	}{
+		{
+			in:   "mongodb://user:secret@host:27017/mydb?authSource=admin",
+			want: "mongodb://user:xxx@host:27017/mydb?authSource=admin",
+		},
+		{
+			in:   "mongodb://host:27017/mydb",
+			want: "mongodb://host:27017/mydb",
+		},
+		{
+			in:   "mongodb+srv://u:p%40ssword@cluster.example/dbname",
+			want: "mongodb+srv://u:xxx@cluster.example/dbname",
+		},
+		{
+			in:   "mongodb://onlyuser@host:27017/",
+			want: "mongodb://onlyuser@host:27017/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			got := redactMongoURI(tt.in)
+			if got != tt.want {
+				t.Errorf("redactMongoURI(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+			if strings.Contains(got, "secret") || strings.Contains(got, "p%40ssword") {
+				t.Errorf("redactMongoURI leaked credential in %q", got)
+			}
+		})
+	}
+}
+
+func TestRedactMongoURI_invalid(t *testing.T) {
+	if g := redactMongoURI("://"); g != "<unparsable-uri>" {
+		t.Errorf("expected unparsable sentinel, got %q", g)
+	}
+}
+
+func TestBuildDuplicateReportData(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		d := buildDuplicateReportData(nil, nil)
+		assert.Equal(t, 0, d.TotalPairs)
+		assert.Empty(t, d.Standard)
+		assert.Empty(t, d.WithWarning)
+		assert.Equal(t, 0, d.DatabaseCount)
+		assert.Equal(t, 0, d.CollectionCount)
+	})
+
+	t.Run("partition standard vs warning and action", func(t *testing.T) {
+		dups := []indexes.Duplicate{
+			{
+				Namespace:     "mydb.orders",
+				Name:          "idx_a",
+				Key:           indexes.IndexKey{{Key: "a", Value: int32(1)}},
+				ContainerName: "idx_ab",
+				ContainerKey: indexes.IndexKey{
+					{Key: "a", Value: int32(1)},
+					{Key: "b", Value: int32(1)},
+				},
+			},
+			{
+				Namespace:     "mydb.users",
+				Name:          "email_1",
+				Key:           indexes.IndexKey{{Key: "email", Value: int32(1)}},
+				ContainerName: "email_status",
+				ContainerKey: indexes.IndexKey{
+					{Key: "email", Value: int32(1)},
+					{Key: "status", Value: int32(1)},
+				},
+				Warning:    "prefix index enforces unique constraint",
+				Constraint: "unique",
+			},
+		}
+		sizes := map[string]map[string]int64{
+			"mydb.orders": {"idx_a": 100, "idx_ab": 500},
+			"mydb.users":  {"email_1": 50, "email_status": 200},
+		}
+		d := buildDuplicateReportData(dups, sizes)
+		assert.Equal(t, 2, d.TotalPairs)
+		assert.Equal(t, 1, d.DatabaseCount, "distinct database prefix")
+		assert.Equal(t, 2, d.CollectionCount, "distinct namespaces")
+		assert.Len(t, d.Standard, 1)
+		assert.Len(t, d.WithWarning, 1)
+		assert.Equal(t, `db.getSiblingDB("mydb").getCollection("orders").dropIndex("idx_a")`, d.Standard[0].Action)
+		assert.True(t, d.Standard[0].HasSizes)
+		assert.Equal(t, int64(100), d.Standard[0].PrefixSize)
+		assert.Equal(t, int64(500), d.Standard[0].ContainerSize)
+		assert.Contains(t, d.Standard[0].Reason, "idx_a")
+		assert.Contains(t, d.Standard[0].Reason, "idx_ab")
+		assert.Equal(t, "prefix index enforces unique constraint", d.WithWarning[0].Warning)
+		assert.Equal(t, "[UNIQUE]", d.WithWarning[0].Tag)
+		assert.Empty(t, d.WithWarning[0].Action)
+	})
+
+	t.Run("nil size map omits sizes", func(t *testing.T) {
+		d := buildDuplicateReportData([]indexes.Duplicate{
+			{
+				Namespace:     "app.coll",
+				Name:          "x_1",
+				Key:           indexes.IndexKey{{Key: "x", Value: int32(1)}},
+				ContainerName: "x_y",
+				ContainerKey:  indexes.IndexKey{{Key: "x", Value: int32(1)}, {Key: "y", Value: int32(-1)}},
+			},
+		}, nil)
+		assert.Len(t, d.Standard, 1)
+		assert.False(t, d.Standard[0].HasSizes)
+	})
+}
+
+func TestRenderDuplicateReport_containsSections(t *testing.T) {
+	data := buildDuplicateReportData([]indexes.Duplicate{
+		{
+			Namespace:     "shop.orders",
+			Name:          "region_1",
+			Key:           indexes.IndexKey{{Key: "region", Value: int32(1)}},
+			ContainerName: "region_created",
+			ContainerKey: indexes.IndexKey{
+				{Key: "region", Value: int32(1)},
+				{Key: "created", Value: int32(-1)},
+			},
+		},
+	}, nil)
+
+	buf := new(bytes.Buffer)
+	renderDuplicateReport(buf, data)
+	out := buf.String()
+	assert.Contains(t, out, "Duplicate Prefix Index Report")
+	assert.Contains(t, out, "REDUNDANT PREFIX")
+	assert.Contains(t, out, "shop.orders")
+	assert.Contains(t, out, "dropIndex(\"region_1\")")
+	assert.Contains(t, out, "Summary:")
+}
+
+// Regression: unique prefix warning must appear in rendered duplicate report
+func TestRenderDuplicateReport_uniqueWarning(t *testing.T) {
+	data := buildDuplicateReportData([]indexes.Duplicate{
+		{
+			Namespace:     "mydb.users",
+			Name:          "email_unique",
+			Key:           indexes.IndexKey{{Key: "email", Value: int32(1)}},
+			ContainerName: "email_status",
+			ContainerKey: indexes.IndexKey{
+				{Key: "email", Value: int32(1)},
+				{Key: "status", Value: int32(1)},
+			},
+			Warning:    "the prefix index enforces uniqueness on its own fields; the container cannot, so dropping it loses the unique constraint",
+			Constraint: "unique",
+		},
+		{
+			Namespace:     "mydb.sessions",
+			Name:          "expires_1",
+			Key:           indexes.IndexKey{{Key: "expires", Value: int32(1)}},
+			ContainerName: "expires_1_user_1",
+			ContainerKey: indexes.IndexKey{
+				{Key: "expires", Value: int32(1)},
+				{Key: "user", Value: int32(1)},
+			},
+			Warning:    "the prefix index is a TTL index; dropping it stops document expiry",
+			Constraint: "TTL",
+		},
+	}, nil)
+
+	buf := new(bytes.Buffer)
+	renderDuplicateReport(buf, data)
+	out := buf.String()
+	assert.Contains(t, out, "PREFIX ENFORCES A CONSTRAINT (keep it)")
+	assert.Contains(t, out, "{email:1}  [UNIQUE]")
+	assert.Contains(t, out, "{expires:1}  [TTL]")
+	assert.Contains(t, out, "WARNING: the prefix index is a TTL index; dropping it stops document expiry")
+	assert.NotContains(t, out, "dropIndex")
+	assert.NotContains(t, out, "Reason:")
+	assert.Contains(t, out, "# Summary: 0 redundant prefix pair(s), 2 pair(s) kept for a constraint")
+	assert.Empty(t, data.Standard, "constraint pairs should not be in Standard section")
+	assert.Len(t, data.WithWarning, 2)
+}
+
+// Regression: check-unused output must NOT include the duplicate report section
+func TestOutput_checkUnused_noDuplicateSection(t *testing.T) {
+	resp := response{}
+	analysis := []indexes.IndexAnalysis{
+		{
+			Namespace:      "mydb.orders",
+			IndexName:      "idx_old",
+			IndexKey:       primitive.D{{Key: "old", Value: int32(1)}},
+			Recommendation: indexes.RecommendMonitor,
+			Reason:         "test reason",
+		},
+	}
+	out := output(resp, false, analysis, analysisScope{Databases: 1, Collections: 1}, duplicateReportData{}, false, true)
+	assert.NotContains(t, out, "Duplicate Prefix Index Report")
+	assert.Contains(t, out, "Unused Index Analysis")
+	assert.NotContains(t, out, "Size:")
+}
+
+// Regression: check-all output must include BOTH duplicate and unused sections
+func TestOutput_checkAll_bothSections(t *testing.T) {
+	dups := []indexes.Duplicate{
+		{
+			Namespace:     "mydb.orders",
+			Name:          "idx_a",
+			Key:           indexes.IndexKey{{Key: "a", Value: int32(1)}},
+			ContainerName: "idx_ab",
+			ContainerKey: indexes.IndexKey{
+				{Key: "a", Value: int32(1)},
+				{Key: "b", Value: int32(1)},
+			},
+		},
+	}
+	dupReport := buildDuplicateReportData(dups, nil)
+	resp := response{Duplicated: dups}
+	analysis := []indexes.IndexAnalysis{
+		{
+			Namespace:      "mydb.orders",
+			IndexName:      "idx_test",
+			IndexKey:       primitive.D{{Key: "test", Value: int32(1)}},
+			Recommendation: indexes.RecommendMonitor,
+			Reason:         "monitoring",
+		},
+		{
+			Namespace:      "mydb.orders.archive",
+			IndexName:      "idx_old",
+			IndexKey:       primitive.D{{Key: "old", Value: int32(1)}},
+			Recommendation: indexes.RecommendSafeToDrop,
+			Reason:         "unused",
+		},
+	}
+	out := output(resp, false, analysis, analysisScope{Databases: 1, Collections: 1}, dupReport, true, true)
+	assert.Contains(t, out, "Duplicate Prefix Index Report")
+	assert.Contains(t, out, "Unused Index Analysis")
+	assert.Contains(t, out, `dropIndex("idx_a")`)
+	assert.Contains(t, out, `Action: db.getSiblingDB("mydb").getCollection("orders.archive").dropIndex("idx_old")`)
+}
+
+// Regression: no database selected must produce an error, not blank output
+func TestExtractDBFromURI_adminReturnsEmpty(t *testing.T) {
+	assert.Equal(t, "", extractDBFromURI("mongodb://localhost:27017/admin"))
+	assert.Equal(t, "", extractDBFromURI("mongodb://localhost:27017"))
+	assert.Equal(t, "", extractDBFromURI("mongodb://localhost:27017/"))
+	assert.Equal(t, "", extractDBFromURI("not-a-uri"))
+}
+
+func TestPtdebugEnabled(t *testing.T) {
+	t.Run("off when unset", func(t *testing.T) {
+		t.Setenv("PTDEBUG", "")
+		if ptdebugEnabled() {
+			t.Fatal("expected false when PTDEBUG empty")
+		}
+	})
+	t.Run("off for zero", func(t *testing.T) {
+		t.Setenv("PTDEBUG", "0")
+		if ptdebugEnabled() {
+			t.Fatal("expected false when PTDEBUG=0")
+		}
+	})
+	t.Run("on for one", func(t *testing.T) {
+		t.Setenv("PTDEBUG", "1")
+		if !ptdebugEnabled() {
+			t.Fatal("expected true when PTDEBUG=1")
+		}
+	})
+}
+
 func TestNoCommand(t *testing.T) {
 	mockMongo := "mongodb://127.0.0.1:27017"
 	out, err := exec.Command("../../../bin/"+toolname, "--mongodb.uri", mockMongo).Output()
@@ -52,4 +353,140 @@ func TestNoCommand(t *testing.T) {
 	if !strings.Contains(string(out), want) {
 		t.Errorf("Output missmatch. Output %q should contain %q", string(out), want)
 	}
+}
+
+func TestRenderDuplicateReport_skipped(t *testing.T) {
+	data := buildDuplicateReportData(nil, nil)
+	data.Skipped = []indexes.SkippedDuplicate{
+		{Namespace: "db.people", Name: "name_1", ContainerName: "name_1_surname_1", Reason: "partialFilterExpression differs"},
+	}
+
+	buf := new(bytes.Buffer)
+	renderDuplicateReport(buf, data)
+	out := buf.String()
+	assert.Contains(t, out, "# No duplicate prefix indexes detected.")
+	assert.Contains(t, out, "# ---- NOT REPORTED (key prefix, but not redundant) ------------\n")
+	assert.Contains(t, out, "  db.people  'name_1' is a key prefix of 'name_1_surname_1', but partialFilterExpression differs\n")
+}
+
+func TestOutput_noServerWriteRate(t *testing.T) {
+	analysis := []indexes.IndexAnalysis{{
+		Namespace: "db.c", IndexName: "x_1", Recommendation: indexes.RecommendLowUsage,
+		Reason: "Index used 0.5 times/day; consider monitoring",
+	}}
+
+	text := output(response{Analysis: analysis}, false, analysis, analysisScope{Databases: 1, Collections: 1}, duplicateReportData{}, false, true)
+	assert.NotContains(t, text, "write rate")
+
+	js := output(response{Analysis: analysis}, true, analysis, analysisScope{Databases: 1, Collections: 1}, duplicateReportData{}, false, true)
+	assert.NotContains(t, js, "writeOpsPerSec")
+}
+
+func TestOutput_noAnalysis(t *testing.T) {
+	out := output(response{}, false, nil, analysisScope{Databases: 1, Collections: 2}, buildDuplicateReportData(nil, nil), true, false)
+	assert.Contains(t, out, "Duplicate Prefix Index Report")
+	assert.NotContains(t, out, "Unused")
+
+	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	out = output(response{}, false, nil, analysisScope{Databases: 1, Collections: 2, Indexes: 3, OldestSince: since},
+		duplicateReportData{}, false, true)
+	assert.Contains(t, out, "# Observation window: 2026-01-01T00:00:00Z to ")
+	assert.Contains(t, out, "# Indexes analyzed: 3 across 1 database(s), 2 collection(s)")
+	assert.Contains(t, out, "# No unused index candidates found.")
+	assert.NotContains(t, out, "since last restart")
+
+	out = output(response{}, false, nil, analysisScope{Databases: 1, Collections: 2}, duplicateReportData{}, false, true)
+	assert.NotContains(t, out, "No unused index candidates found.")
+}
+
+func TestTimeoutFlag(t *testing.T) {
+	start := time.Now()
+	out, err := exec.Command("../../../bin/"+toolname, "check-all", "--databases=test", "--timeout=1ms",
+		"--mongodb.uri=mongodb://127.0.0.1:1").CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "context deadline exceeded")
+	assert.Less(t, time.Since(start), 10*time.Second)
+
+	out, err = exec.Command("../../../bin/"+toolname, "check-all", "--databases=test", "--timeout=0s",
+		"--mongodb.uri=mongodb://127.0.0.1:1").CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "--timeout must be greater than 0")
+}
+
+func TestConnectionErrorHidesPassword(t *testing.T) {
+	out, err := exec.Command("../../../bin/"+toolname, "check-all", "--databases=test", "--timeout=1ms",
+		"--mongodb.uri=mongodb://user:secret@127.0.0.1:1").CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "Cannot connect to MongoDB at mongodb://user:xxx@127.0.0.1:1")
+	assert.NotContains(t, string(out), "secret")
+}
+
+func TestNeedsSizes(t *testing.T) {
+	analysis := func(recs ...string) []indexes.IndexAnalysis {
+		var out []indexes.IndexAnalysis
+		for _, r := range recs {
+			out = append(out, indexes.IndexAnalysis{Recommendation: r})
+		}
+		return out
+	}
+
+	assert.False(t, needsSizes(nil))
+	assert.False(t, needsSizes(analysis(indexes.RecommendMonitor, indexes.RecommendKeepConstraint, indexes.RecommendKeepPartial)))
+	assert.True(t, needsSizes(analysis(indexes.RecommendMonitor, indexes.RecommendLikelyUnused)))
+	assert.True(t, needsSizes(analysis(indexes.RecommendSafeToDrop)))
+	assert.True(t, needsSizes(analysis(indexes.RecommendLowUsage)))
+}
+
+func TestAnalyzeUnusedReadsSizesOnlyWhenNeeded(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	client, err := tu.TestClient(ctx, tu.MongoDBStandalonePort)
+	require.NoError(t, err)
+
+	defer client.Disconnect(ctx) //nolint:errcheck
+
+	const dbname = "test_analyze_unused"
+
+	db := client.Database(dbname)
+	require.NoError(t, db.Drop(ctx))
+
+	defer db.Drop(ctx) //nolint:errcheck
+
+	_, err = db.Collection("unused").InsertMany(ctx, []interface{}{primitive.M{"a": 1}, primitive.M{"a": 2}})
+	require.NoError(t, err)
+	_, err = db.Collection("unused").Indexes().CreateOne(ctx, mongo.IndexModel{Keys: primitive.D{{Key: "a", Value: 1}}})
+	require.NoError(t, err)
+	_, err = db.Collection("empty").Indexes().CreateOne(ctx, mongo.IndexModel{Keys: primitive.D{{Key: "b", Value: 1}}})
+	require.NoError(t, err)
+
+	cfg := indexes.DefaultAnalysisConfig()
+	cfg.WarmupDays = 0
+
+	analysis, scope, sizes := analyzeUnused(ctx, client, []string{dbname}, []string{"unused", "empty", "missing"}, cfg, nil)
+
+	byName := map[string]indexes.IndexAnalysis{}
+	for _, a := range analysis {
+		byName[a.Namespace+" "+a.IndexName] = a
+	}
+
+	require.Contains(t, byName, dbname+".unused a_1")
+	assert.Equal(t, indexes.RecommendLikelyUnused, byName[dbname+".unused a_1"].Recommendation)
+	assert.Positive(t, byName[dbname+".unused a_1"].IndexSizeBytes)
+	require.Contains(t, byName, dbname+".empty b_1")
+	assert.Equal(t, indexes.RecommendMonitor, byName[dbname+".empty b_1"].Recommendation)
+	assert.Zero(t, byName[dbname+".empty b_1"].IndexSizeBytes)
+
+	assert.Contains(t, sizes, dbname+".unused")
+	assert.NotContains(t, sizes, dbname+".empty")
+	assert.Equal(t, 1, scope.Databases)
+	assert.Equal(t, 2, scope.Collections)
+	assert.Equal(t, 4, scope.Indexes)
+
+	dups := []indexes.Duplicate{
+		{Namespace: dbname + ".unused", Name: "a_1"},
+		{Namespace: dbname + ".other", Name: "u_1", Warning: "unique"},
+	}
+	assert.Equal(t, map[string]map[string]int64{dbname + ".unused": sizes[dbname+".unused"]},
+		collectDuplicateSizes(ctx, nil, dups, sizes))
 }
