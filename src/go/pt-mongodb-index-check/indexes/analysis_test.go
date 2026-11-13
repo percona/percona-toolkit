@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -619,4 +620,22 @@ func TestCrossReferenceDuplicates(t *testing.T) {
 	assert.Equal(t, "idx_full", records[0].DuplicateContainerName)
 	assert.Equal(t, int64(5000), records[0].DuplicateContainerOps)
 	assert.False(t, records[1].IsDuplicatePrefix)
+}
+
+func TestScoreRecordsSkipsIDIndex(t *testing.T) {
+	cfg := DefaultAnalysisConfig()
+	since := cfg.Now.AddDate(0, 0, -30)
+
+	got := ScoreRecords([]IndexRecord{
+		{Namespace: "db.c", IndexName: "_id_", AccessSince: since, CollDocCount: 10},
+		{Namespace: "db.c", IndexName: "email_1", IsUnique: true, AccessSince: since, CollDocCount: 10},
+		{Namespace: "db.c", IndexName: "used_1", AccessOps: 1000, AccessSince: since, CollDocCount: 10},
+		{Namespace: "db.c", IndexName: "rare_1", AccessOps: 3, AccessSince: since, CollDocCount: 10},
+	}, cfg)
+
+	require.Len(t, got, 1)
+	assert.Equal(t, "email_1", got[0].IndexName)
+
+	cfg.IncludeLowUsage = true
+	assert.Len(t, ScoreRecords([]IndexRecord{{IndexName: "rare_1", AccessOps: 3, AccessSince: since, CollDocCount: 10}}, cfg), 1)
 }

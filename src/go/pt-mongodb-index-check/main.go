@@ -59,7 +59,6 @@ type cmdlineArgs struct {
 }
 
 type response struct {
-	Unused            []indexes.IndexStat        `json:"Unused,omitempty"`
 	Duplicated        []indexes.Duplicate        `json:"Duplicated,omitempty"`
 	SkippedDuplicates []indexes.SkippedDuplicate `json:"SkippedDuplicates,omitempty"`
 	Analysis          []indexes.IndexAnalysis    `json:"Analysis,omitempty"`
@@ -73,6 +72,7 @@ type analysisReportData struct {
 	TotalAnalyzed   int
 	DatabaseCount   int
 	CollectionCount int
+	NoCandidates    bool
 
 	SafeToDrop   []indexes.IndexAnalysis
 	LikelyUnused []indexes.IndexAnalysis
@@ -86,6 +86,13 @@ type analysisReportData struct {
 	LowUsageCount     int
 	MonitorCount      int
 	KeepCount         int
+}
+
+type analysisScope struct {
+	Databases   int
+	Collections int
+	Indexes     int
+	OldestSince time.Time
 }
 
 // duplicateDisplayRow holds per-pair data for the rich duplicate text report.
@@ -288,11 +295,11 @@ func main() {
 	var allAnalysis []indexes.IndexAnalysis
 	var duplicates []indexes.Duplicate
 	var skipped []indexes.SkippedDuplicate
-	var dbCount, collCount int
+	var scope analysisScope
 
 	switch cmd {
 	case "check-unused":
-		allAnalysis, dbCount, collCount = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, nil)
+		allAnalysis, scope = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, nil)
 		resp.Analysis = allAnalysis
 	case "check-duplicates":
 		duplicates, skipped = findDuplicated(ctx, client, args.Databases, args.Collections)
@@ -300,7 +307,7 @@ func main() {
 	case "check-all":
 		duplicates, skipped = findDuplicated(ctx, client, args.Databases, args.Collections)
 		resp.Duplicated, resp.SkippedDuplicates = duplicates, skipped
-		allAnalysis, dbCount, collCount = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, duplicates)
+		allAnalysis, scope = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, duplicates)
 		resp.Analysis = allAnalysis
 	}
 
@@ -315,7 +322,9 @@ func main() {
 		dupReport.Skipped = skipped
 	}
 
-	fmt.Println(output(resp, args.JSON, allAnalysis, dbCount, collCount, dupReport, showDupReport))
+	showAnalysis := cmd == "check-unused" || cmd == "check-all"
+
+	fmt.Println(output(resp, args.JSON, allAnalysis, scope, dupReport, showDupReport, showAnalysis))
 }
 
 // ptdebugEnabled mirrors Perl toolkit truthiness: $ENV{PTDEBUG} || 0 (so "0", unset, and "" are off).
@@ -349,7 +358,9 @@ func redactMongoURI(uri string) string {
 	return parsed.String()
 }
 
-func output(resp response, asJSON bool, analysis []indexes.IndexAnalysis, dbCount, collCount int, dupReport duplicateReportData, showDupReport bool) string {
+func output(resp response, asJSON bool, analysis []indexes.IndexAnalysis, scope analysisScope, dupReport duplicateReportData,
+	showDupReport, showAnalysis bool,
+) string {
 	if asJSON {
 		jsonStr, err := json.MarshalIndent(resp, "", "\t")
 		if err != nil {
@@ -364,13 +375,8 @@ func output(resp response, asJSON bool, analysis []indexes.IndexAnalysis, dbCoun
 		renderDuplicateReport(buf, dupReport)
 	}
 
-	if len(analysis) > 0 {
-		renderAnalysisReport(buf, analysis, dbCount, collCount)
-	} else {
-		t := template.Must(template.New("unused").Parse(templates.Unused))
-		if err := t.Execute(buf, resp.Unused); err != nil {
-			log.Fatal(errors.Wrap(err, "cannot render unused indexes template"))
-		}
+	if showAnalysis {
+		renderAnalysisReport(buf, analysis, scope)
 	}
 
 	return buf.String()
@@ -393,21 +399,16 @@ func renderDuplicateReport(buf *bytes.Buffer, data duplicateReportData) {
 	}
 }
 
-func renderAnalysisReport(buf *bytes.Buffer, analysis []indexes.IndexAnalysis, dbCount, collCount int) {
+func renderAnalysisReport(buf *bytes.Buffer, analysis []indexes.IndexAnalysis, scope analysisScope) {
 	data := analysisReportData{
 		ObsEnd:          time.Now().UTC().Format(time.RFC3339),
-		TotalAnalyzed:   len(analysis),
-		DatabaseCount:   dbCount,
-		CollectionCount: collCount,
+		TotalAnalyzed:   scope.Indexes,
+		DatabaseCount:   scope.Databases,
+		CollectionCount: scope.Collections,
+		NoCandidates:    scope.Indexes > 0 && len(analysis) == 0,
 	}
 
-	var oldestSince time.Time
-
 	for _, a := range analysis {
-		if oldestSince.IsZero() || (!a.AccessSince.IsZero() && a.AccessSince.Before(oldestSince)) {
-			oldestSince = a.AccessSince
-		}
-
 		switch a.Recommendation {
 		case indexes.RecommendSafeToDrop:
 			data.SafeToDrop = append(data.SafeToDrop, a)
@@ -423,9 +424,9 @@ func renderAnalysisReport(buf *bytes.Buffer, analysis []indexes.IndexAnalysis, d
 		}
 	}
 
-	if !oldestSince.IsZero() {
-		data.ObsStart = oldestSince.UTC().Format(time.RFC3339)
-		data.ObsDays = fmt.Sprintf("%.1f", time.Since(oldestSince).Hours()/24)
+	if !scope.OldestSince.IsZero() {
+		data.ObsStart = scope.OldestSince.UTC().Format(time.RFC3339)
+		data.ObsDays = fmt.Sprintf("%.1f", time.Since(scope.OldestSince).Hours()/24)
 	} else {
 		data.ObsStart = "unknown"
 		data.ObsDays = "N/A"
@@ -471,9 +472,9 @@ func analyzeUnused(
 	databases, collections []string,
 	cfg indexes.AnalysisConfig,
 	duplicates []indexes.Duplicate,
-) ([]indexes.IndexAnalysis, int, int) {
+) ([]indexes.IndexAnalysis, analysisScope) {
 	var allAnalysis []indexes.IndexAnalysis
-	var dbCount, collCount int
+	var scope analysisScope
 
 	var err error
 
@@ -484,7 +485,7 @@ func analyzeUnused(
 		if indexes.IsSystemDB(database) {
 			continue
 		}
-		dbCount++
+		scope.Databases++
 
 		if len(collections) == 0 {
 			colls, err = client.Database(database).ListCollectionNames(ctx, primitive.D{})
@@ -499,7 +500,7 @@ func analyzeUnused(
 				continue
 			}
 
-			collCount++
+			scope.Collections++
 			ns := database + "." + collection
 
 			log.Debugf("analyze-unused start namespace=%s", ns)
@@ -524,6 +525,13 @@ func analyzeUnused(
 
 			records := indexes.DeduplicateIndexRecords(indexes.BuildIndexRecords(stats, metadata, cs, ns))
 
+			scope.Indexes += len(records)
+			for _, r := range records {
+				if !r.AccessSince.IsZero() && (scope.OldestSince.IsZero() || r.AccessSince.Before(scope.OldestSince)) {
+					scope.OldestSince = r.AccessSince
+				}
+			}
+
 			log.Debugf("analyze-unused done namespace=%s indexStats=%d metadata=%d records=%d",
 				ns, len(stats), len(metadata), len(records))
 
@@ -531,20 +539,11 @@ func analyzeUnused(
 				indexes.CrossReferenceDuplicates(records, duplicates, stats)
 			}
 
-			for _, rec := range records {
-				a := indexes.ScoreIndex(rec, cfg)
-				if a.Recommendation == "" {
-					continue
-				}
-				if a.Recommendation == indexes.RecommendLowUsage && !cfg.IncludeLowUsage {
-					continue
-				}
-				allAnalysis = append(allAnalysis, a)
-			}
+			allAnalysis = append(allAnalysis, indexes.ScoreRecords(records, cfg)...)
 		}
 	}
 
-	return allAnalysis, dbCount, collCount
+	return allAnalysis, scope
 }
 
 func findDuplicated(ctx context.Context, client *mongo.Client, databases []string, collections []string) ([]indexes.Duplicate, []indexes.SkippedDuplicate) {

@@ -103,7 +103,7 @@ these recommendations:
 
 **Hard guards** -- The following indexes are never flagged for removal:
 
-- ``_id_`` (MongoDB requirement)
+- ``_id_`` (MongoDB requirement; not listed in the report)
 - Unique indexes (enforce data integrity constraints)
 - TTL indexes (provide automatic document expiration)
 - Hidden indexes (intentionally excluded from planner by admin)
@@ -308,9 +308,6 @@ report instead of N rows for N shards.
 When a row omits the top-level ``name`` field but includes ``spec.name`` (seen on
 some mongos responses), the tool normalizes the document before aggregation so
 shards still group under the same index name.
-
-Per-shard detail is still available via ``--json`` output, which includes the
-shard count for each aggregated entry.
 
 Read preference routing
 ~~~~~~~~~~~~~~~~~~~~~~~

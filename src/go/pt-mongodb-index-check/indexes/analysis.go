@@ -243,6 +243,25 @@ func ScoreIndex(rec IndexRecord, cfg AnalysisConfig) IndexAnalysis {
 	return a
 }
 
+func ScoreRecords(records []IndexRecord, cfg AnalysisConfig) []IndexAnalysis {
+	var out []IndexAnalysis
+
+	for _, rec := range records {
+		if rec.IndexName == "_id_" {
+			continue
+		}
+
+		a := ScoreIndex(rec, cfg)
+		if a.Recommendation == "" || (a.Recommendation == RecommendLowUsage && !cfg.IncludeLowUsage) {
+			continue
+		}
+
+		out = append(out, a)
+	}
+
+	return out
+}
+
 func FormatBytes(b int64) string {
 	const (
 		kb = 1024

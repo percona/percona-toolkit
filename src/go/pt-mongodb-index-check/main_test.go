@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -264,7 +265,7 @@ func TestOutput_checkUnused_noDuplicateSection(t *testing.T) {
 			Reason:         "test reason",
 		},
 	}
-	out := output(resp, false, analysis, 1, 1, duplicateReportData{}, false)
+	out := output(resp, false, analysis, analysisScope{Databases: 1, Collections: 1}, duplicateReportData{}, false, true)
 	assert.NotContains(t, out, "Duplicate Prefix Index Report")
 	assert.Contains(t, out, "Unused Index Analysis")
 }
@@ -294,7 +295,7 @@ func TestOutput_checkAll_bothSections(t *testing.T) {
 			Reason:         "monitoring",
 		},
 	}
-	out := output(resp, false, analysis, 1, 1, dupReport, true)
+	out := output(resp, false, analysis, analysisScope{Databases: 1, Collections: 1}, dupReport, true, true)
 	assert.Contains(t, out, "Duplicate Prefix Index Report")
 	assert.Contains(t, out, "Unused Index Analysis")
 	assert.Contains(t, out, `dropIndex("idx_a")`)
@@ -362,9 +363,26 @@ func TestOutput_noServerWriteRate(t *testing.T) {
 		Reason: "Index used 0.5 times/day; consider monitoring",
 	}}
 
-	text := output(response{Analysis: analysis}, false, analysis, 1, 1, duplicateReportData{}, false)
+	text := output(response{Analysis: analysis}, false, analysis, analysisScope{Databases: 1, Collections: 1}, duplicateReportData{}, false, true)
 	assert.NotContains(t, text, "write rate")
 
-	js := output(response{Analysis: analysis}, true, analysis, 1, 1, duplicateReportData{}, false)
+	js := output(response{Analysis: analysis}, true, analysis, analysisScope{Databases: 1, Collections: 1}, duplicateReportData{}, false, true)
 	assert.NotContains(t, js, "writeOpsPerSec")
+}
+
+func TestOutput_noAnalysis(t *testing.T) {
+	out := output(response{}, false, nil, analysisScope{Databases: 1, Collections: 2}, buildDuplicateReportData(nil, nil), true, false)
+	assert.Contains(t, out, "Duplicate Prefix Index Report")
+	assert.NotContains(t, out, "Unused")
+
+	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	out = output(response{}, false, nil, analysisScope{Databases: 1, Collections: 2, Indexes: 3, OldestSince: since},
+		duplicateReportData{}, false, true)
+	assert.Contains(t, out, "# Observation window: 2026-01-01T00:00:00Z to ")
+	assert.Contains(t, out, "# Indexes analyzed: 3 across 1 database(s), 2 collection(s)")
+	assert.Contains(t, out, "# No unused index candidates found.")
+	assert.NotContains(t, out, "since last restart")
+
+	out = output(response{}, false, nil, analysisScope{Databases: 1, Collections: 2}, duplicateReportData{}, false, true)
+	assert.NotContains(t, out, "No unused index candidates found.")
 }
