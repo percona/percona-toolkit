@@ -9,13 +9,13 @@ import (
 )
 
 const (
-	RecommendSafeToDrop    = "SAFE_TO_DROP"
-	RecommendLikelyUnused  = "LIKELY_UNUSED"
-	RecommendMonitor       = "MONITOR"
-	RecommendLowUsage      = "LOW_USAGE"
+	RecommendSafeToDrop     = "SAFE_TO_DROP"
+	RecommendLikelyUnused   = "LIKELY_UNUSED"
+	RecommendMonitor        = "MONITOR"
+	RecommendLowUsage       = "LOW_USAGE"
 	RecommendKeepConstraint = "KEEP_CONSTRAINT"
-	RecommendKeepHidden    = "KEEP_HIDDEN"
-	RecommendKeepPartial   = "KEEP_PARTIAL"
+	RecommendKeepHidden     = "KEEP_HIDDEN"
+	RecommendKeepPartial    = "KEEP_PARTIAL"
 
 	ConfidenceHigh   = "high"
 	ConfidenceMedium = "medium"
@@ -28,31 +28,31 @@ const (
 
 // AnalysisConfig holds configurable thresholds for index analysis.
 type AnalysisConfig struct {
-	WarmupDays             float64
-	LowUsageThreshold      float64
-	LargeIndexSizeBytes    int64
-	IncludeLowUsage        bool
+	WarmupDays               float64
+	LowUsageThreshold        float64
+	LargeIndexSizeBytes      int64
+	IncludeLowUsage          bool
 	CrossReferenceDuplicates bool
-	Now                    time.Time
+	Now                      time.Time
 }
 
 // DefaultAnalysisConfig returns the default configuration.
 func DefaultAnalysisConfig() AnalysisConfig {
 	return AnalysisConfig{
-		WarmupDays:             DefaultWarmupDays,
-		LowUsageThreshold:      DefaultLowUsageThreshold,
-		LargeIndexSizeBytes:    DefaultLargeIndexSize,
-		IncludeLowUsage:        false,
+		WarmupDays:               DefaultWarmupDays,
+		LowUsageThreshold:        DefaultLowUsageThreshold,
+		LargeIndexSizeBytes:      DefaultLargeIndexSize,
+		IncludeLowUsage:          false,
 		CrossReferenceDuplicates: true,
-		Now:                    time.Now(),
+		Now:                      time.Now(),
 	}
 }
 
 // IndexAnalysis holds the full analysis result for a single index.
 type IndexAnalysis struct {
-	Namespace        string      `json:"namespace"`
-	IndexName        string      `json:"indexName"`
-	IndexKey         primitive.D `json:"indexKey"`
+	Namespace string      `json:"namespace"`
+	IndexName string      `json:"indexName"`
+	IndexKey  primitive.D `json:"indexKey"`
 
 	AccessOps   int64     `json:"accessOps"`
 	AccessSince time.Time `json:"accessSince"`
@@ -81,9 +81,9 @@ type IndexAnalysis struct {
 // IndexRecord is the merged data collected from multiple MongoDB commands
 // before scoring. It is the input to ScoreIndex.
 type IndexRecord struct {
-	Namespace  string
-	IndexName  string
-	IndexKey   primitive.D
+	Namespace string
+	IndexName string
+	IndexKey  primitive.D
 
 	AccessOps   int64
 	AccessSince time.Time
@@ -101,9 +101,9 @@ type IndexRecord struct {
 	WriteOpsPerSec float64
 
 	// Set by cross-reference with duplicate check results
-	IsDuplicatePrefix       bool
-	DuplicateContainerName  string
-	DuplicateContainerOps   int64
+	IsDuplicatePrefix      bool
+	DuplicateContainerName string
+	DuplicateContainerOps  int64
 }
 
 // ScoreIndex evaluates an IndexRecord against the scoring decision tree
@@ -220,14 +220,14 @@ func ScoreIndex(rec IndexRecord, cfg AnalysisConfig) IndexAnalysis {
 			a.Recommendation = RecommendSafeToDrop
 			a.Confidence = ConfidenceHigh
 			a.Reason = fmt.Sprintf("Zero reads in %.0f days; index is %s and costs write amplification",
+				ageDays, FormatBytes(rec.IndexSizeBytes))
+			return a
+		}
+		a.Score = 0.8
+		a.Recommendation = RecommendLikelyUnused
+		a.Confidence = ConfidenceHigh
+		a.Reason = fmt.Sprintf("Zero reads in %.0f days; small index (%s), low cost to keep",
 			ageDays, FormatBytes(rec.IndexSizeBytes))
-		return a
-	}
-	a.Score = 0.8
-	a.Recommendation = RecommendLikelyUnused
-	a.Confidence = ConfidenceHigh
-	a.Reason = fmt.Sprintf("Zero reads in %.0f days; small index (%s), low cost to keep",
-		ageDays, FormatBytes(rec.IndexSizeBytes))
 		return a
 	}
 
