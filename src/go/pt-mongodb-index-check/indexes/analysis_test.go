@@ -609,15 +609,14 @@ func TestComparableKey_hashedSymbol(t *testing.T) {
 
 func TestCrossReferenceDuplicates(t *testing.T) {
 	records := []IndexRecord{
-		{IndexName: "idx_short", AccessOps: 0},
-		{IndexName: "idx_full", AccessOps: 5000},
+		{Namespace: "db.a", IndexName: "idx_short", AccessOps: 0},
+		{Namespace: "db.a", IndexName: "idx_full", AccessOps: 5000},
 	}
 
 	duplicates := []Duplicate{
-		{
-			Name:          "idx_short",
-			ContainerName: "idx_full",
-		},
+		{Namespace: "db.a", Name: "idx_short", ContainerName: "idx_full"},
+		{Namespace: "db.a", Name: "idx_short", ContainerName: "idx_short_unused"},
+		{Namespace: "db.b", Name: "idx_full", ContainerName: "idx_full_x"},
 	}
 
 	allStats := []IndexStat{

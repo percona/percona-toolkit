@@ -204,18 +204,21 @@ func CrossReferenceDuplicates(records []IndexRecord, duplicates []Duplicate, all
 		opsMap[s.Name] += s.Accesses.Ops
 	}
 
-	dupMap := make(map[string]Duplicate, len(duplicates))
+	type nsIndex struct{ namespace, name string }
+
+	dupMap := make(map[nsIndex]Duplicate, len(duplicates))
 	for _, d := range duplicates {
-		dupMap[d.Name] = d
+		k := nsIndex{d.Namespace, d.Name}
+		if prev, ok := dupMap[k]; !ok || opsMap[d.ContainerName] > opsMap[prev.ContainerName] {
+			dupMap[k] = d
+		}
 	}
 
 	for i := range records {
-		if dup, ok := dupMap[records[i].IndexName]; ok {
+		if dup, ok := dupMap[nsIndex{records[i].Namespace, records[i].IndexName}]; ok {
 			records[i].IsDuplicatePrefix = true
 			records[i].DuplicateContainerName = dup.ContainerName
-			if ops, ok := opsMap[dup.ContainerName]; ok {
-				records[i].DuplicateContainerOps = ops
-			}
+			records[i].DuplicateContainerOps = opsMap[dup.ContainerName]
 		}
 	}
 }
