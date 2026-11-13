@@ -720,6 +720,83 @@ is(
    'dbh created from DSN table works'
 );
 }
+
+# ############################################################################
+# --replica-user/--replica-password with DSN recursion method
+# ############################################################################
+$sb->load_file('source', "t/lib/samples/MasterSlave/dsn_table_undef.sql");
+$replica_dbh->do('drop user if exists replica_user');
+$replica_dbh->do("create user replica_user identified by 'replica_password'");
+$sb->do_as_root('replica1', 'grant replication slave on *.* to replica_user');
+@ARGV = (
+   '--recursion-method', 'dsn=F=/tmp/12345/my.sandbox.cnf,D=dsn_t,t=dsns',
+   '--replica-user',     'replica_user',
+   '--replica-password', 'replica_password',
+);
+$o->get_opts();
+
+my $slaves = $ms->get_replicas(
+   OptionParser => $o,
+   DSNParser    => $dp,
+   Quoter       => $q,
+   make_cxn     => sub {
+      my $cxn = new Cxn(
+         @_,
+         DSNParser    => $dp,
+         OptionParser => $o,
+      );
+      $cxn->connect();
+      return $cxn;
+   },
+   dsn => 'F=/tmp/12345/my.sandbox.cnf',
+);
+
+is(
+   $slaves->[0]->{dsn}->{u},
+   'replica_user',
+   '--replica-user is applied to DSN recursion entries without user'
+);
+
+is(
+   $slaves->[0]->{dsn}->{p},
+   'replica_password',
+   '--replica-password is applied to DSN recursion entries without password'
+);
+
+$replica_dbh->do('drop user if exists replica_user');
+
+$sb->load_file('source', "t/lib/samples/MasterSlave/dsn_table.sql");
+@ARGV = ('--recursion-method', 'dsn=F=/tmp/12345/my.sandbox.cnf,D=dsn_t,t=dsns');
+$o->get_opts();
+
+$slaves = $ms->get_replicas(
+   OptionParser => $o,
+   DSNParser    => $dp,
+   Quoter       => $q,
+   make_cxn     => sub {
+      my $cxn = new Cxn(
+         @_,
+         DSNParser    => $dp,
+         OptionParser => $o,
+      );
+      $cxn->connect();
+      return $cxn;
+   },
+   dsn => 'F=/tmp/12345/my.sandbox.cnf',
+);
+
+is(
+   $slaves->[0]->{dsn}->{u},
+   'msandbox',
+   '--replica-user does not override DSN user'
+);
+
+is(
+   $slaves->[0]->{dsn}->{p},
+   'msandbox',
+   '--replica-password does not override DSN password'
+);
+
 # ############################################################################
 # Invalid recursion methods are caught
 # ############################################################################
@@ -770,7 +847,7 @@ like(
 
 SKIP: {
 
-   skip "Only test on mysql 5.7",6 if ( $sandbox_version lt '5.7' );
+   skip "Only test on mysql 5.7 or newer" if ( $sandbox_version lt '5.7' );
 
    my ($master1_dbh, $master1_dsn) = $sb->start_sandbox(
       server => 'chan_source1',
@@ -791,8 +868,11 @@ SKIP: {
       $sb->load_file('chan_source2', "sandbox/gtid_on-legacy.sql", undef, no_wait => 1);
       $sb->load_file('chan_replica1', "sandbox/replica_channels-legacy.sql", undef, no_wait => 1);
    } else {
-      $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
-      $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+      if ( $sandbox_version lt '9.7' ) {
+         $sb->load_file('chan_source1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+         $sb->load_file('chan_source2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+         $sb->load_file('chan_replica1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+      }
       $sb->load_file('chan_replica1', "sandbox/replica_channels.sql", undef, no_wait => 1);
    }
                                                              
@@ -825,7 +905,7 @@ SKIP: {
        $css,
        undef,
        'Cannot determine slave in a multi source config without --channel param'
-   );
+   ) or diag(Dumper($css));
 
    like (
        $EVAL_ERROR,

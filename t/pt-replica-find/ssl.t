@@ -26,6 +26,22 @@ my $replica1_dbh = $sb->get_dbh_for('replica1');
 my $replica2_dbh = $sb->get_dbh_for('replica2');
 my $output;
 
+# Testing if we are using DBD::mysql compiled with MariaDB library, which does not support enforcing SSL encryption
+$output = `$trunk/bin/pt-replica-find h=127.1,P=12345,u=msandbox,p=msandbox,s=1 --report-format hostname 2>&1`;
+
+if ( $? != 0 || $output =~ /SSL connection error: Enforcing SSL encryption is not supported/ ) {
+   plan skip_all => "Test does not work with DBD::mysql compiled with MariaDB library that does not support enforcing SSL encryption";
+}
+elsif ( !$source_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox source';
+}
+elsif ( !$replica1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox replica';
+}
+elsif ( !$replica2_dbh ) {
+   plan skip_all => 'Cannot connect to second sandbox replica';
+}
+
 # This test is sensitive to ghost/old replicas created/destroyed by other
 # tests.  So we stop the replicas, restart the source, and start everything
 # again.  Hopefully this will return the env to its original state.
@@ -35,16 +51,6 @@ diag(`/tmp/12345/stop >/dev/null`);
 diag(`/tmp/12345/start >/dev/null`);
 $replica1_dbh->do("START ${replica_name}");
 $replica2_dbh->do("START ${replica_name}");
-
-if ( !$source_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox source';
-}
-elsif ( !$replica1_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox replica';
-}
-elsif ( !$replica2_dbh ) {
-   plan skip_all => 'Cannot connect to second sandbox replica';
-}
 
 $sb->do_as_root(
    'source',
@@ -142,6 +148,58 @@ like(
    qr/SSL connection error: Unable to get private key at/,
    'SSL connection error with incorrect SSL options in the configuration file'
 ) or diag($output);
+
+# #############################################################################
+# Test mysql_ssl_optional option
+# #############################################################################
+
+$output = `$trunk/bin/pt-replica-find h=127.1,P=12345,u=sha256_user,p=sha256_user%password,s=1,o=1 --report-format hostname 2>&1`;
+
+is(
+   $?,
+   0,
+   "No error for user, identified with caching_sha2_password with mysql_ssl_optional (short form -o)"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with mysql_ssl_optional (short form -o)'
+) or diag($output);
+
+$expected = <<EOF;
+127.1:12345
++- 127.0.0.1:12346
+   +- 127.0.0.1:12347
+EOF
+
+is($output, $expected, 'Source with replica and replica of replica with mysql_ssl_optional (short form -o)');
+
+$output = `$trunk/bin/pt-replica-find --host=127.1 --port=12345 --user=sha256_user --password=sha256_user%password --mysql_ssl=1 --mysql_ssl_optional=1 --report-format hostname 2>&1`;
+
+is(
+   $?,
+   0,
+   "No error for user, identified with caching_sha2_password with options --mysql_ssl and --mysql_ssl_optional"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Authentication plugin 'caching_sha2_password' reported error: Authentication requires secure connection./,
+   'No secure connection error with options --mysql_ssl and --mysql_ssl_optional'
+) or diag($output);
+
+$expected = <<EOF;
+127.1:12345
++- 127.0.0.1:12346
+   +- 127.0.0.1:12347
+EOF
+
+is(
+   $output,
+   $expected,
+   'Source with replica and replica of replica with options --mysql_ssl and --mysql_ssl_optional'
+);
 
 # #############################################################################
 # Done.

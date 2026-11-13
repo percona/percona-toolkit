@@ -1,4 +1,4 @@
-# This program is copyright 2008-2011 Percona Ireland Ltd.
+# This program is copyright 2008-2011 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -1318,15 +1318,14 @@ sub explain_report {
          }
          my $sth;
          eval {
-             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ $query");
+             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ /*!90700 FORMAT=TRADITIONAL */ $query");
              $sth->execute();
          };
          if ($EVAL_ERROR) { # MySQL 8.0+ doesn't support PARTITIONS
              $self->{no_partitions} = 1;
-             $sth = $dbh->prepare("EXPLAIN $query");
+             $sth = $dbh->prepare("EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $query");
              $sth->execute();
          }
-         $sth->execute();
          my $i = 1;
          while ( my @row = $sth->fetchrow_array() ) {
             $explain .= "# *************************** $i. "

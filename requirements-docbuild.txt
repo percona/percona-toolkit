@@ -1,7 +1,5 @@
-Sphinx==5.0
-sphinx-copybutton
-sphinx-gitstamp
-sphinx-material
+Sphinx==5.3.0
+sphinx-immaterial
 sphinxcontrib-applehelp
 sphinxcontrib-contentui
 sphinxcontrib-devhelp
@@ -13,9 +11,3 @@ sphinxcontrib-serializinghtml
 sphinxcontrib-srclinks
 sphinx-tabs
 
-certifi>=2024.7.4 # not directly required, pinned by Snyk to avoid a vulnerability
-jinja2>=3.1.6 # not directly required, pinned by Snyk to avoid a vulnerability
-pygments>=2.15.0 # not directly required, pinned by Snyk to avoid a vulnerability
-requests>=2.31.0 # not directly required, pinned by Snyk to avoid a vulnerability
-setuptools==68.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
-idna>=3.7 # not directly required, pinned by Snyk to avoid a vulnerability

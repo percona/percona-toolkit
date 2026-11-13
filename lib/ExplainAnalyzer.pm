@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Ireland Ltd.
+# This program is copyright 2010-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # ExplainAnalyzer package
 # ###########################################################################
@@ -64,7 +63,7 @@ sub explain_query {
          (length $query <= 100 ? $query : substr($query, 0, 100) . "..."));
       return;
    }
-   my $sql = "EXPLAIN $query";
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $query";
    PTDEBUG && _d($dbh, $sql);
    my $explain = $dbh->selectall_arrayref($sql, { Slice => {} });
    PTDEBUG && _d("Result of EXPLAIN:", Dumper($explain));

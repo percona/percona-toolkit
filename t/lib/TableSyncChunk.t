@@ -20,8 +20,10 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('source');
 
+my $sha2_length = 256;
+
 if ( $dbh ) {
-   plan tests => 35;
+   plan tests => 38;
 }
 else {
    plan skip_all => 'Cannot connect to MySQL';
@@ -56,6 +58,11 @@ my $syncer     = new TableSyncer(
    Quoter        => $q,
    Retry         => $rr,
 );
+
+my $checksum_function = 'SHA1';
+
+$checksum_function = 'SHA2' if $sandbox_version ge '9.7';
+   
 
 my $ddl;
 my $tbl_struct;
@@ -131,7 +138,7 @@ SKIP: {
 }
 
 $t->set_checksum_queries(
-   $syncer->make_checksum_queries(%args, function => 'SHA1')
+   $syncer->make_checksum_queries(%args, function => $checksum_function)
 );
 is_deeply(
    $t->{chunks},
@@ -169,7 +176,7 @@ like(
 $args{where} = undef;
 $t->prepare_to_sync(%args);
 $t->set_checksum_queries(
-   $syncer->make_checksum_queries(%args, function => 'SHA1')
+   $syncer->make_checksum_queries(%args, function => $checksum_function)
 );
 is_deeply(
    $t->{chunks},
@@ -211,7 +218,7 @@ ok($t->done(), 'Now done');
 
 $t->prepare_to_sync(%args);
 $t->set_checksum_queries(
-   $syncer->make_checksum_queries(%args, function => 'SHA1')
+   $syncer->make_checksum_queries(%args, function => $checksum_function)
 );
 throws_ok(
    sub { $t->not_in_left() },
@@ -234,7 +241,8 @@ is(
       database => 'test',
       table    => 'test1',
    ),
-   "SELECT /*rows in chunk*/ `a`, `b`, SHA1(CONCAT_WS('#', `a`, `b`)) AS __crc FROM "
+   "SELECT /*rows in chunk*/ `a`, `b`, ${checksum_function}(CONCAT_WS('#', `a`, `b`)" . ( uc $checksum_function eq 'SHA2' ? ", 256)" : ")")
+      . " AS __crc FROM "
       . "`test`.`test1` USE INDEX (`PRIMARY`) WHERE (`a` < '3')"
       . " ORDER BY `a`",
    'SQL now working inside chunk'
@@ -359,15 +367,64 @@ is_deeply(
 # Issue 560: mk-table-sync generates impossible WHERE
 # Issue 996: might not chunk inside of mk-table-checksum's boundaries
 # #############################################################################
+SKIP: {
+   skip 'There is no function SHA1 in MySQL 9.7', 3 if $sandbox_version ge '9.7';
+
+   $t->prepare_to_sync(%args, index_hint => undef, replicate => 'test.checksum');
+   $t->set_checksum_queries(
+      $syncer->make_checksum_queries(%args, function => 'SHA1')
+   );
+
+   is(
+      $t->get_sql(
+         where    => 'x > 1 AND x <= 9',  # e.g. range from mk-table-checksum
+         database => 'test',
+         table    => 'test1', 
+      ),
+      "SELECT /*test.test1:1/2*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 1, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc := SHA1(CONCAT_WS('#', `a`, `b`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM `test`.`test1`  WHERE (`a` < '3') AND ((x > 1 AND x <= 9))",
+      'Chunk within chunk using SHA1 (chunk sql)'
+   );
+
+   # The above test shows that we can chunk (a<3) inside a given range (x>1 AND x<=9).
+   # That tests issue 996.  Issue 560 was really an issue with nibbling within a chunk,
+   # so there's a test similar to this one in TableSyncNibble.t.
+
+   $t->{state} = 2;
+   is(
+      $t->get_sql(
+         where    => 'x > 1 AND x <= 9',
+         database => 'test',
+         table    => 'test1', 
+      ),
+      "SELECT /*rows in chunk*/ `a`, `b`, SHA1(CONCAT_WS('#', `a`, `b`)) AS __crc FROM `test`.`test1`  WHERE (`a` < '3') AND (x > 1 AND x <= 9) ORDER BY `a`",
+      'Chunk within chunk using SHA1 (row sql)'
+   );
+
+   $t->{state} = 0;
+   $t->done_with_rows();
+   is(
+      $t->get_sql(
+         where    => 'x > 1 AND x <= 9',
+         database => 'test',
+         table    => 'test1', 
+      ),
+      "SELECT /*test.test1:2/2*/ 1 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 1, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc := SHA1(CONCAT_WS('#', `a`, `b`" . ( uc $checksum_function eq 'SHA2' ? ", $sha2_length)" : ")") . "), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM `test`.`test1`  WHERE (`a` >= '3') AND ((x > 1 AND x <= 9))",
+      'Second chunk within chunk using SHA1'
+   );
+}
+
 $t->prepare_to_sync(%args, index_hint => undef, replicate => 'test.checksum');
+$t->set_checksum_queries(
+   $syncer->make_checksum_queries(%args, function => 'SHA2')
+);
 is(
    $t->get_sql(
       where    => 'x > 1 AND x <= 9',  # e.g. range from mk-table-checksum
       database => 'test',
       table    => 'test1', 
    ),
-   "SELECT /*test.test1:1/2*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 1, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc := SHA1(CONCAT_WS('#', `a`, `b`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM `test`.`test1`  WHERE (`a` < '3') AND ((x > 1 AND x <= 9))",
-   'Chunk within chunk (chunk sql)'
+   "SELECT /*test.test1:1/2*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 1, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 33, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc := SHA2(CONCAT_WS('#', `a`, `b`), 256), 49, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'))), 0) AS crc FROM `test`.`test1`  WHERE (`a` < '3') AND ((x > 1 AND x <= 9))",
+   'Chunk within chunk using SHA2 (chunk sql)'
 );
 
 # The above test shows that we can chunk (a<3) inside a given range (x>1 AND x<=9).
@@ -381,8 +438,8 @@ is(
       database => 'test',
       table    => 'test1', 
    ),
-   "SELECT /*rows in chunk*/ `a`, `b`, SHA1(CONCAT_WS('#', `a`, `b`)) AS __crc FROM `test`.`test1`  WHERE (`a` < '3') AND (x > 1 AND x <= 9) ORDER BY `a`",
-   'Chunk within chunk (row sql)'
+   "SELECT /*rows in chunk*/ `a`, `b`, SHA2(CONCAT_WS('#', `a`, `b`), 256) AS __crc FROM `test`.`test1`  WHERE (`a` < '3') AND (x > 1 AND x <= 9) ORDER BY `a`",
+   'Chunk within chunk using SHA2 (row sql)'
 );
 
 $t->{state} = 0;
@@ -393,8 +450,8 @@ is(
       database => 'test',
       table    => 'test1', 
    ),
-   "SELECT /*test.test1:2/2*/ 1 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 1, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc := SHA1(CONCAT_WS('#', `a`, `b`)), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, '0'))), 0) AS crc FROM `test`.`test1`  WHERE (`a` >= '3') AND ((x > 1 AND x <= 9))",
-   'Second chunk within chunk'
+   "SELECT /*test.test1:2/2*/ 1 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 1, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc, 33, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(\@crc := SHA2(CONCAT_WS('#', `a`, `b`), 256), 49, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, '0'))), 0) AS crc FROM `test`.`test1`  WHERE (`a` >= '3') AND ((x > 1 AND x <= 9))",
+   'Second chunk within chunk using SHA2'
 );
 
 # #############################################################################

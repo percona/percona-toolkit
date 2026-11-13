@@ -56,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.7.1';
+our $VERSION = '3.7.2';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2293,7 +2293,7 @@ sub get_cxn_params {
       $dsn = 'DBI:mysql:' . ( $info->{D} || '' ) . ';'
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
-                     qw(F h P S A s))
+                     qw(F h P S A s o))
          . ';mysql_read_default_group=client'
          . ($info->{L} ? ';mysql_local_infile=1' : '');
    }
@@ -3462,7 +3462,7 @@ sub find_best_index {
 sub find_possible_keys {
    my ( $self, $dbh, $database, $table, $quoter, $where ) = @_;
    return () unless $where;
-   my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
+   my $sql = 'EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM ' . $quoter->quote($database, $table)
       . ' WHERE ' . $where;
    PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);
@@ -4311,6 +4311,7 @@ sub get_replicas {
          dsn_table_dsn => $dsn_table_dsn,
          wait_no_die => $args{'wait_no_die'},
          parent => $dsn,
+         replicas => $args{replicas},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -4529,9 +4530,7 @@ sub _find_replicas_by_hosts {
 sub get_connected_replicas {
    my ( $self, $dbh ) = @_;
 
-   my $show = "SHOW GRANTS FOR ";
-   my $user = 'CURRENT_USER()';
-   my $sql = $show . $user;
+   my $sql = "SHOW GRANTS";
    PTDEBUG && _d($dbh, $sql);
 
    my $proc;
@@ -4540,23 +4539,9 @@ sub get_connected_replicas {
          m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
       } @{$dbh->selectcol_arrayref($sql)};
    };
-   if ( $EVAL_ERROR ) {
-
-      if ( $EVAL_ERROR =~ m/no such grant defined for user/ ) {
-         PTDEBUG && _d('Retrying SHOW GRANTS without host; error:',
-            $EVAL_ERROR);
-         ($user) = split('@', $user);
-         $sql    = $show . $user;
-         PTDEBUG && _d($sql);
-         eval {
-            $proc = grep {
-               m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
-            } @{$dbh->selectcol_arrayref($sql)};
-         };
-      }
-
-      die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
-   }
+   
+   die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
+   
    if ( !$proc ) {
       die "You do not have the PROCESS privilege";
    }
@@ -5101,38 +5086,77 @@ sub get_cxn_from_dsn_table {
    }
 
    my $done = 0;
-   my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
+   my $dsn_tbl_cxn = $self->{dsn_tbl_cxn}->{$dsn_table_dsn} ||= $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
    my @cxn;
-   use Data::Dumper;
+   my $o = $self->{OptionParser};
+   my $my_dsn;
+   my $lcxn;
    DSN:
    do {
       @cxn = ();
       my $dsn_strings = $dbh->selectcol_arrayref($sql);
       if ( $dsn_strings ) {
+         DSN_STRING:
          foreach my $dsn_string ( @$dsn_strings ) {
             PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-            if ($args{wait_no_die}) {
-               my $lcxn;
-               eval {
-                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
-               };
-               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
-                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+
+            my $raw_dsn      = $dp->parse($dsn_string);
+            my $dsn_defaults = $dp->parse_options($o);
+            $my_dsn = $dp->parse($dsn_string, undef, $dsn_defaults);
+
+            if ( $o->got('replica-user') && !defined $raw_dsn->{u} ) {
+               PTDEBUG && _d('DSN - username set from --replica-user');
+               $my_dsn->{u} = $o->get('replica-user');
+            }
+            if ( $o->got('replica-password') && !defined $raw_dsn->{p} ) {
+               PTDEBUG && _d('DSN - password set from --replica-password');
+               $my_dsn->{p} = $o->get('replica-password');
+            }
+
+            foreach my $known_replica ( @{$args{replicas}} ) {
+               if ( $known_replica->{dsn}->{h} eq $my_dsn->{h}
+                     and $known_replica->{dsn}->{P} eq $my_dsn->{P}
+                     and $known_replica->{dsn}->{u} eq $my_dsn->{u}
+                     and $known_replica->{dsn}->{p} eq $my_dsn->{p}
+               ) {
+                  push @cxn, $known_replica;
+                  next DSN_STRING;
+               }
+            }
+
+            eval {
+               $lcxn = $make_cxn->(dsn => $my_dsn, parent => $parent);
+            };
+            if ( $EVAL_ERROR ) {
+               if ( $args{wait_no_die} && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/) ) {
                   PTDEBUG && _d("Server is not accessible, waiting when it is online again");
                   sleep(1);
                   goto DSN;
                }
-               push @cxn, $lcxn;
-            } else {
-               push @cxn, $make_cxn->(dsn_string => $dsn_string, parent => $parent);
+               die $EVAL_ERROR;
             }
+            push @cxn, $lcxn;
          }
       }
       $done = 1;
    } until $done;
+   REPLICAS:
+   foreach my $known_replica ( @{$args{replicas}} ) {
+      foreach my $new_replica ( @cxn ) {
+         if ( $known_replica->{dsn}->{h} eq $new_replica->{dsn}->{h}
+               and $known_replica->{dsn}->{P} eq $new_replica->{dsn}->{P}
+               and $known_replica->{dsn}->{u} eq $new_replica->{dsn}->{u}
+               and $known_replica->{dsn}->{p} eq $new_replica->{dsn}->{p}
+         ) {
+            next REPLICAS;
+         }
+      }
+      $known_replica->{dbh}->disconnect if $known_replica->{dbh};
+   }
    return \@cxn;
 }
 
@@ -5218,7 +5242,7 @@ sub wait {
       my ($replicas, $refresher) = ($self->{replicas}, $self->{get_replicas_cb});
       return $replicas if ( not defined $refresher );
       my $before = join ' ', sort map {$_->description()} @$replicas;
-      $replicas = $refresher->();
+      $replicas = $refresher->(undef, $replicas);
       my $after = join ' ', sort map {$_->description()} @$replicas;
       if ($before ne $after) {
          $self->{replicas} = $replicas;
@@ -5278,7 +5302,7 @@ sub wait {
              $lag = $get_lag->($lagged_replicas[$i]->{cxn});
          };
          if ($EVAL_ERROR) {
-             die $EVAL_ERROR;
+            die $EVAL_ERROR;
          }
          PTDEBUG && _d($lagged_replicas[$i]->{cxn}->name(),
             'replica lag:', $lag);
@@ -5840,7 +5864,7 @@ sub _one_nibble {
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                           ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
@@ -5938,7 +5962,7 @@ sub _nibble_params {
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT "
+         = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
          . " FROM $from"
@@ -5961,8 +5985,8 @@ sub _nibble_params {
          last_ub_sql          => $last_ub_sql,
          ub_sql               => $ub_sql,
          nibble_sql           => $nibble_sql,
-         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
-         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_first_lb_sql => "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ $ub_sql",
          explain_nibble_sql   => $explain_nibble_sql,
          resume_lb_sql        => $resume_lb_sql,
          sql                  => {
@@ -6306,7 +6330,7 @@ sub get_row_estimate {
    }
    my ($cxn, $tbl) = @args{@required_args};
 
-   my $sql = "EXPLAIN SELECT * FROM $tbl->{name} "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT * FROM $tbl->{name} "
            . "WHERE " . ($args{where} || '1=1');
    PTDEBUG && _d($sql);
    my $expl = $cxn->dbh()->selectrow_hashref($sql);
@@ -7056,7 +7080,7 @@ sub _make_range_query {
    my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
    push @where, $q->quote($col) . " >= " . $condition;
 
-   my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
            . "WHERE " . join(' AND ', @where)
            . " /*key_len*/";
@@ -9225,11 +9249,11 @@ sub main {
      my $slaves_to_skip = $o->get('skip-check-replica-lag');
 
      my $get_replicas_cb = sub {
-         my ($intolerant) = @_;
+         my ($intolerant, $known_replicas) = @_;
          my $slaves =$ms->get_replicas(
                dbh      => $cxn->dbh(),
                dsn      => $cxn->dsn(),
-               replicas => $slaves,
+               replicas => defined($known_replicas) ? $known_replicas : $slaves,
                make_cxn => sub {
                   return $make_cxn->(
                      @_,
@@ -9394,11 +9418,15 @@ sub main {
                eval { $dbh = $cxn->connect() };  # connect or die trying
                if ( $EVAL_ERROR ) {
                   # As the docs say: "The tool waits forever for replicas
-                  # to stop lagging.  If any replica is stopped, the tool
+                  # to stop lagging unless option --no-fail-on-stopped-replication
+                  # is specified.  If any replica is stopped, the tool
                   # waits forever until the replica is started."
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
                   PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
+                  if ( $o->get('fail-on-stopped-replication') ) {
+                     die $EVAL_ERROR;
+                  }
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef;
                }
@@ -9844,6 +9872,7 @@ sub main {
             Quoter           => $q,
             OptionParser     => $o,
             TableParser      => $tp,
+            server_version   => $server_version,
          );
       };
       if ( $EVAL_ERROR ) {
@@ -11378,6 +11407,7 @@ sub create_new_table {
    }
    my ($new_table_name, $orig_tbl, $cxn, $q, $o, $tp) = @args{@required_args};
    my $new_table_prefix = $args{new_table_prefix};
+   my $server_version = $args{server_version};
 
    # Get the original table struct.
    my $ddl = $tp->get_create_table(
@@ -11444,13 +11474,37 @@ sub create_new_table {
          $sql =~ s/\s+ENGINE=\S+//;
       }
       if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
-          if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
-             $sql = insert_data_directory($sql, $o->get('data-dir'));
-             PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
-             PTDEBUG && _d("New query\n$sql\n");
-          } else {
-              die $o->get('data-dir') . " is not a directory or it is not writable";
-          }
+         # Starting from 8.0, the directory must be known to InnoDB.
+
+         my $innodb_dirs = '';
+
+         my (undef, $innodb_data_home_dir) = $cxn->dbh->selectrow_array("SHOW VARIABLES LIKE 'innodb_data_home_dir'");
+         if ( $innodb_data_home_dir ) {
+            _d("InnoDB data home dir: $innodb_data_home_dir");
+            $innodb_dirs .= $innodb_data_home_dir;
+         }
+
+         my (undef, $innodb_directories) = $cxn->dbh->selectrow_array("SHOW VARIABLES LIKE 'innodb_directories'");
+         if ( $innodb_directories ) {
+            _d("InnoDB directories: $innodb_directories");
+            $innodb_dirs .= ';' . $innodb_directories;
+         }
+
+         my @dirs = map {
+            my $dir = $_;
+            $dir =~ s{(?<!^)/\z}{};
+            $dir;
+         } split(/\s*;\s*/, $innodb_dirs);
+         my %dirs_lookup = map { $_ => 1 } @dirs;
+         my $data_dir = $o->get('data-dir');
+         $data_dir =~ s{(?<!^)/\z}{};
+         if ($dirs_lookup{$data_dir} || $server_version < '8.0') {
+            $sql = insert_data_directory($sql, $data_dir);
+            PTDEBUG && _d("adding data dir " . $data_dir);
+            PTDEBUG && _d("New query\n$sql\n");
+         } else {
+            die "Data directory " . $data_dir . " is not known to InnoDB.\nDirectories known to InnoDB are: " . $innodb_dirs . "\n";
+         }
       }
       if ( $o->got('remove-data-dir') ) {
          $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//;
@@ -12756,6 +12810,11 @@ The tool exits with an error if the host is a cluster node and the table
 is MyISAM or is being converted to MyISAM (C<ENGINE=MyISAM>), or if
 C<wsrep_OSU_method> is not C<TOI>.  There is no way to disable these checks.
 
+PXC 8.0 version and newer does not support the binary log format STATEMENT.
+Therefore pt-online-schema-change cannot perform replication lag check with
+this version. This limitation may be relaxed in the future, after adding binlog
+format ROW support to pt-online-schema-change.
+
 =head1 MySQL 5.7 + Generated columns
 
 The tools ignores MySQL 5.7+ C<GENERATED> columns since the value for those columns
@@ -13445,6 +13504,12 @@ short form: -s; type: int
 
 Create SSL MySQL connection.
 
+=item --mysql_ssl_optional
+
+short form: -o; type: int
+
+Disables strict SSL enforcement and makes SSL connection optional.
+
 =item --preserve-triggers
 
 Preserves old triggers when specified.
@@ -13608,6 +13673,10 @@ reliable.  However, the hosts method can work better if the server uses a
 non-standard port (not 3306).  The tool usually does the right thing and
 finds all replicas, but you may give a preferred method and it will be used
 first.
+
+On versions prior to MySQL 8.0.17, C<processlist> method may also be not
+reliable if replicas use host names larger than 60 characters. This happened
+due to https://bugs.mysql.com/bug.php?id=63814 fixed in MySQL 8.0.17.
 
 The hosts method requires replicas to be configured with report_host,
 report_port, etc.
@@ -14167,6 +14236,12 @@ dsn: mysql_ssl; copy: yes
 
 Create SSL connection
 
+=item * o
+
+dsn: mysql_ssl_optional; copy: yes
+
+Disables strict SSL enforcement and makes SSL connection optional
+
 =back
 
 =head1 ENVIRONMENT
@@ -14285,7 +14360,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2024 Percona LLC and/or its affiliates.
+This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -14297,12 +14372,11 @@ Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
 systems, you can issue `man perlgpl' or `man perlartistic' to read these
 licenses.
 
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA  02111-1307  USA.
+You should have received a copy of the GNU General Public License, version 2
+along with this program; if not, see <https://www.gnu.org/licenses/>.
 
 =head1 VERSION
 
-pt-online-schema-change 3.7.1
+pt-online-schema-change 3.7.2
 
 =cut

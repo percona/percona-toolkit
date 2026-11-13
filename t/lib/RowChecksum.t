@@ -346,35 +346,99 @@ like(
    'SHA99 does not exist so I get CRC32 or friends',
 );
 
-@ARGV = qw(--function MD5);
+SKIP: {
+   skip 'There is no function MD5 in MySQL 9.7', 4 if $sandbox_version ge '9.7';
+   
+   @ARGV = qw(--function MD5);
+   $o->get_opts();
+   is(
+      $c->_get_hash_func(
+         dbh  => $dbh,
+         func => 'MD5',
+      ),
+      'MD5',
+      'MD5 requested and MD5 granted',
+   );
+
+   @ARGV = qw();
+   $o->get_opts();
+
+   is(
+      $c->_optimize_xor(
+         dbh  => $dbh,
+         func => 'SHA1',
+      ),
+      '2',
+      'SHA1 slice is 2',
+   );
+
+   is(
+      $c->_optimize_xor(
+         dbh  => $dbh,
+         func => 'MD5',
+      ),
+      '1',
+      'MD5 slice is 1',
+   );
+
+   is(
+      $c->_get_crc_type(
+         dbh  => $dbh,
+         func => 'MD5',
+      ),
+      'varchar',
+      'MD5 type'
+   );
+}
+
+@ARGV = qw(--function SHA2);
 $o->get_opts();
 is(
    $c->_get_hash_func(
       dbh  => $dbh,
-      func => 'MD5',
+      func => 'SHA2',
    ),
-   'MD5',
-   'MD5 requested and MD5 granted',
+   'SHA2',
+   'SHA2 requested and SHA2 granted',
 );
+
 @ARGV = qw();
 $o->get_opts();
 
 is(
    $c->_optimize_xor(
       dbh  => $dbh,
-      func => 'SHA1',
+      func => 'SHA2',
    ),
-   '2',
-   'SHA1 slice is 2',
+   '3',
+   'SHA2 slice is 3',
 );
 
 is(
-   $c->_optimize_xor(
+   $c->_get_crc_type(
       dbh  => $dbh,
-      func => 'MD5',
+      func => 'SHA2',
    ),
-   '1',
-   'MD5 slice is 1',
+   'varchar',
+   'SHA2 type'
+);
+
+is(
+   $c->_get_crc_width(
+      dbh  => $dbh,
+      func => 'SHA2',
+   ),
+   64,
+   'SHA2 width'
+);
+
+is(
+   $c->_get_crc_width(
+      dbh  => $dbh,
+      func => 'CRC32',
+   ),
+   16,
+   'CRC32 width'
 );
 
 is(
@@ -384,15 +448,6 @@ is(
    ),
    'int',
    'CRC32 type'
-);
-
-is(
-   $c->_get_crc_type(
-      dbh  => $dbh,
-      func => 'MD5',
-   ),
-   'varchar',
-   'MD5 type'
 );
 
 # #############################################################################

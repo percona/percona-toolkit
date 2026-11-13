@@ -1,4 +1,4 @@
-# This program is copyright 2012 Percona Ireland Ltd.
+# This program is copyright 2012-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # IndexLength package
 # ###########################################################################
@@ -163,7 +162,7 @@ sub _make_range_query {
    my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
    push @where, $q->quote($col) . " >= " . $condition;
 
-   my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
+   my $sql = "EXPLAIN /*!90700 FORMAT=TRADITIONAL */ SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
            . "WHERE " . join(' AND ', @where)
            . " /*key_len*/";

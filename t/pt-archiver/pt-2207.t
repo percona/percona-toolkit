@@ -51,8 +51,8 @@ $output = `cat archive.test.table_1`;
 is($output, <<EOF
 1\t2\t3\t4
 2\t\\N\t3\t4
-3\t2\t3\t\\\t
-4\t2\t3\t\\
+3\t2\t3\t\\t
+4\t2\t3\t\\n
 EOF
 , 'File has the right stuff');
 `rm -f archive.test.table_1`;

@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
+# This program is copyright 2007-2011 Baron Schwartz, 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # TableChecksum package
 # ###########################################################################
@@ -36,6 +35,9 @@ our %ALGOS = (
    BIT_XOR  => { pref => 2, hash => 1 },
    ACCUM    => { pref => 3, hash => 1 },
 );
+
+# Default length for SHA2 function
+my $sha2_length = 256;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -69,7 +71,7 @@ sub get_crc_wid {
    my $crc_wid = 16;
    if ( uc $func ne 'FNV_64' && uc $func ne 'FNV1A_64' ) {
       eval {
-         my ($val) = $dbh->selectrow_array("SELECT $func('a')");
+         my ($val) = $dbh->selectrow_array("SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"));
          $crc_wid = max(16, length($val));
       };
    }
@@ -81,7 +83,7 @@ sub get_crc_type {
    my ( $self, $dbh, $func ) = @_;
    my $type   = '';
    my $length = 0;
-   my $sql    = "SELECT $func('a')";
+   my $sql    = "SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
    my $sth    = $dbh->prepare($sql);
    eval {
       $sth->execute();
@@ -153,16 +155,17 @@ sub is_hash_algorithm {
 #   * function  (optional) Preferred function: SHA1, MD5, etc.
 sub choose_hash_func {
    my ( $self, %args ) = @_;
-   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1);
+   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1 SHA2);
    if ( $args{function} ) {
       unshift @funcs, $args{function};
    }
    my ($result, $error);
    do {
       my $func;
+      my $sql;
       eval {
          $func = shift(@funcs);
-         my $sql = "SELECT $func('test-string')";
+         $sql = "SELECT $func('test-string'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")" );
          PTDEBUG && _d($sql);
          $args{dbh}->do($sql);
          $result = $func;
@@ -193,7 +196,7 @@ sub optimize_xor {
       if $func =~ m/^(?:FNV1A_64|FNV_64|CRC32)$/i;
 
    my $opt_slice = 0;
-   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a')")->[0]->[0];
+   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"))->[0]->[0];
    my $sliced    = '';
    my $start     = 1;
    my $crc_wid   = length($unsliced) < 16 ? 16 : length($unsliced);
@@ -202,7 +205,7 @@ sub optimize_xor {
       PTDEBUG && _d('Trying slice', $opt_slice);
       $dbh->do(q{SET @crc := '', @cnt := 0});
       my $slices = $self->make_xor_slices(
-         query     => "\@crc := $func('a')",
+         query     => "\@crc := $func('a'" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")"),
          crc_wid   => $crc_wid,
          opt_slice => $opt_slice,
       );
@@ -358,8 +361,8 @@ sub make_row_checksum {
       }
 
       $query .= @cols > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @cols) . '))'
-              : "$func($cols[0])";
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @cols) . ")" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")")
+              : "$func($cols[0]" . ( uc $func eq 'SHA2' ? ", $sha2_length)" : ")");
    }
    else {
       # As a special case, FNV1A_64/FNV_64 doesn't need its arguments

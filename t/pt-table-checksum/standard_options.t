@@ -134,5 +134,6 @@ diag(`rm -rf $pid_file >/dev/null 2>&1`);
 # #############################################################################
 # Done.
 # #############################################################################
+$sb->wipe_clean($source_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

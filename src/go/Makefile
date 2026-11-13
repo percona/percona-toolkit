@@ -117,51 +117,51 @@ env:
 # TODO: create envs specific to products: MySQL, PostgreSQL, MongoDB, K8
 env-up: env					## Start MongoDB docker containers cluster
 	TEST_PSMDB_VERSION=$(TEST_PSMDB_VERSION) \
-	docker-compose up \
+	docker compose up \
 	--detach \
 	--force-recreate \
 	--always-recreate-deps \
 	--renew-anon-volumes
 
 env-down: env				## Clean-up MongoDB docker containers cluster
-	docker-compose down -v
+	docker compose down -v
 	rm .env
 
 linux-amd64: 				## Build Go tools for linux-amd64.
 	@echo "Building linux/amd64 binaries in ${BIN_DIR} as version ${VERSION}"
-	@cd ${TOP_DIR} && go get ./...
+	@cd ${TOP_DIR} && go mod download
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
-	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg) &&) true
 
 linux-arm64: 				## Build Go tools for linux-arm64.
 	@echo "Building linux/arm64 binaries in ${BIN_DIR} as version ${VERSION}"
-	@cd ${TOP_DIR} && go get ./...
+	@cd ${TOP_DIR} && go mod download
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
-	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=arm64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=arm64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg) &&) true
 
 linux-386: 					## Build Go tools for linux-386
 	@echo "Building linux/386 binaries in ${BIN_DIR} as version ${VERSION}"
-	@cd ${TOP_DIR} && go get ./...
+	@cd ${TOP_DIR} && go mod download
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
-	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg) &&) true
 
 darwin-amd64:				## Build Go tools for darwin-amd64 (MacOS)
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR} as version ${VERSION}"
-	@cd ${TOP_DIR} && go get ./...
+	@cd ${TOP_DIR} && go mod download
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
-	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg) &&) true
 
 darwin-arm64:               ## Build Go tools for darwin-arm64 (MacOS)
 	@echo "Building darwin/arm64 binaries in ${BIN_DIR} as version ${VERSION}"
-	@cd ${TOP_DIR} && go get ./...
+	@cd ${TOP_DIR} && go mod download
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
-	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=arm64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=arm64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg) &&) true
 
 build:						## Build Go tools for current platform
 	@echo "Building binaries in ${BIN_DIR} as version ${VERSION}"
-	@cd ${TOP_DIR} && go get ./...
+	@cd ${TOP_DIR} && go mod download
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
-	@$(foreach pkg,$(pkgs),go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+	@$(foreach pkg,$(pkgs),go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg) &&) true
 
 style:						## Check code style
 	@echo ">> checking code style"
@@ -177,5 +177,5 @@ format:                     ## Format source code.
 
 vet:						## Run vet on Go code
 	@echo ">> vetting code"
-	@$(foreach pkg,$(pkgs), cd $(TOP_DIR)/src/go/$(pkg); go vet ./... ;)
+	@cd $(TOP_DIR) && go vet ./...
 

@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Percona Toolkit Developers <toolkit-dev@percona.com>
 Build-Depends: debhelper (>= 4.2)
 Build-Depends-Indep: perl (>= 5.6.0-16)
-Standards-Version: 3.7.2
+Standards-Version: 4.6.2
 Homepage: http://www.percona.com/software/percona-toolkit/
 Vcs-Browser: https://github.com/percona/percona-toolkit
 Vcs-Git: git://github.com/percona/percona-toolkit.git

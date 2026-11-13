@@ -14,22 +14,45 @@ Percona Toolkit is developed and supported by Percona Inc.  For more
 information and other free, open-source software developed by Percona,
 visit [http://www.percona.com/software/](http://www.percona.com/software/).
 
-## Installing
+## Installation
 
-To install all tools, run:
+You can install Percona Toolkit in any of the following ways:
 
-```
-perl Makefile.PL
-make
-make test
-make install
-```
+- Install it from the Percona repository.
+- Install it from a tarball.
+- Build it from source.
 
-You probably need to be root to `make install`.  On most systems, the tools
-are installed in /usr/local/bin.  See the INSTALL file for more information.
+See the [INSTALL](INSTALL) file in this directory for more information.
 
 ## Documentation
 
-Run `man percona-toolkit` to see a list of installed tools, then `man tool`
-to read the embedded documentation for a specific tool.  You can also read
-the documentation online at [http://www.percona.com/software/percona-toolkit/](http://www.percona.com/software/percona-toolkit/).
+Run `man percona-toolkit` to see a list of installed tools, then run `man tool`
+to read the embedded documentation for a specific tool. You can also read
+the documentation online at [https://docs.percona.com/percona-toolkit/](https://docs.percona.com/percona-toolkit/).
+
+## Submit a Bug Report or Feature Request
+
+If you find a bug in Percona Toolkit or have a feature request, submit it to
+the project's [Jira issue tracker](https://jira.percona.com/browse/PT).
+
+Include the following information in your bug report:
+
+- The complete command line used to run the tool
+- The tool's `--version` output
+- The MySQL, MongoDB, or PostgreSQL versions of all servers involved
+- The tool's output, including `STDERR`
+- Any input files, such as log, dump, or configuration files
+
+If possible, also include debugging output by running the tool with `PTDEBUG=1`.
+
+## Licensing
+
+Percona is dedicated to keeping open source open. Whenever possible, we strive to include permissive licensing for both our software and documentation. For this project, we are using version 2 of the GNU General Public License (GPLv2).
+
+## Contributing
+
+We welcome contributions from anyone interested in helping improve Percona
+Toolkit.
+
+The [CONTRIBUTING.md](CONTRIBUTING.md) file contains instructions for
+contributing to the project.

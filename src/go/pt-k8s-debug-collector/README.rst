@@ -4,7 +4,7 @@
 :program:`pt-k8s-debug-collector`
 ==================================
 
-Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster. Data is packed into the ``cluster-dump.tar.gz`` archive in the current working directory.
+Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster. Data is packed into the ``cluster-dump_<YYYYMMDDHHMMSS>.tar.gz`` archive in the current working directory, where the suffix is the UTC time the collection started (e.g. ``cluster-dump_20260929210811.tar.gz``). Use ``--dump-file`` to set a custom archive name. An existing file is never overwritten.
 
 Data that will be collected
 ===========================
@@ -35,6 +35,14 @@ Data that will be collected
    "persistentvolumes",
    "modes",
    "your-custom-resource" (depends on 'resource' flag)
+
+Per-pod describe output (available in file describe.txt)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For every collected pod, the output of ``kubectl describe pod`` is stored in
+``<namespace>/<pod>/describe.txt``. It includes per-container ``State``,
+``Last State``, ``Reason`` and ``Exit Code``, together with the pod ``Events`` —
+useful for debugging crashed or restarting pods.
 
 Data, collected for PXC
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -105,6 +113,7 @@ Data, collected for PostgreSQL
 .. code-block:: bash
 
    "perconapgclusters",
+   "postgresclusters",
    "pgclusters",
    "pgpolicies",
    "pgreplicas",
@@ -117,6 +126,22 @@ Summary, collected for PostgreSQL (available in file summary.txt)
 
    "pg_gather"
 
+Individual files, collected for PostgreSQL (PostgreSQL Operator v2 and Crunchy Postgres Operator)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   "log_directory" (from SHOW log_directory, relative to $PGDATA; $PGDATA/log if the query fails)
+   "pgdata/pgbackrest/log"
+
+Command outputs, collected for PostgreSQL (PostgreSQL Operator v2 and Crunchy Postgres Operator)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   "patronictl list"
+   "pgbackrest info"
+
 Usage
 =====
 
@@ -124,6 +149,10 @@ Usage
 
 Supported Flags
 ================
+
+``--config``
+
+List of Percona Toolkit configuration file(s) separated by a comma without an equal sign. Must be a first flag. Uses default config file locations if not specified.
 
 ``--resource``
 
@@ -137,6 +166,8 @@ Targeted custom resource name. Supported values:
 
 * ``pgv2`` - PostgreSQL Operator v2
 
+* ``crunchy`` - Crunchy Postgres Operator
+
 * ``ps`` - MySQL
 
 * ``none`` - Collect only general Kubernetes data, do not collect anything specific to the particular operator).
@@ -146,24 +177,39 @@ Targeted custom resource name. Supported values:
 Default: ``auto``
 
 ``--namespace``
-
-Targeted namespace. By default data will be collected from all namespaces
+    Targeted namespace. By default data will be collected from all namespaces
 
 ``--cluster``
-
-Targeted cluster. By default data from all available clusters to be collected
+    Targeted cluster. By default data from all available clusters to be collected
 
 ``--kubeconfig``
-
-Path to kubeconfig. Default configuration be used if none specified
+    Path to kubeconfig. Default configuration be used if none specified
 
 ``--forwardport``
+    Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
 
-Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
+``--dump-file``
+    Archive file name, used as is. ``{timestamp}`` in the name is replaced with the UTC time the collection started in ``YYYYMMDDHHMMSS`` format, e.g. ``--dump-file=prod-cluster_{timestamp}.tar.gz`` creates ``prod-cluster_20260929210811.tar.gz`` and ``--dump-file=prod-cluster.tar.gz`` creates ``prod-cluster.tar.gz``. The archive is always a gzip-compressed tar regardless of the name. Default: ``cluster-dump_{timestamp}.tar.gz``.
+
+``--concurrent-export-workers``
+    Number of concurrent workers for exporting Kubernetes resources. Default: ``16``.
+    
+    Use this flag to control the level of parallelism when collecting cluster resources. Higher values may improve collection speed on large clusters but could potentially stress the Kubernetes API server. Recommended range: 8-20.
+    
+    Warning: values above 20 may overwhelm the Kubernetes API server rate limits. Start with the default value and increase gradually if needed.
+
+``--log-level``
+    Set the logging level. Supported values: ``debug``, ``info``, ``warn``, ``error``, ``fatal``, ``panic``. Default: ``warn``.
+
+``--no-version-check``
+    Do not check for tool updates on startup.
+
+``--skip-pod-summary``
+    Skip the collection of pod-specific summary data.
 
 ``--version``
+    Print version info.
 
-Print version info
 
 Requirements
 ============
@@ -193,4 +239,39 @@ This warning is harmless and does not affect data collection. We will remove pod
 Authors
 =======
 
-Max Dudin, Andrii Dema, Carlos Salguero, Sveta Smirnova
+Max Dudin, Andrii Dema, Carlos Salguero, Sveta Smirnova, Vladyslav Yurchenko, Eugene Slavyansky
+
+ABOUT PERCONA TOOLKIT
+=====================
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+`http://www.percona.com/software/ <http://www.percona.com/software/>`_ to learn about other free, open-source
+software from Percona.
+
+COPYRIGHT, LICENSE, AND WARRANTY
+================================
+
+This program is copyright 2011-2026 Percona LLC and/or its affiliates.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue \`man perlgpl' or \`man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+VERSION
+=======
+
+:program:`pt-k8s-debug-collector` 3.7.2
+

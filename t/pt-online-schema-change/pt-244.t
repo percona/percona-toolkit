@@ -62,7 +62,6 @@ my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-diag("1");
 $sb->load_file('source3', "t/pt-online-schema-change/samples/pt-244.sql");
 
 my $num_rows = 1000;
@@ -72,7 +71,6 @@ diag("$num_rows rows loaded. Starting tests.");
 
 $dbh3->do("FLUSH TABLES");
 
-diag("2");
 ($output, $exit_status) = full_output(
     sub { pt_online_schema_change::main(@args, "$dsn3,D=test,t=t3",
             '--execute', 
@@ -82,7 +80,6 @@ diag("2");
     },
     stderr => 1,
 );
-diag("3");
 
 is(
     $exit_status,

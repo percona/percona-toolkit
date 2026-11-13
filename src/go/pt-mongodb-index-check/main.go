@@ -1,3 +1,16 @@
+// This program is copyright 2022-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
@@ -203,8 +216,11 @@ func main() {
 	initLoggingForPTDEBUG()
 
 	cmd := kongctx.Command()
-	if cmd == "" {
-		cmd = "(default)"
+	switch cmd {
+	case "check-unused", "check-duplicates", "check-all":
+	default:
+		kongctx.PrintUsage(false)
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -266,7 +282,7 @@ func main() {
 	var duplicates []indexes.Duplicate
 	var dbCount, collCount int
 
-	switch kongctx.Command() {
+	switch cmd {
 	case "check-unused":
 		allAnalysis, dbCount, collCount = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, nil)
 		resp.Analysis = allAnalysis
@@ -278,12 +294,9 @@ func main() {
 		resp.Duplicated = duplicates
 		allAnalysis, dbCount, collCount = analyzeUnused(ctx, client, args.Databases, args.Collections, cfg, duplicates)
 		resp.Analysis = allAnalysis
-	default:
-		kong.DefaultHelpPrinter(kong.HelpOptions{}, kongctx)
-		return
 	}
 
-	showDupReport := kongctx.Command() == "check-duplicates" || kongctx.Command() == "check-all"
+	showDupReport := cmd == "check-duplicates" || cmd == "check-all"
 	var dupReport duplicateReportData
 	if showDupReport {
 		var sizeByNS map[string]map[string]int64

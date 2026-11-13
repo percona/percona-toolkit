@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011-2026 Percona LLC and/or its affiliates.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11,9 +11,8 @@
 # systems, you can issue `man perlgpl' or `man perlartistic' to read these
 # licenses.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
+# You should have received a copy of the GNU General Public License, version 2
+# along with this program; if not, see <https://www.gnu.org/licenses/>.
 # ###########################################################################
 # alt_cmds package
 # ###########################################################################
@@ -58,18 +57,10 @@ _lsof() {
 _which() {
    # which on CentOS is aliased to a cmd that prints extra stuff.
    # Also, if the cmd isn't found, a msg is printed to stderr.
-   if [ -x /usr/bin/which ]; then
-      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
-   elif which which 1>/dev/null 2>&1; then
-      # Well, this is bizarre. /usr/bin/which either doesn't exist or
-      # isn't executable, but the shell can use which just fine.
-      # So we bite the bullet, hope that it doesn't do anything
-      # insane, and use it.
+   if which "$1" 1>/dev/null 2>&1; then
       which "$1" 2>/dev/null | awk '{print $1}'
-   else
-      # We don't have which. Just return the command that was
-      # originally passed in.
-      echo "$1"
+   elif command -v "$1" 1>/dev/null 2>&1; then
+      command -v "$1" 2>/dev/null | awk '{print $1}'
    fi
 }
 

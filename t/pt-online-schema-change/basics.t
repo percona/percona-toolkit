@@ -739,8 +739,10 @@ if ($sandbox_version eq '5.5' && $db_flavor !~ m/XtraDB Cluster/) {
    $res_file =  "$sample/stats-execute-5.7.txt";
 } elsif ($sandbox_version eq '8.0' && $db_flavor !~ m/XtraDB Cluster/) {
    $res_file =  "$sample/stats-execute-8.0.txt";
-} elsif ($sandbox_version ge '8.4' && $db_flavor !~ m/XtraDB Cluster/ && $db_flavor !~ m/mariadb/) {
+} elsif ($sandbox_version eq '8.4' && $db_flavor !~ m/XtraDB Cluster/) {
    $res_file =  "$sample/stats-execute-8.4.txt";
+} elsif ($sandbox_version ge '9.7' && $db_flavor !~ m/XtraDB Cluster/ && $db_flavor !~ m/mariadb/) {
+   $res_file =  "$sample/stats-execute-9.7.txt";
 }
  
 
