@@ -21,9 +21,46 @@ use Test::More;
 use PerconaTest;
 use PtMongodbStalkTest;
 
+# A real mongosh, or node, to run the tool's JavaScript; found before the fake
+# commands come first in PATH.
+my ($js_runner) = grep { -x $_ }
+   map { my $dir = $_; map { "$dir/$_" } qw(mongosh node) }
+   split /:/, $ENV{PATH};
+
 use_fake_commands();
 
 my ($status, $output, $p);
+
+# ###########################################################################
+# The port in serverStatus.host.  On the default port 27017 it is only the
+# hostname, whose digits are not a port.
+# ###########################################################################
+
+SKIP: {
+   skip "no mongosh or node to run the tool's JavaScript", 1 unless $js_runner;
+   my $js = "$tmpdir/server_identity.js";
+   my $lib = `bash -c '. "\$1"; printf "%s\\n" "\$MONGO_JS_LIB"' sh $tool`;
+   open my $fh, ">", $js or die "Cannot write $js: $OS_ERROR";
+   print $fh $lib, <<'JS';
+for (const host of ['db546595409', 'db546595409:27018', 'ip-10-0-0-1.ec2.internal',
+                    'node2.example.com:27019', 'mac', '']) {
+   console.log(host + ' => [' + __server_identity({host: host}).port + ']');
+}
+console.log('no host => [' + __server_identity({}).port + ']');
+JS
+   close $fh;
+   my @args = $js_runner =~ m{/mongosh$} ? ("--nodb", "--quiet", $js) : ($js);
+   my $ports = `"$js_runner" @args 2>&1`;
+   is($ports, <<'PORTS', "the port is parsed only from a :port suffix, otherwise 27017");
+db546595409 => [27017]
+db546595409:27018 => [27018]
+ip-10-0-0-1.ec2.internal => [27017]
+node2.example.com:27019 => [27019]
+mac => [27017]
+ => []
+no host => []
+PORTS
+}
 
 # ###########################################################################
 # Process data for the PID the server reports.

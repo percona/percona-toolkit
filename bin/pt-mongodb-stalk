@@ -1259,13 +1259,17 @@ const __fs = require('fs');
 
 // What identifies the server process on its host: its PID, its port and
 // when it started (epoch seconds, from this host's clock and its uptime).
+// serverStatus.host is "hostname:port", or just "hostname" when the server
+// listens on the default port 27017; digits in the hostname are not a port.
 function __server_identity(status) {
    status = status || {};
    const uptime = status.uptimeMillis !== undefined ? Number(status.uptimeMillis)
                 : status.uptime !== undefined ? Number(status.uptime) * 1000 : NaN;
+   const host = String(status.host || '');
+   const port = host.match(/:(\d+)$/);
    return {
       pid:   status.pid !== undefined ? String(status.pid) : '',
-      port:  String(status.host || '').split(':').pop().replace(/[^0-9]/g, ''),
+      port:  port ? port[1] : host ? '27017' : '',
       start: isNaN(uptime) ? '' : String(Math.round((Date.now() - uptime) / 1000)),
    };
 }
