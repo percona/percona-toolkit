@@ -70,8 +70,6 @@ type IndexAnalysis struct {
 	IsTTL     bool `json:"isTTL"`
 	IsHidden  bool `json:"isHidden"`
 
-	WriteOpsPerSec float64 `json:"writeOpsPerSec"`
-
 	Score          float64 `json:"score"`
 	Recommendation string  `json:"recommendation"`
 	Confidence     string  `json:"confidence"`
@@ -97,8 +95,6 @@ type IndexRecord struct {
 	IsUnique  bool
 	IsTTL     bool
 	IsHidden  bool
-
-	WriteOpsPerSec float64
 
 	// Set by cross-reference with duplicate check results
 	IsDuplicatePrefix      bool
@@ -146,7 +142,6 @@ func ScoreIndex(rec IndexRecord, cfg AnalysisConfig) IndexAnalysis {
 		IsUnique:         rec.IsUnique,
 		IsTTL:            rec.IsTTL,
 		IsHidden:         rec.IsHidden,
-		WriteOpsPerSec:   rec.WriteOpsPerSec,
 	}
 
 	// Hard guards
@@ -233,17 +228,6 @@ func ScoreIndex(rec IndexRecord, cfg AnalysisConfig) IndexAnalysis {
 
 	// Low-usage scoring
 	if opsPerDay < cfg.LowUsageThreshold {
-		writesPerDay := math.Max(rec.WriteOpsPerSec*86400, 1)
-		usageRatio := opsPerDay / writesPerDay
-
-		if usageRatio < 0.0001 {
-			a.Score = 0.7
-			a.Recommendation = RecommendLowUsage
-			a.Confidence = ConfidenceMedium
-			a.Reason = fmt.Sprintf("Index used %.1f times/day on a collection with %.0f writes/day; read benefit negligible vs write cost",
-				opsPerDay, writesPerDay)
-			return a
-		}
 		a.Score = 0.5
 		a.Recommendation = RecommendLowUsage
 		a.Confidence = ConfidenceMedium

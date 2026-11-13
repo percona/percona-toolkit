@@ -27,11 +27,6 @@ type collectionStats struct {
 	IndexSizes     map[string]int64 `bson:"indexSizes"`
 }
 
-type serverWriteRate struct {
-	WriteOpsPerSec float64
-	Uptime         int64
-}
-
 // CollectIndexMetadata retrieves index properties from listIndexes for a collection.
 func CollectIndexMetadata(ctx context.Context, client *mongo.Client, database, collection string) (map[string]indexMetadata, error) {
 	cursor, err := client.Database(database).Collection(collection).Indexes().List(ctx, nil)
@@ -61,37 +56,6 @@ func CollectCollStats(ctx context.Context, client *mongo.Client, database, colle
 		return stats, errors.Wrap(err, "cannot decode collStats")
 	}
 	return stats, nil
-}
-
-// CollectServerWriteRate retrieves the global write rate from serverStatus opcounters.
-func CollectServerWriteRate(ctx context.Context, client *mongo.Client) (serverWriteRate, error) {
-	var result struct {
-		Uptime     int64 `bson:"uptime"`
-		OpCounters struct {
-			Insert int64 `bson:"insert"`
-			Update int64 `bson:"update"`
-			Delete int64 `bson:"delete"`
-		} `bson:"opcounters"`
-	}
-
-	res := client.Database("admin").RunCommand(ctx, bson.D{{Key: "serverStatus", Value: 1}})
-	if err := res.Err(); err != nil {
-		return serverWriteRate{}, errors.Wrap(err, "cannot run serverStatus")
-	}
-	if err := res.Decode(&result); err != nil {
-		return serverWriteRate{}, errors.Wrap(err, "cannot decode serverStatus")
-	}
-
-	totalWrites := result.OpCounters.Insert + result.OpCounters.Update + result.OpCounters.Delete
-	var wps float64
-	if result.Uptime > 0 {
-		wps = float64(totalWrites) / float64(result.Uptime)
-	}
-
-	return serverWriteRate{
-		WriteOpsPerSec: wps,
-		Uptime:         result.Uptime,
-	}, nil
 }
 
 // CollectIndexStats retrieves $indexStats for all indexes on a collection.
@@ -180,13 +144,12 @@ func DeduplicateIndexRecords(records []IndexRecord) []IndexRecord {
 	return out
 }
 
-// BuildIndexRecords merges data from $indexStats, listIndexes, collStats, and
-// serverStatus into a slice of IndexRecord ready for scoring.
+// BuildIndexRecords merges data from $indexStats, listIndexes and collStats
+// into a slice of IndexRecord ready for scoring.
 func BuildIndexRecords(
 	stats []IndexStat,
 	metadata map[string]indexMetadata,
 	cs collectionStats,
-	wr serverWriteRate,
 	namespace string,
 ) []IndexRecord {
 	records := make([]IndexRecord, 0, len(stats))
@@ -200,7 +163,6 @@ func BuildIndexRecords(
 			AccessSince:      s.Accesses.Since.Time(),
 			CollDocCount:     cs.Count,
 			CollTotalIdxSize: cs.TotalIndexSize,
-			WriteOpsPerSec:   wr.WriteOpsPerSec,
 		}
 
 		if size, ok := cs.IndexSizes[s.Name]; ok {

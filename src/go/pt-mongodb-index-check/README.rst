@@ -77,12 +77,11 @@ Unused indexes (enhanced analysis)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The unused index check goes beyond the simple ``$indexStats`` ``accesses.ops = 0``
-metric. It uses a multi-signal scoring system that collects data from four sources:
+metric. It uses a multi-signal scoring system that collects data from three sources:
 
 1. **$indexStats** -- read access counts and the stats reset timestamp
 2. **listIndexes** -- index properties (unique, sparse, partial, TTL, hidden)
 3. **collStats** -- per-index sizes, collection document count, total index size
-4. **serverStatus** -- global write rate for cost estimation
 
 Each index is evaluated through a scoring decision tree that produces one of
 these recommendations:
@@ -95,7 +94,7 @@ these recommendations:
 +-------------------+--------------------------------------------------------------+
 | ``LIKELY_UNUSED`` | Strong signal of no usage, but low cost to keep (small size) |
 +-------------------+--------------------------------------------------------------+
-| ``LOW_USAGE``     | Index is used but at a very low rate relative to write cost  |
+| ``LOW_USAGE``     | Used, but fewer than ``--low-usage-threshold`` times a day   |
 +-------------------+--------------------------------------------------------------+
 | ``MONITOR``       | Insufficient data to decide (warmup period, empty collection)|
 +-------------------+--------------------------------------------------------------+
@@ -254,7 +253,6 @@ Sample output
    # ============================================================
    # Observation window: 2024-01-01T00:00:00Z to 2024-02-15T00:00:00Z (45.0 days)
    # Indexes analyzed: 8 across 1 database(s), 3 collection(s)
-   # Server write rate: ~2400 ops/sec
 
    # ---- SAFE TO DROP (high confidence) --------------------------
 

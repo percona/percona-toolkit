@@ -355,3 +355,16 @@ func TestRenderDuplicateReport_skipped(t *testing.T) {
 	assert.Contains(t, out, "# ---- NOT REPORTED (key prefix, but index options differ) -----\n")
 	assert.Contains(t, out, "  db.people  'name_1' is a key prefix of 'name_1_surname_1', but partialFilterExpression differs\n")
 }
+
+func TestOutput_noServerWriteRate(t *testing.T) {
+	analysis := []indexes.IndexAnalysis{{
+		Namespace: "db.c", IndexName: "x_1", Recommendation: indexes.RecommendLowUsage,
+		Reason: "Index used 0.5 times/day; consider monitoring",
+	}}
+
+	text := output(response{Analysis: analysis}, false, analysis, 1, 1, duplicateReportData{}, false)
+	assert.NotContains(t, text, "write rate")
+
+	js := output(response{Analysis: analysis}, true, analysis, 1, 1, duplicateReportData{}, false)
+	assert.NotContains(t, js, "writeOpsPerSec")
+}

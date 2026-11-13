@@ -32,6 +32,7 @@ func TestScoreIndex(t *testing.T) {
 		wantScoreMin   float64
 		wantScoreMax   float64
 		wantConfidence string
+		wantReason     string
 	}{
 		{
 			name: "_id_ index is always kept",
@@ -166,34 +167,19 @@ func TestScoreIndex(t *testing.T) {
 			wantConfidence: ConfidenceLow,
 		},
 		{
-			name: "low usage, high write cost",
+			name: "low usage",
 			rec: IndexRecord{
 				IndexName:      "low_use_idx",
 				AccessOps:      5,
 				AccessSince:    thirtyDaysAgo,
 				IndexSizeBytes: 50 * 1024 * 1024,
 				CollDocCount:   100000,
-				WriteOpsPerSec: 1000,
 			},
 			wantRec:        RecommendLowUsage,
 			wantScoreMin:   0.5,
-			wantScoreMax:   0.7,
+			wantScoreMax:   0.5,
 			wantConfidence: ConfidenceMedium,
-		},
-		{
-			name: "low usage, negligible ratio vs writes",
-			rec: IndexRecord{
-				IndexName:      "low_ratio_idx",
-				AccessOps:      1,
-				AccessSince:    thirtyDaysAgo,
-				IndexSizeBytes: 50 * 1024 * 1024,
-				CollDocCount:   100000,
-				WriteOpsPerSec: 10000,
-			},
-			wantRec:        RecommendLowUsage,
-			wantScoreMin:   0.7,
-			wantScoreMax:   0.7,
-			wantConfidence: ConfidenceMedium,
+			wantReason:     "Index used 0.2 times/day; consider monitoring",
 		},
 		{
 			name: "duplicate cross-ref: prefix unused, container used",
@@ -234,6 +220,9 @@ func TestScoreIndex(t *testing.T) {
 			assert.LessOrEqual(t, result.Score, tt.wantScoreMax, "score too high")
 			if tt.wantConfidence != "" {
 				assert.Equal(t, tt.wantConfidence, result.Confidence, "confidence mismatch")
+			}
+			if tt.wantReason != "" {
+				assert.Equal(t, tt.wantReason, result.Reason)
 			}
 		})
 	}
@@ -400,9 +389,7 @@ func TestBuildIndexRecords(t *testing.T) {
 		IndexSizes:     map[string]int64{"idx_a": 50000},
 	}
 
-	wr := serverWriteRate{WriteOpsPerSec: 200}
-
-	records := BuildIndexRecords(stats, meta, cs, wr, "testdb.testcol")
+	records := BuildIndexRecords(stats, meta, cs, "testdb.testcol")
 
 	assert.Len(t, records, 1)
 	rec := records[0]
@@ -412,7 +399,6 @@ func TestBuildIndexRecords(t *testing.T) {
 	assert.Equal(t, int64(50000), rec.IndexSizeBytes)
 	assert.Equal(t, int64(5000), rec.CollDocCount)
 	assert.True(t, rec.IsUnique)
-	assert.Equal(t, float64(200), rec.WriteOpsPerSec)
 }
 
 func TestAggregateShardStats(t *testing.T) {

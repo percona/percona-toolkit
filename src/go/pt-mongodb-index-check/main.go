@@ -73,7 +73,6 @@ type analysisReportData struct {
 	TotalAnalyzed   int
 	DatabaseCount   int
 	CollectionCount int
-	WriteRate       string
 
 	SafeToDrop   []indexes.IndexAnalysis
 	LikelyUnused []indexes.IndexAnalysis
@@ -403,14 +402,10 @@ func renderAnalysisReport(buf *bytes.Buffer, analysis []indexes.IndexAnalysis, d
 	}
 
 	var oldestSince time.Time
-	var writeRate float64
 
 	for _, a := range analysis {
 		if oldestSince.IsZero() || (!a.AccessSince.IsZero() && a.AccessSince.Before(oldestSince)) {
 			oldestSince = a.AccessSince
-		}
-		if a.WriteOpsPerSec > writeRate {
-			writeRate = a.WriteOpsPerSec
 		}
 
 		switch a.Recommendation {
@@ -435,7 +430,6 @@ func renderAnalysisReport(buf *bytes.Buffer, analysis []indexes.IndexAnalysis, d
 		data.ObsStart = "unknown"
 		data.ObsDays = "N/A"
 	}
-	data.WriteRate = fmt.Sprintf("%.0f", writeRate)
 	data.SafeToDropCount = len(data.SafeToDrop)
 	data.LikelyUnusedCount = len(data.LikelyUnused)
 	data.LowUsageCount = len(data.LowUsage)
@@ -481,12 +475,7 @@ func analyzeUnused(
 	var allAnalysis []indexes.IndexAnalysis
 	var dbCount, collCount int
 
-	wr, err := indexes.CollectServerWriteRate(ctx, client)
-	if err != nil {
-		log.Warnf("cannot get server write rate (will use 0): %s", err)
-	} else if log.IsLevelEnabled(log.DebugLevel) {
-		log.Debugf("server write-rate: %.6f ops/s uptime-sec=%d", wr.WriteOpsPerSec, wr.Uptime)
-	}
+	var err error
 
 	colls := make([]string, len(collections))
 	copy(colls, collections)
@@ -533,7 +522,7 @@ func analyzeUnused(
 				log.Warnf("cannot get collStats for %s (sizes will be 0): %s", ns, err)
 			}
 
-			records := indexes.DeduplicateIndexRecords(indexes.BuildIndexRecords(stats, metadata, cs, wr, ns))
+			records := indexes.DeduplicateIndexRecords(indexes.BuildIndexRecords(stats, metadata, cs, ns))
 
 			log.Debugf("analyze-unused done namespace=%s indexStats=%d metadata=%d records=%d",
 				ns, len(stats), len(metadata), len(records))

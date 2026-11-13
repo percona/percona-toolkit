@@ -6,7 +6,6 @@ var Analysis = `
 # ============================================================
 # Observation window: {{ .ObsStart }} to {{ .ObsEnd }} ({{ .ObsDays }} days)
 # Indexes analyzed: {{ .TotalAnalyzed }} across {{ .DatabaseCount }} database(s), {{ .CollectionCount }} collection(s)
-# Server write rate: ~{{ .WriteRate }} ops/sec
 {{ if .SafeToDrop }}
 # ---- SAFE TO DROP (high confidence) --------------------------
 {{ range .SafeToDrop }}
