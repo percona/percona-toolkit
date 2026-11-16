@@ -192,10 +192,10 @@ func localSocketDir(dirs []string, port int) string {
 }
 
 func defaultHost(opts connOpts, dirs []string) string {
-	if opts.Host != "" {
+	if opts.Host != "" || opts.Password != "" {
 		return opts.Host
 	}
-	for _, name := range []string{"PGHOST", "PGHOSTADDR", "PGSERVICE"} {
+	for _, name := range []string{"PGHOST", "PGHOSTADDR", "PGSERVICE", "PGPASSWORD"} {
 		if os.Getenv(name) != "" {
 			return ""
 		}

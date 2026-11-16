@@ -441,9 +441,11 @@ func TestDefaultHost(t *testing.T) {
 		{"no socket for PGPORT", connOpts{}, map[string]string{"PGPORT": "6432"}, ""},
 		{"--host", connOpts{Host: "db.example.com"}, nil, "db.example.com"},
 		{"PGHOST", connOpts{}, map[string]string{"PGHOST": "db.example.com"}, ""},
+		{"TCP for --password", connOpts{Password: "secret"}, nil, ""},
+		{"TCP for PGPASSWORD", connOpts{}, map[string]string{"PGPASSWORD": "secret"}, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			for _, name := range []string{"PGHOST", "PGHOSTADDR", "PGSERVICE", "PGPORT"} {
+			for _, name := range []string{"PGHOST", "PGHOSTADDR", "PGSERVICE", "PGPORT", "PGPASSWORD"} {
 				t.Setenv(name, "")
 				os.Unsetenv(name)
 			}
@@ -457,31 +459,35 @@ func TestDefaultHost(t *testing.T) {
 	}
 }
 
-func TestNoHostUsesLocalSocket(t *testing.T) {
+func TestConnectionWithoutHost(t *testing.T) {
 	skipIfNoSandbox(t)
 	if !slices.Contains(socketDirs, tu.SocketDir) {
 		t.Skipf("the sandbox socket directory %q is not one of %v", tu.SocketDir, socketDirs)
 	}
 
-	args := []string{
-		"--port=" + tu.SourcePort,
-		"--username=" + tu.Username,
-		"--password=" + tu.Password,
-		"--verbose",
-		"--sleep=1",
-	}
-	var stderr bytes.Buffer
-	cmd := exec.Command("../../../bin/"+toolname, args...)
-	cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
-		name, _, _ := strings.Cut(kv, "=")
-		return slices.Contains([]string{"PGHOST", "PGHOSTADDR", "PGSERVICE", "PGPORT"}, name)
-	})
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("%s %v: %s\n%s", toolname, args, err, stderr.String())
-	}
-	target := fmt.Sprintf("host=%s port=%s ", tu.SocketDir, tu.SourcePort)
-	if !strings.Contains(stderr.String(), target) {
-		t.Errorf("the log does not show a connection to %q; stderr:\n%s", target, stderr.String())
+	for _, test := range []struct {
+		name   string
+		args   []string
+		target string
+	}{
+		{"local socket", nil, fmt.Sprintf("using: host=%s port=%s ", tu.SocketDir, tu.SourcePort)},
+		{"TCP with a password", []string{"--password=" + tu.Password}, fmt.Sprintf("using: port=%s ", tu.SourcePort)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			args := append([]string{"--port=" + tu.SourcePort, "--username=" + tu.Username, "--verbose", "--sleep=1"}, test.args...)
+			var stderr bytes.Buffer
+			cmd := exec.Command("../../../bin/"+toolname, args...)
+			cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
+				name, _, _ := strings.Cut(kv, "=")
+				return slices.Contains([]string{"PGHOST", "PGHOSTADDR", "PGSERVICE", "PGPORT", "PGPASSWORD"}, name)
+			})
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("%s %v: %s\n%s", toolname, args, err, stderr.String())
+			}
+			if !strings.Contains(stderr.String(), test.target) {
+				t.Errorf("the log does not show a connection using %q; stderr:\n%s", test.target, stderr.String())
+			}
+		})
 	}
 }
