@@ -53,6 +53,10 @@ Options
   SSL mode for the connection, as in libpq: ``disable``, ``allow``, ``prefer``,
   ``require``, ``verify-ca`` or ``verify-full``. Overrides ``--disable-ssl``.
 
+  Without ``--sslmode``, giving ``--sslrootcert``, ``--sslcert`` or ``--sslkey``
+  turns SSL on with ``require``; with ``--sslrootcert`` the server certificate is
+  then checked against the certificate authorities, as with ``verify-ca``.
+
 ``--sslrootcert``
   File with the certificate authorities that verify the server certificate.
 

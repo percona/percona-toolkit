@@ -423,6 +423,10 @@ func TestConnStringSSL(t *testing.T) {
 	}{
 		{"default", nil, "disable", "", "", "", ""},
 		{"--sslmode over --disable-ssl", []string{"--disable-ssl", "--sslmode=require"}, "require", "", "", "", ""},
+		{"--sslrootcert turns SSL on", []string{"--sslrootcert=/certs/ca.crt"}, "require", "/certs/ca.crt", "", "", ""},
+		{"client certificate turns SSL on", []string{
+			"--sslcert=/certs/client.crt", "--sslkey=/certs/client.key",
+		}, "require", "", "/certs/client.crt", "/certs/client.key", ""},
 		{"certificates", []string{
 			"--sslmode=verify-full", "--sslrootcert=/certs/ca.crt", "--sslcert=/certs/client.crt", "--sslkey=/certs/client.key",
 		}, "verify-full", "/certs/ca.crt", "/certs/client.crt", "/certs/client.key", ""},
@@ -455,31 +459,38 @@ func TestSSLConnection(t *testing.T) {
 		t.Skip("no PG_SSL_DIR: PostgreSQL is built without SSL, or the sandbox predates the SSL setup (test-env restart)")
 	}
 
-	opts, err := parseCommandLineOpts([]string{
-		"--host=" + tu.IPv4Host,
-		"--port=" + tu.SourcePort,
-		"--username=" + tu.Username,
-		"--sslmode=verify-full",
-		"--sslrootcert=" + filepath.Join(tu.SSLDir, "ca.crt"),
-		"--sslcert=" + filepath.Join(tu.SSLDir, "client.crt"),
-		"--sslkey=" + filepath.Join(tu.SSLDir, "client.key"),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := connect(buildConnString(opts.connOpts, "postgres"))
-	if err != nil {
-		t.Fatalf("Cannot connect using %q: %s", safeConnString(opts.connOpts, "postgres"), err)
-	}
-	defer db.Close()
+	for name, mode := range map[string]string{"verify-full": "--sslmode=verify-full", "no --sslmode": ""} {
+		t.Run(name, func(t *testing.T) {
+			args := []string{
+				"--host=" + tu.IPv4Host,
+				"--port=" + tu.SourcePort,
+				"--username=" + tu.Username,
+				"--sslrootcert=" + filepath.Join(tu.SSLDir, "ca.crt"),
+				"--sslcert=" + filepath.Join(tu.SSLDir, "client.crt"),
+				"--sslkey=" + filepath.Join(tu.SSLDir, "client.key"),
+			}
+			if mode != "" {
+				args = append(args, mode)
+			}
+			opts, err := parseCommandLineOpts(args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			db, err := connect(buildConnString(opts.connOpts, "postgres"))
+			if err != nil {
+				t.Fatalf("Cannot connect using %q: %s", safeConnString(opts.connOpts, "postgres"), err)
+			}
+			defer db.Close()
 
-	var ssl bool
-	var clientDN sql.NullString
-	if err := db.QueryRow("SELECT ssl, client_dn FROM pg_stat_ssl WHERE pid = pg_backend_pid()").Scan(&ssl, &clientDN); err != nil {
-		t.Fatal(err)
-	}
-	if !ssl || !strings.Contains(clientDN.String, "CN="+tu.Username) {
-		t.Errorf("pg_stat_ssl shows ssl = %v, client_dn = %q; want an SSL connection with the %s client certificate",
-			ssl, clientDN.String, tu.Username)
+			var ssl bool
+			var clientDN sql.NullString
+			if err := db.QueryRow("SELECT ssl, client_dn FROM pg_stat_ssl WHERE pid = pg_backend_pid()").Scan(&ssl, &clientDN); err != nil {
+				t.Fatal(err)
+			}
+			if !ssl || !strings.Contains(clientDN.String, "CN="+tu.Username) {
+				t.Errorf("pg_stat_ssl shows ssl = %v, client_dn = %q; want an SSL connection with the %s client certificate",
+					ssl, clientDN.String, tu.Username)
+			}
+		})
 	}
 }

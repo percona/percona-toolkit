@@ -202,8 +202,13 @@ func connString(opts connOpts, dbName, password string) string {
 		port = strconv.Itoa(opts.Port)
 	}
 	sslMode := opts.SSLMode
-	if sslMode == "" && opts.DisableSSL {
-		sslMode = "disable"
+	if sslMode == "" {
+		switch {
+		case opts.SSLRootCert != "" || opts.SSLCert != "" || opts.SSLKey != "":
+			sslMode = "require"
+		case opts.DisableSSL:
+			sslMode = "disable"
+		}
 	}
 	parts := []string{}
 	for _, kv := range [][2]string{
@@ -267,7 +272,7 @@ func parseCommandLineOpts(args []string) (cliOptions, error) {
 	app.Flag("username", "User for login if not current user").
 		Short('U').
 		StringVar(&opts.connOpts.User)
-	app.Flag("disable-ssl", "Disable SSL for the connection").
+	app.Flag("disable-ssl", "Disable SSL for the connection. Ignored with --sslmode, --sslrootcert, --sslcert or --sslkey").
 		Default("true").BoolVar(&opts.connOpts.DisableSSL)
 	app.Flag("sslmode", "SSL mode: disable, allow, prefer, require, verify-ca or verify-full. Overrides --disable-ssl").
 		EnumVar(&opts.connOpts.SSLMode, "disable", "allow", "prefer", "require", "verify-ca", "verify-full")
