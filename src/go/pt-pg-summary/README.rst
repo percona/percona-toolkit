@@ -28,7 +28,13 @@ Options
   All if not specified.
 
 ``-h``, ``--host``
-  Host or local Unix socket for connection.
+  Host or local Unix socket directory for connection.
+
+  If not given, connects to ``localhost`` over TCP when a password is given with
+  ``--password`` or ``PGPASSWORD``. Otherwise, unless ``PGHOST``, ``PGHOSTADDR``
+  or ``PGSERVICE`` is set, connects through the local Unix socket for the port in
+  ``/var/run/postgresql`` or ``/tmp``, in that order, and to ``localhost`` over
+  TCP when neither has one. SSL is not used over a Unix socket.
 
 ``-W``, ``--password``
   Password to use when connecting.                                           |
@@ -87,6 +93,7 @@ Output example
     |         Name         |                      Setting                       |
     +----------------------+----------------------------------------------------+
     | data_directory       | /var/lib/postgresql/data                           |
+    | port                 | 5432                                               |
     +----------------------+----------------------------------------------------+
 
     ##### --- List of Tablespaces ---- ######
