@@ -14,7 +14,7 @@
 package templates
 
 const CmdlineArgs = `
-{{ if . }}
+{{ if .CmdlineArgs }}
 # Command line arguments
 {{ range .CmdlineArgs -}} {{-  . }} {{ end }}
 {{- end }}

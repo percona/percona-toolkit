@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
 const (
@@ -336,4 +337,70 @@ func TestGetMongosInfo(t *testing.T) {
 		require.NotEqual(t, 0, m.UpTime)
 		require.False(t, m.LastPing.IsZero())
 	}
+}
+
+func TestNewArbiterHostInfo(t *testing.T) {
+	hi := newArbiterHostInfo(proto.MasterDoc{SetName: "rs0", Me: "arb:27017", ArbiterOnly: true})
+	assert.Equal(t, &hostInfo{
+		Hostname:       "arb:27017",
+		ReplicasetName: "rs0",
+		NodeType:       "ARBITER",
+		IsArbiter:      true,
+	}, hi)
+
+	hi = newArbiterHostInfo(proto.MasterDoc{Me: "arb:27017", ArbiterOnly: true})
+	assert.Empty(t, hi.ReplicasetName)
+}
+
+func TestFormatResultsArbiter(t *testing.T) {
+	ci := &collectedInfo{
+		HostInfo: &hostInfo{
+			Hostname:       "arb:27017",
+			ReplicasetName: "rs0",
+			NodeType:       "ARBITER",
+			IsArbiter:      true,
+		},
+		SecuritySettings: &security{Auth: "enabled", SSL: "disabled", Port: 27017, IsArbiter: true},
+	}
+
+	out, err := formatResults(ci, "text")
+	require.NoError(t, err)
+
+	for _, want := range []string{"Process Type | ARBITER", "# Arbiter", "Auth   : enabled"} {
+		assert.Contains(t, string(out), want)
+	}
+	for _, unwanted := range []string{
+		"# Mongos", "# Instances", "PID Owner", "Version |", "Built On",
+		"# Command line arguments", "# Running Ops", "Users  :", "Roles  :",
+	} {
+		assert.NotContains(t, string(out), unwanted)
+	}
+}
+
+func TestFormatResultsDataNode(t *testing.T) {
+	ci := &collectedInfo{
+		ReplicaMembers: []proto.Members{{Name: "m1:27017", StateStr: "PRIMARY", Set: "rs0"}},
+		HostInfo: &hostInfo{
+			Hostname:          "m1",
+			HostOsType:        "Linux",
+			HostSystemCPUArch: "x86_64",
+			ProcessName:       "mongod",
+			Version:           "7.0.37",
+			ReplicasetName:    "rs0",
+			NodeType:          "replset",
+			CmdlineArgs:       []string{"mongod", "--replSet", "rs0"},
+		},
+		SecuritySettings: &security{Users: 1, Auth: "enabled", SSL: "disabled", Port: 27017},
+	}
+
+	out, err := formatResults(ci, "text")
+	require.NoError(t, err)
+
+	for _, want := range []string{
+		"# Instances", "PID Owner | mongod", "Version | 7.0.37", "Built On | Linux x86_64",
+		"Process Type | replset", "# Command line arguments", "Users  : 1", "Roles  : 0",
+	} {
+		assert.Contains(t, string(out), want)
+	}
+	assert.NotContains(t, string(out), "# Arbiter")
 }

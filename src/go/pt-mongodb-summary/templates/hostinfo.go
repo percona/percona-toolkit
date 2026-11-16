@@ -22,11 +22,19 @@ const HostInfo = `# This host
 {{- if .ProcUserName }}
                      User | {{.ProcUserName }}
 {{- end }}
+{{- if .ProcessName }}
                 PID Owner | {{.ProcessName}}
+{{- end }}
                  Hostname | {{.Hostname}}
+{{- if .Version }}
                   Version | {{.Version}}
+{{- end }}
+{{- if or .HostOsType .HostSystemCPUArch }}
                  Built On | {{.HostOsType}} {{.HostSystemCPUArch}}
+{{- end }}
+{{- if not .ProcCreateTime.IsZero }}
                   Started | {{.ProcCreateTime}}
+{{- end }}
 {{- if .DBPath }}
                   Datadir | {{.DBPath}}
 {{- end }}
@@ -35,5 +43,11 @@ const HostInfo = `# This host
 {{- if .ReplicasetName }}
                   ReplSet | {{.ReplicasetName}}
               Repl Status |
+{{- end }}
+{{- if .IsArbiter }}
+
+# Arbiter ################################################################################################
+This node is a replica-set ARBITER: it holds no data and does not accept user logins,
+so user/role counts, mongos and oplog details are not collected from it.
 {{- end -}}
 `

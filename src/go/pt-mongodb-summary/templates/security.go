@@ -15,8 +15,10 @@ package templates
 
 const Security = `
 # Security ###############################################################################################
+{{- if not .IsArbiter }}
 Users  : {{.Users}}
 Roles  : {{.Roles}}
+{{- end }}
 Auth   : {{.Auth}}
 SSL    : {{.SSL}}
 Port   : {{.Port}}
