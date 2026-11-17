@@ -15,11 +15,11 @@ package indexes
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var systemDBs = []string{"admin", "config", "local", "system.profile"} //nolint:gochecknoglobals
@@ -35,9 +35,22 @@ type IndexStat struct {
 		V         int32       `bson:"v"`
 		Key       primitive.D `bson:"key"`
 	} `bson:"spec"`
-	Name string      `bson:"name"`
-	Key  primitive.D `bson:"key"`
-	Host string      `bson:"host"`
+	Name       string      `bson:"name"`
+	Key        primitive.D `bson:"key"`
+	Host       string      `bson:"host"`
+	ShardCount int         `bson:"-"`
+}
+
+// NormalizeIndexStat fills top-level name/key from spec when the driver or
+// mongos omits them on $indexStats documents, so aggregation and lookups
+// group by the correct index name.
+func NormalizeIndexStat(s *IndexStat) {
+	if s.Name == "" && s.Spec.Name != "" {
+		s.Name = s.Spec.Name
+	}
+	if len(s.Key) == 0 && len(s.Spec.Key) > 0 {
+		s.Key = s.Spec.Key
+	}
 }
 
 func in(search string, items []string) bool {
@@ -49,12 +62,28 @@ func in(search string, items []string) bool {
 	return false
 }
 
+// IsSystemDB returns true if the database is a MongoDB system database
+// that should be skipped during index analysis.
+func IsSystemDB(database string) bool {
+	return in(database, systemDBs)
+}
+
+// IsSystemCollection returns true for MongoDB internal collections whose
+// names start with "system." (e.g. system.profile, system.js). These should
+// be skipped alongside system databases (admin, config, local).
+func IsSystemCollection(collection string) bool {
+	return strings.HasPrefix(collection, "system.")
+}
+
+func CollectionNames(ctx context.Context, client *mongo.Client, database string) ([]string, error) {
+	filter := primitive.D{{Key: "type", Value: primitive.D{{Key: "$ne", Value: "view"}}}}
+	return client.Database(database).ListCollectionNames(ctx, filter)
+}
+
 // FindUnusedIndexes returns a list of unused indexes for the given database and collection.
 func FindUnused(ctx context.Context, client *mongo.Client, database, collection string) ([]IndexStat, error) {
 	aggregation := mongo.Pipeline{
 		{{Key: "$indexStats", Value: primitive.M{}}},
-		{{Key: "$match", Value: primitive.M{"accesses.ops": 0}}},
-		{{Key: "$match", Value: primitive.M{"name": bson.M{"$ne": "_id_"}}}},
 	}
 
 	if in(database, systemDBs) {
@@ -70,6 +99,20 @@ func FindUnused(ctx context.Context, client *mongo.Client, database, collection 
 	if err = cursor.All(ctx, &stats); err != nil {
 		return nil, errors.Wrap(err, "cannot get $indexStats for unused indexes")
 	}
+	for i := range stats {
+		NormalizeIndexStat(&stats[i])
+	}
+	stats = AggregateShardStats(stats)
 
-	return stats, nil
+	var out []IndexStat
+	for _, s := range stats {
+		if s.Name == "_id_" {
+			continue
+		}
+		if s.Accesses.Ops != 0 {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out, nil
 }

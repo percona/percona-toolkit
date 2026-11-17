@@ -23,6 +23,7 @@ import (
 
 	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -48,9 +49,9 @@ func TestUnusedIndexes(t *testing.T) {
 	defer database.Drop(ctx) //nolint:errcheck
 
 	testCases := []primitive.D{
-		{{"f1", 1}, {"f2", -1}, {"f3", 1}, {"f4", 1}},
-		{{"f3", -1}},
-		{{"f4", -1}},
+		{{Key: "f1", Value: 1}, {Key: "f2", Value: -1}, {Key: "f3", Value: 1}, {Key: "f4", Value: 1}},
+		{{Key: "f3", Value: -1}},
+		{{Key: "f4", Value: -1}},
 	}
 
 	errCount := 0
@@ -92,4 +93,81 @@ func TestUnusedIndexes(t *testing.T) {
 	sort.Strings(got)
 
 	assert.Equal(t, want, got)
+}
+
+func TestIsSystemDB(t *testing.T) {
+	assert.True(t, IsSystemDB("admin"))
+	assert.True(t, IsSystemDB("config"))
+	assert.True(t, IsSystemDB("local"))
+	assert.False(t, IsSystemDB("myapp"))
+}
+
+func TestIsSystemCollection(t *testing.T) {
+	assert.True(t, IsSystemCollection("system.profile"))
+	assert.True(t, IsSystemCollection("system.js"))
+	assert.False(t, IsSystemCollection("orders"))
+	assert.False(t, IsSystemCollection("users"))
+}
+
+func TestCollectionNamesSkipsViews(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client, err := tu.TestClient(ctx, tu.MongoDBStandalonePort)
+	require.NoError(t, err)
+
+	defer client.Disconnect(ctx) //nolint:errcheck
+
+	const dbname = "test_collection_names"
+
+	db := client.Database(dbname)
+	require.NoError(t, db.Drop(ctx))
+
+	defer db.Drop(ctx) //nolint:errcheck
+
+	require.NoError(t, db.CreateCollection(ctx, "orders"))
+	require.NoError(t, db.CreateView(ctx, "orders_view", "orders", mongo.Pipeline{}))
+
+	names, err := CollectionNames(ctx, client, dbname)
+	require.NoError(t, err)
+	assert.Contains(t, names, "orders")
+	assert.NotContains(t, names, "orders_view")
+}
+
+func TestCollectShardKeys(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client, err := tu.TestClient(ctx, tu.MongoDBStandalonePort)
+	require.NoError(t, err)
+
+	defer client.Disconnect(ctx) //nolint:errcheck
+
+	config := client.Database("config")
+	ids := primitive.M{"_id": primitive.M{"$regex": "^test_shard_keys[.]"}}
+	cleanup := func() {
+		for _, name := range []string{"collections", "cache.collections"} {
+			_, _ = config.Collection(name).DeleteMany(ctx, ids)
+		}
+	}
+	cleanup()
+
+	defer cleanup()
+
+	_, err = config.Collection("collections").InsertMany(ctx, []interface{}{
+		primitive.M{"_id": "test_shard_keys.hashed", "key": primitive.M{"_id": "hashed"}},
+		primitive.M{"_id": "test_shard_keys.dropped", "key": primitive.M{"a": int32(1)}, "dropped": true},
+		primitive.M{"_id": "test_shard_keys.moved", "key": primitive.M{"_id": int32(1)}, "unsplittable": true},
+	})
+	require.NoError(t, err)
+	_, err = config.Collection("cache.collections").InsertOne(ctx,
+		primitive.M{"_id": "test_shard_keys.ranged", "key": primitive.M{"region": int32(1)}})
+	require.NoError(t, err)
+
+	keys, err := CollectShardKeys(ctx, client)
+	require.NoError(t, err)
+	assert.Equal(t, primitive.D{{Key: "_id", Value: "hashed"}}, keys["test_shard_keys.hashed"])
+	assert.Equal(t, primitive.D{{Key: "region", Value: int32(1)}}, keys["test_shard_keys.ranged"])
+	assert.NotContains(t, keys, "test_shard_keys.dropped")
+	assert.NotContains(t, keys, "test_shard_keys.moved")
 }

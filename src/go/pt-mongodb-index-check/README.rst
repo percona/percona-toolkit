@@ -4,13 +4,25 @@
 :program:`pt-mongodb-index-check`
 =================================
 
-Performs checks on MongoDB indexes.
+Performs checks on MongoDB indexes: identifies duplicated (prefix) indexes and
+analyzes unused indexes with a multi-signal scoring system.
 
 Checks available
 ================
 
 Duplicated indexes
 ~~~~~~~~~~~~~~~~~~
+
+System databases (``admin``, ``config``, ``local``) and internal collections
+whose names start with ``system.`` (for example ``system.profile``) are not
+scanned for duplicate prefixes, consistent with the unused-index path.
+
+The sectioned **Duplicate Prefix Index Report** (banner, per-pair reason,
+``dropIndex`` action, optional index sizes from ``collStats``, a separate block
+for unique and TTL prefixes that must be kept, and a ``NOT REPORTED`` list of
+key prefixes that are not redundant) is printed in text mode for
+``check-duplicates`` and ``check-all`` only; ``check-unused`` output focuses on
+unused-index analysis.
 
 Check for indexes that are the prefix of other indexes. For example if we have these 2 indexes
 
@@ -23,52 +35,367 @@ Check for indexes that are the prefix of other indexes. For example if we have t
 The index ``idx_02`` is the prefix of ``idx_01`` because it has the same
 keys in the same order so, ``idx_02`` can be dropped.
 
-Unused indexes.
-~~~~~~~~~~~~~~~
+The duplicate check is property-aware: two indexes with the same key prefix are
+**not** flagged as duplicates if they differ in any of the following:
 
-This check gets the ``$indexstats`` for all indexes and reports those
-having ``accesses.ops`` = 0.
+- ``partialFilterExpression`` -- indexes covering different document subsets
+- ``sparse`` -- sparse and non-sparse indexes have different null-handling behavior
+- ``collation`` -- indexes with different collation rules serve different queries
+
+Such pairs are listed in a short ``NOT REPORTED`` section that names the option
+that differs (``SkippedDuplicates`` in JSON output).
+
+The ``_id_`` index is always excluded from duplicate candidates since it is a
+MongoDB requirement and cannot be dropped.
+
+**Index type awareness:** Hashed, text, and geospatial index types (``2dsphere``,
+``2d``, ``geoHaystack``) are treated as distinct types in the key comparison. An
+index on ``{_id: 1}`` and ``{_id: "hashed"}`` are never considered prefix
+duplicates because they use fundamentally different index structures.
+
+A prefix of a hidden index, or of an index that adds a text or ``2dsphere`` key
+after the prefix fields, is not reported as redundant either, because such an
+index cannot serve the prefix's queries. These pairs are also listed under
+``NOT REPORTED``.
+
+Key fields are compared one by one, so ``{a: 1}`` is not a prefix of
+``{ab: 1, x: 1}``.
+
+A **unique** or **TTL** prefix is never offered for dropping. It is listed in a
+separate section without a ``dropIndex`` command, because a longer index, even a
+unique one, does not enforce uniqueness on the prefix fields alone, and dropping
+a TTL index stops document expiry.
+
+.. code-block:: text
+
+   # ---- PREFIX ENFORCES A CONSTRAINT (keep it) ------------------
+
+     mydb.users
+       Prefix:    'email_1' {email:1}  [UNIQUE]
+       Container: 'email_1_status_1' {email:1, status:1}
+       WARNING: the prefix index enforces uniqueness on its own fields; the container cannot, so dropping it loses the unique constraint
+
+In ``--json`` output these pairs stay in ``Duplicated`` with ``Constraint`` set
+to ``unique`` or ``TTL``; only entries without ``Constraint`` are drop candidates.
+
+Unused indexes (enhanced analysis)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The unused index check goes beyond the simple ``$indexStats`` ``accesses.ops = 0``
+metric. It uses a multi-signal scoring system that collects data from three sources:
+
+1. **$indexStats** -- read access counts and the stats reset timestamp
+2. **listIndexes** -- index properties (unique, sparse, partial, TTL, hidden)
+3. **collStats** -- the document count of every collection (``$collStats`` with
+   ``count``), and per-index sizes only for collections that have an index listed
+   as ``SAFE_TO_DROP``, ``LIKELY_UNUSED`` or ``LOW_USAGE`` (see *Index sizes and
+   open files* below)
+
+Each index is evaluated through a scoring decision tree that produces one of
+these recommendations:
+
++-------------------+--------------------------------------------------------------+
+| Recommendation    | Meaning                                                      |
++===================+==============================================================+
+| ``SAFE_TO_DROP``  | High confidence the index provides no value; includes a      |
+|                   | ``dropIndex`` command ready to copy.                         |
++-------------------+--------------------------------------------------------------+
+| ``LIKELY_UNUSED`` | Strong signal of no usage, but low cost to keep (small size) |
++-------------------+--------------------------------------------------------------+
+| ``LOW_USAGE``     | Used, but fewer than ``--low-usage-threshold`` times a day   |
++-------------------+--------------------------------------------------------------+
+| ``MONITOR``       | Insufficient data to decide (warmup period, empty collection)|
++-------------------+--------------------------------------------------------------+
+| ``KEEP``          | Index enforces a constraint (unique, TTL) or is hidden       |
++-------------------+--------------------------------------------------------------+
+
+**Hard guards** -- The following indexes are never flagged for removal:
+
+- ``_id_`` (MongoDB requirement; not listed in the report)
+- Unique indexes (enforce data integrity constraints)
+- TTL indexes (provide automatic document expiration)
+- Hidden indexes (intentionally excluded from planner by admin)
+- Indexes that support a shard key (chunk migrations and splits need them; the
+  shard keys are read from ``config.collections`` and, on a shard member, from
+  ``config.cache.collections``)
+- Indexes in system databases (admin, config, local)
+- Collections whose names begin with ``system.`` (internal collections such as ``system.profile``)
+
+**Warmup period** -- After a ``mongod`` restart, ``accesses.since`` resets and
+all indexes appear to have zero ops. The tool waits for the observation window
+to exceed ``--warmup-days`` (default: 7) before flagging unused indexes.
+
+**Cross-reference with duplicates** -- When ``check-all`` is used, a prefix-
+duplicate index with zero ops whose container index has active reads is
+recommended as ``SAFE_TO_DROP`` with an explanation.
 
 Usage
 =====
 
 Run the program as ``pt-mongodb-index-check <command> [flags]``
 
+You must specify which databases to check using ``--databases`` or
+``--all-databases``. If neither is provided but the connection URI contains a
+database name (e.g., ``mongodb://host:port/mydb``), that database is used as
+the default.
+
+The tool verifies connectivity (Ping) immediately after connecting and reports
+a clear error if the server is unreachable or credentials are invalid. Those
+errors are written to standard error; if you paste output from several runs
+or from a wrapper that merges streams, a failed authentication line can appear
+above a successful report from a different invocation.
+
 Available commands
 ~~~~~~~~~~~~~~~~~~
 
-================ ==================================
-Command          Description
-================ ==================================
-check-duplicated Run checks for duplicated indexes.
-check-unused     Run check for unused indexes.
-check-all        Run all checks
-================ ==================================
+================= ==================================
+Command           Description
+================= ==================================
+check-duplicates  Run checks for duplicated indexes.
+check-unused      Run check for unused indexes.
+check-all         Run all checks.
+================= ==================================
 
 Available flags
 ~~~~~~~~~~~~~~~
 
-+----------------------------+----------------------------------------+
-| Flag                       | Description                            |
-+============================+========================================+
-| –all-databases             | Check in all databases excluding       |
-|                            | system dbs.                            |
-+----------------------------+----------------------------------------+
-| –databases=DATABASES,…     | Comma separated list of databases to   |
-|                            | check.                                 |
-+----------------------------+----------------------------------------+
-| –all-collections           | Check in all collections in the        |
-|                            | selected databases.                    |
-+----------------------------+----------------------------------------+
-| –collections=COLLECTIONS,… | Comma separated list of collections to |
-|                            | check.                                 |
-+----------------------------+----------------------------------------+
-| –mongodb.uri=              | Connection URI                         |
-+----------------------------+----------------------------------------+
-| –json                      | Show output as JSON                    |
-+----------------------------+----------------------------------------+
-| –version                   | Show version information               |
-+----------------------------+----------------------------------------+
++----------------------------------+------------------------------------------+
+| Flag                             | Description                              |
++==================================+==========================================+
+| --all-databases                  | Check in all databases excluding         |
+|                                  | system dbs.                              |
++----------------------------------+------------------------------------------+
+| --databases=DATABASES,...        | Comma separated list of databases to     |
+|                                  | check.                                   |
++----------------------------------+------------------------------------------+
+| --all-collections                | Check in all collections in the          |
+|                                  | selected databases.                      |
++----------------------------------+------------------------------------------+
+| --collections=COLLECTIONS,...    | Comma separated list of collections to   |
+|                                  | check.                                   |
++----------------------------------+------------------------------------------+
+| --mongodb.uri=                   | Connection URI.                          |
++----------------------------------+------------------------------------------+
+| --json                           | Show output as JSON.                     |
++----------------------------------+------------------------------------------+
+| --timeout=60s                    | Time limit for the whole run, e.g. 90s   |
+|                                  | or 5m. The tool exits with an error      |
+|                                  | when the limit is reached.               |
++----------------------------------+------------------------------------------+
+| --warmup-days=7                  | Minimum observation window (days)        |
+|                                  | before flagging unused indexes.          |
++----------------------------------+------------------------------------------+
+| --low-usage-threshold=1.0        | Ops/day below which an index is          |
+|                                  | considered low-usage.                    |
++----------------------------------+------------------------------------------+
+| --large-index-size=10485760      | Index size threshold in bytes for        |
+|                                  | "large" classification (default 10 MB).  |
++----------------------------------+------------------------------------------+
+| --include-low-usage              | Also report indexes with low but         |
+|                                  | non-zero usage.                          |
++----------------------------------+------------------------------------------+
+| --cross-reference-duplicates     | Combine unused + duplicate analysis for  |
+|                                  | better recommendations (default: true).  |
++----------------------------------+------------------------------------------+
+| --version                        | Show version information.                |
++----------------------------------+------------------------------------------+
+
+Required privileges
+~~~~~~~~~~~~~~~~~~~
+
+The user in ``--mongodb.uri`` needs these privileges on every database it checks:
+
+- ``indexStats``, ``listIndexes`` and ``collStats`` for ``check-unused``
+  (``collStats`` gives the document count and the index sizes);
+- ``listIndexes`` for ``check-duplicates``, plus ``collStats`` for the index sizes;
+- ``listCollections``, unless ``--collections`` names the collections to check;
+- ``listDatabases`` on the cluster for ``--all-databases``; without it, only the
+  databases the user has privileges on are checked;
+- ``find`` on the ``config`` database, to read the shard keys on sharded clusters.
+
+The built-in ``read`` and ``readAnyDatabase`` roles lack ``indexStats``, and
+``clusterMonitor`` lacks ``listCollections`` and ``listIndexes`` on user
+databases, so none of them is enough on its own. ``clusterMonitor`` together
+with ``readAnyDatabase`` works, or create a role like this one:
+
+.. code-block:: javascript
+
+   db.getSiblingDB("admin").createRole({
+     role: "indexCheck",
+     privileges: [
+       { resource: { db: "", collection: "" },
+         actions: ["listCollections", "listIndexes", "indexStats", "collStats"] },
+       { resource: { db: "config", collection: "" }, actions: ["find"] },
+       { resource: { cluster: true }, actions: ["listDatabases"] }
+     ],
+     roles: []
+   })
+
+Environment
+===========
+
+PTDEBUG
+~~~~~~~
+
+The environment variable ``PTDEBUG`` enables verbose diagnostic logging on
+**standard error**, consistent with other Percona Toolkit tools. Set it to any
+non-empty value except ``0`` (for example ``PTDEBUG=1``). Unset or empty turns
+debugging off; ``PTDEBUG=0`` is treated as off (same as Perl toolkit
+``$ENV{PTDEBUG} || 0``).
+
+The normal report (text templates or ``--json``) is still written to **standard
+output** only. To capture everything in one file:
+
+.. code-block:: bash
+
+   PTDEBUG=1 pt-mongodb-index-check check-all --mongodb.uri=mongodb://127.0.0.1:27017 --all-databases --all-collections > report.txt 2>&1
+
+Diagnostic lines intentionally avoid printing raw connection passwords (the
+password in ``--mongodb.uri`` is redacted in debug output).
+
+Debug output can grow large on clusters with many databases and collections.
+
+Examples
+========
+
+Check all indexes across all databases:
+
+.. code-block:: bash
+
+   pt-mongodb-index-check check-all --mongodb.uri=mongodb://127.0.0.1:27017 --all-databases --all-collections
+
+Check a specific database:
+
+.. code-block:: bash
+
+   pt-mongodb-index-check check-unused --mongodb.uri=mongodb://127.0.0.1:27017/mydb --all-collections
+
+Include low-usage indexes with a custom threshold:
+
+.. code-block:: bash
+
+   pt-mongodb-index-check check-unused --mongodb.uri=mongodb://127.0.0.1:27017 --databases=mydb --all-collections --include-low-usage --low-usage-threshold=0.5
+
+Sample output
+~~~~~~~~~~~~~
+
+.. code-block:: text
+
+   # ============================================================
+   # Duplicate Prefix Index Report
+   # ============================================================
+   # Pairs found: 1 across 1 database(s), 1 collection(s)
+   # ---- REDUNDANT PREFIX (shorter index is candidate to drop) ---
+     mydb.orders
+       Prefix:    'idx_region' {region:1}  4.0 KB
+       Container: 'idx_region_date' {region:1, date:-1}  8.0 KB
+       Reason: 'idx_region' is a key-order prefix of 'idx_region_date'; any query served by 'idx_region' can also use 'idx_region_date'.
+       Action: db.getSiblingDB("mydb").getCollection("orders").dropIndex("idx_region")
+
+   # Summary: 1 redundant prefix pair(s), 0 pair(s) kept for a constraint
+
+   # ============================================================
+   # Unused Index Analysis
+   # ============================================================
+   # Observation window: 2024-01-01T00:00:00Z to 2024-02-15T00:00:00Z (45.0 days)
+   # Indexes analyzed: 8 across 1 database(s), 3 collection(s)
+
+   # ---- SAFE TO DROP (high confidence) --------------------------
+
+     mydb.orders  index 'idx_old_status' {status:1, date:-1}
+       Ops: 0 in 45 days | Size: 128.0 MB | Score: 0.95
+       Reason: Zero reads in 45 days; index is 128.0 MB and costs write amplification
+       Action: db.getSiblingDB("mydb").getCollection("orders").dropIndex("idx_old_status")
+
+   # ---- LIKELY UNUSED (review recommended) ----------------------
+
+     mydb.users  index 'idx_legacy_field' {legacyCode:1}
+       Ops: 0 in 45 days | Size: 2.0 MB | Score: 0.80
+       Reason: Zero reads in 45 days; small index (2.0 MB), low cost to keep
+
+   # ---- MONITOR (insufficient data) -----------------------------
+
+     mydb.logs  index 'idx_new_feature' {featureFlag:1}
+       Ops: 0 in 3 days | Score: 0.10
+       Reason: Index created/stats reset 3 days ago; re-check after 7 days
+
+   # ---- KEEP (constraints / special) ----------------------------
+
+     mydb.users  index 'email_unique' {email:1}  [UNIQUE]
+       Ops: 0 in 45 days | Kept: enforces uniqueness constraint
+
+   # Summary: 1 safe to drop (saving ~128.0 MB), 1 likely unused,
+   #           0 low usage, 1 monitoring, 1 kept (constraints)
+
+JSON output includes the full ``IndexAnalysis`` array with all fields
+(``score``, ``recommendation``, ``confidence``, ``reason``, ``indexSizeBytes``,
+``ageDays``, ``opsPerDay``, etc.) for programmatic consumption. ``indexSizeBytes``,
+``collTotalIdxSize`` and ``indexSizePct`` are 0 when the sizes were not read (see
+*Index sizes and open files*).
+
+Edge cases and caveats
+======================
+
+accesses.since resets on restart
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``accesses.since`` field resets every time ``mongod`` restarts. On clusters
+with frequent rolling restarts (e.g., Kubernetes pod recycling), the observation
+window may be very short. The tool prints the observation window in the report
+header and marks indexes in the warmup period as ``MONITOR``.
+
+Sharded clusters
+~~~~~~~~~~~~~~~~
+
+On sharded clusters, ``$indexStats`` returns one entry per shard per index. The
+tool automatically aggregates these entries by index name: it sums
+``accesses.ops`` across all shards and uses the most recent ``accesses.since``,
+the window every shard has observed, so a shard restarted within
+``--warmup-days`` keeps the collection's indexes in ``MONITOR``. This produces
+one row per index in the report instead of N rows for N shards.
+
+When a row omits the top-level ``name`` field but includes ``spec.name`` (seen on
+some mongos responses), the tool normalizes the document before aggregation so
+shards still group under the same index name.
+
+Read preference routing
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Each replica set member keeps its own ``$indexStats`` counters, and they count
+only the operations that member served. The tool reads them from the primary
+(on a sharded cluster, from the primary of each shard), whatever
+``readPreference`` the URI sets. An index used only by reads that applications
+send to secondaries therefore shows 0 ops and can be reported as unused.
+
+If applications read from secondaries, run the check once against every
+data-bearing member, each time with a single-host URI and
+``directConnection=true`` (for example
+``mongodb://host2:27017/?directConnection=true``), and keep an index that any
+member uses. Without ``directConnection=true`` a single-host URI still connects
+to the whole replica set and reads the primary. On a sharded cluster these are
+the members of every shard, and users created through ``mongos`` cannot log in
+to them, so create the user on each shard replica set too.
+
+Index sizes and open files
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To report index sizes, ``collStats`` makes ``mongod`` open the data file of the
+collection and of every index, and WiredTiger keeps these files open long after
+the run (about a day on MongoDB 4.2). The tool therefore reads sizes only for
+collections with an index listed as ``SAFE_TO_DROP``, ``LIKELY_UNUSED`` or
+``LOW_USAGE``, and for collections with a redundant prefix pair. The document
+count comes from ``$collStats`` with ``count``, which opens no files. On a
+``mongod`` with a low open-files limit, such as Docker's default soft limit of
+1024, a run over many such collections can still exhaust the limit and stop the
+server. Check the limit first (MongoDB recommends 64000), or narrow the run with
+``--databases`` and ``--collections``.
+
+Background index builds
+~~~~~~~~~~~~~~~~~~~~~~~
+
+A newly built index may have ``ops == 0`` simply because it was still building
+when the check ran. The warmup period (``--warmup-days``) mitigates this for
+most cases.
 
 Authors
 =======

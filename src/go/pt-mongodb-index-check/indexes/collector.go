@@ -1,0 +1,321 @@
+// This program is copyright 2022-2026 Percona LLC and/or its affiliates.
+//
+// THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// This program is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, version 2.
+//
+// You should have received a copy of the GNU General Public License, version 2
+// along with this program; if not, see <https://www.gnu.org/licenses/>.
+
+package indexes
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
+)
+
+// indexMetadata holds index properties from listIndexes that $indexStats doesn't provide.
+type indexMetadata struct {
+	Name                    string      `bson:"name"`
+	Key                     primitive.D `bson:"key"`
+	Unique                  bool        `bson:"unique,omitempty"`
+	Sparse                  bool        `bson:"sparse,omitempty"`
+	PartialFilterExpression primitive.M `bson:"partialFilterExpression,omitempty"`
+	ExpireAfterSeconds      *int32      `bson:"expireAfterSeconds,omitempty"`
+	Hidden                  bool        `bson:"hidden,omitempty"`
+}
+
+type collectionStats struct {
+	Count          int64            `bson:"count"`
+	Size           int64            `bson:"size"`
+	TotalIndexSize int64            `bson:"totalIndexSize"`
+	IndexSizes     map[string]int64 `bson:"indexSizes"`
+}
+
+type shardedCollection struct {
+	Namespace string      `bson:"_id"`
+	Key       primitive.D `bson:"key"`
+}
+
+func CollectShardKeys(ctx context.Context, client *mongo.Client) (map[string]primitive.D, error) {
+	keys := make(map[string]primitive.D)
+	filter := primitive.D{
+		{Key: "dropped", Value: primitive.D{{Key: "$ne", Value: true}}},
+		{Key: "unsplittable", Value: primitive.D{{Key: "$ne", Value: true}}},
+	}
+
+	var failures []string
+
+	for _, name := range []string{"collections", "cache.collections"} {
+		var docs []shardedCollection
+
+		cursor, err := client.Database("config").Collection(name).Find(ctx, filter)
+		if err == nil {
+			err = cursor.All(ctx, &docs)
+		}
+		if err != nil {
+			failures = append(failures, fmt.Sprintf("config.%s: %s", name, errorName(err)))
+			continue
+		}
+
+		for _, d := range docs {
+			if len(d.Key) > 0 {
+				keys[d.Namespace] = d.Key
+			}
+		}
+	}
+
+	if len(failures) == 2 {
+		return nil, errors.New(strings.Join(failures, "; "))
+	}
+
+	return keys, nil
+}
+
+func ConnectedToMongos(ctx context.Context, client *mongo.Client) bool {
+	var reply struct {
+		Msg string `bson:"msg"`
+	}
+
+	err := client.Database("admin").RunCommand(ctx, bson.D{{Key: "isMaster", Value: 1}}).Decode(&reply)
+
+	return err == nil && reply.Msg == "isdbgrid"
+}
+
+func errorName(err error) string {
+	var cmdErr mongo.CommandError
+	if errors.As(err, &cmdErr) && cmdErr.Name != "" {
+		return cmdErr.Name
+	}
+
+	return err.Error()
+}
+
+func MarkShardKeyIndexes(records []IndexRecord, shardKey primitive.D) {
+	for i := range records {
+		if keyStartsWith(records[i].IndexKey, shardKey) {
+			records[i].IsShardKey = true
+		}
+	}
+}
+
+// CollectIndexMetadata retrieves index properties from listIndexes for a collection.
+func CollectIndexMetadata(ctx context.Context, client *mongo.Client, database, collection string) (map[string]indexMetadata, error) {
+	cursor, err := client.Database(database).Collection(collection).Indexes().List(ctx, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot list indexes")
+	}
+
+	result := make(map[string]indexMetadata)
+	var indexes []indexMetadata
+	if err := cursor.All(ctx, &indexes); err != nil {
+		return nil, errors.Wrap(err, "cannot decode index metadata")
+	}
+	for _, idx := range indexes {
+		result[idx.Name] = idx
+	}
+	return result, nil
+}
+
+// CollectCollStats retrieves collection statistics via the collStats command.
+func CollectCollStats(ctx context.Context, client *mongo.Client, database, collection string) (collectionStats, error) {
+	var stats collectionStats
+	res := client.Database(database).RunCommand(ctx, bson.D{{Key: "collStats", Value: collection}})
+	if err := res.Err(); err != nil {
+		return stats, errors.Wrap(err, "cannot run collStats")
+	}
+	if err := res.Decode(&stats); err != nil {
+		return stats, errors.Wrap(err, "cannot decode collStats")
+	}
+	return stats, nil
+}
+
+func CollectDocCount(ctx context.Context, client *mongo.Client, database, collection string) (collectionStats, error) {
+	var stats collectionStats
+
+	pipeline := mongo.Pipeline{{{Key: "$collStats", Value: primitive.D{{Key: "count", Value: primitive.D{}}}}}}
+	coll := client.Database(database).Collection(collection, options.Collection().SetReadPreference(readpref.Primary()))
+
+	cursor, err := coll.Aggregate(ctx, pipeline)
+	if err != nil {
+		return stats, errors.Wrap(err, "cannot run $collStats")
+	}
+
+	var shards []struct {
+		Count int64 `bson:"count"`
+	}
+	if err := cursor.All(ctx, &shards); err != nil {
+		return stats, errors.Wrap(err, "cannot decode $collStats")
+	}
+
+	for _, s := range shards {
+		stats.Count += s.Count
+	}
+
+	return stats, nil
+}
+
+// CollectIndexStats retrieves $indexStats for all indexes on a collection.
+// Unlike FindUnused, this returns ALL indexes (not just ops==0) for the scoring engine.
+func CollectIndexStats(ctx context.Context, client *mongo.Client, database, collection string) ([]IndexStat, error) {
+	aggregation := mongo.Pipeline{
+		{{Key: "$indexStats", Value: primitive.M{}}},
+	}
+
+	coll := client.Database(database).Collection(collection, options.Collection().SetReadPreference(readpref.Primary()))
+	cursor, err := coll.Aggregate(ctx, aggregation)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot run $indexStats")
+	}
+
+	var stats []IndexStat
+	if err = cursor.All(ctx, &stats); err != nil {
+		return nil, errors.Wrap(err, "cannot decode $indexStats")
+	}
+	for i := range stats {
+		NormalizeIndexStat(&stats[i])
+	}
+	return stats, nil
+}
+
+// AggregateShardStats deduplicates $indexStats entries that appear once per
+// shard on sharded clusters. It groups by index name, sums ops across shards,
+// and uses the newest accesses.since, the window every shard has observed.
+func AggregateShardStats(stats []IndexStat) []IndexStat {
+	type group struct {
+		merged IndexStat
+		count  int
+	}
+
+	groups := make(map[string]*group, len(stats))
+	order := make([]string, 0, len(stats))
+
+	for _, s := range stats {
+		g, ok := groups[s.Name]
+		if !ok {
+			merged := s
+			merged.ShardCount = 1
+			groups[s.Name] = &group{merged: merged, count: 1}
+			order = append(order, s.Name)
+			continue
+		}
+		g.count++
+		g.merged.ShardCount = g.count
+		g.merged.Accesses.Ops += s.Accesses.Ops
+		if s.Accesses.Since > g.merged.Accesses.Since {
+			g.merged.Accesses.Since = s.Accesses.Since
+		}
+	}
+
+	result := make([]IndexStat, 0, len(groups))
+	for _, name := range order {
+		result = append(result, groups[name].merged)
+	}
+	return result
+}
+
+// DeduplicateIndexRecords merges duplicate rows for the same index name (e.g.
+// if stats were not aggregated) by summing ops and using the newest AccessSince.
+func DeduplicateIndexRecords(records []IndexRecord) []IndexRecord {
+	if len(records) <= 1 {
+		return records
+	}
+	byName := make(map[string]IndexRecord, len(records))
+	order := make([]string, 0, len(records))
+	for _, r := range records {
+		prev, ok := byName[r.IndexName]
+		if !ok {
+			byName[r.IndexName] = r
+			order = append(order, r.IndexName)
+			continue
+		}
+		prev.AccessOps += r.AccessOps
+		if !r.AccessSince.IsZero() && (prev.AccessSince.IsZero() || r.AccessSince.After(prev.AccessSince)) {
+			prev.AccessSince = r.AccessSince
+		}
+		byName[r.IndexName] = prev
+	}
+	out := make([]IndexRecord, 0, len(order))
+	for _, name := range order {
+		out = append(out, byName[name])
+	}
+	return out
+}
+
+// BuildIndexRecords merges data from $indexStats, listIndexes and collStats
+// into a slice of IndexRecord ready for scoring.
+func BuildIndexRecords(
+	stats []IndexStat,
+	metadata map[string]indexMetadata,
+	cs collectionStats,
+	namespace string,
+) []IndexRecord {
+	records := make([]IndexRecord, 0, len(stats))
+
+	for _, s := range stats {
+		rec := IndexRecord{
+			Namespace:        namespace,
+			IndexName:        s.Name,
+			IndexKey:         s.Key,
+			AccessOps:        s.Accesses.Ops,
+			AccessSince:      s.Accesses.Since.Time(),
+			CollDocCount:     cs.Count,
+			CollTotalIdxSize: cs.TotalIndexSize,
+		}
+
+		if size, ok := cs.IndexSizes[s.Name]; ok {
+			rec.IndexSizeBytes = size
+		}
+
+		if meta, ok := metadata[s.Name]; ok {
+			rec.IsPartial = len(meta.PartialFilterExpression) > 0
+			rec.IsSparse = meta.Sparse
+			rec.IsUnique = meta.Unique
+			rec.IsTTL = meta.ExpireAfterSeconds != nil
+			rec.IsHidden = meta.Hidden
+		}
+
+		records = append(records, rec)
+	}
+
+	return records
+}
+
+// CrossReferenceDuplicates annotates IndexRecords with duplicate prefix
+// information by looking up each record in the duplicate results.
+func CrossReferenceDuplicates(records []IndexRecord, duplicates []Duplicate, allStats []IndexStat) {
+	opsMap := make(map[string]int64, len(allStats))
+	for _, s := range allStats {
+		opsMap[s.Name] += s.Accesses.Ops
+	}
+
+	type nsIndex struct{ namespace, name string }
+
+	dupMap := make(map[nsIndex]Duplicate, len(duplicates))
+	for _, d := range duplicates {
+		k := nsIndex{d.Namespace, d.Name}
+		if prev, ok := dupMap[k]; !ok || opsMap[d.ContainerName] > opsMap[prev.ContainerName] {
+			dupMap[k] = d
+		}
+	}
+
+	for i := range records {
+		if dup, ok := dupMap[nsIndex{records[i].Namespace, records[i].IndexName}]; ok {
+			records[i].IsDuplicatePrefix = true
+			records[i].DuplicateContainerName = dup.ContainerName
+			records[i].DuplicateContainerOps = opsMap[dup.ContainerName]
+		}
+	}
+}
