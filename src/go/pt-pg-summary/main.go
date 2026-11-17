@@ -67,6 +67,8 @@ type cliOptions struct {
 }
 
 func main() {
+	printDeprecationWarning()
+
 	opts, err := parseCommandLineOpts(os.Args[1:])
 	if err != nil {
 		fmt.Printf("Cannot parse command line arguments: %s", err)
@@ -129,6 +131,47 @@ func main() {
 	if err := masterTmpl.ExecuteTemplate(os.Stdout, "report", info); err != nil {
 		log.Fatal(err)
 	}
+
+	printDeprecationWarning()
+}
+
+// printDeprecationWarning prints a red, boxed deprecation notice to stderr.
+// It is shown both at the start and at the end of the program so the message
+// is visible regardless of how much output scrolls in between.
+func printDeprecationWarning() {
+	const (
+		red   = "\033[1;31m"
+		reset = "\033[0m"
+	)
+
+	lines := []string{
+		"DEPRECATION WARNING",
+		"",
+		"pt-pg-summary is deprecated and is no longer developed or maintained.",
+		"It is suggested to use pg_gather instead:",
+		"https://github.com/percona/support-snippets/tree/master/postgresql/pg_gather",
+	}
+
+	width := 0
+	for _, l := range lines {
+		if len(l) > width {
+			width = len(l)
+		}
+	}
+
+	// Use colors only when stderr is a terminal, to avoid ANSI escape codes
+	// leaking into redirected output or log files.
+	colorize := func(s string) string { return s }
+	if fileInfo, err := os.Stderr.Stat(); err == nil && (fileInfo.Mode()&os.ModeCharDevice) != 0 {
+		colorize = func(s string) string { return red + s + reset }
+	}
+
+	border := "+" + strings.Repeat("-", width+2) + "+"
+	fmt.Fprintln(os.Stderr, colorize(border))
+	for _, l := range lines {
+		fmt.Fprintln(os.Stderr, colorize(fmt.Sprintf("| %-*s |", width, l)))
+	}
+	fmt.Fprintln(os.Stderr, colorize(border))
 }
 
 func connect(dsn string) (*sql.DB, error) {
