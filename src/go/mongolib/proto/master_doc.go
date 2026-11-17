@@ -14,7 +14,8 @@
 package proto
 
 type MasterDoc struct {
-	SetName interface{} `bson:"setName"`
-	Hosts   interface{} `bson:"hosts"`
-	Msg     string      `bson:"msg"`
+	SetName     interface{} `bson:"setName"`
+	Hosts       interface{} `bson:"hosts"`
+	Msg         string      `bson:"msg"`
+	ArbiterOnly bool        `bson:"arbiterOnly"`
 }
