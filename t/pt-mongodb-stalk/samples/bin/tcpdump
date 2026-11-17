@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Fake tcpdump: runs until it is killed.
+args="$*"
+while [ $# -gt 0 ]; do [ "$1" = "-w" ] && out="$2"; shift; done
+echo "tcpdump $args" > "$out"
+trap 'exit 0' INT TERM
+while true; do sleep 0.1; done

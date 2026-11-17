@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Fake strace: runs until it is killed, like the real one attached to a process.
+while [ $# -gt 0 ]; do [ "$1" = "-o" ] && out="$2"; shift; done
+echo "strace started" > "$out"
+trap 'echo "strace stopped" >> "$out"; exit 0' INT TERM
+while true; do sleep 0.1; done

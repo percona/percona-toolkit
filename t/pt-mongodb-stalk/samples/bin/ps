@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Fake ps.
+#   ps -p PID -o FIELD=   answers from FAKE_PROCS (see procs.sh) for the PIDs
+#                         listed there
+#   ps -eaF               a process list: a mongod with PID 4242, and command
+#                         lines with passwords to hide.  FAKE_PS_PASSWORD sets
+#                         the password on the pt-mongodb-stalk command line.
+# Anything else runs the real ps, e.g. to find and stop real processes.
+. "$(dirname "$0")/procs.sh"
+
+if [ "$1" = "-p" ] && [ "$3" = "-o" ]; then
+   read -r pid name port elapsed cpu <<END
+$(fake_proc pid "$2")
+END
+   if [ -n "$pid" ]; then
+      case "$4" in
+         comm=)  echo "$name" ;;
+         etime=) printf '%02d:%02d:%02d\n' $((elapsed / 3600)) $((elapsed % 3600 / 60)) $((elapsed % 60)) ;;
+         %cpu=)  echo "$cpu" ;;
+         %mem=)  echo "1.5" ;;
+      esac
+      exit 0
+   fi
+fi
+
+if [ "$*" = "-eaF" ]; then
+   echo "USER PID %CPU %MEM COMMAND"
+   echo "mongodb 4242 0.0 1.0 mongod --port 27017"
+   echo "admin 4343 0.0 0.1 bash pt-mongodb-stalk --user admin --password ${FAKE_PS_PASSWORD:-S3cretPw} --port 27017"
+   echo "admin 4344 0.0 0.1 mongosh mongodb://admin:S3cretPw@localhost:27017/admin"
+   exit 0
+fi
+
+exec /bin/ps "$@"

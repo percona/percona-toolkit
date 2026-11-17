@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Fake mongotop: records its command line in MONGO_TOOLS_LOG and the contents
+# of its --config file in MONGO_TOOLS_CONFIG_LOG.
+[ -n "${MONGO_TOOLS_LOG:-}" ] && printf '%s\n' "mongotop $*" >> "$MONGO_TOOLS_LOG"
+for arg in "$@"; do
+   case "$arg" in
+      --config=*) [ -n "${MONGO_TOOLS_CONFIG_LOG:-}" ] && cat "${arg#--config=}" >> "$MONGO_TOOLS_CONFIG_LOG" ;;
+   esac
+done
+echo "2026-05-14T00:00:00.000+0000	connected to: mongodb://localhost:27017/" >&2
+# FAKE_BLOCK_IGNORE_TERM: hang for that many seconds and ignore SIGTERM, so
+# only SIGKILL stops it.  The sleep inherits the ignored signal.
+if [ -n "${FAKE_BLOCK_IGNORE_TERM:-}" ]; then
+   trap "" TERM
+   sleep "$FAKE_BLOCK_IGNORE_TERM"
+fi
+echo "ns total read write"
+echo "admin.system.version 1ms 1ms 0ms"

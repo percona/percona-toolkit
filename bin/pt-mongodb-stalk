@@ -1,0 +1,3466 @@
+#!/usr/bin/env bash
+
+# This program is part of Percona Toolkit: http://www.percona.com/software/
+# See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
+# notices and disclaimers.
+
+set -u
+
+# ###########################################################################
+# log_warn_die package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/log_warn_die.sh
+#   t/lib/bash/log_warn_die.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+PTFUNCNAME=""
+PTDEBUG="${PTDEBUG:-""}"
+EXIT_STATUS=0
+
+ts() {
+   TS=$(date +%F-%T | tr ':-' '_')
+   echo "$TS $*"
+}
+
+info() {
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
+}
+
+warn() {
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
+   EXIT_STATUS=1
+}
+
+die() {
+   ts "$*" >&2
+   EXIT_STATUS=1
+   exit 1
+}
+
+_d () {
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
+}
+
+# ###########################################################################
+# End log_warn_die package
+# ###########################################################################
+
+# ###########################################################################
+# subshell package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/subshell.sh
+#   t/lib/bash/subshell.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+wait_for_subshells() {
+   local max_wait=$1
+   if [ "$(jobs)" ]; then
+      log "Waiting up to $max_wait seconds for subprocesses to finish..."
+      local slept=0
+      while [ -n "$(jobs)" ]; do
+         local subprocess_still_running=""
+         for pid in $(jobs -p); do
+            if kill -0 $pid >/dev/null 2>&1; then
+               subprocess_still_running=1
+            fi
+         done
+         if [ "$subprocess_still_running" ]; then
+            sleep 1
+            slept=$((slept + 1))
+            [ $slept -ge $max_wait ] && break
+         else
+            break
+         fi
+      done
+   fi
+}
+
+kill_all_subshells() {
+   if [ "$(jobs)" ]; then
+      for pid in $(jobs -p); do
+         if kill -0 $pid >/dev/null 2>&1; then
+            log "Killing subprocess $pid"
+            kill $pid >/dev/null 2>&1
+         fi
+      done
+   else
+      log "All subprocesses have finished"
+   fi
+}
+
+# ###########################################################################
+# End subshell package
+# ###########################################################################
+
+# ###########################################################################
+# parse_options package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/parse_options.sh
+#   t/lib/bash/parse_options.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+
+
+
+
+set -u
+
+ARGV=""           # Non-option args (probably input files)
+EXT_ARGV=""       # Everything after -- (args for an external command)
+HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
+OPT_ERRS=0        # How many command line option errors
+OPT_VERSION=""    # If --version was specified
+OPT_HELP=""       # If --help was specified
+OPT_ASK_PASS=""   # If --ask-pass was specified
+PO_DIR=""         # Directory with program option spec files
+GLOBAL_CONFIG=0   # We ignore non-recognized options in global configs
+
+usage() {
+   local file="$1"
+
+   local usage="$(grep '^Usage: ' "$file")"
+   echo $usage
+   echo
+   echo "For more information, 'man $TOOL' or 'perldoc $file'."
+}
+
+usage_or_errors() {
+   local file="$1"
+   local version=""
+
+   if [ "$OPT_VERSION" ]; then
+      version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
+      echo "$version"
+      return 1
+   fi
+
+   if [ -z $(_which perl) ]; then
+      echo "Perl binary required to run this tool"
+      return 1
+   fi
+
+   if [ "$OPT_HELP" ]; then
+      usage "$file"
+      echo
+      echo "Command line options:"
+      echo
+      perl -e '
+         use strict;
+         use warnings FATAL => qw(all);
+         my $lcol = 20;         # Allow this much space for option names.
+         my $rcol = 80 - $lcol; # The terminal is assumed to be 80 chars wide.
+         my $name;
+         while ( <> ) {
+            my $line = $_;
+            chomp $line;
+            if ( $line =~ s/^long:/  --/ ) {
+               $name = $line;
+            }
+            elsif ( $line =~ s/^desc:// ) {
+               $line =~ s/ +$//mg;
+               my @lines = grep { $_      }
+                           $line =~ m/(.{0,$rcol})(?:\s+|\Z)/g;
+               if ( length($name) >= $lcol ) {
+                  print $name, "\n", (q{ } x $lcol);
+               }
+               else {
+                  printf "%-${lcol}s", $name;
+               }
+               print join("\n" . (q{ } x $lcol), @lines);
+               print "\n";
+            }
+         }
+      ' "$PO_DIR"/*
+      echo
+      echo "Options and values after processing arguments:"
+      echo
+      (
+         cd "$PO_DIR"
+         for opt in *; do
+            local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+            eval local varvalue=\$$varname
+            if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+               if [ "$varvalue" -a "$varvalue" = "yes" ];
+                  then varvalue="TRUE"
+               else
+                  varvalue="FALSE"
+               fi
+            fi
+            printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+            echo
+         done
+      )
+      return 1
+   fi
+
+   if [ $OPT_ERRS -gt 0 ]; then
+      echo
+      usage "$file"
+      return 1
+   fi
+
+   return 0
+}
+
+option_error() {
+   local err="$1"
+   OPT_ERRS=$(($OPT_ERRS + 1))
+   echo "$err" >&2
+}
+
+parse_options() {
+   local file="$1"
+   shift
+
+   ARGV=""
+   EXT_ARGV=""
+   HAVE_EXT_ARGV=""
+   OPT_ERRS=0
+   OPT_VERSION=""
+   OPT_HELP=""
+   OPT_ASK_PASS=""
+   PO_DIR="$PT_TMPDIR/po"
+
+   if [ ! -d "$PO_DIR" ]; then
+      mkdir "$PO_DIR"
+      if [ $? -ne 0 ]; then
+         echo "Cannot mkdir $PO_DIR" >&2
+         exit 1
+      fi
+   fi
+
+   rm -rf "$PO_DIR"/*
+   if [ $? -ne 0 ]; then
+      echo "Cannot rm -rf $PO_DIR/*" >&2
+      exit 1
+   fi
+
+   _parse_pod "$file"  # Parse POD into program option (po) spec files
+   _eval_po            # Eval po into existence with default values
+
+   if [ $# -ge 2 ] &&  [ "$1" = "--config" ]; then
+      shift  # --config
+      local user_config_files="$1"
+      shift  # that ^
+      local IFS=","
+      for user_config_file in $user_config_files; do
+         _parse_config_files "$user_config_file"
+      done
+   else
+       GLOBAL_CONFIG=1
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf"
+       GLOBAL_CONFIG=0
+       _parse_config_files "/etc/percona-toolkit/$TOOL.conf"
+      if [ "${HOME:-}" ]; then
+         GLOBAL_CONFIG=1
+         _parse_config_files "$HOME/.percona-toolkit.conf"
+         GLOBAL_CONFIG=0
+         _parse_config_files "$HOME/.$TOOL.conf"
+      fi
+   fi
+
+   _parse_command_line "${@:-""}"
+}
+
+_parse_pod() {
+   local file="$1"
+
+   PO_FILE="$file" PO_DIR="$PO_DIR" perl -e '
+      $/ = "";
+      my $file = $ENV{PO_FILE};
+      open my $fh, "<", $file or die "Cannot open $file: $!";
+      while ( defined(my $para = <$fh>) ) {
+         next unless $para =~ m/^=head1 OPTIONS/;
+         while ( defined(my $para = <$fh>) ) {
+            last if $para =~ m/^=head1/;
+            chomp;
+            if ( $para =~ m/^=item --(\S+)/ ) {
+               my $opt  = $1;
+               my $file = "$ENV{PO_DIR}/$opt";
+               open my $opt_fh, ">", $file or die "Cannot open $file: $!";
+               print $opt_fh "long:$opt\n";
+               $para = <$fh>;
+               chomp;
+               if ( $para =~ m/^[a-z ]+:/ ) {
+                  map {
+                     chomp;
+                     my ($attrib, $val) = split(/: /, $_);
+                     print $opt_fh "$attrib:$val\n";
+                  } split(/; /, $para);
+                  $para = <$fh>;
+                  chomp;
+               }
+               my ($desc) = $para =~ m/^([^?.]+)/;
+               print $opt_fh "desc:$desc.\n";
+               close $opt_fh;
+            }
+         }
+         last;
+      }
+   '
+}
+
+_eval_po() {
+   local IFS=":"
+   for opt_spec in "$PO_DIR"/*; do
+      local opt=""
+      local default_val=""
+      local neg=0
+      local size=0
+      while read key val; do
+         case "$key" in
+            long)
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
+               ;;
+            default)
+               default_val="$val"
+               ;;
+            "short form")
+               ;;
+            type)
+               [ "$val" = "size" ] && size=1
+               ;;
+            desc)
+               ;;
+            negatable)
+               if [ "$val" = "yes" ]; then
+                  neg=1
+               fi
+               ;;
+            *)
+               echo "Invalid attribute in $opt_spec: $line" >&2
+               exit 1
+         esac
+      done < "$opt_spec"
+
+      if [ -z "$opt" ]; then
+         echo "No long attribute in option spec $opt_spec" >&2
+         exit 1
+      fi
+
+      if [ $neg -eq 1 ]; then
+         if [ -z "$default_val" ] || [ "$default_val" != "yes" ]; then
+            echo "Option $opt_spec is negatable but not default: yes" >&2
+            exit 1
+         fi
+      fi
+
+      if [ $size -eq 1 -a -n "$default_val" ]; then
+         default_val=$(size_to_bytes $default_val)
+      fi
+
+      eval "OPT_${opt}"="$default_val"
+   done
+}
+
+_parse_config_files() {
+
+   for config_file in "${@:-""}"; do
+      test -f "$config_file" || continue
+
+      while read config_opt; do
+
+         echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
+
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
+
+         [ "$config_opt" = "" ] && continue
+
+         echo "$config_opt" | grep -v 'version-check' >/dev/null 2>&1 || continue
+
+         if ! [ "$HAVE_EXT_ARGV" ]; then
+            config_opt="--$config_opt"
+         fi
+
+         _parse_command_line "$config_opt"
+
+      done < "$config_file"
+
+      HAVE_EXT_ARGV=""  # reset for each file
+
+   done
+}
+
+_parse_command_line() {
+   local opt=""
+   local val=""
+   local next_opt_is_val=""
+   local opt_is_ok=""
+   local opt_is_negated=""
+   local real_opt=""
+   local required_arg=""
+   local spec=""
+
+   for opt in "${@:-""}"; do
+      if [ "$opt" = "--" -o "$opt" = "----" ]; then
+         HAVE_EXT_ARGV=1
+         continue
+      fi
+      if [ "$HAVE_EXT_ARGV" ]; then
+         if [ "$EXT_ARGV" ]; then
+            EXT_ARGV="$EXT_ARGV $opt"
+         else
+            EXT_ARGV="$opt"
+         fi
+         continue
+      fi
+
+      if [ "$next_opt_is_val" ]; then
+         next_opt_is_val=""
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "\-") -eq 1 ]; then
+            option_error "$real_opt requires a $required_arg argument"
+            continue
+         fi
+         val="$opt"
+         opt_is_ok=1
+      else
+         if [ $(expr "$opt" : "\-") -eq 0 ]; then
+            if [ -z "$ARGV" ]; then
+               ARGV="$opt"
+            else
+               ARGV="$ARGV $opt"
+            fi
+            continue
+         fi
+
+         real_opt="$opt"
+
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
+            if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
+               opt_is_negated=1
+               opt="$base_opt"
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
+         else
+            if $(echo $opt | grep '^--no-' >/dev/null); then
+               opt_is_negated=1
+               opt=$(echo $opt | sed 's/^--no-//')
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
+         fi
+
+         if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
+            val="$(echo "$opt" | awk '{ st = index($0,"="); print substr($0, st+1)}')"
+            opt="$(echo $opt | awk -F= '{print $1}')"
+         fi
+
+         if [ -f "$PT_TMPDIR/po/$opt" ]; then
+            spec="$PT_TMPDIR/po/$opt"
+         else
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
+            if [ -z "$spec"  ]; then
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
+                  continue
+               else
+                  option_error "Unknown option: $real_opt"
+               fi
+            fi
+         fi
+
+         required_arg=$(cat "$spec" | awk -F: '/^type:/{print $2}')
+         if [ "$required_arg" ]; then
+            if [ "$val" ]; then
+               opt_is_ok=1
+            else
+               next_opt_is_val=1
+            fi
+         else
+            if [ "$val" ]; then
+               option_error "Option $real_opt does not take a value"
+               continue
+            fi
+            if [ "$opt_is_negated" ]; then
+               val=""
+            else
+               val="yes"
+            fi
+            opt_is_ok=1
+         fi
+      fi
+
+      if [ "$opt_is_ok" ]; then
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
+
+         if grep "^type:size" "$spec" >/dev/null; then
+            val=$(size_to_bytes $val)
+         fi
+
+         eval "OPT_$opt"='$val'
+
+         opt=""
+         val=""
+         next_opt_is_val=""
+         opt_is_ok=""
+         opt_is_negated=""
+         real_opt=""
+         required_arg=""
+         spec=""
+      fi
+   done
+}
+
+size_to_bytes() {
+   local size="$1"
+   echo $size | perl -ne '%f=(B=>1, K=>1_024, M=>1_048_576, G=>1_073_741_824, T=>1_099_511_627_776); m/^(\d+)([kMGT])?/i; print $1 * $f{uc($2 || "B")};'
+}
+
+# ###########################################################################
+# End parse_options package
+# ###########################################################################
+
+# ###########################################################################
+# tmpdir package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/tmpdir.sh
+#   t/lib/bash/tmpdir.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+PT_TMPDIR=""
+
+mk_tmpdir() {
+   local dir="${1:-""}"
+
+   if [ -n "$dir" ]; then
+      if [ ! -d "$dir" ]; then
+         mkdir "$dir" || die "Cannot make tmpdir $dir"
+      fi
+      PT_TMPDIR="$dir"
+   else
+      local tool="${0##*/}"
+      local pid="$$"
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
+         || die "Cannot make secure tmpdir"
+   fi
+}
+
+rm_tmpdir() {
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
+   fi
+   PT_TMPDIR=""
+}
+
+# ###########################################################################
+# End tmpdir package
+# ###########################################################################
+
+# ###########################################################################
+# alt_cmds package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/alt_cmds.sh
+#   t/lib/bash/alt_cmds.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+_pidof() {
+   local cmd="$1"
+   if ! pidof "$cmd" 2>/dev/null; then
+      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
+   fi
+}
+
+_lsof() {
+   local pid="$1"
+   if ! lsof -p $pid 2>/dev/null; then
+      /bin/ls -l /proc/$pid/fd 2>/dev/null
+   fi
+}
+
+
+
+_which() {
+   if which "$1" 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   elif command -v "$1" 1>/dev/null 2>&1; then
+      command -v "$1" 2>/dev/null | awk '{print $1}'
+   fi
+}
+
+# ###########################################################################
+# End alt_cmds package
+# ###########################################################################
+
+# ###########################################################################
+# safeguards package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/safeguards.sh
+#   t/lib/bash/safeguards.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+disk_space() {
+   local filesystem="${1:-$PWD}"
+   df -P -k "$filesystem"
+}
+
+check_disk_space() {
+   local file="$1"
+   local min_free_bytes="${2:-0}"
+   local min_free_pct="${3:-0}"
+   local bytes_margin="${4:-0}"
+
+   local used_bytes=$(tail -n 1 "$file" | perl -ane 'print $F[2] * 1024')
+   local free_bytes=$(tail -n 1 "$file" | perl -ane 'print $F[3] * 1024')
+   local pct_used=$(tail -n 1 "$file" | perl -ane 'print ($F[4] =~ m/(\d+)/)')
+   local pct_free=$((100 - $pct_used))
+
+   local real_free_bytes=$free_bytes
+   local real_pct_free=$pct_free
+
+   if [ $bytes_margin -gt 0 ]; then
+      used_bytes=$(($used_bytes + $bytes_margin))
+      free_bytes=$(($free_bytes - $bytes_margin))
+      pct_used=$(perl -e "print int(($used_bytes/($used_bytes + $free_bytes)) * 100)")
+
+      pct_free=$((100 - $pct_used))
+   fi
+
+   if [ $free_bytes -lt $min_free_bytes -o $pct_free -lt $min_free_pct ]; then
+      warn "Not enough free disk space:
+    Limit: ${min_free_pct}% free, ${min_free_bytes} bytes free
+   Actual: ${real_pct_free}% free, ${real_free_bytes} bytes free (- $bytes_margin bytes margin)
+"
+      cat "$file" >&2
+
+      return 1  # not enough disk space
+   fi
+
+   return 0  # disk space is OK
+}
+
+# ###########################################################################
+# End safeguards package
+# ###########################################################################
+
+# ###########################################################################
+# daemon package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the GitHub repository at,
+#   lib/bash/daemon.sh
+#   t/lib/bash/daemon.sh
+# See https://github.com/percona/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+make_pid_file() {
+   local file="$1"
+   local pid="$2"
+
+
+   if [ -f "$file" ]; then
+      local old_pid=$(cat "$file")
+      if [ -z "$old_pid" ]; then
+         die "PID file $file already exists but it is empty"
+      else
+         kill -0 $old_pid 2>/dev/null
+         if [ $? -eq 0 ]; then
+            die "PID file $file already exists and its PID ($old_pid) is running"
+         else
+            echo "Overwriting PID file $file because its PID ($old_pid)" \
+                 "is not running"
+         fi
+      fi
+   fi
+
+   echo "$pid" > "$file"
+   if [ $? -ne 0 ]; then
+      die "Cannot create or write PID file $file"
+   fi
+}
+
+remove_pid_file() {
+   local file="$1"
+   if [ -f "$file" ]; then
+      rm "$file"
+   fi
+}
+
+# ###########################################################################
+# End daemon package
+# ###########################################################################
+
+# ###########################################################################
+# Mongo helpers
+# ###########################################################################
+
+CMD_MONGOSH="${CMD_MONGOSH:-"$(_which mongosh)"}"
+CMD_MONGOSTAT="${CMD_MONGOSTAT:-"$(_which mongostat)"}"
+CMD_MONGOTOP="${CMD_MONGOTOP:-"$(_which mongotop)"}"
+CMD_IOSTAT="${CMD_IOSTAT:-"$(_which iostat)"}"
+CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
+CMD_MPSTAT="${CMD_MPSTAT:-"$(_which mpstat)"}"
+CMD_PIDSTAT="${CMD_PIDSTAT:-"$(_which pidstat)"}"
+CMD_TOP="${CMD_TOP:-"$(_which top)"}"
+CMD_PMAP="${CMD_PMAP:-"$(_which pmap)"}"
+CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
+CMD_JOURNALCTL="${CMD_JOURNALCTL:-"$(_which journalctl)"}"
+CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
+CMD_NETSTAT="${CMD_NETSTAT:-"$(_which netstat)"}"
+CMD_GDB="${CMD_GDB:-"$(_which gdb)"}"
+CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
+CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
+
+# Try to find command manually, as pt-stalk does.
+[ -z "$CMD_SYSCTL" ] && [ -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
+
+MONGO_SHELL=""
+MONGO_CONNECT_JS=""    # mongosh script prefix that connects to MongoDB
+MONGO_TOOLS_CONFIG=""  # mongostat/mongotop --config file
+
+choose_mongo_shell() {
+   [ -n "$CMD_MONGOSH" ] \
+      || die "Cannot execute mongosh. Check that it is in PATH or set CMD_MONGOSH."
+   MONGO_SHELL="$CMD_MONGOSH"
+}
+
+# Print the connection URI built from --uri or --host and --port, with the
+# credentials, auth database and TLS options added.  The URI contains the
+# password, so it is only written to files in $PT_TMPDIR that only the
+# current user can read; it is never passed on a command line or printed.
+mongo_uri() {
+   PT_URI="$OPT_URI" PT_HOST="$OPT_HOST" PT_PORT="$OPT_PORT" \
+   PT_USER="$OPT_USER" PT_PASSWORD="$OPT_PASSWORD" \
+   PT_AUTHDB="$OPT_AUTHENTICATIONDATABASE" PT_TLS="$OPT_TLS" \
+   PT_CAFILE="$OPT_SSLCAFILE" PT_PEMFILE="$OPT_SSLPEMKEYFILE" perl -e '
+      use strict;
+      use warnings;
+      sub esc {
+         my ($s) = @_;
+         $s =~ s/([^A-Za-z0-9\-._~])/sprintf("%%%02X", ord($1))/ge;
+         return $s;
+      }
+      sub opt { return defined $ENV{$_[0]} ? $ENV{$_[0]} : "" }
+
+      my $uri = opt("PT_URI") ne "" ? opt("PT_URI")
+              : "mongodb://" . opt("PT_HOST") . ":" . opt("PT_PORT") . "/";
+      my ($scheme, $rest) = $uri =~ m{^(mongodb(?:\+srv)?://)(.*)$}s
+         or die "Invalid --uri: it must start with mongodb:// or mongodb+srv://\n";
+      my ($hosts, $path) = $rest =~ m{^([^/?]*)(.*)$}s;
+      $path = "/$path" unless $path =~ m{^/};
+
+      # Credentials in --uri take precedence over --user and --password.
+      if ( opt("PT_USER") ne "" && $hosts !~ m/@/ ) {
+         my $userinfo = esc(opt("PT_USER"));
+         $userinfo .= ":" . esc(opt("PT_PASSWORD")) if opt("PT_PASSWORD") ne "";
+         $hosts = "$userinfo\@$hosts";
+      }
+
+      # authSource only applies when authenticating; passing it without a
+      # user makes mongostat and mongotop try to authenticate and fail.
+      my @params;
+      push @params, "authSource=" . esc(opt("PT_AUTHDB"))
+         if $hosts =~ m/@/ && opt("PT_AUTHDB") ne "" && $path !~ m/[?&]authSource=/i;
+      push @params, "tls=true"
+         if opt("PT_TLS") ne "" && $path !~ m/[?&](?:tls|ssl)=/i;
+      push @params, "tlsCAFile=" . esc(opt("PT_CAFILE")) if opt("PT_CAFILE") ne "";
+      push @params, "tlsCertificateKeyFile=" . esc(opt("PT_PEMFILE")) if opt("PT_PEMFILE") ne "";
+      if ( @params ) {
+         my $sep = $path !~ m/\?/ ? "?" : $path =~ m/[?&]$/ ? "" : "&";
+         $path .= $sep . join("&", @params);
+      }
+      print "$scheme$hosts$path";
+   '
+}
+
+# Write the files used to connect to MongoDB: a mongosh script prefix and a
+# mongostat/mongotop --config file.  Both contain the URI with the password,
+# so the password never appears on a command line, where it could be seen
+# in the process list (and in the ps samples this tool collects).
+setup_mongo_connection() {
+   local uri
+   uri="$(mongo_uri)" || die "Cannot build the MongoDB connection URI"
+
+   MONGO_CONNECT_JS="$PT_TMPDIR/mongo-connect.js"
+   MONGO_TOOLS_CONFIG="$PT_TMPDIR/mongo-tools.yaml"
+   (
+      umask 077
+      printf 'db = connect(%s).getSiblingDB("admin");\n' "$(_js_quote "$uri")" \
+         > "$MONGO_CONNECT_JS"
+      printf 'uri: "%s"\n' "$(printf '%s' "$uri" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')" \
+         > "$MONGO_TOOLS_CONFIG"
+   ) || die "Cannot write the MongoDB connection files in $PT_TMPDIR"
+
+   # For plugins, as pt-stalk's $EXT_ARGV holds the mysql connection options:
+   # "$CMD_MONGOSH $EXT_ARGV script.js" runs the connection script, then
+   # script.js, connected as the tool is.  mongosh runs --eval before any
+   # file, so --eval cannot use it; plugins use mongo_eval instead.
+   EXT_ARGV="--nodb --quiet $MONGO_CONNECT_JS"
+}
+
+# Run a mongosh script against the server.  The script is written to a file
+# after the connection prefix; mongosh only runs files whose names end in .js.
+mongo_eval() {
+   local script="$1"
+   local file status
+   file="$(mktemp "$PT_TMPDIR/mongo-eval.XXXXXX")" || return 1
+   mv "$file" "$file.js" || return 1
+   file="$file.js"
+   { cat "$MONGO_CONNECT_JS"; printf '%s\n' "$script"; } > "$file"
+   "$MONGO_SHELL" --nodb --quiet "$file"
+   status=$?
+   rm -f "$file"
+   return $status
+}
+
+mongo_monitor_exec() {
+   local cmd="$1"
+   local interval="$2"
+   shift 2
+   "$cmd" "--config=$MONGO_TOOLS_CONFIG" "$@" "$interval"
+}
+
+# Write the known passwords to $PT_TMPDIR/secrets, readable only by the
+# current user, for redact_secrets: --password as given and URL-encoded, and
+# the password in --uri as given and decoded.  The passwords are passed in the
+# environment, never as arguments.
+write_secrets_file() {
+   (
+      umask 077
+      PT_URI="$OPT_URI" PT_PASSWORD="$OPT_PASSWORD" perl -e '
+         use strict;
+         use warnings;
+         my %secrets;
+         my $password = defined $ENV{PT_PASSWORD} ? $ENV{PT_PASSWORD} : "";
+         if ( $password ne "" ) {
+            $secrets{$password} = 1;
+            (my $esc = $password) =~ s/([^A-Za-z0-9\-._~])/sprintf("%%%02X", ord($1))/ge;
+            $secrets{$esc} = 1;
+         }
+         my $uri = defined $ENV{PT_URI} ? $ENV{PT_URI} : "";
+         if ( $uri =~ m{^mongodb(?:\+srv)?://[^/\@]*?:([^/\@]*)\@} && $1 ne "" ) {
+            my $esc = $1;
+            $secrets{$esc} = 1;
+            (my $raw = $esc) =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/ge;
+            $secrets{$raw} = 1;
+         }
+         print "$_\n" for grep { m/\S/ && !m/\n/ } keys %secrets;
+      ' > "$PT_TMPDIR/secrets"
+   ) || die "Cannot write $PT_TMPDIR/secrets"
+}
+
+# Hide credentials in command lines, for the ps samples: every known password
+# (see write_secrets_file), then anything that looks like one.
+redact_secrets() {
+   perl -pe '
+      BEGIN {
+         my $file = shift @ARGV;
+         our @secrets;
+         if ( $file && open my $fh, "<", $file ) {
+            chomp(@secrets = <$fh>);
+            # Longest first, so a password that contains another is hidden whole.
+            @secrets = sort { length($b) <=> length($a) } grep { length } @secrets;
+         }
+      }
+      our @secrets;
+      for my $secret ( @secrets ) { s{\Q$secret\E}{***}g }
+      s{(mongodb(?:\+srv)?://[^:/@\s]*):[^@\s]*@}{$1:***@}g;
+      s{(--password(?:=|\s+))(?!\*\*\*)\S+}{$1***}g;
+      s{(\s-p\s*)(?!\*\*\*)(?!-)\S+}{$1***}g if m/mongo/;
+   ' "${PT_TMPDIR:+$PT_TMPDIR/secrets}"
+}
+
+mongo_status_value() {
+   local var="$1"
+   mongo_eval "
+      const __pt = db.getSiblingDB('admin');
+      const __doc = __pt.runCommand({serverStatus: 1});
+      let __val = __doc;
+      for (const __part of $(_js_quote "$var").split('.')) {
+         if (__val && Object.prototype.hasOwnProperty.call(__val, __part)) {
+            __val = __val[__part];
+         } else {
+            __val = '';
+            break;
+         }
+      }
+      if (__val === undefined || __val === null || __val === '') {
+         print('');
+      } else if (typeof __val === 'object') {
+         print(EJSON.stringify(__val));
+      } else {
+         print(__val);
+      }
+   "
+}
+
+mongo_currentop_count() {
+   local field="$1"
+   local regex="${OPT_MATCH:-""}"
+   local js_regex="null"
+   if [ -n "$regex" ]; then
+      js_regex="new RegExp($(_js_quote "$regex"))"
+   fi
+   mongo_eval "
+      const __pt = db.getSiblingDB('admin');
+      // In the currentOp command, fields other than currentOp and $-options are
+      // filters; it returns the operations of all users the user may see.
+      const __doc = __pt.runCommand({currentOp: 1, active: true});
+      const __parts = $(_js_quote "$field").split('.');
+      const __re = ${js_regex};
+      let __count = 0;
+      (__doc.inprog || []).forEach(function(op) {
+         let __val = op;
+         for (const __part of __parts) {
+            if (__val && Object.prototype.hasOwnProperty.call(__val, __part)) {
+               __val = __val[__part];
+            } else {
+               __val = undefined;
+               break;
+            }
+         }
+         if (__val === undefined || __val === null) {
+            return;
+         }
+         const __str = typeof __val === 'string' ? __val : EJSON.stringify(__val);
+         if (!__re || __re.test(__str)) {
+            __count++;
+         }
+      });
+      print(__count);
+   "
+}
+
+mongo_repl_lag_seconds() {
+   mongo_eval "
+      const __pt = db.getSiblingDB('admin');
+      let __doc = {};
+      try {
+         __doc = __pt.runCommand({replSetGetStatus: 1});
+      } catch (e) {
+         print('');
+         quit(0);
+      }
+      if (!__doc || !Array.isArray(__doc.members)) {
+         print('');
+         quit(0);
+      }
+
+      let __primary = null;
+      for (const __member of __doc.members) {
+         if (__member.stateStr === 'PRIMARY' && __member.optimeDate) {
+            __primary = __member;
+            break;
+         }
+      }
+      if (!__primary) {
+         print(0);
+         quit(0);
+      }
+
+      const __primaryMs = new Date(__primary.optimeDate).getTime();
+      let __maxLag = 0;
+      for (const __member of __doc.members) {
+         if (__member._id === __primary._id || !__member.optimeDate) {
+            continue;
+         }
+         const __state = __member.stateStr || '';
+         if (!/^(SECONDARY|STARTUP2|RECOVERING|ROLLBACK)$/.test(__state)) {
+            continue;
+         }
+         const __memberMs = new Date(__member.optimeDate).getTime();
+         if (isNaN(__memberMs)) {
+            continue;
+         }
+         const __lag = Math.max(0, Math.floor((__primaryMs - __memberMs) / 1000));
+         if (__lag > __maxLag) {
+            __maxLag = __lag;
+         }
+      }
+      print(__maxLag);
+   "
+}
+
+_js_quote() {
+   printf '%s' "$1" | perl -0pe 's/\\/\\\\/g; s/'"'"'/\\'"'"'/g; $_="'"'"'$_'"'"'"'
+}
+
+# ###########################################################################
+# Finding the server's process on this host.  Process data (pmap, lsof,
+# pidstat, gdb, strace, the log) and the process triggers must only use the
+# process of the server the tool is connected to, never another mongod or
+# mongos that happens to run here.
+# ###########################################################################
+
+# The program name of a process, or nothing if it does not run.
+_process_name() {
+   local comm
+   comm=$(ps -p "$1" -o comm= 2>/dev/null | awk 'NF {print $1; exit}')
+   echo "${comm##*/}"
+}
+
+# The epoch second a process started, from ps's [[dd-]hh:]mm:ss elapsed time.
+_process_start() {
+   ps -p "$1" -o etime= 2>/dev/null | awk -v now="$(date +%s)" '
+      NF {
+         t = $1; d = 0
+         if (index(t, "-")) {
+            d = substr(t, 1, index(t, "-") - 1)
+            t = substr(t, index(t, "-") + 1)
+         }
+         n = split(t, a, ":")
+         s = (n == 3) ? a[1] * 3600 + a[2] * 60 + a[3] : a[1] * 60 + a[2]
+         print now - (d * 86400 + s)
+         exit
+      }'
+}
+
+# The TCP ports a process listens on, one per line.  Empty if lsof is missing
+# or cannot see the process, e.g. another user's process when not root.
+_listening_ports() {
+   lsof -nP -a -p "$1" -iTCP -sTCP:LISTEN -Fn 2>/dev/null \
+      | sed -n 's/^n.*:\([0-9][0-9]*\)$/\1/p' | sort -u
+}
+
+# Succeed if PID is the server identified by its port and start time, as the
+# server reported them; else print why not and fail.  The name alone is not
+# enough: the server may run on another host or in a container, where its PID
+# can belong to an unrelated local mongod.  The listening port is checked only
+# when lsof can see the process.
+verify_mongo_pid() {
+   local pid="$1" port="$2" start="$3"
+   local name local_start ports
+
+   name=$(_process_name "$pid")
+   case "$name" in
+      mongod|mongos) ;;
+      *) echo "no mongod or mongos with PID $pid runs on this host"; return 1 ;;
+   esac
+   if [ -n "$start" ]; then
+      local_start=$(_process_start "$pid")
+      if [ -z "$local_start" ] \
+         || [ "$((local_start - start))" -gt 10 ] || [ "$((start - local_start))" -gt 10 ]; then
+         echo "the local $name with PID $pid did not start when the server did, so it is another server"
+         return 1
+      fi
+   fi
+   if [ -n "$port" ]; then
+      ports=$(_listening_ports "$pid")
+      if [ -n "$ports" ] && ! echo "$ports" | grep -qx "$port"; then
+         echo "the local $name with PID $pid does not listen on the server's port $port"
+         return 1
+      fi
+   fi
+   return 0
+}
+
+# The host and port the tool connects to, as "host port", if there is one
+# host: from --uri, or --host and --port.  Nothing for mongodb+srv:// or a
+# list of hosts.
+mongo_target() {
+   PT_URI="$OPT_URI" PT_HOST="$OPT_HOST" PT_PORT="$OPT_PORT" perl -e '
+      my ($host, $port);
+      if ( ($ENV{PT_URI} || "") ne "" ) {
+         my ($hosts) = $ENV{PT_URI} =~ m{^mongodb://(?:[^/\@]*\@)?([^/?]*)} or exit;
+         exit if $hosts =~ m/,/;
+         ($host, $port) = $hosts =~ m/^\[([^\]]+)\](?::(\d+))?$/;
+         ($host, $port) = $hosts =~ m/^([^:]+)(?::(\d+))?$/ unless defined $host;
+      }
+      else {
+         ($host, $port) = ($ENV{PT_HOST}, $ENV{PT_PORT});
+      }
+      exit unless defined $host && $host ne "";
+      print "$host ", ($port || 27017), "\n";
+   '
+}
+
+# The PID of the mongod or mongos listening on the port the tool connects to,
+# if that host is this host.  Used when the server cannot report its PID,
+# e.g. with --system-only.  Prints the PID, or why there is none and fails.
+mongo_pid_by_port() {
+   local host port
+   read -r host port <<EOF
+$(mongo_target)
+EOF
+   if [ -z "$host" ]; then
+      echo "cannot tell which host the connection options point to"
+      return 1
+   fi
+   case "$host" in
+      localhost|127.*|::1|"$(hostname)"|"$(hostname -s 2>/dev/null)") ;;
+      *) echo "$host:$port is not this host"; return 1 ;;
+   esac
+   local pid
+   pid=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -Fpc 2>/dev/null | awk '
+      /^p/ { pid = substr($0, 2) }
+      /^c/ { c = substr($0, 2); if (c == "mongod" || c == "mongos") { print pid; exit } }')
+   if [ -z "$pid" ]; then
+      if [ "$(id -u)" -ne 0 ]; then
+         echo "no mongod or mongos listening on port $port found on this host; lsof can only see other users' processes when run as root"
+      else
+         echo "no mongod or mongos listening on port $port found on this host"
+      fi
+      return 1
+   fi
+   echo "$pid"
+}
+
+sample_count() {
+   perl -e '
+      my ($run_time, $sleep_collect) = @ARGV;
+      $run_time = 0 + ($run_time || 0);
+      $sleep_collect = 0 + ($sleep_collect || 0);
+      $sleep_collect = 1 if $sleep_collect <= 0;
+      my $count = int(($run_time / $sleep_collect) + 0.999999);
+      $count = 1 if $count < 1;
+      print $count;
+   ' "$1" "$2"
+}
+
+# Append the output of a command to a sample file.  stderr is not redirected,
+# so it goes to the collection's <prefix>-output file.  Only the label is
+# logged on failure, never the command line, which may contain credentials.
+run_collector() {
+   local file="$1"
+   local label="$2"
+   shift 2
+
+   "$@" >> "$file"
+   local status=$?
+   if [ "$status" -ne 0 ]; then
+      warn "$label exited with status $status"
+   fi
+   return 0
+}
+
+# ###########################################################################
+# Stopping collectors.  The subshell package's kill_all_subshells kills this
+# shell's background jobs, but most jobs are Bash functions or subshells that
+# run a command (mongosh, mongostat, mongotop, vmstat, ...), and killing the
+# wrapper leaves that command running, still querying the server and writing
+# to the collection's files.  kill_collectors stops whole process trees.
+# ###########################################################################
+
+# All descendants of the given processes, children before their children.
+_descendants() {
+   ps -A -o pid= -o ppid= 2>/dev/null | awk -v roots="$*" '
+      { children[$2] = children[$2] " " $1 }
+      END {
+         n = split(roots, queue, " ")
+         for (i = 1; i <= n; i++) {
+            m = split(children[queue[i]], kids, " ")
+            for (j = 1; j <= m; j++) {
+               if (!(kids[j] in seen)) {
+                  seen[kids[j]] = 1
+                  queue[++n] = kids[j]
+                  print kids[j]
+               }
+            }
+         }
+      }'
+}
+
+# True if a process runs, i.e. exists and is not a zombie.
+_running() {
+   kill -0 "$1" 2>/dev/null || return 1
+   case "$(ps -o stat= -p "$1" 2>/dev/null)" in
+      Z*|"") return 1 ;;
+   esac
+   return 0
+}
+
+# Stop this shell's background jobs and every process they started: send
+# TERM to all of them at once, wait up to 5 seconds for them to exit, then
+# KILL what is left, and reap the jobs.  The process tree is read before
+# anything is killed, as a killed wrapper's children are given to init.
+kill_collectors() {
+   local jobs_pids pids pid left waited=0
+   jobs_pids=$(jobs -p)
+   if [ -z "$jobs_pids" ]; then
+      log "All subprocesses have finished"
+      return 0
+   fi
+   pids="$jobs_pids $(_descendants $jobs_pids)"
+   pids=$(echo $pids)
+   log "Killing subprocesses $pids"
+   kill $pids >/dev/null 2>&1
+   while :; do
+      left=""
+      for pid in $pids; do
+         _running "$pid" && left="$left $pid"
+      done
+      [ -z "$left" ] && break
+      if [ "$waited" -ge 5 ]; then
+         log "Subprocesses did not exit; killing them with SIGKILL:$left"
+         kill -9 $left >/dev/null 2>&1
+         break
+      fi
+      sleep 1
+      waited=$((waited + 1))
+   done
+   wait $jobs_pids 2>/dev/null
+   return 0
+}
+
+# The collection types --skip-collection accepts.
+SUPPORTED_SKIPS="currentop metadata mongod-log mongostat mongotop replsetgetstatus serverstatus"
+
+# True if --skip-collection includes this collection type.
+_should_skip() {
+   case ",${OPT_SKIP_COLLECTION:-}," in
+      *",$1,"*) return 0 ;;
+   esac
+   return 1
+}
+
+# ###########################################################################
+# collection section
+# ###########################################################################
+
+# mongosh code shared by the MongoDB collectors.  The scripts that use it
+# start with the P_* constants written by mongo_collect_params, and write the
+# sample files themselves with Node's fs module, so one mongosh process can
+# collect a whole time series.  Each sample starts with a TS line in the same
+# format as pt-stalk's, followed by pretty-printed JSON.  Errors are printed
+# on stdout, which goes to <prefix>-output.
+read -r -d '' MONGO_JS_LIB <<'MONGO_JS'
+const __fs = require('fs');
+
+// What identifies the server process on its host: its PID, its port and
+// when it started (epoch seconds, from this host's clock and its uptime).
+// serverStatus.host is "hostname:port", or just "hostname" when the server
+// listens on the default port 27017; digits in the hostname are not a port.
+function __server_identity(status) {
+   status = status || {};
+   const uptime = status.uptimeMillis !== undefined ? Number(status.uptimeMillis)
+                : status.uptime !== undefined ? Number(status.uptime) * 1000 : NaN;
+   const host = String(status.host || '');
+   const port = host.match(/:(\d+)$/);
+   return {
+      pid:   status.pid !== undefined ? String(status.pid) : '',
+      port:  port ? port[1] : host ? '27017' : '',
+      start: isNaN(uptime) ? '' : String(Math.round((Date.now() - uptime) / 1000)),
+   };
+}
+
+function __ts() {
+   const d = new Date();
+   const pad = (n, w) => String(n).padStart(w || 2, '0');
+   return 'TS ' + Math.floor(d.getTime() / 1000) + '.' + pad(d.getMilliseconds(), 3) + '000000 '
+      + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' '
+      + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+
+function __file(name) {
+   return P_DIR + '/' + P_PREFIX + '-' + name;
+}
+
+function __cmd(cmd, dbName) {
+   const doc = db.getSiblingDB(dbName || 'admin').runCommand(cmd);
+   if (doc && doc.ok === 0) {
+      throw new Error(doc.errmsg || 'command failed');
+   }
+   if (doc && typeof doc === 'object' && !Array.isArray(doc)) {
+      delete doc.ok;
+      delete doc['$clusterTime'];
+      delete doc.operationTime;
+   }
+   return doc;
+}
+
+function __write(name, doc, ts) {
+   __fs.appendFileSync(__file(name), (ts || __ts()) + '\n' + EJSON.stringify(doc, null, 2) + '\n');
+}
+
+// --skip-collection: true if this collection type is skipped.
+function __skip(name) {
+   return P_SKIP.indexOf(',' + name + ',') !== -1;
+}
+
+// True if the server is a replica set member.  hello replaced isMaster in
+// MongoDB 4.4.2 and 5.0; errors are ignored, as with no replica set.
+function __replset() {
+   for (const cmd of [{hello: 1}, {isMaster: 1}]) {
+      try {
+         const doc = db.getSiblingDB('admin').runCommand(cmd);
+         if (doc && doc.ok) {
+            return !!doc.setName;
+         }
+      } catch (e) {
+      }
+   }
+   return false;
+}
+
+function __try(label, f) {
+   try {
+      return f();
+   } catch (e) {
+      print('MongoDB ' + label + ': ' + e.message);
+      return undefined;
+   }
+}
+
+// serverStatus as numeric "name value" rows for pt-mext: dot-separated paths
+// with characters other than [A-Za-z0-9_.-] replaced by _, whole numbers only
+// (booleans as 0/1, decimals rounded), no strings, dates or arrays, and no
+// latency histograms or metrics.commands.
+function __extRows(doc, path, rows, seen) {
+   for (const key of Object.keys(doc)) {
+      if (/histogram/i.test(key)) {
+         continue;
+      }
+      const name = (path ? path + '.' : '') + String(key).replace(/[^A-Za-z0-9_.-]/g, '_');
+      if (name === 'metrics.commands') {
+         continue;
+      }
+      const v = doc[key];
+      let num;
+      if (v === null || v === undefined) {
+         continue;
+      } else if (typeof v === 'boolean') {
+         num = v ? '1' : '0';
+      } else if (typeof v === 'number' || (typeof v === 'object' && (v._bsontype === 'Int32' || v._bsontype === 'Double' || v._bsontype === 'Decimal128'))) {
+         const f = typeof v === 'number' ? v : parseFloat(v.toString());
+         if (!isFinite(f)) {
+            continue;
+         }
+         const r = Math.round(f);
+         num = Number.isSafeInteger(r) ? String(r) : BigInt(r).toString();
+      } else if (typeof v === 'object' && v._bsontype === 'Long') {
+         num = v.toString();
+      } else if (typeof v === 'object' && !v._bsontype && !Array.isArray(v) && !(v instanceof Date)) {
+         __extRows(v, name, rows, seen);
+         continue;
+      } else {
+         continue;
+      }
+      if (!seen.has(name)) {
+         seen.add(name);
+         rows.push([name, num]);
+      }
+   }
+   return rows;
+}
+
+// The same table format as "mysqladmin extended-status -i", followed by an
+// empty line, so pt-mext can compare the samples.
+function __extTable(doc) {
+   const rows = __extRows(doc, '', [], new Set());
+   const w1 = rows.reduce((w, r) => Math.max(w, r[0].length), 'Variable_name'.length);
+   const w2 = rows.reduce((w, r) => Math.max(w, r[1].length), 'Value'.length);
+   const line = '+' + '-'.repeat(w1 + 2) + '+' + '-'.repeat(w2 + 2) + '+';
+   const row = (a, b) => '| ' + a.padEnd(w1) + ' | ' + b.padEnd(w2) + ' |';
+   return [line, row('Variable_name', 'Value'), line]
+      .concat(rows.map(r => row(r[0], r[1])), [line, '', ''])
+      .join('\n');
+}
+MONGO_JS
+
+# Metadata collected once at the start of a collection.  First, tell the
+# collector the server's PID, log file, port and start time, so it can check
+# that the server runs on this host, collect process data, follow the log and
+# capture its traffic without waiting for the rest.  The file is renamed into
+# place, so it is never read half-written.
+read -r -d '' MONGO_JS_ONCE <<'MONGO_JS'
+const __status = __try('serverStatus', () => __cmd({serverStatus: 1})) || {};
+const __opts = __try('getCmdLineOpts', () => __cmd({getCmdLineOpts: 1}));
+const __log = __opts && __opts.parsed && __opts.parsed.systemLog;
+const __id = __server_identity(__status);
+__fs.writeFileSync(P_TMPDIR + '/mongo-server.tmp', [__id.pid,
+   __log && __log.destination === 'file' && __log.path || '', __id.port, __id.start].join('|') + '\n');
+__fs.renameSync(P_TMPDIR + '/mongo-server.tmp', P_TMPDIR + '/mongo-server');
+
+if (!__skip('metadata')) {
+   __try('hostInfo', () => __write('hostinfo', __cmd({hostInfo: 1})));
+   __try('buildInfo', () => __write('buildinfo', __cmd({buildInfo: 1})));
+   if (__opts) {
+      __write('cmdlineopts', __opts);
+   }
+   __try('getParameter', () => __write('parameters', __cmd({getParameter: '*'})));
+   __try('connPoolStats', () => __write('connpoolstats', __cmd({connPoolStats: 1})));
+
+   __try('profiling status', () => {
+      const status = {};
+      for (const d of __cmd({listDatabases: 1, nameOnly: true}).databases) {
+         status[d.name] = __try('profiling status of ' + d.name, () => __cmd({profile: -1}, d.name));
+      }
+      __write('profiling-status', status);
+   });
+
+   if (__replset()) {
+      __try('replSetGetConfig', () => __write('rs-conf', __cmd({replSetGetConfig: 1}).config));
+      __try('printReplicationInfo', () => __write('oplog-info', db.printReplicationInfo().value));
+      __try('printSecondaryReplicationInfo', () => __write('secondary-replication-info', db.printSecondaryReplicationInfo().value));
+   }
+}
+MONGO_JS
+
+# Time series: one sample every --sleep-collect seconds for --run-time
+# seconds.  All files of a sample share its TS line.
+read -r -d '' MONGO_JS_LOOP <<'MONGO_JS'
+const __is_replset = __replset();
+const __start = Date.now();
+for (let i = 0; i < P_COUNT; i++) {
+   const __wait = __start + i * P_INTERVAL * 1000 - Date.now();
+   if (__wait > 0) {
+      sleep(__wait);
+   }
+   const ts = __ts();
+   if (!__skip('serverstatus')) {
+      __try('serverStatus', () => {
+         const status = __cmd({serverStatus: 1});
+         __write('serverstatus', status, ts);
+         __fs.appendFileSync(__file('serverstatus-ext'), __extTable(status));
+      });
+   }
+   if (!__skip('currentop')) {
+      __try('currentOp', () => __write('currentop',
+         __cmd({currentOp: 1, active: true}), ts));
+   }
+   if (__is_replset && !__skip('replsetgetstatus')) {
+      __try('replSetGetStatus', () => __write('replsetgetstatus', __cmd({replSetGetStatus: 1}), ts));
+   }
+}
+MONGO_JS
+
+# The P_* constants used by the scripts above.
+mongo_collect_params() {
+   local d="$1"
+   local p="$2"
+   local count="${3:-1}"
+   printf 'const P_DIR = %s;\n' "$(_js_quote "$d")"
+   printf 'const P_PREFIX = %s;\n' "$(_js_quote "$p")"
+   printf 'const P_TMPDIR = %s;\n' "$(_js_quote "$PT_TMPDIR")"
+   printf 'const P_COUNT = %d;\n' "$count"
+   printf 'const P_INTERVAL = %d;\n' "$OPT_SLEEP_COLLECT"
+   printf 'const P_SKIP = %s;\n' "$(_js_quote ",${OPT_SKIP_COLLECTION:-},")"
+}
+
+collect() {
+   local d="$1"  # directory to save results in
+   local p="$2"  # prefix for each result file
+   local cnt
+   local collect_wait
+   local start_time
+   local curr_time
+   local metadata_pid=""
+
+   cnt=$(sample_count "$OPT_RUN_TIME" "$OPT_SLEEP_COLLECT")
+   start_time=$(date +%s)
+   rm -f "$PT_TMPDIR/mongo-server" "$PT_TMPDIR/collect-mongo-pid"
+
+   # Nothing waits for MongoDB: when the server stalls, which is when the
+   # data matters most, the system data must still be collected.  The system
+   # collectors start first, then the MongoDB ones, all in the background.
+   # The metadata queries have no deadline of their own: like every
+   # collector, they are stopped when the collection ends.
+   if [ ! "$OPT_MONGODB_ONLY" ]; then
+      collect_system_data "$d" "$p" "$cnt"
+   fi
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      collect_mongodb_data_one "$d" "$p" &
+      metadata_pid=$!
+      collect_mongodb_data_loop "$d" "$p" "$cnt"
+   fi
+   collect_server_process_data "$d" "$p" &
+
+   # This loop collects the system snapshots every --sleep-collect seconds,
+   # and defines the duration of the collection, as in pt-stalk.  The free
+   # disk space is checked even with --mongodb-only.
+   log "Loop start: $(date +'TS %s.%N %F %T')"
+   curr_time=$start_time
+   while [ $((curr_time - start_time)) -lt "$OPT_RUN_TIME" ]; do
+      collect_system_data_loop "$d" "$p" || break
+      curr_time=$(date +%s)
+   done
+   log "Loop end: $(date +'TS %s.%N %F %T')"
+
+   hostname > "$d/$p-hostname"
+
+   # Like pt-stalk, give the collectors another --run-time seconds to finish
+   # (mongosh, mongostat and mongotop take a moment to start) before killing
+   # them.
+   collect_wait="$OPT_RUN_TIME"
+   [ "$collect_wait" -lt 2 ] && collect_wait=2
+   wait_for_subshells "$collect_wait"
+   if [ -n "$metadata_pid" ] && kill -0 "$metadata_pid" 2>/dev/null; then
+      warn "The MongoDB metadata queries did not finish in $((OPT_RUN_TIME + collect_wait)) seconds; stopping them"
+   fi
+   kill_collectors
+   # If strace was stopped with the other collectors, it may have left the
+   # server's threads stopped, as stop_mongodb_process_collectors says.
+   if [ "$OPT_COLLECT_STRACE" ] && [ -s "$PT_TMPDIR/collect-mongo-pid" ]; then
+      kill -s 18 "$(cat "$PT_TMPDIR/collect-mongo-pid")" 2>/dev/null
+   fi
+
+   if [ ! "$OPT_MONGODB_ONLY" ]; then
+      collect_system_journal "$d" "$p" "$start_time"
+   fi
+
+   # Remove "empty" files, i.e. ones that are truly empty or just contain
+   # timestamp lines, as pt-stalk does.  -a: GNU grep prints nothing on stdout
+   # for a binary file such as the tcpdump capture, which would look empty.
+   for file in "$d/$p-"*; do
+      [ -f "$file" ] || continue
+      if [ -z "$(grep -a -v '^TS ' --max-count 10 "$file")" ]; then
+         log "Removing empty file $file"
+         rm "$file"
+      fi
+   done
+}
+
+# The server's identity (see MONGO_JS_ONCE), then the metadata.
+collect_mongodb_data_one() {
+   local d="$1"
+   local p="$2"
+
+   mongo_eval "$(mongo_collect_params "$d" "$p")
+$MONGO_JS_LIB
+$MONGO_JS_ONCE"
+}
+
+# Print the PID of the server if it runs on this host, else nothing, and log
+# why.  The server reports its PID, port and start time, and the local process
+# with that PID must match all of them (see verify_mongo_pid).  If the server
+# did not report them (e.g. the metadata collection failed or was skipped),
+# use the mongod or mongos listening on the port the tool connects to, if
+# that is this host.
+local_mongo_pid() {
+   local server_pid="" log_path="" port="" server_start="" out
+   if [ -f "$PT_TMPDIR/mongo-server" ]; then
+      IFS='|' read -r server_pid log_path port server_start < "$PT_TMPDIR/mongo-server"
+   fi
+   if [ -n "$server_pid" ]; then
+      if out=$(verify_mongo_pid "$server_pid" "$port" "$server_start"); then
+         echo "$server_pid"
+      else
+         log "Not collecting process data for the server: $out" >&2
+      fi
+      return 0
+   fi
+   if out=$(mongo_pid_by_port); then
+      echo "$out"
+   else
+      log "Not collecting process data for the server: $out" >&2
+   fi
+   return 0
+}
+
+# Data about the server's own process, run in the background by collect():
+# the process data, the server's log, and with --collect-tcpdump its traffic.
+# They need to know which process is the server, which the metadata script
+# reports first (see MONGO_JS_ONCE).  Wait for it at most 5 seconds (or
+# --run-time, if shorter): if the server is stalled and does not answer,
+# local_mongo_pid looks for it by port instead.  The collectors then run for
+# --run-time seconds, though they start a few seconds after the collection:
+# cut to the end of the collection window, strace could capture nothing.
+# collect() waits up to another --run-time for them, then stops them.
+collect_server_process_data() {
+   local d="$1"
+   local p="$2"
+   local mongo_pid="" waited=0 max_wait=5
+   local strace_pid=""   # set by collect_mongodb_process_data
+   local tcpdump_pid=""  # set by collect_mongodb_process_data
+
+   [ "$OPT_RUN_TIME" -lt "$max_wait" ] && max_wait="$OPT_RUN_TIME"
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      while [ ! -f "$PT_TMPDIR/mongo-server" ] && [ "$waited" -lt "$max_wait" ]; do
+         sleep 1
+         waited=$((waited + 1))
+      done
+      [ -f "$PT_TMPDIR/mongo-server" ] \
+         || log "The MongoDB server did not report its PID in $max_wait seconds; looking for it by port"
+   fi
+   mongo_pid=$(local_mongo_pid)
+   [ -n "$mongo_pid" ] && echo "$mongo_pid" > "$PT_TMPDIR/collect-mongo-pid"
+
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      collect_mongodb_process_data "$d" "$p" "$mongo_pid"
+      collect_mongodb_log "$d" "$p" "$mongo_pid" "$OPT_RUN_TIME"
+   fi
+   if [ ! "$OPT_MONGODB_ONLY" ]; then
+      collect_system_process_data "$d" "$p" "$mongo_pid" "$OPT_RUN_TIME"
+   fi
+
+   # strace and tcpdump run for --run-time seconds from when strace starts,
+   # after pmap and gdb.
+   [ -n "$strace_pid$tcpdump_pid" ] && sleep "$OPT_RUN_TIME"
+   stop_mongodb_process_collectors "$mongo_pid"
+   wait
+}
+
+# Process-level data for the server, as pt-stalk collects for mysqld: the
+# memory map, and with --collect-gdb, --collect-strace and --collect-tcpdump,
+# stack traces, system calls and network traffic.  strace and tcpdump run
+# until stop_mongodb_process_collectors; their PIDs are stored in the
+# caller's strace_pid and tcpdump_pid.
+collect_mongodb_process_data() {
+   local d="$1"
+   local p="$2"
+   local mongo_pid="$3"
+   local server_pid="" log_path="" port="" server_start="" host
+
+   if [ -f "$PT_TMPDIR/mongo-server" ]; then
+      IFS='|' read -r server_pid log_path port server_start < "$PT_TMPDIR/mongo-server"
+   fi
+
+   # Capture the traffic on the server's port, as pt-stalk does for MySQL.
+   # This works whether or not the server runs on this host.  If the server
+   # did not report its port, use the one the tool connects to.
+   if [ "$OPT_COLLECT_TCPDUMP" ]; then
+      if [ -z "$port" ]; then
+         read -r host port <<EOF
+$(mongo_target)
+EOF
+      fi
+      if [ -z "$CMD_TCPDUMP" ]; then
+         warn "--collect-tcpdump: cannot find tcpdump"
+      elif [ -n "$port" ]; then
+         $CMD_TCPDUMP -i any -s 4096 -w "$d/$p-tcpdump" port "$port" &
+         tcpdump_pid=$!
+      fi
+   fi
+
+   if [ -z "$mongo_pid" ]; then
+      [ "$OPT_COLLECT_GDB" ] || [ "$OPT_COLLECT_STRACE" ] \
+         && warn "The MongoDB server does not run on this host; not collecting gdb or strace data"
+      return 0
+   fi
+
+   # Memory map of the server before anything else, as pt-stalk does.
+   if [ -n "$CMD_PMAP" ]; then
+      if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1; then
+         run_collector "$d/$p-pmap" pmap "$CMD_PMAP" -x "$mongo_pid"
+      else
+         run_collector "$d/$p-pmap" pmap "$CMD_PMAP" "$mongo_pid"
+      fi
+   fi
+
+   # gdb freezes the server while it prints the stack traces; pt-pmp can
+   # aggregate them.
+   if [ "$OPT_COLLECT_GDB" ]; then
+      if [ -z "$CMD_GDB" ]; then
+         warn "--collect-gdb: cannot find gdb"
+      else
+         $CMD_GDB                     \
+            -ex "set pagination 0"    \
+            -ex "thread apply all bt" \
+            --batch -p "$mongo_pid"   \
+            >> "$d/$p-stacktrace"
+      fi
+   fi
+
+   if [ "$OPT_COLLECT_STRACE" ]; then
+      if [ -z "$CMD_STRACE" ]; then
+         warn "--collect-strace: cannot find strace"
+      else
+         $CMD_STRACE -T -s 0 -f -p "$mongo_pid" -o "$d/$p-strace" &
+         strace_pid=$!
+      fi
+   fi
+}
+
+# Stop strace and tcpdump at the end of the collection, as pt-stalk does.
+stop_mongodb_process_collectors() {
+   local mongo_pid="$1"
+
+   if [ -n "$strace_pid" ]; then
+      kill -s 2 "$strace_pid" 2>/dev/null
+      sleep 1
+      kill -s 15 "$strace_pid" 2>/dev/null
+      # Sometimes strace leaves threads/processes in T status.
+      [ -n "$mongo_pid" ] && kill -s 18 "$mongo_pid" 2>/dev/null
+   fi
+   if [ -n "$tcpdump_pid" ]; then
+      kill "$tcpdump_pid" 2>/dev/null
+   fi
+   return 0
+}
+
+# Follow the server's log file for the rest of the collection, like pt-stalk
+# does with the MySQL error log, if the server runs on this host and the log
+# is readable.
+collect_mongodb_log() {
+   local d="$1"
+   local p="$2"
+   local mongo_pid="$3"
+   local run_time="$4"
+   local server_pid="" log_path="" port="" server_start=""
+
+   _should_skip "mongod-log" && return 0
+   [ -n "$mongo_pid" ] && [ -f "$PT_TMPDIR/mongo-server" ] || return 0
+   IFS='|' read -r server_pid log_path port server_start < "$PT_TMPDIR/mongo-server"
+   [ "$server_pid" = "$mongo_pid" ] && [ -n "$log_path" ] || return 0
+   if [ ! -r "$log_path" ]; then
+      log "Cannot read the MongoDB log $log_path; not collecting it"
+      return 0
+   fi
+
+   (
+      tail -f "$log_path" >> "$d/$p-mongod-log" &
+      local tail_pid=$!
+      sleep "$run_time"
+      kill "$tail_pid" 2>/dev/null
+   ) &
+}
+
+collect_mongodb_data_loop() {
+   local d="$1"
+   local p="$2"
+   local cnt="$3"
+
+   # replSetGetStatus is collected only on replica set members, which the
+   # script checks itself.
+   if ! _should_skip "serverstatus" || ! _should_skip "currentop" \
+      || ! _should_skip "replsetgetstatus"; then
+      mongo_eval "$(mongo_collect_params "$d" "$p" "$cnt")
+$MONGO_JS_LIB
+$MONGO_JS_LOOP" &
+   fi
+
+   # mongostat and mongotop come with the MongoDB Database Tools, which may
+   # not be installed; say so, as for gdb, strace and tcpdump.
+   if ! _should_skip "mongostat"; then
+      if [ -z "$CMD_MONGOSTAT" ]; then
+         warn "Cannot find mongostat; not collecting it.  Install the MongoDB Database Tools, set CMD_MONGOSTAT, or use --skip-collection mongostat."
+      else
+         run_collector "$d/$p-mongostat" mongostat \
+            mongo_monitor_exec "$CMD_MONGOSTAT" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
+      fi
+   fi
+   if ! _should_skip "mongotop"; then
+      if [ -z "$CMD_MONGOTOP" ]; then
+         warn "Cannot find mongotop; not collecting it.  Install the MongoDB Database Tools, set CMD_MONGOTOP, or use --skip-collection mongotop."
+      else
+         run_collector "$d/$p-mongotop" mongotop \
+            mongo_monitor_exec "$CMD_MONGOTOP" "$OPT_SLEEP_COLLECT" --rowcount "$cnt" &
+      fi
+   fi
+}
+
+# System data collected once, or by commands that run for the whole
+# collection.  The file names and formats are the same as pt-stalk's, so
+# pt-sift, pt-diskstats and pt-pmp can read them.
+collect_system_data() {
+   local d="$1"
+   local p="$2"
+   local cnt="$3"
+
+   (ps -eaF | redact_secrets >> "$d/$p-ps") &
+
+   if [ -n "$CMD_TOP" ]; then
+      if top -bn1 >/dev/null 2>&1; then
+         run_collector "$d/$p-top" top "$CMD_TOP" -b -d "$OPT_SLEEP_COLLECT" -n "$cnt" &
+      elif top -l 1 >/dev/null 2>&1; then
+         run_collector "$d/$p-top" top "$CMD_TOP" -l "$cnt" -s "$OPT_SLEEP_COLLECT" &
+      fi
+   fi
+
+   if [ -n "$CMD_SYSCTL" ]; then
+      run_collector "$d/$p-sysctl" sysctl "$CMD_SYSCTL" -a &
+   fi
+
+   # dmesg events from 60 seconds before the collection until now.
+   if [ -n "$CMD_DMESG" ] && [ -r /proc/uptime ]; then
+      local uptime start
+      uptime=$(awk '{print $1}' /proc/uptime)
+      start=$(echo "$uptime 60" | awk '{print ($1 - $2)}')
+      ($CMD_DMESG | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '"$start"') { print }' \
+         >> "$d/$p-dmesg") &
+   fi
+
+   if [ -n "$CMD_VMSTAT" ]; then
+      run_collector "$d/$p-vmstat" vmstat "$CMD_VMSTAT" "$OPT_SLEEP_COLLECT" "$cnt" &
+      run_collector "$d/$p-vmstat-overall" vmstat "$CMD_VMSTAT" "$OPT_RUN_TIME" 2 &
+   fi
+   if [ -n "$CMD_IOSTAT" ]; then
+      run_collector "$d/$p-iostat" iostat "$CMD_IOSTAT" -dx "$OPT_SLEEP_COLLECT" "$cnt" &
+      run_collector "$d/$p-iostat-overall" iostat "$CMD_IOSTAT" -dx "$OPT_RUN_TIME" 2 &
+   fi
+   if [ -n "$CMD_MPSTAT" ]; then
+      run_collector "$d/$p-mpstat" mpstat "$CMD_MPSTAT" -P ALL "$OPT_SLEEP_COLLECT" "$cnt" &
+      run_collector "$d/$p-mpstat-overall" mpstat "$CMD_MPSTAT" -P ALL "$OPT_RUN_TIME" 1 &
+   fi
+
+   if [ -n "$CMD_PIDSTAT" ]; then
+      run_collector "$d/$p-pidstat_d" pidstat "$CMD_PIDSTAT" -d "$OPT_SLEEP_COLLECT" "$cnt" &
+      run_collector "$d/$p-pidstat_u" pidstat "$CMD_PIDSTAT" -u "$OPT_SLEEP_COLLECT" "$cnt" &
+   fi
+}
+
+# System data about the server's process, for the rest of the collection,
+# if the server runs on this host: open files, and pidstat in a
+# pidstat_mongod or pidstat_mongos file.
+collect_system_process_data() {
+   local d="$1"
+   local p="$2"
+   local mongo_pid="$3"
+   local run_time="$4"
+
+   [ -n "$mongo_pid" ] || return 0
+   (_lsof "$mongo_pid" >> "$d/$p-lsof") &
+   if [ -n "$CMD_PIDSTAT" ]; then
+      run_collector "$d/$p-pidstat_$(_process_name "$mongo_pid")" pidstat \
+         "$CMD_PIDSTAT" -urdwt -h -p "$mongo_pid" "$OPT_SLEEP_COLLECT" \
+         "$(sample_count "$run_time" "$OPT_SLEEP_COLLECT")" &
+   fi
+}
+
+# System journal entries from 60 seconds before the collection started until
+# now, like the dmesg lines pt-stalk collects.  journalctl runs as the current
+# user, without sudo; if that user cannot read the system journal, journalctl
+# says so in <prefix>-output and only the entries the user can read are saved.
+collect_system_journal() {
+   local d="$1"
+   local p="$2"
+   local start_time="$3"
+
+   [ -n "$CMD_JOURNALCTL" ] || return 0
+   run_collector "$d/$p-journal" journalctl \
+      "$CMD_JOURNALCTL" --no-pager --since "@$((start_time - 60))"
+}
+
+# One cycle of system snapshots, each starting with a TS line, as in
+# pt-stalk.  Returns 1 if there is not enough free disk space to continue.
+collect_system_data_loop() {
+   local d="$1"
+   local p="$2"
+   local ts
+
+   disk_space "$d" > "$d/$p-disk-space"
+   check_disk_space "$d/$p-disk-space" "$OPT_DISK_BYTES_FREE" "$OPT_DISK_PCT_FREE" \
+      || return 1
+
+   # Synchronize onto the clock tick, so samples are --sleep-collect apart.
+   sleep "$(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")"
+   ts="$(date +"TS %s.%N %F %T")"
+
+   # With --mongodb-only, only the free disk space is checked.
+   [ "$OPT_MONGODB_ONLY" ] && return 0
+
+   local file
+   for file in diskstats:diskstats stat:procstat vmstat:procvmstat meminfo:meminfo \
+               slabinfo:slabinfo interrupts:interrupts; do
+      if [ -r "/proc/${file%%:*}" ]; then
+         (echo "$ts"; cat "/proc/${file%%:*}") >> "$d/$p-${file#*:}" &
+      fi
+   done
+   (echo "$ts"; df -k) >> "$d/$p-df" &
+   if [ -n "$CMD_NETSTAT" ]; then
+      (echo "$ts"; $CMD_NETSTAT -antp) >> "$d/$p-netstat" &
+      (echo "$ts"; $CMD_NETSTAT -s) >> "$d/$p-netstat_s" &
+   fi
+   if [ -d /sys/devices/system/node ]; then
+      (echo "$ts";
+       for node in /sys/devices/system/node/node*; do
+          [ -r "$node/numastat" ] || continue
+          basename "$node"
+          cat "$node/numastat"
+       done) >> "$d/$p-numastat" &
+   fi
+   return 0
+}
+
+# ###########################################################################
+# Option checks
+# ###########################################################################
+
+# The MongoDB-style options with uppercase letters (--authenticationDatabase,
+# --sslCAFile, --sslPEMKeyFile) keep the names used by mongosh and the other
+# pt-mongodb tools.  The standard parse_options package only splits
+# --name=value when the name is all lowercase, so these options must be given
+# as "--name value" and cannot be set in a config file, where every line is
+# name=value.  parse_options would report "--name=value" as an unknown option
+# on the command line, and silently ignore it in the global config files, so
+# detect both cases here and print a clear error instead.  Only option names
+# are printed, never their values.
+check_uppercase_options() {
+   local errors=0
+   local arg name
+   for arg in "$@"; do
+      [ "$arg" = "--" ] && break
+      case "$arg" in
+         --*=*)
+            name="${arg%%=*}"
+            case "$name" in
+               *[[:upper:]]*)
+                  echo "Use '$name <value>' instead of '$name=<value>': options with uppercase letters must be separated from their value by a space." >&2
+                  errors=$((errors + 1))
+                  ;;
+            esac
+            ;;
+      esac
+   done
+
+   # The global config files are shared by all tools and parse_options
+   # ignores unknown options in them, so only warn about those.
+   local global_files="/etc/percona-toolkit/percona-toolkit.conf"
+   local config_files="/etc/percona-toolkit/$TOOL.conf"
+   if [ "${HOME:-}" ]; then
+      global_files="$global_files $HOME/.percona-toolkit.conf"
+      config_files="$config_files $HOME/.$TOOL.conf"
+   fi
+   if [ $# -ge 2 ] && [ "$1" = "--config" ]; then
+      global_files=""
+      config_files="$(echo "$2" | tr ',' ' ')"
+   fi
+
+   local config_file
+   for config_file in $global_files; do
+      _uppercase_config_options "$config_file" \
+         "is ignored in this config file; give it on the command line"
+   done
+   for config_file in $config_files; do
+      _uppercase_config_options "$config_file" \
+         "cannot be set in a config file; give it on the command line" \
+         && errors=$((errors + 1))
+   done
+
+   [ "$errors" -eq 0 ]
+}
+
+# Print a message for each option with uppercase letters in a config file.
+# Returns 0 if any were found.
+_uppercase_config_options() {
+   local config_file="$1"
+   local msg="$2"
+   local line name
+   [ -f "$config_file" ] || return 1
+   grep -n -E '^[[:space:]]*[A-Za-z-]*[[:upper:]][A-Za-z-]*[[:space:]]*=' "$config_file" 2>/dev/null \
+      | while IFS= read -r line; do
+         name=$(echo "${line#*:}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*=.*$//')
+         echo "$config_file line ${line%%:*}: option '$name' $msg as '--$name <value>'."
+      done | grep . >&2
+}
+
+# ###########################################################################
+# Global variables
+# ###########################################################################
+
+TRIGGER_FUNCTION=""
+RAN_WITH=""
+EXIT_REASON=""
+TOOL="pt-mongodb-stalk"
+OKTORUN=1
+ITER=1
+
+# ###########################################################################
+# Plugin hooks
+# ###########################################################################
+
+before_stalk() { :; }
+before_collect() { :; }
+after_collect() { :; }
+after_collect_sleep() { :; }
+after_interval_sleep() { :; }
+after_stalk() { :; }
+
+# ###########################################################################
+# Trigger and control flow
+# ###########################################################################
+
+# Only status and currentop read --variable, and a --function file gets it as
+# its argument; only currentop reads --match.  The other functions read their
+# own source, so their logs must not show these options' values.
+
+# The trigger as logged with its value: e.g. status(connections.active), but
+# process-memory alone.
+trigger_label() {
+   case "$TRIGGER_FUNCTION" in
+      trg_status|trg_currentop|trg_plugin) echo "$OPT_FUNCTION($OPT_VARIABLE)" ;;
+      *) echo "$OPT_FUNCTION" ;;
+   esac
+}
+
+# The trigger options the function uses, for the options logged in RAN_WITH.
+trigger_options() {
+   case "$TRIGGER_FUNCTION" in
+      trg_currentop) echo " --variable=$OPT_VARIABLE --match=$OPT_MATCH" ;;
+      trg_status|trg_plugin) echo " --variable=$OPT_VARIABLE" ;;
+   esac
+}
+
+set_trg_func() {
+   local func="$1"
+   if [ -f "$func" ]; then
+      . "$func"
+      TRIGGER_FUNCTION="trg_plugin"
+      return 0
+   fi
+
+   func=$(echo "$func" | tr '[:upper:]' '[:lower:]')
+   case "$func" in
+      status|currentop|cpu|memory|writewait|repllag)
+         TRIGGER_FUNCTION="trg_$func"
+         return 0
+         ;;
+      mem)
+         TRIGGER_FUNCTION="trg_memory"
+         return 0
+         ;;
+      processcpu|process-cpu|proc_cpu|proc-cpu)
+         TRIGGER_FUNCTION="trg_process_cpu"
+         return 0
+         ;;
+      processmemory|process-memory|proc_memory|proc-memory)
+         TRIGGER_FUNCTION="trg_process_memory"
+         return 0
+         ;;
+      replicationlag|replciationlag|waitforreplicationlag|waitforreplciationlag)
+         TRIGGER_FUNCTION="trg_repllag"
+         return 0
+         ;;
+   esac
+
+   return 1
+}
+
+trg_status() {
+   local var="$1"
+   mongo_status_value "$var"
+}
+
+trg_currentop() {
+   local var="$1"
+   mongo_currentop_count "$var"
+}
+
+trg_cpu() {
+   local cpu user nice system idle iowait irq softirq steal guest guest_nice
+   local idle_all non_idle total total_delta idle_delta value
+   local cpu_state last_total last_idle
+
+   read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat || return 1
+   iowait=${iowait:-0}
+   irq=${irq:-0}
+   softirq=${softirq:-0}
+   steal=${steal:-0}
+   idle_all=$((idle + iowait))
+   non_idle=$((user + nice + system + irq + softirq + steal))
+   total=$((idle_all + non_idle))
+   cpu_state="$PT_TMPDIR/cpu-trigger-state"
+
+   if [ ! -f "$cpu_state" ]; then
+      echo "$total $idle_all" > "$cpu_state"
+      echo 0
+      return 0
+   fi
+
+   read -r last_total last_idle < "$cpu_state" || {
+      echo "$total $idle_all" > "$cpu_state"
+      echo 0
+      return 0
+   }
+   total_delta=$((total - last_total))
+   idle_delta=$((idle_all - last_idle))
+   echo "$total $idle_all" > "$cpu_state"
+
+   if [ "$total_delta" -le 0 ]; then
+      echo 0
+      return 0
+   fi
+
+   value=$(awk -v total="$total_delta" -v idle="$idle_delta" 'BEGIN { printf "%.2f\n", ((total - idle) / total) * 100 }')
+   echo "$value"
+}
+
+trg_memory() {
+   awk '
+      /^MemTotal:/ { total = $2 }
+      /^MemAvailable:/ { available = $2 }
+      /^MemFree:/ { free = $2 }
+      /^Buffers:/ { buffers = $2 }
+      /^Cached:/ { cached = $2 }
+      END {
+         if (available == "" && free >= 0) {
+            available = free + buffers + cached
+         }
+         if (total > 0 && available >= 0) {
+            printf "%.2f\n", ((total - available) / total) * 100
+         }
+      }
+   ' /proc/meminfo
+}
+
+# The PID of the server for the process triggers.  Connected to MongoDB, the
+# server reports its PID, port and start time, which the local process must
+# match (see verify_mongo_pid).  With --system-only the tool does not connect,
+# and uses the mongod or mongos listening on the port it would connect to,
+# on this host.  The result is cached in $PT_TMPDIR/trigger-mongo-pid while
+# that process runs.  Prints the PID, or why there is none and fails; never
+# falls back to another local mongod or mongos.
+trigger_mongo_pid() {
+   local cache="$PT_TMPDIR/trigger-mongo-pid"
+   local pid="" port="" start="" out host
+
+   if [ -f "$cache" ]; then
+      IFS='|' read -r pid port start < "$cache"
+      if verify_mongo_pid "$pid" "$port" "$start" >/dev/null; then
+         echo "$pid"
+         return 0
+      fi
+      rm -f "$cache"
+   fi
+
+   if [ -n "$MONGO_CONNECT_JS" ]; then
+      out=$(mongo_eval "$MONGO_JS_LIB
+const __id = __server_identity(db.getSiblingDB('admin').runCommand({serverStatus: 1}));
+print('identity|' + [__id.pid, __id.port, __id.start].join('|'));" 2>/dev/null \
+         | sed -n 's/^identity|//p' | tail -n 1)
+      IFS='|' read -r pid port start <<EOF
+$out
+EOF
+      if [ -z "$pid" ]; then
+         echo "the server did not report its PID"
+         return 1
+      fi
+      out=$(verify_mongo_pid "$pid" "$port" "$start") || { echo "$out"; return 1; }
+   else
+      pid=$(mongo_pid_by_port) || { echo "$pid"; return 1; }
+      read -r host port <<EOF
+$(mongo_target)
+EOF
+      start=$(_process_start "$pid")
+   fi
+   echo "$pid|$port|$start" > "$cache"
+   echo "$pid"
+}
+
+# A ps field (%cpu or %mem) of the server's process.
+_trg_process_stat() {
+   local field="$1" pid
+   if ! pid=$(trigger_mongo_pid); then
+      warn "Cannot find the MongoDB server's process on this host: $pid"
+      return 1
+   fi
+   ps -p "$pid" -o "$field=" 2>/dev/null \
+      | awk 'NF {gsub(/,/, "."); printf "%.2f\n", $1 + 0; exit}'
+}
+
+trg_process_cpu() {
+   _trg_process_stat %cpu
+}
+
+trg_process_memory() {
+   _trg_process_stat %mem
+}
+
+trg_writewait() {
+   local value
+   value=$(mongo_status_value "globalLock.currentQueue.writers")
+   if [ -z "$value" ]; then
+      value=0
+   fi
+   echo "$value"
+}
+
+trg_repllag() {
+   mongo_repl_lag_seconds
+}
+
+oktorun() {
+   if [ "$OKTORUN" -eq 0 ]; then
+      [ -z "$EXIT_REASON" ] && EXIT_REASON="OKTORUN is false"
+      return 1
+   fi
+
+   if [ -n "${OPT_ITERATIONS:-}" ] && [ "$OPT_ITERATIONS" -gt 0 ] && [ "$ITER" -gt "$OPT_ITERATIONS" ]; then
+      [ -z "$EXIT_REASON" ] && EXIT_REASON="no more iterations"
+      return 1
+   fi
+
+   return 0
+}
+
+sleep_ok() {
+   local seconds="$1"
+   local msg="${2:-""}"
+   if oktorun; then
+      [ "$msg" ] && log "$msg"
+      sleep "$seconds"
+   fi
+}
+
+purge_samples() {
+   local dir
+   dir=$(cd "$1" && pwd -P) || return
+   local retention_time="$2"
+   local retention_count="$3"
+   local retention_size="$4"
+   local prefix
+
+   # Delete collect files which are more than --retention-time days old.
+   if [ -n "${OPT_PREFIX:-}" ]; then
+      find "$dir" -maxdepth 1 -type f -mtime +"$retention_time" \
+         -name "$OPT_PREFIX-*" -exec rm -f '{}' \;
+   else
+      find "$dir" -maxdepth 1 -type f -mtime +"$retention_time" \
+         -name '[0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9]_[0-9][0-9]_[0-9][0-9]_[0-9][0-9]-*' \
+         -exec rm -f '{}' \;
+   fi
+
+   # Keep only the newest --retention-count collections.
+   if [ "${retention_count:-0}" -gt 0 ]; then
+      for prefix in $(_sample_prefixes "$dir" | tail -n +$((retention_count + 1))); do
+         echo "deleting files ${dir}/${prefix}-* according to the --retention-count param"
+         rm -f "$dir/$prefix"-* 2>/dev/null
+      done
+   fi
+
+   # Delete the oldest collections until --dest is at most --retention-size MB,
+   # always keeping the newest collection.
+   if [ "${retention_size:-0}" -gt 0 ]; then
+      for prefix in $(_sample_prefixes "$dir" | tail -n +2 | sort); do
+         local current_size
+         current_size=$(du -sk "$dir" | awk '{print int($1 / 1024)}')
+         if [ "$current_size" -gt "$retention_size" ]; then
+            echo "deleting files ${dir}/${prefix}-* according to the --retention-size param"
+            rm -f "$dir/$prefix"-* 2>/dev/null
+         else
+            break
+         fi
+      done
+   fi
+}
+
+# Print the collection prefixes in --dest, newest first.  Every file written
+# by a collection is named <prefix>-<name>, and a collection always writes
+# <prefix>-trigger, so only those prefixes are collections.  This leaves out
+# unrelated files such as a PID file or a log in --dest.
+_sample_prefixes() {
+   local dir="$1"
+   find "$dir" -maxdepth 1 -type f -name '*-trigger' -exec basename {} \; \
+      | sed 's/-trigger$//' | sort -r | uniq
+}
+
+sigtrap() {
+   if [ "$OKTORUN" -eq 1 ]; then
+      warn "Caught signal, exiting"
+      OKTORUN=0
+   else
+      warn "Caught signal again, forcing exit"
+      exit "$EXIT_STATUS"
+   fi
+}
+
+stalk() {
+   local cycles_true=0
+   local matched=""
+   local last_prefix=""
+
+   while oktorun; do
+      local msg=""
+      if [ "$OPT_STALK" ]; then
+         local value
+         value=$($TRIGGER_FUNCTION "$OPT_VARIABLE")
+         local trg_exit_status=$?
+         if [ -z "$value" ]; then
+            warn "Detected value is empty; something failed? Trigger exit status: $trg_exit_status"
+            matched=""
+            cycles_true=0
+         elif (( $(echo "$value $OPT_THRESHOLD" | awk '{print ($1 > $2)}') )); then
+            matched="yes"
+            cycles_true=$((cycles_true + 1))
+         else
+            matched=""
+            cycles_true=0
+         fi
+
+         msg="Check results: $(trigger_label)=$value, matched=${matched:-no}, cycles_true=$cycles_true"
+         if [ "$matched" ]; then
+            log "$msg"
+         else
+            info "$msg"
+         fi
+      elif [ "$OPT_COLLECT" ]; then
+         matched=1
+         cycles_true=$OPT_CYCLES
+         msg="Not stalking; collect triggered immediately"
+         log "$msg"
+      fi
+
+      if [ "$matched" ] && [ "$cycles_true" -ge "$OPT_CYCLES" ]; then
+         log "Collect $ITER triggered"
+
+         if [ "$OPT_MONGODB_ONLY" ]; then
+            log "MONGODB_ONLY: $OPT_MONGODB_ONLY"
+         elif [ "$OPT_SYSTEM_ONLY" ]; then
+            log "SYSTEM_ONLY: $OPT_SYSTEM_ONLY"
+         fi
+
+         # Send email to whomever that collect has been triggered.
+         if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
+            echo "$msg on $(hostname)" \
+            | mail -s "Collect triggered on $(hostname)" \
+              "$OPT_NOTIFY_BY_EMAIL"
+         fi
+
+         if [ "$OPT_COLLECT" ]; then
+            local prefix="${OPT_PREFIX:-$(date +%F-%T | tr ':-' '_')}"
+            # Check that there will be enough disk space for another
+            # collection the size of the previous one (default 20M margin).
+            # check_disk_space takes the margin in bytes.
+            local margin="20971520"
+            if [ -n "$last_prefix" ]; then
+               local last_kb
+               last_kb=$(du -kc "$OPT_DEST"/"$last_prefix"-* 2>/dev/null | tail -n 1 | awk '{print $1}')
+               [ -n "$last_kb" ] && [ "$last_kb" -gt 0 ] && margin=$((last_kb * 1024))
+            fi
+
+            disk_space "$OPT_DEST" > "$OPT_DEST/$prefix-disk-space"
+            check_disk_space "$OPT_DEST/$prefix-disk-space" "$OPT_DISK_BYTES_FREE" "$OPT_DISK_PCT_FREE" "$margin"
+            if [ $? -eq 0 ]; then
+               ts "$msg"                                >> "$OPT_DEST/$prefix-trigger"
+               ts "pt-mongodb-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
+               last_prefix="$prefix"
+
+               before_collect
+
+               ts "Collect $ITER started; run-time=$OPT_RUN_TIME; sleep-collect=$OPT_SLEEP_COLLECT" >> "$OPT_DEST/$prefix-trigger"
+
+               # As in pt-stalk, the collection runs in the background and the
+               # tool goes on to sleep --sleep seconds while it runs.
+               (
+                  collect_start_epoch=$(date +%s)
+                  collect "$OPT_DEST" "$prefix"
+                  collect_status=$?
+                  [ "$collect_status" -ne 0 ] \
+                     && warn "Collect $ITER exited with status $collect_status"
+                  ts "Collect $ITER finished in $(($(date +%s) - collect_start_epoch))s" \
+                     >> "$OPT_DEST/$prefix-trigger"
+               ) >> "$OPT_DEST/$prefix-output" 2>&1 &
+               local collector_pid=$!
+               log "Collect $ITER PID $collector_pid"
+               after_collect "$collector_pid"
+            else
+               warn "Collect canceled because there will not be enough disk space after collecting another $margin bytes"
+            fi
+
+            if [ -d "$OPT_DEST" ]; then
+               purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME" "$OPT_RETENTION_COUNT" "$OPT_RETENTION_SIZE"
+            fi
+         fi
+
+         log "Collect $ITER done"
+         ITER=$((ITER + 1))
+         cycles_true=0
+         sleep_ok "$OPT_SLEEP" "Sleeping $OPT_SLEEP seconds after collect"
+         after_collect_sleep
+      else
+         sleep_ok "$OPT_INTERVAL"
+         after_interval_sleep
+      fi
+   done
+
+   if [ "$OPT_COLLECT" ] && [ -d "$OPT_DEST" ]; then
+      purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME" "$OPT_RETENTION_COUNT" "$OPT_RETENTION_SIZE"
+   fi
+
+   # Give the last collection time to finish and stop its own collectors:
+   # --run-time, then up to --run-time more for the collectors, then up to 5
+   # seconds for kill_collectors, plus some time for the journal and the
+   # cleanup of empty files.
+   wait_for_subshells $((OPT_RUN_TIME * 3 + 15))
+   kill_collectors
+}
+
+main() {
+   trap sigtrap SIGHUP SIGINT SIGTERM
+   # $PT_TMPDIR holds the connection files, which contain the password, so
+   # remove it however the tool exits.  When daemonized, main runs in a
+   # background subshell, which does not inherit the EXIT trap, so set it here.
+   trap rm_tmpdir EXIT
+
+   RAN_WITH="--function=$OPT_FUNCTION$(trigger_options) --threshold=$OPT_THRESHOLD --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID --plugin=$OPT_PLUGIN"
+
+   log "Starting $0 $RAN_WITH"
+
+   before_stalk
+   stalk
+   after_stalk
+   rm_tmpdir
+   remove_pid_file "$OPT_PID"
+
+   log "Exiting because ${EXIT_REASON:-completed}"
+   [ "$OPT_COLLECT" ] && log "Files stored in $OPT_DEST"
+   log "$0 exit status $EXIT_STATUS"
+   exit "$EXIT_STATUS"
+}
+
+if [ "${0##*/}" = "$TOOL" ] || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; then
+   check_uppercase_options "${@:-""}" || exit 1
+
+   mk_tmpdir
+   parse_options "$0" "${@:-""}"
+   usage_or_errors "$0"
+   po_status=$?
+   rm_tmpdir
+   if [ "$po_status" -ne 0 ]; then
+      [ "$OPT_ERRS" -gt 0 ] && exit 1
+      exit 0
+   fi
+
+   # pt-stalk passes the arguments after -- to mysql.  Here the connection
+   # comes from --uri or the connection options, and $EXT_ARGV is set for
+   # plugins (see --plugin), so refuse them rather than ignore them.
+   if [ -n "$EXT_ARGV" ]; then
+      option_error "Arguments after -- are not supported: use --uri or the connection options"
+      usage_or_errors "$0" >/dev/null || exit 1
+   fi
+
+   if ! set_trg_func "$OPT_FUNCTION"; then
+      option_error "Invalid --function value: $OPT_FUNCTION"
+      usage_or_errors "$0" >/dev/null || exit 1
+   fi
+
+   if [ "$OPT_PLUGIN" ]; then
+      if [ -f "$OPT_PLUGIN" ]; then
+         . "$OPT_PLUGIN"
+      else
+         die "Invalid --plugin value: $OPT_PLUGIN is not a file"
+      fi
+   fi
+
+   if [ "$OPT_SYSTEM_ONLY" ] && [ "$OPT_MONGODB_ONLY" ]; then
+      log 'Both options --system-only and --mongodb-only specified, collecting only disk-space, hostname, output, and trigger metrics'
+   fi
+
+   if [ "$OPT_SKIP_COLLECTION" ]; then
+      for skip in $(echo "$OPT_SKIP_COLLECTION" | tr ',' ' '); do
+         case " $SUPPORTED_SKIPS " in
+            *" $skip "*) ;;
+            *) option_error "Invalid --skip-collection value: $skip.  Valid values are: $(echo $SUPPORTED_SKIPS | tr ' ' ',')" ;;
+         esac
+      done
+      usage_or_errors "$0" >/dev/null || exit 1
+   fi
+
+   # Warn if the password is on the command line, as pt-stalk does.
+   for arg in "$@"; do
+      case "$arg" in
+         --password|--password=*|-p|-p?*|*://*:*@*)
+            log 'Providing the MongoDB password on the command line is insecure.  It is visible in the operating system process list.  Consider using a config file or the --ask-pass option instead.'
+            break
+            ;;
+      esac
+   done
+
+   if [ -n "$OPT_ASK_PASS" ]; then
+      stty_orig=$(stty -g)
+      echo -n "Enter MongoDB password: "
+      stty -echo
+      read OPT_PASSWORD
+      stty "$stty_orig"
+      echo
+   fi
+
+   if [ -z "$OPT_STALK" ] && [ "$OPT_COLLECT" ]; then
+      OPT_CYCLES=0
+   fi
+
+   # With --system-only and a trigger that does not use MongoDB, MongoDB is not
+   # needed at all, as pt-stalk does not need MySQL with --system-only.
+   need_mongodb="yes"
+   if [ "$OPT_SYSTEM_ONLY" ]; then
+      case "$TRIGGER_FUNCTION" in
+         trg_cpu|trg_memory|trg_process_cpu|trg_process_memory) need_mongodb="" ;;
+      esac
+   fi
+
+   [ "$need_mongodb" ] && choose_mongo_shell
+
+   # The connection files written to $PT_TMPDIR contain the password, so
+   # remove the directory however the tool exits.
+   mk_tmpdir
+   trap rm_tmpdir EXIT
+   write_secrets_file
+
+   if [ "$need_mongodb" ]; then
+      setup_mongo_connection
+      ping_output="$(mongo_eval "db.runCommand({ping: 1})" 2>&1)" \
+         || die "Cannot connect to MongoDB: $(echo "$ping_output" | tail -n 1)"
+   fi
+
+   # The process triggers measure the server's own process, so it must run
+   # on this host; never measure another mongod or mongos instead.
+   if [ "$OPT_STALK" ]; then
+      case "$TRIGGER_FUNCTION" in
+         trg_process_cpu|trg_process_memory)
+            trigger_pid="$(trigger_mongo_pid)" \
+               || die "--function $OPT_FUNCTION needs the MongoDB server to run on this host, but $trigger_pid"
+            log "--function $OPT_FUNCTION measures the server's process, PID $trigger_pid"
+            ;;
+      esac
+   fi
+
+   if [ "$OPT_COLLECT" ]; then
+      [ -d "$OPT_DEST" ] || mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
+      (
+         set -e
+         touch "$OPT_DEST/test"
+         rm "$OPT_DEST/test"
+      ) || die "Cannot read and write files to --dest $OPT_DEST"
+   fi
+
+   if [ "$OPT_STALK" ] && [ "$OPT_DAEMONIZE" ]; then
+      touch "$OPT_LOG" || die "Cannot write to --log $OPT_LOG"
+      make_pid_file "$OPT_PID" $$
+      main "${@:-""}" </dev/null 1>>"$OPT_LOG" 2>&1 &
+      echo "$!" > "$OPT_PID"
+      # The daemon removes $PT_TMPDIR when it exits; this shell must not.
+      trap - EXIT
+   else
+      [ "$OPT_STALK" ] && make_pid_file "$OPT_PID" $$
+      main "${@:-""}"
+   fi
+fi
+
+:<<'DOCUMENTATION'
+=pod
+
+=head1 NAME
+
+pt-mongodb-stalk - Collect forensic data about MongoDB when problems occur.
+
+=head1 SYNOPSIS
+
+Usage: pt-mongodb-stalk [OPTIONS]
+
+=head1 RISKS
+
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
+
+=over
+
+=item * Read the tool's documentation
+
+=item * Review the tool's known L<"BUGS">
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=item * Do NOT provide the MongoDB password on the command line with the L<"--password"> option or in L<"--uri">.  The tool's own command line is visible to all users on the system and is stored in the collected output of the C<ps> command, where the tool hides passwords it recognizes but cannot guarantee to hide all of them.  Use L<"--ask-pass">, or put C<password=...> in a config file that only you can read (see L<"--config">), instead.
+
+=back
+
+The tool never passes the password to C<mongosh>, C<mongostat> or C<mongotop>
+on their command lines.  It writes the connection URI, with the password, to
+files that only the current user can read in a temporary directory, which is
+removed when the tool exits.
+
+Collecting data adds load to a server that may already be in trouble.  Each
+trigger check and each MongoDB sample starts a C<mongosh> process, and
+C<currentOp> lists every active operation on the server.
+
+The collected files can contain sensitive data: the queries and their
+parameters in C<currentOp>, the process list, and the system journal.  Keep
+L<"--dest"> readable only by the users who need it.
+
+=head1 DESCRIPTION
+
+pt-mongodb-stalk watches a MongoDB server for a trigger condition and collects
+diagnostic data when that trigger occurs. It follows the same basic operating
+model as C<pt-stalk>, but uses MongoDB administration commands instead of
+MySQL commands.
+
+The default trigger watches C<serverStatus.connections.active>, the number of
+client connections with an operation in progress.  You can also watch C<currentOp>, host CPU usage, host memory usage, queued writers, and
+replica set replication lag.
+
+=head1 CONFIGURING
+
+You can use standard Percona Toolkit configuration files to set command line
+options.
+
+You will probably want to run the tool as a daemon and customize at least the
+L<"--threshold">.  Here's a sample configuration file for triggering when
+there are more than 50 client connections with an operation in progress:
+
+  daemonize
+  threshold=50
+  user=admin
+  password=...
+
+A config file is also the recommended place for the password; see
+L<"RISKS">.  L<"--authenticationDatabase">, L<"--sslCAFile"> and
+L<"--sslPEMKeyFile"> cannot be set in a config file.
+
+If you don't run the tool as root, then you will need specify several options,
+such as L<"--pid">, L<"--log">, and L<"--dest">, else the tool will probably
+fail to start.
+
+=head1 OPTIONS
+
+=over
+
+=item --ask-pass
+
+Prompt for a password when connecting to MongoDB.
+
+Use this instead of L<"--password"> to keep the password out of the process
+list.  See L<"RISKS">.
+
+=item --authenticationDatabase
+
+type: string; default: admin
+
+Authentication database, used only when authenticating with a user.
+
+Give the value after a space, as in C<--authenticationDatabase value>.
+C<--authenticationDatabase=value> is not accepted, and this option cannot be
+set in a config file.
+
+=item --collect
+
+default: yes; negatable: yes
+
+Collect diagnostic data when the trigger occurs.
+
+=item --collect-gdb
+
+Collect GDB stacktraces.
+
+This is achieved by attaching to the MongoDB server and printing stack traces
+from all threads to C<E<lt>prefixE<gt>-stacktrace>, which C<pt-pmp> can
+aggregate.  This will freeze the server for some period of time, ranging from
+a second or so to much longer on very busy systems with a lot of memory and
+many threads in the server.  For this reason, it is disabled by default.
+However, if you are trying to diagnose a server stall or lockup, freezing the
+server causes no additional harm, and the stack traces can be vital for
+diagnosis.
+
+In addition to freezing the server, there is also some risk of the server
+crashing or performing badly after GDB detaches from it.  The server must run
+on the same host as the tool, and attaching to it usually requires root.  The
+tool attaches only to the process with the PID the server reports in
+C<serverStatus>, if that process also started when the server did and listens
+on the server's port, so it never attaches to another mongod or mongos on
+this host.  The same applies to all process data: L<"--collect-strace">,
+C<pmap>, C<lsof>, C<pidstat> and the server's log.
+
+=item --collect-strace
+
+Collect strace data.
+
+This is achieved by attaching strace to the server, which will make it run
+very slowly until strace detaches at the end of the collection.  The output is
+saved to C<E<lt>prefixE<gt>-strace>.  The same cautions apply as those listed
+in L<"--collect-gdb">.  You should not enable this option together with
+L<"--collect-gdb">, because GDB and strace can't attach to the server process
+simultaneously.
+
+=item --collect-tcpdump
+
+Collect tcpdump data.
+
+This option causes tcpdump to capture all traffic on all interfaces for the
+port on which the MongoDB server is listening, during the collection, and save
+it to C<E<lt>prefixE<gt>-tcpdump>.  The port is the one the server reports;
+the server does not have to run on the same host.  Capturing traffic usually
+requires root.
+
+=item --config
+
+type: string
+
+Read this comma-separated list of config files. If specified, this must be the
+first option on the command line.
+
+=item --cycles
+
+type: int; default: 5
+
+How many times the trigger must be true before collecting.
+
+L<"--variable"> must be greater than L<"--threshold"> this many consecutive
+times before L<"--collect"> is triggered.
+
+=item --daemonize
+
+Daemonize the tool and log output to L<"--log">.
+
+=item --dest
+
+type: string; default: /var/lib/pt-mongodb-stalk
+
+Where to save diagnostic data.
+
+=item --disk-bytes-free
+
+type: size; default: 100M
+
+Do not collect if the disk has less than this much free space.
+
+=item --disk-pct-free
+
+type: int; default: 5
+
+Do not collect if the disk has less than this percent free space.
+
+=item --function
+
+type: string; default: status
+
+Trigger source. Valid built-in values are C<status>, C<currentop>, C<cpu>,
+C<memory>, C<process-cpu>, C<process-memory>, C<writewait>, and C<repllag>.
+
+With C<status>, L<"--variable"> is a dot-separated path inside
+C<serverStatus>. Example:
+
+  --function status --variable connections.current --threshold 200
+
+With C<currentop>, L<"--variable"> is a dot-separated field path inside each
+C<currentOp.inprog> document and L<"--match"> is a regex. The trigger value is
+the number of matching operations. Example:
+
+  --function currentop --variable command.aggregate --match '^orders$' --threshold 10
+
+With C<cpu>, the trigger value is host CPU busy percentage from C</proc/stat>.
+With C<memory>, the trigger value is host memory used percentage from
+C</proc/meminfo>. C<mem> is accepted as an alias for C<memory>. Example:
+
+  --function cpu --threshold 85
+  --function memory --threshold 90
+
+With C<process-cpu> and C<process-memory>, the trigger value is the C<%cpu> or
+C<%mem> that C<ps> reports for the server's own mongod or mongos process,
+which must run on this host.  C<processcpu>, C<proc-cpu>, C<proc_cpu>, C<processmemory>,
+C<proc-memory> and C<proc_memory> are accepted as aliases.  The process is the one with the PID
+the server reports in C<serverStatus>, if it also started when the server did
+and listens on the server's port; another mongod or mongos on this host is
+never used instead.  With L<"--system-only"> the tool does not connect to
+MongoDB, and uses the mongod or mongos listening on the port of L<"--uri"> or
+L<"--port">, if L<"--uri"> or L<"--host"> is this host; finding another user's
+process this way needs root, for C<lsof>.  The tool exits with an error if the
+process cannot be found when it starts.  Example:
+
+  --function process-cpu --threshold 90
+
+With C<writewait>, the trigger value is
+C<serverStatus.globalLock.currentQueue.writers>. Example:
+
+  --function writewait --threshold 5
+
+With C<repllag>, the trigger value is the maximum replica set member lag behind
+the primary, in seconds, from C<replSetGetStatus>. C<replicationlag> and
+C<waitForReplicationLag> are accepted as aliases. Example:
+
+  --function repllag --threshold 30
+
+You can also specify a file that defines C<trg_plugin>, which gets
+L<"--variable"> as its first argument and prints the trigger value.
+
+=item --help
+
+Print help and exit.
+
+=item --host
+
+short form: -h; type: string; default: localhost
+
+Host to connect to.
+
+=item --interval
+
+type: int; default: 1
+
+How often to check the trigger, in seconds.
+
+=item --iterations
+
+type: int
+
+How many collections to perform before exiting.
+
+=item --log
+
+type: string; default: /var/log/pt-mongodb-stalk.log
+
+Print all output to this file when daemonized.
+
+=item --match
+
+type: string
+
+Regex pattern used with L<"--function"> C<currentop>.
+
+=item --mongodb-only
+
+Trigger only MongoDB related captures, ignoring all others.
+
+The only system data still collected is the free disk space, because it is
+needed to check that there is enough space to write the result files.
+
+=item --notify-by-email
+
+type: string
+
+Send an email to these addresses for every L<"--collect">.
+
+The C<mail> command must be available.
+
+=item --password
+
+short form: -p; type: string
+
+Password to use when connecting.
+
+A password given on the command line is visible in the process list.  Prefer
+L<"--ask-pass"> or a config file.  See L<"RISKS">.
+
+=item --pid
+
+type: string; default: /var/run/pt-mongodb-stalk.pid
+
+Create the given PID file.
+
+=item --plugin
+
+type: string
+
+Load a plugin to hook into and extend the tool.
+
+The specified file does not need to be executable, nor does its first line
+need to be a shebang line.  It only needs to define one or more of these Bash
+functions, which are the same as C<pt-stalk>'s:
+
+=over
+
+=item before_stalk
+
+Called before stalking.
+
+=item before_collect
+
+Called when the trigger occurs, before running a L<"--collect"> subprocess in
+the background.
+
+=item after_collect
+
+Called after starting a collector process.  The PID of the collector process
+is passed as the first argument.  This hook is called before
+C<after_collect_sleep>.
+
+=item after_collect_sleep
+
+Called after sleeping L<"--sleep"> seconds, which start when the collection
+starts.  This hook is called after C<after_collect>.
+
+=item after_interval_sleep
+
+Called after sleeping L<"--interval"> seconds after each trigger check.
+
+=item after_stalk
+
+Called after stalking.  Since the tool stalks forever by default, this hook
+is only called if L<"--iterations"> is specified.
+
+=back
+
+For example, a very simple plugin that touches a file when L<"--collect"> is
+triggered:
+
+   before_collect() {
+      touch /tmp/foo
+   }
+
+Since the plugin is completely sourced (imported) into the tool's namespace,
+be careful not to define other functions or global variables that already
+exist in the tool.  You should prefix all plugin-specific functions and
+global variables with C<plugin_> or C<PLUGIN_>.
+
+Plugins have access to all command line options but they should not modify
+them.  Each option is a global variable like C<$OPT_DEST> which corresponds
+to L<"--dest">.  Therefore, the global variable for each command line option
+is C<OPT_> plus the option name in all caps with hyphens replaced by
+underscores.
+
+Plugins can stop the tool by setting the global variable C<OKTORUN> to C<0>.
+In this case, the global variable C<EXIT_REASON> should also be set to
+indicate why the tool was stopped.
+
+Plugin writers should keep in mind that the file destination prefix currently
+in use should be accessed through the C<$prefix> variable, rather than
+C<$OPT_PREFIX>.
+
+Plugins can run MongoDB commands connected as the tool is, with the same URI,
+credentials and TLS options, without the password on any command line.
+C<$CMD_MONGOSH $EXT_ARGV> followed by a script file runs the script with
+C<db> connected to the C<admin> database.  C<$EXT_ARGV> is
+C<--nodb --quiet> and a script that connects, readable only by the user
+running the tool, and removed when the tool exits.  mongosh runs C<--eval>
+before any script file, so C<--eval> cannot be used this way; to run a short
+script, use the C<mongo_eval> function, which takes the script as its
+argument:
+
+   before_collect() {
+      $CMD_MONGOSH $EXT_ARGV /path/to/plugin-script.js > "$OPT_DEST/$prefix-plugin"
+      mongo_eval 'printjson(db.runCommand({top: 1}))' > "$OPT_DEST/$prefix-top"
+   }
+
+Both are available unless the tool does not connect to MongoDB at all (see
+L<"--system-only">).  Unlike C<pt-stalk>, the tool does not accept arguments
+after C<-->.
+
+=item --port
+
+short form: -P; type: int; default: 27017
+
+Port number to use for connection.
+
+=item --prefix
+
+type: string
+
+The filename prefix for diagnostic samples.  By default, all files created
+by the same L<"--collect"> instance have a timestamp prefix based on the current
+local time, like C<2026_11_06_14_02_02>, which is November 6, 2026 at 14:02:02.
+
+=item --retention-count
+
+type: int; default: 0
+
+Keep the data for the last N runs.  If N > 0, the tool keeps the files of the
+last N collections in L<"--dest"> and deletes older ones.
+
+=item --retention-size
+
+type: int; default: 0
+
+Keep up to --retention-size MB of data.  The oldest collections are deleted
+first, and the newest one is always kept, even if it is bigger than this value.
+
+=item --retention-time
+
+type: int; default: 30
+
+Number of days to retain collected samples.
+
+=item --run-time
+
+type: int; default: 30
+
+How long interval collectors should run when the trigger occurs.
+
+=item --skip-collection
+
+type: string
+
+A comma-separated list of MongoDB collection types to skip.
+
+Valid values are: C<currentop>, C<metadata> (everything collected once at the
+start: C<hostinfo>, C<buildinfo>, C<cmdlineopts>, C<parameters>,
+C<connpoolstats>, C<profiling-status>, C<rs-conf>, C<oplog-info> and
+C<secondary-replication-info>), C<mongod-log>, C<mongostat>, C<mongotop>,
+C<replsetgetstatus> and C<serverstatus> (also C<serverstatus-ext>).
+
+=item --sleep
+
+type: int; default: 300
+
+How long to sleep after L<"--collect">.  As in C<pt-stalk>, the sleep starts
+when the collection starts, while it runs in the background.  This prevents
+the tool from triggering continuously, which might be a problem if the
+collection process is intrusive.  It also prevents filling up the disk or
+gathering too much data to analyze reasonably.
+
+=item --sleep-collect
+
+type: int; default: 1
+
+Polling interval for interval collectors, in seconds.
+
+=item --stalk
+
+default: yes; negatable: yes
+
+Watch the server and wait for the trigger to occur. Specify C<--no-stalk> to
+collect immediately.
+
+=item --system-only
+
+Trigger only operating system related captures, ignoring all others.
+
+If the trigger does not use MongoDB (L<"--function"> C<cpu>, C<memory>,
+C<process-cpu> or C<process-memory>), the tool does not connect to MongoDB at
+all.
+
+=item --threshold
+
+type: float; default: 25
+
+Collection is triggered when L<"--variable"> is greater than this value.
+
+=item --tls
+
+Enable TLS for the connections to MongoDB.
+
+=item --sslCAFile
+
+type: string
+
+Path to the TLS CA file.
+
+Give the value after a space, as in C<--sslCAFile value>.
+C<--sslCAFile=value> is not accepted, and this option cannot be set in a
+config file.
+
+=item --sslPEMKeyFile
+
+type: string
+
+Path to the TLS client certificate and key file.
+
+Give the value after a space, as in C<--sslPEMKeyFile value>.
+C<--sslPEMKeyFile=value> is not accepted, and this option cannot be set in a
+config file.
+
+=item --uri
+
+type: string
+
+Full MongoDB URI to connect with.
+
+When given, L<"--host"> and L<"--port"> are ignored.  Credentials in the URI
+take precedence over L<"--user"> and L<"--password">.  If the URI has no
+C<authSource>, L<"--authenticationDatabase"> is added when authenticating.
+
+=item --user
+
+short form: -u; type: string
+
+User for login.
+
+=item --variable
+
+type: string; default: connections.active
+
+Variable to watch inside C<serverStatus> or C<currentOp>.
+
+Only the C<status> and C<currentop> functions use it, and the C<trg_plugin>
+function of a L<"--function"> file gets it as its first argument.  The other
+functions ignore it, and the tool does not log it for them.
+
+=item --verbose
+
+type: int; default: 2
+
+Print level of information. Values: 1 errors, 2 matching triggers and
+collection info, 3 non-matching triggers.
+
+=item --version
+
+Print version and exit.
+
+=back
+
+=head1 EXAMPLES
+
+Run in stalking mode and collect twice when the trigger is met:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30001 --user admin --ask-pass \
+    --function status --variable connections.current --threshold 50 --cycles 3 --interval 1 --iterations 2 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run immediately without stalking and collect one short sample:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30004 --user admin --ask-pass \
+    --no-stalk --iterations 1 --run-time 6 --sleep-collect 1 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run immediately without stalking and collect multiple short runs:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30000 --user admin --ask-pass \
+    --no-stalk --iterations 3 --run-time 6 --sleep-collect 1 --sleep 1 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run immediately without stalking and collect fewer, more widely spaced samples:
+
+  pt-mongodb-stalk \
+    --host localhost --port 27000 --user admin --ask-pass \
+    --no-stalk --iterations 1 --run-time 10 --sleep-collect 2 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run in stalking mode using currentOp matches instead of a serverStatus metric:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30001 --user admin --ask-pass \
+    --function currentop --variable command.aggregate --match '^orders$' --threshold 10 --cycles 2 --interval 1 --iterations 1 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run in stalking mode when host CPU is above 85 percent:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30001 --user admin --ask-pass \
+    --function cpu --threshold 85 --cycles 3 --interval 1 --iterations 1 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run in stalking mode when host memory is above 90 percent:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30001 --user admin --ask-pass \
+    --function memory --threshold 90 --cycles 3 --interval 1 --iterations 1 \
+    --dest /tmp/pt-mongodb-stalk
+
+Run in stalking mode when replica set lag is above 30 seconds:
+
+  pt-mongodb-stalk \
+    --host localhost --port 30001 --user admin --ask-pass \
+    --function repllag --threshold 30 --cycles 2 --interval 1 --iterations 1 \
+    --dest /tmp/pt-mongodb-stalk
+
+=head1 OUTPUT
+
+When the trigger condition is met for the configured number of consecutive
+cycles, the tool collects into L<"--dest">.  All files of one collection share
+the same prefix (see L<"--prefix">) and are named C<E<lt>prefixE<gt>-E<lt>nameE<gt>>, as
+with C<pt-stalk>.  For example:
+
+  2026_11_06_10_00_01-trigger
+  2026_11_06_10_00_01-output
+  2026_11_06_10_00_01-hostname
+  2026_11_06_10_00_01-disk-space
+  2026_11_06_10_00_01-serverstatus
+  2026_11_06_10_00_01-serverstatus-ext
+  2026_11_06_10_00_01-currentop
+  2026_11_06_10_00_01-vmstat
+
+C<E<lt>prefixE<gt>-trigger> records why the collection was triggered and the options
+the tool ran with.  C<E<lt>prefixE<gt>-output> holds the collector's own messages and
+the error output of the commands it ran.
+
+Time series are collected every L<"--sleep-collect"> seconds for
+L<"--run-time"> seconds.  For example, C<--run-time 5 --sleep-collect 1> takes
+5 samples of serverStatus and runs commands like C<vmstat 1 5>.
+
+All collectors start at once, and none waits for MongoDB: if the server
+stalls, the operating system data is still collected.  The process data
+(C<pmap>, C<lsof>, C<pidstat>, the server's log, and L<"--collect-gdb">,
+L<"--collect-strace"> and L<"--collect-tcpdump">) needs the server to report
+its PID, which it does before the other metadata queries; if it does not
+answer within 5 seconds, the tool looks for the mongod or mongos listening on
+the port it connects to, on this host.
+
+Collectors that are still running L<"--run-time"> seconds after the end of the
+collection window, the MongoDB queries included, are stopped together with
+the commands they started.  As in C<pt-stalk>, the collection runs in the
+background: when it starts, the tool sleeps L<"--sleep"> seconds before the
+next trigger check or collection.  If L<"--sleep"> is shorter than a
+collection, collections can overlap.
+
+If L<"--prefix"> is given, every collection writes to the same files and the
+output is appended.
+
+=head1 COLLECTED DATA
+
+MongoDB data is saved as pretty-printed JSON.  Each sample starts with a line
+in the same format as C<pt-stalk>'s timestamp lines:
+
+  TS 1793989603.540000000 2026-11-06 15:26:43
+
+C<ok>, C<$clusterTime> and C<operationTime> are removed from command results.
+
+Collected once at the start of the collection, with the file name suffix in
+parentheses:
+
+  hostInfo (hostinfo)
+  buildInfo (buildinfo)
+  getCmdLineOpts (cmdlineopts)
+  getParameter: '*' (parameters)
+  connPoolStats (connpoolstats)
+  profiling status of each database (profiling-status)
+
+and on replica set members:
+
+  replSetGetConfig (rs-conf)
+  db.printReplicationInfo(), the oplog window (oplog-info)
+  db.printSecondaryReplicationInfo() (secondary-replication-info)
+
+Collected every L<"--sleep-collect"> seconds during L<"--run-time">:
+
+  serverStatus (serverstatus)
+  currentOp of the active operations of all users (currentop)
+  replSetGetStatus, on replica set members (replsetgetstatus)
+
+Each serverStatus sample is also written to C<E<lt>prefixE<gt>-serverstatus-ext>
+in the table format of C<mysqladmin extended-status -i>, so C<pt-mext> can
+show how the values change between samples:
+
+  pt-mext -r -- cat 2026_11_06_15_26_41-serverstatus-ext
+
+The names are the dot-separated paths in serverStatus, with characters other
+than letters, digits, C<_>, C<.> and C<-> replaced by C<_>.  Only numeric
+values are included: booleans as 0 or 1, decimals rounded, and strings, dates
+and arrays left out.  The latency histograms and C<metrics.commands> are left
+out to keep the file small.
+
+Run with interval and count derived from L<"--sleep-collect"> and
+L<"--run-time">:
+
+  mongostat (mongostat)
+  mongotop (mongotop)
+
+If the server runs on the same host and its log file is readable, the log is
+followed during the collection and saved to C<E<lt>prefixE<gt>-mongod-log>.
+
+If the server runs on the same host, the memory map of its process is saved
+to C<E<lt>prefixE<gt>-pmap> (C<pmap -x>).  On request, the tool also collects
+stack traces of all its threads with L<"--collect-gdb">
+(C<E<lt>prefixE<gt>-stacktrace>), its system calls with L<"--collect-strace">
+(C<E<lt>prefixE<gt>-strace>), and the traffic on its port with
+L<"--collect-tcpdump"> (C<E<lt>prefixE<gt>-tcpdump>).
+
+L<"--skip-collection"> skips some of these, and L<"--system-only"> skips all of
+them.
+
+System data is collected with the same commands, file names and formats as
+C<pt-stalk>, so C<pt-sift>, C<pt-diskstats> and C<pt-pmp> can read it.
+L<"--mongodb-only"> skips it, except for the free disk space.
+Depending on tool availability:
+
+Collected once, or by commands that run for the whole collection:
+
+  ps -eaF, with passwords hidden (ps)
+  top (top)
+  sysctl -a (sysctl)
+  dmesg, from 60 seconds before the collection (dmesg)
+  vmstat --sleep-collect and --run-time (vmstat, vmstat-overall)
+  iostat -dx --sleep-collect and --run-time (iostat, iostat-overall)
+  mpstat -P ALL --sleep-collect and --run-time (mpstat, mpstat-overall)
+  pidstat -d and -u (pidstat_d, pidstat_u)
+
+and, if the server runs on this host, for its PID:
+
+  lsof (lsof)
+  pidstat -urdwt (pidstat_mongod or pidstat_mongos)
+
+Collected every L<"--sleep-collect"> seconds, each sample starting with a TS
+line:
+
+  /proc/diskstats (diskstats)
+  /proc/stat (procstat)
+  /proc/vmstat (procvmstat)
+  /proc/meminfo (meminfo)
+  /proc/slabinfo, if readable (slabinfo)
+  /proc/interrupts (interrupts)
+  df -k (df)
+  netstat -antp (netstat)
+  netstat -s (netstat_s)
+  numastat of each NUMA node (numastat)
+
+The free space in L<"--dest"> is checked before each sample and saved to
+C<E<lt>prefixE<gt>-disk-space>; the collection stops if there is not enough.
+
+If C<journalctl> is available, the system journal entries from 60 seconds
+before the collection until its end are saved to C<E<lt>prefixE<gt>-journal>.
+C<journalctl> runs as the current user, without C<sudo>, so the entries the
+user cannot read are left out.
+
+=head1 OUTPUT CLEANUP
+
+At the end of a collection, files that are empty or contain only timestamp
+lines are removed.  Old collections are removed according to
+L<"--retention-time">, L<"--retention-count"> and L<"--retention-size">.
+
+=head1 ENVIRONMENT
+
+This tool does not require any environment variables for configuration,
+although it can be influenced to work differently by through several
+variables.  Keep in mind that these are expert settings, and should not
+be used in most cases.
+
+The following variables set the path to the commands the tool runs, for
+example to use a C<mongosh> that is not in C<PATH>:
+
+=over
+
+=item CMD_DMESG
+
+=item CMD_GDB
+
+=item CMD_IOSTAT
+
+=item CMD_JOURNALCTL
+
+=item CMD_MONGOSH
+
+=item CMD_MONGOSTAT
+
+=item CMD_MONGOTOP
+
+=item CMD_MPSTAT
+
+=item CMD_NETSTAT
+
+=item CMD_PIDSTAT
+
+=item CMD_PMAP
+
+=item CMD_STRACE
+
+=item CMD_SYSCTL
+
+=item CMD_TCPDUMP
+
+=item CMD_TOP
+
+=item CMD_VMSTAT
+
+=back
+
+For example:
+
+    CMD_MONGOSH=/opt/mongosh/bin/mongosh pt-mongodb-stalk ...
+
+To enable debugging output, set the C<PTDEBUG> environment variable to a
+non-empty value.
+
+=head1 SYSTEM REQUIREMENTS
+
+This tool requires Bash v3 or newer, Perl, and C<mongosh>; the legacy C<mongo>
+shell is not supported.  It is intended for Linux systems: most of the system
+data comes from C</proc> and from C<sysstat>, C<procps> and C<net-tools>
+commands.
+
+C<mongostat> and C<mongotop> are used if available.  They must support the
+C<--config> option, which they read the connection settings from (tested with
+MongoDB Database Tools 100.12).
+
+Certain options require other programs:
+
+=over
+
+=item L<"--collect-gdb"> requires C<gdb>
+
+=item L<"--collect-strace"> requires C<strace>
+
+=item L<"--collect-tcpdump"> requires C<tcpdump>
+
+=item L<"--notify-by-email"> requires C<mail>
+
+=back
+
+=head1 BUGS
+
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
+
+Please report bugs at L<https://jira.percona.com/projects/PT>.
+Include the following information in your bug report:
+
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool L<"--version">
+
+=item * MongoDB version and topology (standalone, replica set or sharded
+cluster) of the servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
+
+=head1 AUTHORS
+
+Agustin Palazuelos, based on C<pt-stalk> by Baron Schwartz, Justin Swanhart,
+Fernando Ipar, Daniel Nichter, and Brian Fraser
+
+=head1 ABOUT PERCONA TOOLKIT
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools for MySQL, MongoDB and PostgreSQL developed by Percona.  Percona
+Toolkit was forked from two projects in June, 2011: Maatkit and Aspersa.
+Those projects were created by Baron Schwartz and primarily developed by him
+and Daniel Nichter.  Visit L<http://www.percona.com/software/> to learn about
+other free, open-source software from Percona.
+
+=head1 COPYRIGHT, LICENSE, AND WARRANTY
+
+This program is copyright 2011-2026 Percona LLC and/or its affiliates,
+2010-2011 Baron Schwartz.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License, version 2
+along with this program; if not, see <https://www.gnu.org/licenses/>.
+
+=head1 VERSION
+
+pt-mongodb-stalk 3.7.1
+
+=cut
+DOCUMENTATION

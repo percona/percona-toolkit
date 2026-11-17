@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Fake mongostat: records its command line in MONGO_TOOLS_LOG and the contents
+# of its --config file in MONGO_TOOLS_CONFIG_LOG.
+[ -n "${MONGO_TOOLS_LOG:-}" ] && printf '%s\n' "mongostat $*" >> "$MONGO_TOOLS_LOG"
+for arg in "$@"; do
+   case "$arg" in
+      --config=*) [ -n "${MONGO_TOOLS_CONFIG_LOG:-}" ] && cat "${arg#--config=}" >> "$MONGO_TOOLS_CONFIG_LOG" ;;
+   esac
+done
+echo "2026-05-14T00:00:00.000+0000	connected to: mongodb://localhost:27017/" >&2
+# FAKE_BLOCK: hang for that many seconds, like a stalled server.
+[ -n "${FAKE_BLOCK:-}" ] && sleep "$FAKE_BLOCK"
+echo "insert query update delete getmore command dirty used flushes vsize res qrw arw net_in net_out conn time"
+echo "0 0 0 0 0 1|0 0.0% 1.0% 0 100M 50M 0|0 0|0 1k 2k 1 00:00:00"
