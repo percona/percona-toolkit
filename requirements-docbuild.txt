@@ -10,4 +10,5 @@ sphinxcontrib-qthelp
 sphinxcontrib-serializinghtml
 sphinxcontrib-srclinks
 sphinx-tabs
+sphinx-llm==1.1.0
 
