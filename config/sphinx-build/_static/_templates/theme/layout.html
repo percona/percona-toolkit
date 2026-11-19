@@ -29,6 +29,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </script>
 {% endblock %}
 
+{# A pointer for AI agents to llms.txt, hidden from readers and screen readers. #}
+{%- block header %}
+<div class="agent-hint" aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">For AI agents: an index of this documentation is at <a href="https://docs.percona.com/percona-toolkit/llms.txt" tabindex="-1">llms.txt</a>.</div>
+{{ super() }}
+{%- endblock %}
+
 {%- block relbar2 %}
 {% include "relbar2.html" %}
 {%- endblock %}
