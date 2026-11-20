@@ -14,9 +14,23 @@
 package templates
 
 const Oplog = `
-# Oplog ##################################################################################################
-Oplog Size     {{.Size}} Mb
-Oplog Used     {{.UsedMB}} Mb
-Oplog Length   {{.Running}}
-Last Election  {{.ElectionTime}}
+{{ header "Oplog" }}
+{{- range $i, $s := . }}
+{{- if $i }}
+{{ end }}
+{{ printf "%25s" "Replica Set" }} | {{ $s.Name }}
+{{ printf "%25s" "Primary" }} | {{ $s.Primary }}
+{{- with $s.LastElection }}
+{{ printf "%25s" "Last Election" }} | {{ . }}{{ with $s.ElectionReason }} ({{ . }}){{ end }}
+{{- end }}
+{{- range $s.Lines }}
+{{ . }}
+{{- end }}
+{{- with $s.Shortest }}
+{{ printf "%25s" "Shortest Window" }} | {{ .Hostname }} ({{ .Running }})
+{{- end }}
+{{- with $s.Longest }}
+{{ printf "%25s" "Longest Window" }} | {{ .Hostname }} ({{ .Running }})
+{{- end }}
+{{- end }}
 `
