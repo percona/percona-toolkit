@@ -190,7 +190,7 @@ get_system(){
 }
 
 install_go() {
-    GO_VERSION=1.27.3
+    GO_VERSION=1.27.4
     if [ x"$ARCH" = "xx86_64" ]; then
       GO_ARCH="amd64"
     elif [ x"$ARCH" = "xaarch64" ]; then
