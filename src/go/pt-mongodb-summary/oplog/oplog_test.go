@@ -15,87 +15,97 @@ package oplog
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
+
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
-func TestGetOplogCollection(t *testing.T) {
+func TestGetOplogInfo(t *testing.T) {
 	testCases := []struct {
-		name string
-		port string
-		want string
-		err  bool
+		name        string
+		port        string
+		sets        []string
+		viaShardMap bool
 	}{
 		{
-			name: "from_mongos",
-			port: tu.MongoDBMongosPort,
-			want: "",
-			err:  true,
+			name:        "from_mongos",
+			port:        tu.MongoDBMongosPort,
+			sets:        []string{"cnf-serv", "rs1", "rs2"},
+			viaShardMap: true,
 		},
 		{
 			name: "from_mongod",
 			port: tu.MongoDBShard1PrimaryPort,
-			want: "oplog.rs",
-			err:  false,
+			sets: []string{"rs1"},
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
 			client, err := tu.TestClient(ctx, test.port)
-			if err != nil {
-				t.Fatalf("cannot get a new MongoDB client: %s", err)
+			require.NoError(t, err, "cannot get a new MongoDB client")
+			defer func() { _ = client.Disconnect(ctx) }()
+
+			raw, err := client.Database("admin").RunCommand(ctx, bson.D{{Key: "isMaster", Value: 1}}).Raw()
+			require.NoError(t, err)
+
+			var md proto.MasterDoc
+			require.NoError(t, bson.Unmarshal(raw, &md))
+
+			members, err := Discover(ctx, client, md, raw, 5*time.Second)
+			require.NoError(t, err)
+			require.NotEmpty(t, members)
+
+			self := 0
+			for _, m := range members {
+				assert.Equal(t, test.viaShardMap, m.ViaShardMap, m.Host)
+				if m.Self {
+					self++
+				}
+			}
+			assert.Equal(t, map[bool]int{true: 0, false: 1}[test.viaShardMap], self)
+
+			rows, _ := GetOplogInfo(ctx, client, tu.TestClientOptions(test.port), members, 4, 5*time.Second)
+			require.Len(t, rows, len(members))
+
+			seen := map[string]bool{}
+			for _, r := range rows {
+				seen[r.ReplicaSet] = true
+
+				assert.Empty(t, r.Error, r.Hostname)
+				assert.True(t, r.HasData(), r.Hostname)
+				assert.Contains(t, []string{"PRIMARY", "SECONDARY"}, r.State, r.Hostname)
+				assert.NotEmpty(t, r.Primary, r.Hostname)
+				assert.Positive(t, r.MaxSizeMB, r.Hostname)
+				assert.Positive(t, r.Size, r.Hostname)
+				assert.False(t, r.Now.IsZero(), r.Hostname)
+				assert.False(t, r.ElectionTime.IsZero(), r.Hostname)
+				assert.Equal(t, time.UTC, r.TLast.Location(), r.Hostname)
+				assert.False(t, r.TFirst.After(r.TLast), r.Hostname)
+				assert.NotEmpty(t, r.Running, r.Hostname)
+
+				if r.State == "PRIMARY" {
+					assert.Equal(t, r.Hostname, r.Primary)
+				}
 			}
 
-			oplogCol, err := getOplogCollection(ctx, client)
-			if (err != nil) != test.err {
-				t.Errorf("Expected error=%v, got %v", test.err, err)
+			var sets []string
+			for s := range seen {
+				sets = append(sets, s)
 			}
-			if oplogCol != test.want {
-				t.Errorf("Want oplog collection to be %q, got %q", test.want, oplogCol)
-			}
-		})
-	}
-}
-
-func TestGetOplogInfo(t *testing.T) {
-	testCases := []struct {
-		name     string
-		port     string
-		wantHost bool
-		err      bool
-	}{
-		{
-			name:     "from_mongos",
-			port:     tu.MongoDBMongosPort,
-			wantHost: false,
-			err:      true,
-		},
-		{
-			name:     "from_mongod",
-			port:     tu.MongoDBShard1PrimaryPort,
-			wantHost: true,
-			err:      false,
-		},
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	for _, test := range testCases {
-		t.Run(test.name, func(t *testing.T) {
-			oplogInfo, err := GetOplogInfo(ctx, []string{"127.0.0.1:" + test.port}, tu.TestClientOptions(test.port))
-			if (err != nil) != test.err {
-				t.Errorf("Expected error=%v, got %v", test.err, err)
-			}
-			if test.wantHost && (len(oplogInfo) == 0 || oplogInfo[0].Hostname == "") {
-				t.Error("Expected structure with data. Hostname is empty")
-			}
+			sort.Strings(sets)
+			assert.Equal(t, test.sets, sets)
+			assert.True(t, sort.IsSorted(proto.OpLogs(rows)))
 		})
 	}
 }
