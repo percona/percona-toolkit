@@ -91,6 +91,7 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 	op := ""
 	collection := ""
 	database := ""
+	batch := false
 	ns := strings.SplitN(doc.Ns, ".", 2)
 	if len(ns) > 0 {
 		database = ns[0]
@@ -173,6 +174,18 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 			retKeys = []string{}
 		case "createIndexes":
 			retKeys = []string{}
+		case "update", "delete":
+			// Command level entry of a write batch (MongoDB logs it apart from its statements).
+			// With OP_MSG the statements are a separate document sequence and are not included.
+			batch = true
+			retKeys = []string{}
+			if statements, ok := query.Map()[op+"s"].(primitive.A); ok {
+				for _, st := range statements {
+					if m, err := asMap(st); err == nil {
+						retKeys = append(retKeys, keys(m["q"], f.keyFilters)...)
+					}
+				}
+			}
 		}
 	default:
 		op = doc.Op
@@ -193,6 +206,9 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 	}
 	if keys != "" {
 		parts = append(parts, keys)
+	}
+	if batch {
+		parts = append(parts, "(batch)")
 	}
 	ns = []string{}
 	if database != "" {

@@ -19,8 +19,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"math"
 	"os"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -35,6 +39,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
+	"github.com/percona/percona-toolkit/src/go/mongolib/logparser"
 	"github.com/percona/percona-toolkit/src/go/mongolib/profiler"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
@@ -67,14 +72,18 @@ type cliOptions struct {
 	Help            bool
 	Host            string
 	Limit           int
+	LogFiles        []string
 	LogLevel        string
 	NoVersionCheck  bool
 	OrderBy         []string
 	OutputFormat    string
 	Password        string
+	ShowAll         []string
+	Since           time.Time
 	SkipCollections []string
 	SSLCAFile       string
 	SSLPEMKeyFile   string
+	Until           time.Time
 	User            string
 	Version         bool
 }
@@ -122,6 +131,57 @@ func main() {
 
 	log.Debugf("Command line options:\n%+v\n", opts)
 
+	opts.SkipCollections = sanitizeSkipCollections(opts.SkipCollections)
+
+	var queries stats.Queries
+
+	if len(opts.LogFiles) > 0 {
+		queries, err = queriesFromLogs(opts)
+		if err != nil {
+			log.Error(err)
+			os.Exit(3)
+		}
+		if len(queries) == 0 {
+			log.Errorf("No slow queries found in the log files %v", opts.LogFiles)
+			return
+		}
+	} else {
+		queries = queriesFromProfiler(opts)
+		if len(queries) == 0 {
+			log.Errorf("No queries found in profiler information for database %q\n", opts.Database)
+			return
+		}
+	}
+
+	uptime := timeSpan(queries)
+
+	queriesStats := queries.CalcQueriesStats(uptime)
+	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
+
+	if opts.Limit > 0 && len(sortedQueryStats) > opts.Limit {
+		sortedQueryStats = sortedQueryStats[:opts.Limit]
+	}
+	for i := range sortedQueryStats {
+		sortedQueryStats[i].Rank = i + 1
+	}
+
+	rep := report{
+		Headers:     getHeaders(opts),
+		QueryTotals: queries.CalcTotalQueriesStats(uptime),
+		QueryStats:  sortedQueryStats,
+	}
+
+	out, err := formatResults(rep, opts.OutputFormat, opts.ShowAll)
+	if err != nil {
+		log.Errorf("Cannot parse the report: %s", err.Error())
+		os.Exit(5)
+	}
+
+	fmt.Println(string(out))
+}
+
+// queriesFromProfiler reads the queries from the system.profile collection
+func queriesFromProfiler(opts *cliOptions) stats.Queries {
 	clientOptions, err := getClientOptions(opts)
 	if err != nil {
 		log.Errorf("Cannot get a MongoDB client: %s", err)
@@ -164,14 +224,13 @@ func main() {
 		fmt.Println("Using those documents for the stats")
 	}
 
-	opts.SkipCollections = sanitizeSkipCollections(opts.SkipCollections)
 	filters := []filter.Filter{}
 
 	if len(opts.SkipCollections) > 0 {
 		filters = append(filters, filter.NewFilterByCollection(opts.SkipCollections))
 	}
 
-	cursor, err := client.Database(opts.Database).Collection("system.profile").Find(ctx, primitive.M{})
+	cursor, err := client.Database(opts.Database).Collection("system.profile").Find(ctx, timeRangeFilter(opts))
 	if err != nil {
 		panic(err)
 	}
@@ -182,35 +241,132 @@ func main() {
 	prof.Start(ctx)
 	queries := <-prof.QueriesChan()
 
-	uptime := uptime(ctx, client)
-
-	queriesStats := queries.CalcQueriesStats(uptime)
-	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
-
-	if opts.Limit > 0 && len(sortedQueryStats) > opts.Limit {
-		sortedQueryStats = sortedQueryStats[:opts.Limit]
-	}
-
-	if len(queries) == 0 {
-		log.Errorf("No queries found in profiler information for database %q\n", opts.Database)
-		return
-	}
-	rep := report{
-		Headers:     getHeaders(opts),
-		QueryTotals: queries.CalcTotalQueriesStats(uptime),
-		QueryStats:  sortedQueryStats,
-	}
-
-	out, err := formatResults(rep, opts.OutputFormat)
-	if err != nil {
-		log.Errorf("Cannot parse the report: %s", err.Error())
-		os.Exit(5)
-	}
-
-	fmt.Println(string(out))
+	return queries
 }
 
-func formatResults(rep report, outputFormat string) ([]byte, error) {
+// timeSpan returns the number of seconds between the first and the last query, used to
+// calculate QPS. Like pt-query-digest, it is the time covered by the data being analyzed:
+// the server uptime is much longer than the time covered by the (capped) system.profile
+// collection or by the log files, and makes QPS values close to 0.
+func timeSpan(queries stats.Queries) int64 {
+	var first, last time.Time
+	for _, q := range queries {
+		if first.IsZero() || (!q.FirstSeen.IsZero() && q.FirstSeen.Before(first)) {
+			first = q.FirstSeen
+		}
+		if q.LastSeen.After(last) {
+			last = q.LastSeen
+		}
+	}
+	span := int64(last.Sub(first).Seconds())
+	if first.IsZero() || span < 1 {
+		return 1
+	}
+	return span
+}
+
+// timeRangeFilter returns the system.profile filter for the --since and --until options
+func timeRangeFilter(opts *cliOptions) primitive.M {
+	ts := primitive.M{}
+	if !opts.Since.IsZero() {
+		ts["$gte"] = opts.Since
+	}
+	if !opts.Until.IsZero() {
+		ts["$lte"] = opts.Until
+	}
+	if len(ts) == 0 {
+		return primitive.M{}
+	}
+	return primitive.M{"ts": ts}
+}
+
+// queriesFromLogs reads the slow queries from MongoDB log files
+func queriesFromLogs(opts *cliOptions) (stats.Queries, error) {
+	filters := logFilters(opts)
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters())
+	s := stats.New(fp)
+	currentFile := ""
+	parser := logparser.New(logparser.Options{
+		Since: opts.Since,
+		Until: opts.Until,
+		OnError: func(lineNumber int, err error) {
+			log.Debugf("cannot parse slow query at %s:%d: %s", currentFile, lineNumber, err)
+		},
+	})
+
+	statsErrors := 0
+
+	add := func(doc proto.SystemProfile) error {
+		for _, f := range filters {
+			if !f(doc) {
+				return nil
+			}
+		}
+		if err := s.Add(doc); err != nil {
+			statsErrors++
+			log.Debugf("cannot process query %s %s at %s: %s", doc.Op, doc.Ns, doc.Ts, err)
+			return nil
+		}
+		return nil
+	}
+
+	for _, file := range opts.LogFiles {
+		currentFile = file
+		if err := parseLogFile(parser, file, add); err != nil {
+			return nil, err
+		}
+	}
+
+	c := parser.Counters()
+	log.Infof("Read %d lines, found %d slow query entries: %d parsed, %d out of the time range, "+
+		"%d ignored (no query shape), %d could not be parsed", c.Lines, c.SlowQueries, c.Parsed,
+		c.OutOfRange, c.Ignored, c.Unparsable+statsErrors)
+	if skipped := c.Unparsable + statsErrors; skipped > 0 {
+		log.Warnf("%d slow query entries could not be parsed and were skipped. "+
+			"Use --log-level=debug for details", skipped)
+	}
+
+	return s.Queries(), nil
+}
+
+func parseLogFile(parser *logparser.Parser, file string, fn func(proto.SystemProfile) error) error {
+	var r io.Reader
+	if file == "-" {
+		r = os.Stdin
+	} else {
+		f, err := os.Open(file)
+		if err != nil {
+			return fmt.Errorf("cannot open log file: %s", err)
+		}
+		defer f.Close()
+		r = f
+	}
+	if err := parser.Parse(r, fn); err != nil {
+		return fmt.Errorf("cannot read log file %s: %s", file, err)
+	}
+	return nil
+}
+
+// Databases skipped in log mode unless they are explicitly selected with --database
+var internalDatabases = map[string]bool{"admin": true, "local": true, "config": true}
+
+func logFilters(opts *cliOptions) []filter.Filter {
+	filters := []filter.Filter{
+		func(doc proto.SystemProfile) bool {
+			db := strings.SplitN(doc.Ns, ".", 2)[0]
+			if opts.Database != "" {
+				return db == opts.Database
+			}
+			return !internalDatabases[db]
+		},
+	}
+	if len(opts.SkipCollections) > 0 {
+		filters = append(filters, filter.NewFilterByCollection(opts.SkipCollections))
+	}
+	return filters
+}
+
+func formatResults(rep report, outputFormat string, showAll []string) ([]byte, error) {
 	var buf *bytes.Buffer
 
 	switch outputFormat {
@@ -226,18 +382,87 @@ func formatResults(rep report, outputFormat string) ([]byte, error) {
 		tt, _ := template.New("query").Funcs(template.FuncMap{
 			"Format": format,
 		}).Parse(getTotalsTemplate())
-		tt.Execute(buf, rep.QueryTotals)
+		if err := tt.Execute(buf, rep.QueryTotals); err != nil {
+			return nil, fmt.Errorf("cannot format totals: %s", err)
+		}
+
+		show := map[string]bool{}
+		for _, attr := range showAll {
+			show[attr] = true
+		}
 
 		t, _ := template.New("query").Funcs(template.FuncMap{
-			"Format": format,
+			"Format":    format,
+			"FormatQPS": formatQPS,
+			"StringList": func(label, attr string, vals []stats.ValueCount, count int) string {
+				if len(vals) == 0 {
+					return ""
+				}
+				return fmt.Sprintf("# %-19s %s\n", label, formatStringList(vals, count, show[attr]))
+			},
+			"Sample": func(qs stats.QueryStats) string {
+				if qs.SampleTs.IsZero() {
+					return ""
+				}
+				return fmt.Sprintf("# %-19s %s (slowest: %.0f ms)\n", "Sample time", qs.SampleTs, qs.SampleQueryTime)
+			},
 		}).Parse(getQueryTemplate())
 
 		for _, qs := range rep.QueryStats {
-			t.Execute(buf, qs)
+			if err := t.Execute(buf, qs); err != nil {
+				return nil, fmt.Errorf("cannot format query %s: %s", qs.ID, err)
+			}
 		}
 	}
 
 	return buf.Bytes(), nil
+}
+
+// formatQPS formats QPS with 2 decimals. Values below 0.01 (common when analyzing slow
+// queries) are shown with 2 significant digits instead, so they are not shown as 0.00.
+func formatQPS(qps float64) string {
+	if qps <= 0 || qps >= 0.01 {
+		return fmt.Sprintf("% 0.2f", qps)
+	}
+	decimals := 1 - int(math.Floor(math.Log10(qps)))
+	return strings.TrimRight(fmt.Sprintf("% 0.*f", decimals, qps), "0")
+}
+
+// Same limits used by pt-query-digest for string attributes (LINE_LENGTH and the
+// --max-line-length default)
+const maxLineLength = 74
+
+// formatStringList formats the distinct values of a string attribute like pt-query-digest:
+// a single value is printed alone; multiple values are printed with their count and
+// percentage, most frequent first, as many as fit in a line followed by "... N more".
+// Unlike pt-query-digest, values are never cut: a partial plan summary (e.g. an index key
+// pattern) is useless.
+func formatStringList(vals []stats.ValueCount, total int, showAll bool) string {
+	if len(vals) == 1 {
+		return vals[0].Value
+	}
+
+	parts := []string{}
+	length := 0
+	for _, v := range vals {
+		pct := 0
+		if total > 0 {
+			pct = v.Count * 100 / total
+		}
+		s := fmt.Sprintf("%s (%d/%d%%)", v.Value, v.Count, pct)
+		// Unlike pt-query-digest, always show at least the most frequent value
+		if !showAll && len(parts) > 0 && length+len(s) > maxLineLength-27 {
+			break
+		}
+		parts = append(parts, s)
+		length += len(s) + 2
+	}
+
+	line := strings.Join(parts, ", ")
+	if len(parts) < len(vals) {
+		line += fmt.Sprintf("... %d more", len(vals)-len(parts))
+	}
+	return line
 }
 
 // format scales a number and returns a string made of the scaled value and unit (K=Kilo, M=Mega, T=Tera)
@@ -264,18 +489,6 @@ func format(val float64, size float64) string {
 	return fmt.Sprintf("%s%s", fval, unit)
 }
 
-func uptime(ctx context.Context, client *mongo.Client) int64 {
-	res := client.Database("admin").RunCommand(ctx, primitive.D{{"serverStatus", 1}, {"recordStats", 1}})
-	if res.Err() != nil {
-		return 0
-	}
-	ss := proto.ServerStatus{}
-	if err := res.Decode(&ss); err != nil {
-		return 0
-	}
-	return ss.Uptime
-}
-
 func getOptions() (*cliOptions, error) {
 	opts := &cliOptions{
 		Host:            DEFAULT_HOST,
@@ -295,34 +508,75 @@ func getOptions() (*cliOptions, error) {
 
 	gop.ListVarLong(&opts.OrderBy, "order-by", 'o',
 		"Comma separated list of order by fields (max values): "+
-			"count,ratio,query-time,docs-scanned,docs-returned. "+
+			"count,ratio,query-time,docs-scanned (or docs-examined),docs-returned. "+
 			"- in front of the field name denotes reverse order. Default: "+DEFAULT_ORDERBY)
 	gop.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
 		"  Default: "+DEFAULT_SKIPCOLLECTIONS)
 
 	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
-	gop.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
+	gop.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile. With log files, only "+
+		"analyze this database (default: all but admin, local and config)")
 	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
 	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
 	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
 	gop.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
 	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
 	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
+	since := gop.StringLong("since", 0, "", "Only analyze queries newer than this value. Can be a date/time "+
+		"(e.g. 2026-11-03T10:00:00Z, '2026-11-03 10:00:00', 2026-11-03) or a duration before now (e.g. 30m, 12h, 7d)")
+	until := gop.StringLong("until", 0, "", "Only analyze queries older than this value. Same format as --since")
+	gop.ListVarLong(&opts.ShowAll, "show-all", 0, "Comma separated list of attributes for which all values are shown "+
+		"instead of only those fitting in one line: plan-summary,app-name,client,user")
 
-	gop.SetParameters("host[:port]")
+	gop.SetParameters("[host[:port] | logfile [logfile ...]]")
 
+	// Options are allowed after positional arguments, so keep parsing what is left
+	// after each positional argument (getopt stops at the first one).
+	positional := []string{}
 	gop.Parse(os.Args)
-	if gop.NArgs() > 0 {
-		opts.Host = gop.Arg(0)
-		gop.Parse(gop.Args())
+	for gop.NArgs() > 0 {
+		args := gop.Args()
+		positional = append(positional, args[0])
+		gop.Parse(args)
 	}
 	if opts.Help {
 		gop.PrintUsage(os.Stdout)
 		return nil, nil
 	}
 
+	logFiles, host, err := classifyArgs(positional)
+	if err != nil {
+		return nil, err
+	}
+	opts.LogFiles = logFiles
+	if host != "" {
+		opts.Host = host
+	}
+
+	now := time.Now()
+	if *since != "" {
+		if opts.Since, err = parseTimeOption(*since, now); err != nil {
+			return nil, fmt.Errorf("invalid --since value: %s", err)
+		}
+	}
+	if *until != "" {
+		if opts.Until, err = parseTimeOption(*until, now); err != nil {
+			return nil, fmt.Errorf("invalid --until value: %s", err)
+		}
+	}
+	if !opts.Since.IsZero() && !opts.Until.IsZero() && opts.Until.Before(opts.Since) {
+		return nil, fmt.Errorf("--until cannot be before --since")
+	}
+
+	validShowAll := map[string]bool{"plan-summary": true, "app-name": true, "client": true, "user": true}
+	for _, attr := range opts.ShowAll {
+		if !validShowAll[attr] {
+			return nil, fmt.Errorf("invalid --show-all attribute %q", attr)
+		}
+	}
+
 	if gop.IsSet("order-by") {
-		validFields := []string{"count", "ratio", "query-time", "docs-scanned", "docs-returned"}
+		validFields := []string{"count", "ratio", "query-time", "docs-scanned", "docs-examined", "docs-returned"}
 		for _, field := range opts.OrderBy {
 			valid := false
 			for _, vf := range validFields {
@@ -372,32 +626,86 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 	return clientOptions, nil
 }
 
+// classifyArgs decides whether the positional arguments are log files or a host.
+// They are log files if they exist (or are "-" for stdin) or look like log files.
+// Only one host can be specified.
+func classifyArgs(args []string) (logFiles []string, host string, err error) {
+	if len(args) == 1 && !isLogFileArg(args[0]) {
+		return nil, args[0], nil
+	}
+	for _, arg := range args {
+		if !isLogFileArg(arg) {
+			return nil, "", fmt.Errorf("log file %q does not exist. Only one host can be specified", arg)
+		}
+		logFiles = append(logFiles, arg)
+	}
+	return logFiles, "", nil
+}
+
+var reLogFileName = regexp.MustCompile(`\.log(\.[0-9T:\-]+)?$`)
+
+func isLogFileArg(arg string) bool {
+	if arg == "-" {
+		return true
+	}
+	if fi, err := os.Stat(arg); err == nil && !fi.IsDir() {
+		return true
+	}
+	// Report missing files instead of trying to connect to a host named like a file
+	return reLogFileName.MatchString(arg)
+}
+
+var reRelativeTime = regexp.MustCompile(`^(\d+)([smhd])$`)
+
+// parseTimeOption parses the --since and --until values. Values without time zone are
+// interpreted in the local time zone.
+func parseTimeOption(s string, now time.Time) (time.Time, error) {
+	if m := reRelativeTime.FindStringSubmatch(s); m != nil {
+		n, _ := strconv.Atoi(m[1])
+		unit := map[string]time.Duration{"s": time.Second, "m": time.Minute, "h": time.Hour, "d": 24 * time.Hour}[m[2]]
+		return now.Add(-time.Duration(n) * unit), nil
+	}
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t, nil
+	}
+	for _, layout := range []string{"2006-01-02T15:04:05", "2006-01-02 15:04:05", "2006-01-02"} {
+		if t, err := time.ParseInLocation(layout, s, time.Local); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("cannot parse %q", s)
+}
+
 func getHeaders(opts *cliOptions) []string {
 	h := []string{
 		fmt.Sprintf("%s - %s\n", toolname, time.Now().Format(time.RFC1123Z)),
-		fmt.Sprintf("Host: %s\n", opts.Host),
-		fmt.Sprintf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections),
 	}
+	if len(opts.LogFiles) > 0 {
+		h = append(h, fmt.Sprintf("Log files: %s\n", strings.Join(opts.LogFiles, ", ")))
+	} else {
+		h = append(h, fmt.Sprintf("Host: %s\n", opts.Host))
+	}
+	h = append(h, fmt.Sprintf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections))
 	return h
 }
 
 func getQueryTemplate() string {
 	t := `
-# Query {{.Rank}}: {{printf "% 0.2f" .QPS}} QPS, ID {{.ID}}
+# Query {{.Rank}}: {{FormatQPS .QPS}} QPS, ID {{.ID}}
 # Ratio {{Format .Ratio 7.2}} (docs scanned/returned)
 # Time range: {{.FirstSeen}} to {{.LastSeen}}
 # Attribute            pct     total        min         max        avg         95%        stddev      median
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
 # Count (docs)               {{printf "% 7d " .Count}}
 # Exec Time ms        {{printf "% 4.0f" .QueryTime.Pct}}   {{printf "% 7.0f " .QueryTime.Total}}    {{printf "% 7.0f " .QueryTime.Min}}    {{printf "% 7.0f " .QueryTime.Max}}    {{printf "% 7.0f " .QueryTime.Avg}}    {{printf "% 7.0f " .QueryTime.Pct95}}    {{printf "% 7.0f " .QueryTime.StdDev}}    {{printf "% 7.0f " .QueryTime.Median}}
-# Docs Scanned        {{printf "% 4.0f" .Scanned.Pct}}   {{Format .Scanned.Total 7.2}}    {{Format .Scanned.Min 7.2}}    {{Format .Scanned.Max 7.2}}    {{Format .Scanned.Avg 7.2}}    {{Format .Scanned.Pct95 7.2}}    {{Format .Scanned.StdDev 7.2}}    {{Format .Scanned.Median 7.2}}
+# Docs Scanned        {{printf "% 4.0f" .DocsExamined.Pct}}   {{Format .DocsExamined.Total 7.2}}    {{Format .DocsExamined.Min 7.2}}    {{Format .DocsExamined.Max 7.2}}    {{Format .DocsExamined.Avg 7.2}}    {{Format .DocsExamined.Pct95 7.2}}    {{Format .DocsExamined.StdDev 7.2}}    {{Format .DocsExamined.Median 7.2}}
 # Docs Returned       {{printf "% 4.0f" .Returned.Pct}}   {{Format .Returned.Total 7.2}}    {{Format .Returned.Min 7.2}}    {{Format .Returned.Max 7.2}}    {{Format .Returned.Avg 7.2}}    {{Format .Returned.Pct95 7.2}}    {{Format .Returned.StdDev 7.2}}    {{Format .Returned.Median 7.2}}
 # Bytes sent          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
 # String:
 # Namespace           {{.Namespace}}
 # Operation           {{.Operation}}
 # Fingerprint         {{.Fingerprint}}
-# Query               {{.Query}}
+{{StringList "Plan Summary" "plan-summary" .PlanSummaries .Count}}{{StringList "App Name" "app-name" .AppNames .Count}}{{StringList "Client" "client" .Clients .Count}}{{StringList "User" "user" .Users .Count}}{{Sample .}}# Query               {{.Query}}
 `
 	return t
 }
@@ -410,7 +718,7 @@ func getTotalsTemplate() string {
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
 # Count (docs)               {{printf "% 7d " .Count}}
 # Exec Time ms        {{printf "% 4.0f" .QueryTime.Pct}}   {{printf "% 7.0f " .QueryTime.Total}}    {{printf "% 7.0f " .QueryTime.Min}}    {{printf "% 7.0f " .QueryTime.Max}}    {{printf "% 7.0f " .QueryTime.Avg}}    {{printf "% 7.0f " .QueryTime.Pct95}}    {{printf "% 7.0f " .QueryTime.StdDev}}    {{printf "% 7.0f " .QueryTime.Median}}
-# Docs Scanned        {{printf "% 4.0f" .Scanned.Pct}}   {{Format .Scanned.Total 7.2}}    {{Format .Scanned.Min 7.2}}    {{Format .Scanned.Max 7.2}}    {{Format .Scanned.Avg 7.2}}    {{Format .Scanned.Pct95 7.2}}    {{Format .Scanned.StdDev 7.2}}    {{Format .Scanned.Median 7.2}}
+# Docs Scanned        {{printf "% 4.0f" .DocsExamined.Pct}}   {{Format .DocsExamined.Total 7.2}}    {{Format .DocsExamined.Min 7.2}}    {{Format .DocsExamined.Max 7.2}}    {{Format .DocsExamined.Avg 7.2}}    {{Format .DocsExamined.Pct95 7.2}}    {{Format .DocsExamined.StdDev 7.2}}    {{Format .DocsExamined.Median 7.2}}
 # Docs Returned       {{printf "% 4.0f" .Returned.Pct}}   {{Format .Returned.Total 7.2}}    {{Format .Returned.Min 7.2}}    {{Format .Returned.Max 7.2}}    {{Format .Returned.Avg 7.2}}    {{Format .Returned.Pct95 7.2}}    {{Format .Returned.StdDev 7.2}}    {{Format .Returned.Median 7.2}}
 # Bytes sent          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
 #
@@ -510,11 +818,11 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 			}
 
 		//
-		case "docs-examined":
+		case "docs-scanned", "docs-examined":
 			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.DocsExamined.Max < c2.DocsExamined.Max
 			}
-		case "-docs-examined":
+		case "-docs-scanned", "-docs-examined":
 			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.DocsExamined.Max > c2.DocsExamined.Max
 			}
@@ -522,11 +830,11 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 		//
 		case "docs-returned":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Returned.Max < c2.DocsExamined.Max
+				return c1.Returned.Max < c2.Returned.Max
 			}
 		case "-docs-returned":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				return c1.Returned.Max > c2.DocsExamined.Max
+				return c1.Returned.Max > c2.Returned.Max
 			}
 		}
 		// count,query-time,docs-scanned, docs-returned. - in front of the field name denotes reverse order.")

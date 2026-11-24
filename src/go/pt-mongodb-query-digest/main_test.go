@@ -65,6 +65,11 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	// Unit tests (e.g. log files parsing) don't need a MongoDB instance
+	if os.Getenv("PT_TEST_MONGODB_DSN") == "" {
+		os.Exit(m.Run())
+	}
+
 	client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(os.Getenv("PT_TEST_MONGODB_DSN")))
 	if err != nil {
 		log.Printf("Cannot connect: %s", err.Error())
@@ -165,6 +170,9 @@ func TestParseArgs(t *testing.T) {
 }
 
 func TestPTMongoDBQueryDigest(t *testing.T) {
+	if os.Getenv("PT_TEST_MONGODB_DSN") == "" {
+		t.Skip("Skipping TestPTMongoDBQueryDigest. It runs only in integration tests")
+	}
 	var err error
 	//
 	binDir, err := ioutil.TempDir("/tmp", "pt-test-bindir")
@@ -482,8 +490,23 @@ Using those documents for the stats
 	}
 	expected += "\n" // Looks like we expect additional line
 	//
-	assertRegexpLines(t, expected, string(output))
+	assertRegexpLines(t, expected, removeOptionalLines(string(output)))
 }
+
+// removeOptionalLines removes the lines of the "# String:" section that are only printed
+// when there is a value for them
+func removeOptionalLines(s string) string {
+	lines := []string{}
+	for _, line := range strings.Split(s, "\n") {
+		if reOptionalLine.MatchString(line) {
+			continue
+		}
+		lines = append(lines, line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+var reOptionalLine = regexp.MustCompile(`^# (Plan Summary|App Name|Client|User|Sample time) `)
 
 // assertRegexpLines matches regexp line by line to corresponding line of text
 func assertRegexpLines(t *testing.T, rx string, str string, msgAndArgs ...interface{}) bool {
