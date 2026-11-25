@@ -1013,6 +1013,33 @@ func (s *CollectorSuite) TestRequiredFilesExist() {
 	}
 }
 
+var singleExportWorkerTested bool
+
+func (s *CollectorSuite) TestSingleExportWorker() {
+	if singleExportWorkerTested {
+		s.T().Skip("Already tested in another namespace run")
+	}
+	singleExportWorkerTested = true
+
+	removeArchives()
+	ctx, cancel := context.WithTimeout(s.T().Context(), 3*time.Minute)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, TOOL_PATH,
+		"--kubeconfig", s.KubeConfig,
+		"--resource", "none",
+		"--namespace", s.Namespace,
+		"--concurrent-export-workers", "1",
+	).CombinedOutput()
+	s.Require().NoError(ctx.Err(), "Collector did not finish:\n%s", out)
+	s.Require().NoError(err, string(out))
+
+	archives, _ := filepath.Glob("cluster-dump_*.tar.gz")
+	s.Require().Len(archives, 1)
+	listing, err := exec.Command("tar", "-tzf", archives[0]).Output()
+	s.Require().NoError(err)
+	s.Contains(strings.Fields(string(listing)), "cluster-dump/"+s.Namespace+"/pods.yaml")
+}
+
 // PT-2448 - pt-k8s-debug-collector should not collect secret details of pgbouncer
 func (s *CollectorSuite) TestPgBouncerSecretsNotCollected() {
 	if s.Namespace != "pgo" && s.Namespace != "pgv2" {
