@@ -5234,6 +5234,10 @@ sub parse_event {
       }
 
       PTDEBUG && _d('Properties of event:', Dumper(\@properties));
+      if ( @properties % 2 ) {
+         PTDEBUG && _d('Skipping malformed event (odd properties):', Dumper(\@properties));
+         next EVENT;
+      }
       my $event = { @properties };
       if ( !$event->{arg} ) {
          PTDEBUG && _d('Partial event, no arg');
@@ -5625,6 +5629,10 @@ sub make_handler {
       );
    }
 
+   if ( $type =~ m/^(?:num|bool)$/ ) {
+      push @lines, q{$val = 0 if defined $val && $val eq '';};
+   }
+
    if ( $type eq 'num' && $self->{attrib_limit} ) {
       push @lines, (
          "if ( \$val > $self->{attrib_limit} ) {",
@@ -5654,7 +5662,7 @@ sub make_handler {
          . $gt . ' PLACE->{max};',
       );
       if ( $track{sum} ) {
-         push @tmp, 'PLACE->{sum} += $val;';
+         push @tmp, 'PLACE->{sum} += (defined $val && $val ne q{} ? $val : 0);';
       }
 
       if ( $track{all} ) {
