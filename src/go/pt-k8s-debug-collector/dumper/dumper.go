@@ -53,7 +53,7 @@ type Dumper struct {
 	mode                             int64
 	crTypes                          []string
 	forwardport                      string
-	usedPorts                        sync.Map
+	forwardPortMu                    sync.Mutex
 	skipPodSummary                   bool
 	concurrentExportWorkers          int
 	concurrentExportWorkersCluster   int
@@ -166,7 +166,6 @@ func New(location, dumpFile, namespace, kubeconfig, clusterName, forwardport, re
 		dynamicClient:                    dynclient,
 		discoveryClient:                  discclient,
 		restConfig:                       config,
-		usedPorts:                        sync.Map{},
 		logger:                           safeLog,
 	}
 

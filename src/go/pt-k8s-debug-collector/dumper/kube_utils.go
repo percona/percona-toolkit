@@ -23,37 +23,26 @@ import (
 	"k8s.io/client-go/transport/spdy"
 )
 
-var (
-	// Ignore this error only in case when all calls to portForwardPod have the same context.
-	// If it is not the case, igoning this error may result in a portForward closing while other
-	// entities is in process of using it.
-	ERR_PORT_ALREADY_FORWARDED = errors.New("this localPort:remotePort is already forwarded")
-	ERR_LOCAL_PORT_IN_USE      = errors.New("this localPort is already in use")
-)
-
-/*
-Forwards ports to a specific pod. Close the returned channel to stop forwarding.
-*/
-func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, localPort string, remotePort string) (int, error) {
-	if localPort == "" {
-		localPort = remotePort
+func (d *Dumper) reserveLocalPort() (string, func()) {
+	if d.forwardport == "" {
+		return "0", func() {}
 	}
+	d.forwardPortMu.Lock()
+	return d.forwardport, d.forwardPortMu.Unlock
+}
 
-	localPortParsed, err := strconv.ParseInt(localPort, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse port: %s with err: %s", localPort, err)
-	}
+func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, remotePort string) (int, func(), error) {
+	localPort, release := d.reserveLocalPort()
 
-	gotRemotePort, loaded := d.usedPorts.LoadOrStore(localPortParsed, remotePort)
-	if loaded && gotRemotePort == remotePort {
-		return int(localPortParsed), ERR_PORT_ALREADY_FORWARDED
-	} else if loaded && gotRemotePort != remotePort {
-		return 0, ERR_LOCAL_PORT_IN_USE
+	if _, err := strconv.ParseInt(localPort, 10, 32); err != nil {
+		release()
+		return 0, nil, fmt.Errorf("failed to parse port: %s with err: %s", localPort, err)
 	}
 
 	apiURL, err := url.Parse(d.restConfig.Host)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse config host URL: %w", err)
+		release()
+		return 0, nil, fmt.Errorf("failed to parse config host URL: %w", err)
 	}
 
 	urlPath := path.Join(apiURL.Path, "/api/v1/namespaces/", pod.Namespace, "/pods/", pod.Name, "/portforward")
@@ -65,42 +54,52 @@ func (d *Dumper) portForwardPod(ctx context.Context, pod corev1.Pod, localPort s
 
 	roundTripper, upgrader, err := spdy.RoundTripperFor(d.restConfig)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create roundtripper and upgrader: %w", err)
+		release()
+		return 0, nil, fmt.Errorf("failed to create roundtripper and upgrader: %w", err)
 	}
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &hostURL)
 	readyChan := make(chan struct{}, 1)
-	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
+	errOut := new(bytes.Buffer)
 
 	log.Infof("start frowarder for %s:%s", localPort, remotePort)
 	forwarderCtx, forwarderClose := context.WithCancel(ctx)
-	forwarder, err := portforward.New(dialer, []string{localPort + ":" + remotePort}, forwarderCtx.Done(), readyChan, out, errOut)
+	forwarder, err := portforward.New(dialer, []string{localPort + ":" + remotePort}, forwarderCtx.Done(), readyChan, io.Discard, errOut)
 	if err != nil {
 		forwarderClose()
-		return 0, fmt.Errorf("failed to create port forwarder: %w", err)
+		release()
+		return 0, nil, fmt.Errorf("failed to create port forwarder: %w", err)
 	}
 
+	done := make(chan struct{})
 	go func() {
-		if err = forwarder.ForwardPorts(); err != nil {
+		defer close(done)
+		if err := forwarder.ForwardPorts(); err != nil {
 			log.Errorf("port forwarding failed: %v", err)
 		}
 		forwarderClose()
 	}()
 
+	stop := func() {
+		forwarderClose()
+		<-done
+		release()
+	}
+
 	select {
 	case <-readyChan:
 		forwardedPorts, err := forwarder.GetPorts()
 		if err != nil {
-			return 0, fmt.Errorf("failed to get forwarded ports: %w", err)
+			stop()
+			return 0, nil, fmt.Errorf("failed to get forwarded ports: %w", err)
 		}
 		if len(forwardedPorts) == 0 {
-			return 0, fmt.Errorf("no ports were forwarded")
+			stop()
+			return 0, nil, fmt.Errorf("no ports were forwarded")
 		}
-
-		localPort := int(forwardedPorts[0].Local)
-
-		return localPort, nil
+		return int(forwardedPorts[0].Local), stop, nil
 	case <-forwarderCtx.Done():
-		return 0, fmt.Errorf("port forward stopped unexpectedly before being ready: %s", errOut.String())
+		stop()
+		return 0, nil, fmt.Errorf("port forward stopped unexpectedly before being ready: %s", errOut.String())
 	}
 }
 

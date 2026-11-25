@@ -693,6 +693,81 @@ func validateSummary(archivePath, namespace string, marker *regexp.Regexp) error
 	return nil
 }
 
+var summaryHostnameRE = regexp.MustCompile(`(?m)^\s*Hostname \| (\S+)`)
+
+func summaryHostnames(archivePath, namespace string) (map[string]string, error) {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer gzr.Close()
+
+	hosts := map[string]string{}
+	tarReader := tar.NewReader(gzr)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			return hosts, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		parts := strings.Split(header.Name, "/")
+		if len(parts) != 4 || parts[1] != namespace || parts[3] != "summary.txt" {
+			continue
+		}
+
+		content, err := io.ReadAll(tarReader)
+		if err != nil {
+			return nil, err
+		}
+		if m := summaryHostnameRE.FindSubmatch(content); m != nil {
+			hosts[parts[2]] = string(m[1])
+		}
+	}
+}
+
+func (s *CollectorSuite) TestPodSummaryHostname() {
+	if !slices.Contains([]string{"pxc", "ps", "psmdb"}, s.Namespace) {
+		s.T().Skip("Only pxc, ps and psmdb summaries use port forwarding")
+	}
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "free_local_ports"},
+		{name: "forwardport", args: []string{"--forwardport", s.ForwardPort}},
+	}
+
+	for _, test := range tests {
+		s.Run(test.name, func() {
+			args := append([]string{
+				"--kubeconfig", s.KubeConfig,
+				"--resource", s.Namespace,
+				"--namespace", s.Namespace,
+			}, test.args...)
+			out, err := s.runCollectorOutput(args...)
+			s.Require().NoError(err, string(out))
+
+			hosts, err := summaryHostnames("cluster-dump.tar.gz", s.Namespace)
+			s.Require().NoError(err)
+			s.Require().GreaterOrEqual(len(hosts), 2, "Expected summaries of at least two pods, got %v", hosts)
+			for pod, host := range hosts {
+				s.True(host == pod || strings.HasPrefix(host, pod+".") || strings.HasPrefix(host, pod+":"),
+					"summary.txt of pod %s describes host %s", pod, host)
+			}
+		})
+	}
+}
+
 func (s *CollectorSuite) TestPT_2453() {
 	testcmd := []string{"sh", "-c", "tar -tf cluster-dump.tar.gz --wildcards '*/summary.txt' 2>/dev/null | wc -l"}
 	tests := []struct {
