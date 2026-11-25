@@ -733,6 +733,45 @@ func (s *CollectorSuite) TestPT_2453() {
 	}
 }
 
+func (s *CollectorSuite) TestResourceSelectsOperator() {
+	other := "pxc"
+	if s.Namespace == "pxc" {
+		other = "psmdb"
+	}
+
+	s.Run("other_operator", func() {
+		out, err := s.runCollectorOutput(
+			"--kubeconfig", s.KubeConfig,
+			"--forwardport", s.ForwardPort,
+			"--resource", other,
+		)
+		s.Require().NoError(err, string(out))
+
+		listing, err := exec.Command("tar", "-tf", "cluster-dump.tar.gz").Output()
+		s.Require().NoError(err)
+
+		podDir := "cluster-dump/" + s.Namespace + "/"
+		var operatorFiles []string
+		for _, entry := range strings.Fields(string(listing)) {
+			if strings.HasSuffix(entry, "/summary.txt") ||
+				(strings.HasPrefix(entry, podDir) && strings.Count(strings.TrimPrefix(entry, podDir), "/") > 1) {
+				operatorFiles = append(operatorFiles, entry)
+			}
+		}
+		s.Empty(operatorFiles, "Expected no %s data with --resource %s", s.Namespace, other)
+	})
+
+	s.Run("unsupported_value", func() {
+		removeArchives()
+		out, err := exec.Command(TOOL_PATH, "--kubeconfig", s.KubeConfig, "--resource", "foo").CombinedOutput()
+		s.Error(err)
+		s.Contains(string(out), `unsupported value "foo" for --resource, supported values: pxc, psmdb, pg, pgv2, crunchy, ps, none, auto`)
+
+		archives, _ := filepath.Glob("cluster-dump_*.tar.gz")
+		s.Empty(archives, "Expected no archive for an unsupported --resource value")
+	})
+}
+
 var busyPortTested bool
 
 // PT-2169

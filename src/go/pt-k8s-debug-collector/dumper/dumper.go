@@ -170,13 +170,21 @@ func New(location, dumpFile, namespace, kubeconfig, clusterName, forwardport, re
 		logger:                           safeLog,
 	}
 
-	if resource == "none" || resource == "" {
-		return d, nil
-	}
-
-	d.crTypes, err = d.autoCustomResource()
+	selected, err := selectedResource(resource)
 	if err != nil {
 		return nil, err
+	}
+
+	switch selected {
+	case "none":
+		return d, nil
+	case "auto":
+		d.crTypes, err = d.autoCustomResource()
+		if err != nil {
+			return nil, err
+		}
+	default:
+		d.crTypes = []string{selected}
 	}
 
 	d.sslSecrets = make(map[string]bool, 0)
