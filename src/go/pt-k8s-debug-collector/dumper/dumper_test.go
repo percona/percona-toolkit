@@ -598,3 +598,37 @@ func TestNewRejectsInvalidNamespace(t *testing.T) {
 		}
 	}
 }
+
+func TestListNamespaces(t *testing.T) {
+	tests := []struct {
+		name      string
+		namespace string
+		want      []string
+		wantCalls int
+	}{
+		{name: "all namespaces", namespace: "", want: []string{"pg-a", "pg-b"}, wantCalls: 1},
+		{name: "single namespace", namespace: "pg-a", want: []string{"pg-a"}, wantCalls: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := fake.NewSimpleClientset(
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "pg-a"}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "pg-b"}},
+			)
+
+			got, err := listNamespaces(t.Context(), client, tt.namespace)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			slices.Sort(got)
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("namespaces = %v, want %v", got, tt.want)
+			}
+			if calls := len(client.Actions()); calls != tt.wantCalls {
+				t.Errorf("API calls = %d, want %d", calls, tt.wantCalls)
+			}
+		})
+	}
+}
