@@ -16,12 +16,12 @@ package templates
 var TPL = `{{define "report"}}
 {{ template "port_and_datadir" .PortAndDatadir }}
 {{ template "tablespaces" .Tablespaces }}
-{{ if .SlaveHosts96 -}}
-  {{ template "slaves_and_lag" .SlaveHosts96 }}
-{{- else if .SlaveHosts10 -}}
-  {{ template "slaves_and_lag" .SlaveHosts10 }}
+{{ if .ReplicaHosts96 -}}
+  {{ template "replicas_and_lag" .ReplicaHosts96 }}
+{{- else if .ReplicaHosts10 -}}
+  {{ template "replicas_and_lag" .ReplicaHosts10 }}
 {{- else -}}
-  {{ template "slaves_and_log_none" }}
+  {{ template "replicas_and_lag_none" }}
 {{- end }}
 {{ template "cluster" .ClusterInfo }}
 {{ template "databases" .AllDatabases }}
@@ -56,8 +56,8 @@ var TPL = `{{define "report"}}
 +----------------------+----------------------+----------------------------------------------------+
 {{ end -}} {{/* end define */}}
 ` +
-	`{{ define "slaves_and_lag" -}}
-##### --- Slave and the lag with Master --- ####
+	`{{ define "replicas_and_lag" -}}
+##### --- Replicas and the lag with Primary --- ####
 +----------------------+----------------------+--------------------------------+-------------------+
 |  Application Name    |    Client Address    |           State                |      Lag          |
 +----------------------+----------------------+--------------------------------+-------------------+
@@ -70,9 +70,9 @@ var TPL = `{{define "report"}}
 +----------------------+----------------------+----------------------------------------------------+
 {{ end -}} {{/* end define */}}
 ` +
-	`{{- define "slaves_and_log_none" -}}
-##### --- Slave and the lag with Master --- ####
-There are no slave hosts
+	`{{- define "replicas_and_lag_none" -}}
+##### --- Replicas and the lag with Primary --- ####
+There are no replica hosts
 {{ end -}} {{/* end define */}}
 ` +
 	`{{ define "cluster" -}}
@@ -86,7 +86,7 @@ There are no slave hosts
  Client Hostname: {{ convertnullstring .ClientHostname | trim 90 }}
  Version        : {{ trim 90 .Version }}
  Started        : {{ printf "%v" .Started }}
- Is Slave       : {{ .IsSlave }}
+ Is Replica     : {{ .IsReplica }}
 +------------------------------------------------------------------------------------------------------+
 {{ end -}}
 {{ else -}}
