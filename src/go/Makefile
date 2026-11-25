@@ -1,4 +1,4 @@
-.PHONY: all style format build test vet tarball linux-amd64 clean help
+.PHONY: all style format build test test-pg vet tarball linux-amd64 clean help
 
 help:                 ## Display this help message.
 	@echo "Please use \`make <target>\` where <target> is one of:"
@@ -170,6 +170,9 @@ style:						## Check code style
 test:						## Run tests
 	@echo ">> running tests"
 	@./runtests.sh
+
+test-pg: build				## Run pt-pg-summary tests in a PostgreSQL sandbox
+	@PERCONA_TOOLKIT_BRANCH=$${PERCONA_TOOLKIT_BRANCH:-$(abspath ${CUR_DIR}/../..)} $(abspath ${CUR_DIR}/../..)/sandbox-pg/test-env test
 
 format:                     ## Format source code.
 	gofumpt -w -s $(FILES)
