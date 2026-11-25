@@ -16,6 +16,7 @@ package pginfo
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/go-version"
@@ -39,7 +40,7 @@ type PGInfo struct {
 	DatabaseWaitEvents []*models.DatabaseWaitEvents
 	AllDatabases       []*models.Databases
 	GlobalWaitEvents   []*models.GlobalWaitEvents
-	PortAndDatadir     *models.PortAndDatadir
+	PortAndDatadir     []*models.PortAndDatadir
 	SlaveHosts96       []*models.SlaveHosts96
 	SlaveHosts10       []*models.SlaveHosts10
 	Tablespaces        []*models.Tablespaces
@@ -190,7 +191,7 @@ func (i *PGInfo) CollectGlobalInfo(db models.XODB) []error {
 	}
 
 	i.logger.Info("Collecting Port and Data Dir information")
-	if i.PortAndDatadir, err = models.GetPortAndDatadir(db); err != nil {
+	if i.PortAndDatadir, err = models.GetPortAndDatadirs(db); err != nil {
 		errs = append(errs, errors.Wrap(err, "Cannot get Port and Dir"))
 	}
 
@@ -267,12 +268,14 @@ func waitForCounters(ch chan interface{}) ([]*models.Counters, error) {
 }
 
 func parseServerVersion(v string) (*version.Version, error) {
-	re := regexp.MustCompile(`(\d?\d)(\d\d)(\d\d)`)
-	m := re.FindStringSubmatch(v)
-	if len(m) != 4 {
+	num, err := strconv.Atoi(v)
+	if err != nil {
 		return nil, fmt.Errorf("cannot parse version %s", v)
 	}
-	return version.NewVersion(fmt.Sprintf("%s.%s.%s", m[1], m[2], m[3]))
+	if num >= 100000 {
+		return version.NewVersion(fmt.Sprintf("%d.%d", num/10000, num%10000))
+	}
+	return version.NewVersion(fmt.Sprintf("%d.%d.%d", num/10000, num/100%100, num%100))
 }
 
 func (i *PGInfo) calcCountersDiff(counters map[models.Name][]*models.Counters) {
