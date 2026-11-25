@@ -28,7 +28,6 @@ xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
     --query-mode \
     --query-trim \
     --query-interpolate \
-    --query-only-one \
     --query-type PortAndDatadir \
     --package models \
     --out ./ << ENDSQL
