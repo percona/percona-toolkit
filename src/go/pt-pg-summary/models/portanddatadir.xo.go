@@ -22,23 +22,37 @@ type PortAndDatadir struct {
 	Setting string // setting
 }
 
-// GetPortAndDatadir runs a custom query, returning results as PortAndDatadir.
-func GetPortAndDatadir(db XODB) (*PortAndDatadir, error) {
+// GetPortAndDatadirs runs a custom query, returning results as PortAndDatadir.
+func GetPortAndDatadirs(db XODB) ([]*PortAndDatadir, error) {
 	var err error
 
 	// sql query
-	sqlstr := `SELECT name, ` +
+	const sqlstr = `SELECT name, ` +
 		`setting ` +
 		`FROM pg_settings ` +
 		`WHERE name IN ('port','data_directory')`
 
 	// run query
 	XOLog(sqlstr)
-	var pad PortAndDatadir
-	err = db.QueryRow(sqlstr).Scan(&pad.Name, &pad.Setting)
+	q, err := db.Query(sqlstr)
 	if err != nil {
 		return nil, err
 	}
+	defer q.Close()
 
-	return &pad, nil
+	// load results
+	res := []*PortAndDatadir{}
+	for q.Next() {
+		pad := PortAndDatadir{}
+
+		// scan
+		err = q.Scan(&pad.Name, &pad.Setting)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, &pad)
+	}
+
+	return res, nil
 }
